@@ -1,0 +1,2026 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sidequest</title>
+<link rel="icon" type="image/svg+xml" href="assets/sidequest-icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+:root {
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  --bg: #F2F4F1;
+  --surface: #FFFFFF;
+  --ink: #1A2733;
+  --muted: #566772;
+  --line: #D3DAD5;
+  --planned: #2F5D8A;
+  --on-planned: #FFFFFF;
+  --actual: #C8631A;
+  --burn: #C62F2F;
+  --focus: #2F5D8A;
+  --late: #A8261C;
+  --late-bg: #F8DDD9;
+  --chip-idle: #E7ECE8;
+  --chip-work: #F6E3C4;
+  --chip-done: #CFE6D5;
+  --chip-ink: #1A2733;
+  --est: #B9CCE0;
+  --sel: #E6EEF6;
+  --scrim: rgba(15, 25, 35, .5);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131A20; --surface: #1B252D; --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
+    --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --burn: #E5534B; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
+    --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131A20; --surface: #1B252D; --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
+  --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --burn: #E5534B; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
+  --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
+}
+html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 72px); }
+*, *::before, *::after { box-sizing: inherit; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.5; }
+h1, h2, h3 { font-family: "Spectral", Georgia, "Times New Roman", serif; font-weight: 600; line-height: 1.2; margin: 0; }
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.3rem; margin-bottom: 6px; }
+h3 { font-size: 1.05rem; margin-top: 22px; }
+p { margin: 0; }
+[hidden] { display: none !important; }
+.hint { color: var(--muted); font-size: .9rem; margin-top: 6px; }
+.note { margin-top: 12px; color: var(--muted); font-size: .9rem; }
+.msg { margin-top: 10px; color: var(--muted); font-size: .9rem; min-height: 1.4em; }
+
+input, select, button, textarea { font: inherit; color: var(--ink); }
+input[type="text"], input[type="date"], input[type="number"], textarea {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; min-height: 40px; max-width: 100%; width: 100%;
+}
+input[type="file"] { max-width: 100%; }
+textarea { min-height: 84px; resize: vertical; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+button { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; min-height: 40px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button.primary { background: var(--planned); border-color: var(--planned); color: var(--on-planned); font-weight: 600; }
+button.small { min-height: 34px; padding: 4px 10px; font-size: .9rem; }
+button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: var(--late); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; align-items: center; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.field label { font-size: .9rem; color: var(--muted); }
+.linkbtn { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 14px; border-radius: 8px; background: var(--planned); color: var(--on-planned); font-weight: 600; text-decoration: none; }
+.linkbtn:hover { filter: brightness(1.1); }
+.textbtn { background: none; border: 0; padding: 4px 0; min-height: 0; color: var(--planned); text-decoration: underline; text-align: left; }
+
+/* shell */
+.app { min-height: 100vh; display: grid; grid-template-columns: 220px minmax(0, 1fr); }
+.side { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; height: 100vh; height: 100dvh; padding: 22px 14px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; background: var(--surface); }
+.brandrow { display: flex; align-items: center; gap: 10px; padding: 0 6px 16px; }
+.logo { width: 38px; height: 38px; flex: none; display: block; }
+.mlogo { display: none; width: 44px; height: 44px; }
+.brand { font-family: "Spectral", Georgia, serif; font-weight: 600; font-size: 1.25rem; line-height: 1.1; }
+.nav { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+.navlabel { padding: 14px 12px 4px; font-size: .8rem; color: var(--muted); }
+.tab > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.content.wide { max-width: none; }
+.pinbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+.helpitem { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); margin-top: 10px; }
+.helpitem > summary { padding: 12px 14px; font-weight: 600; cursor: pointer; color: var(--ink); font-size: 1rem; }
+.hbody { padding: 0 14px 12px; }
+.hbody ul { margin: 0; padding-left: 1.2rem; }
+.hbody li { margin-top: 6px; }
+kbd { font: inherit; font-size: .9em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; background: var(--bg); }
+.standing { list-style: none; margin: 0; padding: 0; }
+.standing li { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.standing li:first-child { padding-top: 0; }
+.standing li:last-child { border-bottom: 0; padding-bottom: 0; }
+.srow { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
+.srow .plink, .srow .slabel { font-weight: 600; font-size: 1rem; }
+.plink { text-decoration: none; }
+.plink:hover, .plink:focus-visible { text-decoration: underline; }
+.scount { color: var(--muted); font-size: .9rem; }
+.snext { margin-top: 2px; color: var(--muted); font-size: .92rem; }
+.tbleft { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.searchwrap { padding: 0 4px 12px; }
+.searchwrap input { width: 100%; }
+.searchbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.searchbar input[type="search"] { flex: 1 1 260px; width: auto; }
+.searchbar label { display: flex; gap: 8px; align-items: center; color: var(--muted); cursor: pointer; }
+input[type="search"] { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; min-height: 40px; max-width: 100%; }
+mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding: 0 1px; }
+.sgroup { margin-top: 22px; }
+.sgroup h3 { margin-top: 0; }
+.sgroup .item .snip { margin-top: 4px; color: var(--muted); font-size: .9rem; }
+.chip.arch { background: var(--late-bg); color: var(--late); }
+.tab { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent; border-radius: 8px; padding: 10px 12px; min-height: 44px; color: var(--muted); font-weight: 500; }
+.tab:hover { background: var(--chip-idle); border: 0; }
+.tab[aria-current="page"] { background: var(--sel); color: var(--ink); font-weight: 600; box-shadow: inset 3px 0 0 var(--planned); }
+.navbottom { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); }
+.column { min-width: 0; }
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.topact { display: flex; gap: 8px; align-items: center; flex: none; }
+.topact button { white-space: nowrap; }
+#viewTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menuwrap { position: relative; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 210px; padding: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .18); z-index: 30; display: flex; flex-direction: column; }
+.menu button { border: 0; background: transparent; text-align: left; border-radius: 6px; padding: 9px 12px; min-height: 42px; }
+.menu button:hover { background: var(--chip-idle); }
+.menu button[aria-current="page"] { background: var(--sel); font-weight: 600; }
+.menu { max-height: 75vh; overflow-y: auto; }
+.menulabel { padding: 10px 12px 2px; font-size: .8rem; color: var(--muted); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; width: 100%; }
+.content { padding: 22px 24px 72px; max-width: 1040px; }
+
+.twocol { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.cols2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.pgrid { display: block; }
+.pgrid > .cl, .pgrid > .cr { min-width: 0; margin-top: 12px; }
+.pgrid > .cl.r1 { margin-top: 0; }
+.pgrid > .cr.r1 { margin-top: 26px; }
+.pgrid > button { justify-self: start; }
+.listbox { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.listbox > .list { border: 0; border-radius: 0; margin: 0; background: transparent; }
+.listbox > .progress { margin: 0; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.listbox > .progress:empty { display: none; }
+@media (min-width: 900px) {
+  .pgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 22px; row-gap: 12px; }
+  .pgrid > .cl, .pgrid > .cr, .pgrid > .cr.r1 { margin-top: 0; }
+  .pgrid > .cl { grid-column: 1; }
+  .pgrid > .cr { grid-column: 2; }
+  .pgrid > .r1 { grid-row: 1; }
+  .pgrid > .r2 { grid-row: 2; }
+  .pgrid > .r3 { grid-row: 3; }
+  .pgrid > .r4 { grid-row: 4; }
+}
+
+.panel { padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--planned); border-radius: 10px; }
+.box { padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.ptitle { font-family: "Spectral", Georgia, serif; font-size: 1.3rem; font-weight: 600; line-height: 1.3; }
+.pmeta { margin-top: 6px; color: var(--muted); }
+.pmeta b { color: var(--ink); font-weight: 600; }
+.pline { margin-top: 8px; }
+.badge { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: .8rem; font-weight: 600; background: var(--late-bg); color: var(--late); vertical-align: 1px; }
+.tabbadge { min-width: 22px; text-align: center; padding: 0 6px; }
+.chip { display: inline-block; padding: 1px 10px; border-radius: 999px; font-size: .82rem; background: var(--chip-idle); color: var(--chip-ink); }
+.chip[data-v="In progress"] { background: var(--chip-work); }
+.chip[data-v="Done"] { background: var(--chip-done); }
+.tlist { list-style: none; margin: 10px 0 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.tlist li { border-bottom: 1px solid var(--line); }
+.tlist li:last-child { border-bottom: 0; }
+.tlist li.plain { padding: 12px 14px; color: var(--muted); font-size: .92rem; }
+.item { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; padding: 12px 14px; min-height: 0; }
+.item:hover { background: var(--chip-idle); border: 0; }
+.item[aria-current="true"] { background: var(--sel); box-shadow: inset 4px 0 0 var(--planned); }
+.item .l1 { color: var(--muted); font-size: .85rem; }
+.item .l1 b { color: var(--ink); font-weight: 600; }
+.item .l2 { margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.item.done .l2 { color: var(--muted); }
+.item .l3 { margin-top: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
+
+.split { display: grid; grid-template-columns: minmax(280px, .95fr) minmax(0, 1.25fr); gap: 22px; align-items: start; margin-top: 12px; }
+.split .tlist { margin-top: 0; }
+.detailpane { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); }
+.detail { padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.detail .what { font-family: "Spectral", Georgia, serif; font-size: 1.25rem; font-weight: 600; line-height: 1.3; margin-top: 8px; }
+.detail .dmeta { color: var(--muted); margin-top: 4px; }
+select.status { border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
+select.status[data-v="In progress"] { background: var(--chip-work); }
+select.status[data-v="Done"] { background: var(--chip-done); }
+.steps { list-style: none; margin: 8px 0 0; padding: 0; }
+.steps li { display: flex; gap: 10px; align-items: flex-start; padding: 5px 0; }
+.steps li label { display: flex; gap: 10px; align-items: flex-start; flex: 1 1 auto; cursor: pointer; }
+.steps li.done span { color: var(--muted); text-decoration: line-through; }
+input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin: 2px 0 0; flex: none; accent-color: var(--planned); }
+.inline { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.inline input[type="text"] { flex: 1 1 180px; width: auto; }
+.only-mobile { display: none; }
+.iconbtn { width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; flex: none; }
+.iconbtn svg { width: 20px; height: 20px; display: block; }
+.iconbtn.only-mobile { display: none; }
+.toast .toastbtn { margin-left: 12px; background: transparent; border: 1px solid currentColor; color: inherit; min-height: 32px; padding: 2px 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.chipbtn { border-radius: 999px; min-height: 36px; padding: 4px 14px; }
+.chipbtn[aria-pressed="true"] { background: var(--sel); border-color: var(--planned); color: var(--planned); font-weight: 600; }
+button.dangerfill { background: var(--late); border-color: var(--late); color: var(--bg); font-weight: 600; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.dangerbox { border: 1px solid var(--late); background: var(--late-bg); border-radius: 10px; padding: 14px 16px; margin-top: 10px; }
+.setgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 16px; max-width: 640px; }
+.setgrid .field { min-width: 0; justify-content: flex-end; }
+.setgrid input, .setgrid select { min-width: 0; height: 42px; }
+@media (max-width: 640px) { .setgrid { grid-template-columns: minmax(0, 1fr); } }
+.about p { margin-top: 2px; }
+.radiorow { display: flex; gap: 10px; align-items: flex-start; margin-top: 10px; cursor: pointer; }
+select.plain { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; min-height: 40px; max-width: 100%; width: 100%; }
+button.small.on { background: var(--sel); border-color: var(--planned); color: var(--planned); font-weight: 600; }
+.steps li { flex-wrap: wrap; }
+
+.list { list-style: none; margin: 12px 0 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.list > li { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.list > li:last-child { border-bottom: 0; }
+.list.check label { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+.list.check li.done span { color: var(--muted); text-decoration: line-through; }
+.progress { color: var(--muted); margin-top: 10px; }
+.crow { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: flex-start; }
+.crow label { display: flex; gap: 10px; align-items: flex-start; font-weight: 600; cursor: pointer; flex: 1 1 200px; }
+.cnote { color: var(--muted); font-size: .92rem; margin: 2px 0 0 30px; }
+.cfields { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0 0 30px; }
+.cfields .field { margin-top: 4px; }
+.cfields input { width: 10rem; }
+.li-actions { display: flex; gap: 8px; }
+.dq { font-weight: 500; }
+.dstate { font-size: .85rem; color: var(--muted); margin-left: 8px; }
+.dstate.ok { color: var(--planned); }
+.decision input[type="text"] { margin-top: 6px; }
+.sechead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 22px; }
+.sechead h3 { margin-top: 0; }
+.first { margin-top: 0; }
+
+.chartbox { margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 12px 12px 4px; }
+svg.chart { display: block; width: 100%; height: auto; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .axis { fill: var(--muted); font-size: 12px; font-family: "Public Sans", system-ui, sans-serif; }
+.chart .planned { fill: none; stroke: var(--planned); stroke-width: 2.5; stroke-dasharray: 7 5; }
+.chart .actual { fill: none; stroke: var(--burn); stroke-width: 3; }
+.chart .dot { fill: var(--burn); stroke: var(--surface); stroke-width: 2; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; padding: 6px 4px 10px; font-size: .88rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.legend i { display: inline-block; width: 24px; height: 0; border-top: 3px solid var(--burn); }
+.legend i.p { border-top: 3px dashed var(--planned); }
+.tablewrap { margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+th { font-weight: 600; font-size: .9rem; color: var(--muted); }
+tbody tr:last-child td { border-bottom: 0; }
+.weekly td input { width: 5.5rem; }
+
+#view > .range:first-child { margin-top: 0; }
+.range { margin-top: 12px; padding: 14px 16px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.months { position: relative; height: 22px; border-bottom: 1px solid var(--line); }
+.months span { position: absolute; top: 0; font-size: .75rem; color: var(--muted); transform: translateX(-2px); white-space: nowrap; }
+.lane { margin-top: 12px; }
+.lname { font-size: .92rem; font-weight: 600; }
+.ldates { font-weight: 400; color: var(--muted); margin-left: 6px; }
+.track { position: relative; height: 22px; margin-top: 4px; background: var(--chip-idle); border-radius: 4px; }
+.bar { position: absolute; top: 2px; bottom: 2px; min-width: 6px; background: var(--planned); border-radius: 4px; }
+.bar.est { background: var(--est); border: 1px dashed var(--planned); }
+.bar.open { background: linear-gradient(to right, var(--est), transparent); border-left: 3px solid var(--planned); border-radius: 4px 0 0 4px; }
+.ms { position: absolute; top: 4px; width: 14px; height: 14px; background: var(--actual); transform: translateX(-7px) rotate(45deg); border-radius: 2px; }
+.today { position: absolute; top: 22px; bottom: 0; width: 0; border-left: 2px solid var(--actual); opacity: .7; pointer-events: none; }
+.mslist { list-style: none; margin: 12px 0 0; padding: 0; }
+.box > .mslist { margin: 0; }
+.mslist li { display: flex; gap: 10px; align-items: center; padding: 4px 0; flex-wrap: wrap; }
+.mslist .d { color: var(--muted); min-width: 6.5rem; }
+
+/* modal and toast */
+.overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.modal { width: 100%; max-width: 520px; max-height: calc(100vh - 32px); overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px 20px; }
+.mhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.mhead h2 { margin: 0; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; z-index: 60; font-size: .92rem; }
+.toast:empty { display: none; }
+
+@media (max-width: 899px) {
+  .app { display: block; }
+  .side { position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: auto; z-index: 20; padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px)); border-right: 0; border-top: 1px solid var(--line); flex-direction: row; }
+  .brandrow, .navbottom, .searchwrap { display: none; }
+  .mlogo { display: block; }
+  .nav { flex-direction: row; width: 100%; gap: 0; overflow: hidden; }
+  .navlabel { display: none; }
+  .tab.pinnedtab { display: none; }
+  .tab { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 2px; padding: 6px 2px; min-height: 52px; font-size: .74rem; text-align: center; border-radius: 8px; }
+  .tab[aria-current="page"] { box-shadow: inset 0 3px 0 var(--planned); }
+  .topbar { padding: 10px 16px; }
+  .content { padding: 16px 16px 120px; }
+  .twocol, .cols2 { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .split { display: block; }
+  .split .detailpane { display: none; position: static; }
+  .split.detail-open .listpane { display: none; }
+  .split.detail-open .detailpane { display: block; }
+  .only-mobile { display: inline-flex; align-items: center; }
+  .iconbtn.only-mobile { display: inline-flex; }
+  .hide-on-mobile { display: none; }
+  .toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+  .overlay { align-items: flex-end; padding: 0; }
+  .modal { max-width: none; border-radius: 16px 16px 0 0; max-height: 92vh; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+  .menu { min-width: 220px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="sqLogo" viewBox="0 0 512 512">
+    <rect width="512" height="512" rx="112" fill="#B9CCE0"/>
+    <path d="M190 84 V 160" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M154 190 H 138 Q 100 190 100 228 V 322" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M226 190 H 262 Q 298 190 298 226 V 254" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M266 296 H 250 Q 224 296 224 322 V 384" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M330 296 H 350 Q 384 296 384 330 V 344" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="190" cy="190" r="36" fill="#FFFFFF" stroke="#2F5D8A" stroke-width="16"/>
+    <circle cx="298" cy="296" r="32" fill="#FFFFFF" stroke="#2F5D8A" stroke-width="16"/>
+    <rect x="74" y="324" width="52" height="52" rx="8" fill="#2F5D8A"/>
+    <rect x="198" y="382" width="52" height="52" rx="8" fill="#2F5D8A"/>
+    <rect x="344" y="344" width="80" height="80" rx="9" transform="rotate(45 384 384)" fill="#C62F2F"/>
+  </symbol>
+</svg>
+<div class="app">
+  <aside class="side">
+    <div class="brandrow"><svg class="logo" aria-hidden="true" focusable="false"><use href="#sqLogo"></use></svg><span class="brand" id="brand">Sidequest</span></div>
+    <div class="searchwrap"><label for="searchBox" class="sr-only">Search</label><input type="search" id="searchBox" placeholder="Search  ( / )" autocomplete="off"></div>
+    <nav class="nav" aria-label="Views" id="nav"></nav>
+    <nav class="nav navbottom" id="navBottom" aria-label="Archive and settings"></nav>
+  </aside>
+  <div class="column">
+    <header class="topbar">
+      <div class="tbleft">
+        <svg class="logo mlogo" id="mlogo" aria-hidden="true" focusable="false"><use href="#sqLogo"></use></svg>
+        <h1 id="viewTitle">Today</h1>
+      </div>
+      <div class="topact">
+        <button id="searchBtn" type="button" class="iconbtn only-mobile" aria-label="Search" title="Search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></button>
+        <div class="menuwrap">
+          <button class="iconbtn primary" id="newBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="newMenu" aria-label="New" title="New"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg></button>
+          <div class="menu" id="newMenu" role="menu" hidden>
+            <button type="button" role="menuitem" data-act="newTask">New task</button>
+            <button type="button" role="menuitem" data-act="newBacklog">New backlog item</button>
+            <button type="button" role="menuitem" data-act="newStep">New step</button>
+            <button type="button" role="menuitem" data-act="newProject">New project</button>
+            <button type="button" role="menuitem" data-act="newIdea">New idea for the parking lot</button>
+            <button type="button" role="menuitem" data-act="newDecision">New decision</button>
+            <button type="button" role="menuitem" data-act="newMilestone">New milestone</button>
+          </div>
+        </div>
+        <div class="menuwrap">
+          <button class="iconbtn" id="moreBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="moreMenu" aria-label="More options" title="More"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"></path></svg></button>
+          <div class="menu" id="moreMenu" role="menu" hidden></div>
+        </div>
+      </div>
+    </header>
+    <main class="content" id="view"></main>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="mhead"><h2 id="modalTitle"></h2><button type="button" class="small" id="modalClose">Close</button></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
+  var DAY = 86400000;
+  var STATUSES = ["Not started", "In progress", "Done"];
+  var CHECKPOINTS = 7;
+  var CORE = [["today", "Today"], ["schedule", "Schedule"], ["projects", "Projects"], ["timeline", "Timeline"]];
+  var BOTTOM = [["archive", "Archive"], ["help", "Help"], ["settings", "Settings"]];
+  var APP_VERSION = "1.0.0";
+  var APP_NAME = "Sidequest";
+
+  function $(id) { return document.getElementById(id); }
+  function uid() { return Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4); }
+  function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
+  function st(id, text, launch, done) { return { id: id, text: text, done: done === true, kofi: launch === true }; }
+  function task(id, block, project, what, done, steps, extra) {
+    var t = { id: id, block: block, project: project, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false };
+    if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
+    return t;
+  }
+  function sampleData() {
+    var n = new Date(), D = 86400000;
+    var m0 = Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - ((n.getDay() + 6) % 7));
+    function day(k) { return new Date(m0 + k * D).toISOString().slice(0, 10); }
+    var yest = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 1)).toISOString().slice(0, 10);
+    var tasks = [
+      task("a1", 1, "Sample App", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Done", doneAt: yest, arch: { at: yest, why: "done" } }),
+      task("a2", 1, "Sample App", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", false, true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "In progress", notes: "Ask a friend to try this on an older phone before moving on." }),
+      task("a3", 2, "Sample App", "Build the home screen", "The list loads quickly and scrolls smoothly", [st("a3a", "Show the list of items"), st("a3b", "Add pull to refresh"), st("a3c", "Handle an empty list")]),
+      task("a4", 3, "Sample App", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link", true), st("a4c", "Collect and sort the feedback")]),
+      task("a5", 4, "Sample App", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true, true), st("a5a", "Write the store description", true), st("a5b", "Prepare screenshots", true), st("a5c", "Submit for review", true)]),
+      task("a6", 0, "Sample App", "Add a dark mode", "Dark mode works on every screen", []),
+      task("w1", 1, "Sample Website", "Write the page copy", "Every page has final text", [st("w1a", "Write the home page"), st("w1b", "Write the about page"), st("w1c", "Write the contact page")]),
+      task("w2", 2, "Sample Website", "Build the layout", "Pages look right on a phone and a laptop", [st("w2a", "Build the header and footer"), st("w2b", "Make the layout work on phones"), st("w2c", "Compress the images")]),
+      task("w3", 3, "Sample Website", "Launch the site", "The site is live and checked", [st("w3a", "Point the domain at the site", true), st("w3b", "Check every page on a phone", true), st("w3c", "Announce it", true)]),
+      task("g1", 1, "Sample Game", "Prototype the core mechanic", "Someone can play for one minute", [st("g1a", "Make the player move"), st("g1b", "Add one obstacle"), st("g1c", "Add a win and a lose state")]),
+      task("g2", 2, "Sample Game", "Make the first ten levels", "Ten playable levels"),
+      task("g3", 3, "Sample Game", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid", true), st("g3c", "Record a trailer", true)]),
+      task("g4", 0, "Sample Game", "Add a level editor", "Players can make their own levels"),
+      task("n1", 4, "Next project", "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true })
+    ];
+    return {
+      tasks: tasks,
+      candidates: [
+        { id: "c1", name: "Sample Browser Extension", note: "A small tool that could ship in a month", start: "", months: "" },
+        { id: "c2", name: "Sample Command-Line Tool", note: "Would save time on your own projects", start: "", months: "" }
+      ],
+      parked: [
+        { id: "p1", text: "Try a new game engine", note: "Not competing for the next slot" },
+        { id: "p2", text: "Write up lessons learned", note: "After the website launches" },
+        { id: "p3", text: "Redesign the logo", note: "", arch: { at: yest, why: "removed" } }
+      ],
+      decisions: [
+        { id: "d1", q: "Which app store should you launch on first?", a: "Start with one store, then add the other.", step: "a5z" },
+        { id: "d2", q: "Will the game be free, paid, or free with a paid upgrade?", a: "", step: "g3d" },
+        { id: "d3", q: "Should the site use a page builder?", a: "No, plain pages are enough.", step: "", arch: { at: yest, why: "removed" } }
+      ],
+      milestones: [
+        { id: "m1", text: "Sample App beta opens", date: day(21) },
+        { id: "m2", text: "Sample Game demo day", date: day(70) }
+      ],
+      pset: { "Sample Website": { start: day(14), mult: 1 }, "Sample Game": { start: day(28), mult: 2 } },
+      pest: { "Sample Game": 4 },
+      pnotes: { "Sample App": "A simple habit tracker. Keep the first version small and add features after the beta." },
+      start: day(0)
+    };
+  }
+  function defaults() {
+    var d = sampleData();
+    return {
+      v: 4, start: d.start, mult: 1, days: 7,
+      tasks: d.tasks, actual: [null, null, null, null, null, null, null],
+      decisions: d.decisions, candidates: d.candidates, parked: d.parked,
+      next: null, milestones: d.milestones, lastSlip: null, pins: ["kofi"], pnotes: d.pnotes, pset: d.pset, pest: d.pest,
+      settings: { theme: "auto", archiveRule: "immediate", dateFormat: "us", blockWord: "Sprint", hideWelcome: false }
+    };
+  }
+
+  function cleanEst(o) {
+    var out = {};
+    if (o && typeof o === "object" && !Array.isArray(o)) Object.keys(o).slice(0, 60).forEach(function (k) { var v = o[k]; if (typeof v === "number" && v >= 1 && v <= 60) out[k.slice(0, 120)] = Math.round(v); });
+    return out;
+  }
+  function cleanPset(o) {
+    var out = {};
+    if (o && typeof o === "object" && !Array.isArray(o)) Object.keys(o).slice(0, 60).forEach(function (k) {
+      var v = o[k]; if (!v || typeof v !== "object") return;
+      var e = {}; if (isISO(v.start)) e.start = v.start; if (typeof v.mult === "number" && v.mult >= 0.25 && v.mult <= 5) e.mult = v.mult;
+      if (e.start || e.mult) out[k.slice(0, 120)] = e;
+    });
+    return out;
+  }
+  function validArch(a) { return (a && typeof a === "object" && isISO(a.at) && (a.why === "done" || a.why === "removed")) ? { at: a.at, why: a.why } : null; }
+  function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
+  function normalize(s) {
+    var d = defaults();
+    if (!s || typeof s !== "object") return d;
+    if (isISO(s.start)) d.start = s.start;
+    if (typeof s.mult === "number" && s.mult >= 0.25 && s.mult <= 5) d.mult = s.mult;
+    if (typeof s.days === "number" && s.days >= 1 && s.days <= 30) d.days = Math.round(s.days);
+    if (Array.isArray(s.tasks)) {
+      var ts = [];
+      s.tasks.forEach(function (t) {
+        if (!t || typeof t !== "object" || typeof t.id !== "string") return;
+        var steps = [];
+        if (Array.isArray(t.steps)) t.steps.forEach(function (x) {
+          if (x && typeof x.id === "string") steps.push({ id: S(x.id, 40), text: S(x.text, 300), done: x.done === true, kofi: x.kofi === true });
+        });
+        var b = typeof t.block === "number" ? Math.round(t.block) : 1;
+        ts.push({
+          id: S(t.id, 40), block: Math.min(12, Math.max(0, b)), project: S(t.project, 120), what: S(t.what, 400), done: S(t.done, 200),
+          status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
+          custom: t.custom === true, isNext: t.isNext === true,
+          arch: validArch(t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : "", noAuto: t.noAuto === true
+        });
+      });
+      d.tasks = ts;
+    }
+    if (Array.isArray(s.actual) && s.actual.length === CHECKPOINTS) {
+      d.actual = s.actual.map(function (v) { return (typeof v === "number" && v >= 0 && v <= 1000) ? v : null; });
+    }
+    if (Array.isArray(s.decisions)) d.decisions = s.decisions.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), q: S(x.q, 300), a: S(x.a, 1000), step: S(x.step, 40), arch: validArch(x.arch) }; });
+    if (Array.isArray(s.candidates)) d.candidates = s.candidates.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) {
+      return { id: S(x.id, 40), name: S(x.name, 120), note: S(x.note, 300), start: isISO(x.start) ? x.start : "", months: (typeof x.months === "number" && x.months >= 1 && x.months <= 36) ? Math.round(x.months) : "", arch: validArch(x.arch) };
+    });
+    if (Array.isArray(s.parked)) d.parked = s.parked.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 300), arch: validArch(x.arch) }; });
+    if (Array.isArray(s.milestones)) d.milestones = s.milestones.filter(function (x) { return x && typeof x.id === "string" && isISO(x.date); }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), date: x.date, arch: validArch(x.arch) }; });
+    if (s.settings && typeof s.settings === "object") {
+      if (["auto", "light", "dark"].indexOf(s.settings.theme) >= 0) d.settings.theme = s.settings.theme;
+      if (["immediate", "week", "never"].indexOf(s.settings.archiveRule) >= 0) d.settings.archiveRule = s.settings.archiveRule;
+      if (["us", "intl", "mdy", "dmy", "iso"].indexOf(s.settings.dateFormat) >= 0) d.settings.dateFormat = s.settings.dateFormat;
+      if (["Block", "Sprint", "Iteration", "Phase", "Week"].indexOf(s.settings.blockWord) >= 0) d.settings.blockWord = s.settings.blockWord;
+      if (typeof s.settings.hideWelcome === "boolean") d.settings.hideWelcome = s.settings.hideWelcome;
+    }
+    if (Array.isArray(s.pins)) d.pins = s.pins.filter(function (k) { return typeof k === "string" && k.length < 130; }).slice(0, 30);
+    if (s.pnotes && typeof s.pnotes === "object" && !Array.isArray(s.pnotes)) {
+      Object.keys(s.pnotes).slice(0, 60).forEach(function (k) { if (typeof s.pnotes[k] === "string") d.pnotes[k.slice(0, 120)] = s.pnotes[k].slice(0, 5000); });
+    }
+    d.next = (typeof s.next === "string" && d.candidates.some(function (c) { return c.id === s.next && !c.arch; })) ? s.next : null;
+    d.pset = cleanPset(s.pset);
+    if (s.pest && typeof s.pest === "object") d.pest = cleanEst(s.pest);
+    if (s.lastSlip && s.lastSlip.snap && isISO(s.lastSlip.snap.start)) d.lastSlip = { days: Math.round(+s.lastSlip.days) || 0, snap: { start: s.lastSlip.snap.start, pset: cleanPset(s.lastSlip.snap.pset) } };
+    return d;
+  }
+  function load() {
+    try {
+      var raw = window.localStorage.getItem(KEY2);
+      if (raw) return normalize(JSON.parse(raw));
+    } catch (e) { /* storage unavailable or unreadable: use defaults */ }
+    return defaults();
+  }
+  var state = load();
+  function save() { try { window.localStorage.setItem(KEY2, JSON.stringify(state)); } catch (e) { /* ignore */ } }
+
+  var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchArchive: true };
+  /* The app always opens on Today, on every device. */
+  function saveUI() { /* nothing to save */ }
+
+  /* dates */
+  function parseISO(s) { var p = s.split("-"); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
+  function iso(ms) { return new Date(ms).toISOString().slice(0, 10); }
+  function addDays(ms, n) { return ms + n * DAY; }
+  function addMonths(ms, n) { var d = new Date(ms); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, d.getUTCDate()); }
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+  function fmt(ms) {
+    var d = new Date(ms), m = d.getUTCMonth(), day = d.getUTCDate(), f = state.settings.dateFormat;
+    if (f === "intl") return day + " " + MONTHS[m];
+    if (f === "mdy") return (m + 1) + "/" + day;
+    if (f === "dmy") return day + "/" + (m + 1);
+    if (f === "iso") return pad2(m + 1) + "-" + pad2(day);
+    return MONTHS[m] + " " + day;
+  }
+  function fmtY(ms) {
+    var d = new Date(ms), y = d.getUTCFullYear(), m = d.getUTCMonth(), day = d.getUTCDate(), f = state.settings.dateFormat;
+    if (f === "intl") return day + " " + MONTHS[m] + " " + y;
+    if (f === "mdy") return (m + 1) + "/" + day + "/" + y;
+    if (f === "dmy") return day + "/" + (m + 1) + "/" + y;
+    if (f === "iso") return y + "-" + pad2(m + 1) + "-" + pad2(day);
+    return MONTHS[m] + " " + day + ", " + y;
+  }
+  var now = new Date();
+  var TODAY = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  var WORDS = { Block: ["block", "blocks"], Sprint: ["sprint", "sprints"], Iteration: ["iteration", "iterations"], Phase: ["phase", "phases"], Week: ["week", "weeks"] };
+  function wd() { return state.settings.blockWord in WORDS ? state.settings.blockWord : "Block"; }
+  function wl() { return WORDS[wd()][0]; }
+  function wpC() { var w = WORDS[wd()][1]; return w.charAt(0).toUpperCase() + w.slice(1); }
+  function pset(name) { var o = (name && state.pset[name]) || {}; return { start: o.start || state.start, mult: o.mult || state.mult }; }
+  function offsetFor(name, n) { return Math.floor(n * state.days * pset(name).mult + 1e-9); }
+  function blockStartFor(name, b) { return addDays(parseISO(pset(name).start), offsetFor(name, b - 1)); }
+  function blockEndFor(name, b) { return addDays(parseISO(pset(name).start), offsetFor(name, b) - 1); }
+  function projKey(t) { return t.isNext ? "" : t.project; }
+  function taskStart(t) { return blockStartFor(projKey(t), t.block); }
+  function taskEnd(t) { return blockEndFor(projKey(t), t.block); }
+  function chartStart() {
+    var min = null;
+    state.tasks.forEach(function (t) { if ((t.arch && t.arch.why !== "done") || t.block === 0) return; var v = parseISO(pset(projKey(t)).start); if (min === null || v < min) min = v; });
+    return min === null ? parseISO(state.start) : min;
+  }
+  function checkpoints() { var out = [], s = chartStart(); for (var i = 0; i < CHECKPOINTS; i++) out.push(addDays(s, 7 * i)); return out; }
+
+  /* task helpers */
+  function live(a) { return a.filter(function (x) { return !x.arch; }); }
+  function counted() { return state.tasks.filter(function (t) { return !t.arch || t.arch.why === "done"; }); }
+  function liveCands() { return live(state.candidates); }
+  function chosen() { var c = liveCands(); for (var i = 0; i < c.length; i++) if (c[i].id === state.next) return c[i]; return null; }
+  function dispProject(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next project"; } return t.project; }
+  function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next project. Add its first tasks with the + button."; return t.what; }
+  function weight(t) { return Math.max(1, t.steps.length); }
+  function doneUnits(t) { return t.status === "Done" ? weight(t) : t.steps.filter(function (s) { return s.done; }).length; }
+  function totalUnits() { return burnTasks().reduce(function (a, t) { return a + weight(t); }, 0); }
+  function remainingUnits() { return burnTasks().reduce(function (a, t) { return a + weight(t) - doneUnits(t); }, 0); }
+  function planned(ms) { var d = 0; burnTasks().forEach(function (t) { if (taskEnd(t) <= ms) d += weight(t); }); return totalUnits() - d; }
+  function sortTasks(list) {
+    return list.map(function (t) { return { t: t, i: state.tasks.indexOf(t) }; }).sort(function (a, b) { return (a.t.block || 99) - (b.t.block || 99) || a.i - b.i; }).map(function (x) { return x.t; });
+  }
+  function ordered() { return sortTasks(live(state.tasks).filter(function (t) { return t.block > 0; })); }
+  function orderedAll() { return sortTasks(live(state.tasks)); }
+  function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0; })); }
+  function burnTasks() { return counted().filter(function (t) { return t.block > 0; }); }
+  function orderedCounted() { return sortTasks(counted()); }
+  function isLate(t) { return t.block > 0 && t.status !== "Done" && taskEnd(t) < TODAY; }
+  function lateTasks() { return ordered().filter(isLate); }
+  function setStatus(t, v) { t.status = v; if (v === "Done") t.steps.forEach(function (s) { s.done = true; }); }
+  function syncFromSteps(t) {
+    var n = t.steps.filter(function (s) { return s.done; }).length;
+    if (t.steps.length && n === t.steps.length) t.status = "Done";
+    else if (n > 0 && t.status === "Not started") t.status = "In progress";
+    else if (t.status === "Done" && n < t.steps.length) t.status = "In progress";
+  }
+  function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Done") return o[i]; return null; }
+  function projectNames() {
+    var names = [], seen = {};
+    function add(n) { if (n && n !== "Next project" && !seen[n]) { seen[n] = 1; names.push(n); } }
+    orderedCounted().forEach(function (t) { if (!t.isNext) add(t.project); });
+    liveCands().forEach(function (c) { add(c.name); });
+    return names;
+  }
+  function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
+  function validPage(key) { return key === "kofi" || (typeof key === "string" && key.indexOf("proj:") === 0 && projectNames().indexOf(key.slice(5)) >= 0); }
+  function pageTitle(key) {
+    if (key === "kofi") return "Launch";
+    if (key === "search") return "Search";
+    if (typeof key === "string" && key.indexOf("proj:") === 0) return key.slice(5);
+    for (var i = 0; i < CORE.length; i++) if (CORE[i][0] === key) return CORE[i][1];
+    for (var j = 0; j < BOTTOM.length; j++) if (BOTTOM[j][0] === key) return BOTTOM[j][1];
+    return "";
+  }
+  function isPinned(key) { return state.pins.indexOf(key) >= 0; }
+  function pinPage(key) { if (!isPinned(key)) state.pins.push(key); changed(); notify(pageTitle(key) + " pinned to the sidebar."); }
+  function unpinPage(key) { state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); notify(pageTitle(key) + " removed from the sidebar. It is still listed under Projects."); }
+  function projectMeta(name) {
+    var ts = counted().filter(function (t) { return !t.isNext && t.project === name; });
+    var cand = liveCands().filter(function (c) { return c.name === name; })[0];
+    var parts = [];
+    if (ts.length) {
+      var tot = 0, dn = 0, bk = ts.filter(function (t) { return t.block === 0; }).length; ts.forEach(function (t) { tot += weight(t); dn += doneUnits(t); });
+      parts.push(ts.length + (ts.length === 1 ? " task, " : " tasks, ") + dn + " of " + tot + " items done" + (bk ? " (" + bk + " in the Backlog)" : ""));
+    }
+    if (cand) parts.push(state.next === cand.id ? "Chosen as the next project" : "Candidate for the next slot");
+    return parts.length ? parts.join(" \u00b7 ") : "No tasks yet";
+  }
+  function findStep(id) {
+    if (!id) return null;
+    var ct = counted();
+    for (var i = 0; i < ct.length; i++) { var t = ct[i]; for (var j = 0; j < t.steps.length; j++) if (t.steps[j].id === id) return { t: t, s: t.steps[j] }; }
+    return null;
+  }
+  function decisionFor(stepId) { var ds = live(state.decisions); for (var i = 0; i < ds.length; i++) if (ds[i].step === stepId) return ds[i]; return null; }
+  function short(str, n) { return str.length > n ? str.slice(0, n - 1) + "\u2026" : str; }
+  function kofiItems() { var out = []; orderedCounted().forEach(function (t) { t.steps.forEach(function (s) { if (s.kofi) out.push({ t: t, s: s }); }); }); return out; }
+  function stepOptions() {
+    var o = [{ value: "", label: "None" }];
+    orderedCounted().forEach(function (t) { t.steps.forEach(function (s) { o.push({ value: s.id, label: dispProject(t) + ": " + short(s.text, 60) }); }); });
+    return o;
+  }
+  function taskOptions() { return orderedAll().map(function (t) { return { value: t.id, label: dispProject(t) + ": " + short(dispWhat(t), 60) }; }); }
+  function findTask(id) { var a = live(state.tasks); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
+  function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (state.tasks[i].id === id) return state.tasks[i]; return null; }
+
+  /* dom helpers */
+  function el(tag, attrs, text) {
+    var e = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function on(node, ev, fn) { node.addEventListener(ev, fn); return node; }
+  function arm(btn, label, armedLabel, action) {
+    var timer = null;
+    btn.addEventListener("click", function () {
+      if (btn.getAttribute("data-armed") !== "1") {
+        btn.setAttribute("data-armed", "1"); btn.textContent = armedLabel;
+        timer = setTimeout(function () { btn.removeAttribute("data-armed"); btn.textContent = label; }, 4000);
+        return;
+      }
+      clearTimeout(timer); btn.removeAttribute("data-armed"); btn.textContent = label; action();
+    });
+  }
+  var focusKey = null, toastTimer = null;
+  function notify(msg, undo) {
+    var t = $("toast"); t.innerHTML = ""; t.appendChild(document.createTextNode(msg)); clearTimeout(toastTimer);
+    if (undo) {
+      var b = el("button", { type: "button", "class": "toastbtn" }, "Undo");
+      on(b, "click", function () { clearTimeout(toastTimer); t.innerHTML = ""; undo(); });
+      t.appendChild(b);
+    }
+    toastTimer = setTimeout(function () { t.innerHTML = ""; }, undo ? 7000 : 4200);
+  }
+  function scrollTop() { try { window.scrollTo(0, 0); } catch (e) { /* ignore */ } }
+
+  /* navigation */
+  function leaveSearch() { if (ui.view === "search") { ui.query = ""; var b = $("searchBox"); if (b) b.value = ""; } }
+  function go(view) { leaveSearch(); ui.view = view; ui.detail = false; saveUI(); renderAll(); scrollTop(); }
+  function openTask(id) {
+    var at = findAnyTask(id);
+    if (at && at.arch) { go("archive"); notify("That task is in the Archive. Restore it to work on it."); return; }
+    leaveSearch(); ui.view = "schedule"; ui.sel = id; ui.detail = true; saveUI(); renderAll(); scrollTop();
+  }
+  var ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>';
+  var ICON_CANCEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>';
+  function buildMoreMenu(pinned) {
+    var m = $("moreMenu"); m.innerHTML = "";
+    function item(key, label) {
+      var b = el("button", { type: "button", role: "menuitem", "data-view": key }, label);
+      if (key === ui.view) b.setAttribute("aria-current", "page");
+      m.appendChild(b);
+    }
+    CORE.forEach(function (c) { item(c[0], c[1]); });
+    if (pinned.length) { m.appendChild(el("hr")); m.appendChild(el("div", { "class": "menulabel", role: "presentation" }, "Pinned")); pinned.forEach(function (k) { item(k, pageTitle(k)); }); }
+    m.appendChild(el("hr"));
+    BOTTOM.forEach(function (c) { item(c[0], c[1]); });
+    m.appendChild(el("hr"));
+    m.appendChild(el("button", { type: "button", role: "menuitem", "data-act": "slip" }, "Slip the schedule"));
+  }
+  function renderChrome() {
+    var nav = $("nav"); nav.innerHTML = ""; var nb = $("navBottom"); nb.innerHTML = "";
+    var pinned = state.pins.filter(validPage);
+    var isBottom = BOTTOM.some(function (b) { return b[0] === ui.view; });
+    var active = ui.view; if (ui.view === "search") active = ""; else if (!isCore(active) && !isBottom && pinned.indexOf(active) < 0) active = "projects";
+    function addTab(host, key, label, extra) {
+      var b = el("button", { type: "button", "class": "tab" + (extra ? " " + extra : ""), "data-view": key });
+      if (key === active) b.setAttribute("aria-current", "page");
+      b.appendChild(el("span", null, label));
+      if (key === "today") { var n = lateTasks().length; if (n) b.appendChild(el("span", { "class": "badge tabbadge", "aria-label": n + " overdue" }, String(n))); }
+      on(b, "click", function () { go(key); });
+      host.appendChild(b);
+    }
+    CORE.forEach(function (c) { addTab(nav, c[0], c[1]); });
+    if (pinned.length) { nav.appendChild(el("div", { "class": "navlabel" }, "Pinned")); pinned.forEach(function (k) { addTab(nav, k, pageTitle(k), "pinnedtab"); }); }
+    BOTTOM.forEach(function (c) { addTab(nb, c[0], c[1]); });
+    var sbtn = $("searchBtn"), searching = ui.view === "search";
+    sbtn.innerHTML = searching ? ICON_CANCEL : ICON_SEARCH;
+    sbtn.setAttribute("aria-label", searching ? "Cancel search" : "Search"); sbtn.title = searching ? "Cancel search" : "Search";
+    buildMoreMenu(pinned);
+    var title = pageTitle(ui.view) || "Today";
+    $("viewTitle").textContent = title;
+    document.title = title + " \u00b7 " + APP_NAME;
+  }
+
+  /* views */
+  function nextUpPanel() {
+    var box = el("div", { "class": "panel" });
+    var t = nextTask();
+    if (!t) {
+      var nb = backlogTasks().length;
+      box.appendChild(el("p", { "class": "ptitle" }, nb ? "Nothing is scheduled." : (counted().length ? "Every task is done." : "No tasks yet.")));
+      box.appendChild(el("p", { "class": "pmeta" }, nb ? nb + (nb === 1 ? " item is" : " items are") + " waiting in the Backlog. Choose a " + wl() + " for one." : (counted().length ? "Add a task with the + button, or choose your next project." : "Add one with the + button.")));
+      if (nb) { var ba = el("div", { "class": "actions" }); ba.appendChild(on(el("button", { type: "button", "class": "primary" }, "Open the Backlog"), "click", function () { go("schedule"); })); box.appendChild(ba); }
+      return box;
+    }
+    box.appendChild(el("p", { "class": "ptitle" }, dispWhat(t)));
+    var meta = el("p", { "class": "pmeta" });
+    meta.appendChild(el("b", null, dispProject(t)));
+    meta.appendChild(document.createTextNode(" · " + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + " "));
+    if (isLate(t)) meta.appendChild(el("span", { "class": "badge" }, "Overdue"));
+    box.appendChild(meta);
+    if (!(t.isNext && !chosen())) box.appendChild(el("p", { "class": "pline" }, "Done when: " + t.done));
+    var open = t.steps.filter(function (s) { return !s.done; })[0];
+    if (open && t.steps.length) box.appendChild(el("p", { "class": "pline" }, "Next step: " + open.text));
+    var acts = el("div", { "class": "actions" });
+    if (t.isNext && !chosen()) {
+      acts.appendChild(on(el("button", { type: "button", "class": "primary" }, "Choose the next project"), "click", function () { go("projects"); }));
+    } else {
+      if (t.status === "Not started") acts.appendChild(on(el("button", { type: "button", "class": "primary" }, "Start"), "click", function () { t.status = "In progress"; changed(); }));
+      acts.appendChild(on(el("button", { type: "button", "class": t.status === "Not started" ? "" : "primary" }, "Mark done"), "click", function () { setStatus(t, "Done"); changed(); }));
+    }
+    acts.appendChild(on(el("button", { type: "button" }, "Open task"), "click", function () { openTask(t.id); }));
+    box.appendChild(acts);
+    return box;
+  }
+  function pgrid() {
+    var g = el("div", { "class": "pgrid" });
+    g.put = function (node, col, row) { node.className = (node.className ? node.className + " " : "") + (col === 1 ? "cl" : "cr") + " r" + row; g.appendChild(node); return node; };
+    return g;
+  }
+  function overduePanel() {
+    var late = lateTasks();
+    var box = el("div", { "class": "box" });
+    if (!late.length) { box.appendChild(el("p", { "class": "hint first" }, "Nothing is overdue.")); return box; }
+    box.appendChild(el("h2", null, late.length + (late.length === 1 ? " task is overdue" : " tasks are overdue")));
+    var ul = el("ul", { "class": "tlist", style: "margin-top:8px" });
+    late.forEach(function (t) {
+      var li = el("li"); var b = el("button", { type: "button", "class": "item" });
+      b.appendChild(el("div", { "class": "l1" }, dispProject(t) + " · ended " + fmt(taskEnd(t))));
+      b.appendChild(el("div", { "class": "l2" }, dispWhat(t)));
+      on(b, "click", function () { openTask(t.id); }); li.appendChild(b); ul.appendChild(li);
+    });
+    box.appendChild(ul);
+    box.appendChild(on(el("button", { type: "button", "class": "textbtn", style: "margin-top:10px" }, "Running behind? Slip the schedule"), "click", function () { slipDialog(); }));
+    return box;
+  }
+  function recordThisWeek() {
+    var cps = checkpoints(), idx = 0;
+    cps.forEach(function (ms, i) { if (ms <= TODAY) idx = i; });
+    state.actual[idx] = remainingUnits(); save();
+    renderView(); notify("Recorded " + remainingUnits() + " items remaining for the week of " + fmt(cps[idx]) + ".");
+  }
+  function burnParts(o) {
+    o = o || {};
+    var h = el(o.level || "h2", null, "Burn-down");
+    var cb = el("div", { "class": "chartbox" }); var host = el("div"); cb.appendChild(host);
+    var lg = el("div", { "class": "legend" });
+    var l1 = el("span"); l1.appendChild(el("i", { "class": "p" })); l1.appendChild(document.createTextNode("Planned"));
+    var l2 = el("span"); l2.appendChild(el("i")); l2.appendChild(document.createTextNode("Actual"));
+    lg.appendChild(l1); lg.appendChild(l2); cb.appendChild(lg);
+    drawChart(host, o.wide);
+    var rn = remainingUnits(), rb = el("div", { "class": "box" }), nbk = backlogTasks().length;
+    rb.appendChild(el("p", { "class": "hint first remaining" }, rn + (rn === 1 ? " item" : " items") + " remaining, out of " + totalUnits() + (nbk ? ". " + nbk + (nbk === 1 ? " backlog item is" : " backlog items are") + " not counted until scheduled." : "")));
+    var acts = el("div", { "class": "actions" });
+    acts.appendChild(on(el("button", { type: "button", "class": "primary" }, "Record this week"), "click", recordThisWeek));
+    return { h: h, chart: cb, count: rb, actions: acts };
+  }
+  function burnPanel(o) {
+    var box = el("div"), b = burnParts(o);
+    b.count.style.marginTop = "12px";
+    box.appendChild(b.h); box.appendChild(b.chart); box.appendChild(b.count); box.appendChild(b.actions);
+    return box;
+  }
+  function welcomeBox() {
+    var box = el("div", { "class": "box", style: "margin-bottom:22px" });
+    box.appendChild(el("h2", { style: "margin-bottom:4px" }, "Welcome to Sidequest"));
+    box.appendChild(el("p", { "class": "hint first" }, "The projects here are samples, so you can see how everything fits together. Look around, change things, and press / to search. When you are ready to start your own, open Settings and choose Start fresh."));
+    var acts = el("div", { "class": "actions" });
+    acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings" }, "Open Settings"), "click", function () { go("settings"); }));
+    acts.appendChild(on(el("button", { type: "button", id: "welcomeDismiss" }, "Dismiss"), "click", function () { state.settings.hideWelcome = true; save(); renderView(); }));
+    box.appendChild(acts);
+    return box;
+  }
+  function renderToday(root) {
+    if (!state.settings.hideWelcome) root.appendChild(welcomeBox());
+    var g = pgrid(), b = burnParts({});
+    g.put(el("h2", null, "Next up"), 1, 1); g.put(nextUpPanel(), 1, 2); g.put(overduePanel(), 1, 3);
+    g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(b.count, 2, 3); g.put(b.actions, 2, 4);
+    root.appendChild(g);
+  }
+
+  function taskRow(t) {
+    var li = el("li");
+    var b = el("button", { type: "button", "class": "item" + (t.status === "Done" ? " done" : "") });
+    if (t.id === ui.sel) b.setAttribute("aria-current", "true");
+    var l1 = el("div", { "class": "l1" }); l1.appendChild(el("b", null, dispProject(t)));
+    l1.appendChild(document.createTextNode(" \u00b7 " + (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)))));
+    b.appendChild(l1);
+    b.appendChild(el("div", { "class": "l2" }, dispWhat(t)));
+    var l3 = el("div", { "class": "l3" });
+    l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+    if (t.steps.length) l3.appendChild(el("span", null, t.steps.filter(function (s) { return s.done; }).length + " of " + t.steps.length + " steps"));
+    if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
+    b.appendChild(l3);
+    on(b, "click", function () { ui.sel = t.id; ui.detail = true; renderView(); scrollTop(); });
+    li.appendChild(b); return li;
+  }
+  function renderSchedule(root) {
+    var o = ordered(), bl = backlogTasks();
+    if (!o.length && !bl.length) { root.appendChild(el("p", { "class": "hint first" }, counted().length ? "No open tasks. Completed tasks are in the Archive." : "No tasks yet. Use the + button to add one.")); return; }
+    if (!ui.sel || !findTask(ui.sel)) { var nt = nextTask() || o[0] || bl[0]; ui.sel = nt.id; }
+    root.appendChild(el("p", { "class": "hint first" + (ui.detail ? " hide-on-mobile" : "") }, "Choose a task to view its steps and notes."));
+    var split = el("div", { "class": "split" + (ui.detail ? " detail-open" : "") });
+    var lp = el("div", { "class": "listpane" });
+    var ul = el("ul", { "class": "tlist" });
+    if (!o.length) ul.appendChild(el("li", { "class": "plain" }, "Nothing is scheduled. Choose a " + wl() + " for an item in the Backlog."));
+    o.forEach(function (t) { ul.appendChild(taskRow(t)); });
+    var c = chosen();
+    if (o.length) ul.appendChild(el("li", { "class": "plain" }, "Next: start " + (c ? c.name : "the next project") + "."));
+    lp.appendChild(ul);
+    if (bl.length) {
+      lp.appendChild(el("h3", null, "Backlog (" + bl.length + ")"));
+      lp.appendChild(el("p", { "class": "hint" }, "Not scheduled yet. Open an item and choose a " + wl() + " to schedule it."));
+      var bul = el("ul", { "class": "tlist", style: "margin-top:10px" });
+      bl.forEach(function (t) { bul.appendChild(taskRow(t)); });
+      lp.appendChild(bul);
+    }
+    var dp = el("div", { "class": "detailpane" }); dp.appendChild(buildDetail(findTask(ui.sel)));
+    split.appendChild(lp); split.appendChild(dp); root.appendChild(split);
+  }
+
+  function buildDetail(t) {
+    var box = el("div", { "class": "detail" });
+    box.appendChild(on(el("button", { type: "button", "class": "small only-mobile", style: "margin-bottom:10px" }, "All tasks"), "click", function () { ui.detail = false; renderView(); scrollTop(); }));
+    var top = el("div", { style: "display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap" });
+    var lh = el("div");
+    lh.appendChild(el("h2", { style: "margin:0" }, dispProject(t)));
+    var dm = el("p", { "class": "dmeta" }, (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))) + " ");
+    if (isLate(t)) dm.appendChild(el("span", { "class": "badge" }, "Overdue"));
+    lh.appendChild(dm); top.appendChild(lh);
+    var sel = el("select", { "class": "status", "aria-label": "Status" });
+    STATUSES.forEach(function (s) { var o = el("option", { value: s }, s); if (s === t.status) o.selected = true; sel.appendChild(o); });
+    sel.setAttribute("data-v", t.status);
+    on(sel, "change", function () { setStatus(t, sel.value); changed(); });
+    top.appendChild(sel); box.appendChild(top);
+    box.appendChild(el("p", { "class": "what" }, dispWhat(t)));
+    if (!(t.isNext && chosen())) box.appendChild(el("p", { "class": "dmeta" }, "Done when: " + t.done));
+    if (!t.isNext) {
+      var bw = el("div", { "class": "field", style: "max-width:24rem" }); bw.appendChild(el("label", { "for": "task-block" }, wd()));
+      var bs = el("select", { id: "task-block", "class": "plain" });
+      bs.appendChild(el("option", { value: "0" }, "Backlog (not scheduled)"));
+      for (var bi = 1; bi <= 12; bi++) bs.appendChild(el("option", { value: String(bi) }, wd() + " " + bi + " (" + fmt(blockStartFor(projKey(t), bi)) + " to " + fmt(blockEndFor(projKey(t), bi)) + ")"));
+      bs.value = String(t.block);
+      on(bs, "change", function () { var v = parseInt(bs.value, 10); t.block = v; changed(); notify(v === 0 ? "Moved to the Backlog." : "Moved to " + wd() + " " + v + "."); });
+      bw.appendChild(bs); box.appendChild(bw);
+    }
+
+    var nDone = t.steps.filter(function (s) { return s.done; }).length;
+    box.appendChild(el("h3", null, t.steps.length ? "Steps (" + nDone + " of " + t.steps.length + " done)" : "Steps"));
+    if (!t.steps.length) box.appendChild(el("p", { "class": "hint" }, "No steps yet. This task counts as one item in the burn-down. Add steps to break it up."));
+    if (t.steps.length) box.appendChild(el("p", { "class": "hint" }, "Launch puts a step on the Launch checklist. It stays one step, so nothing is counted twice."));
+    var ul = el("ul", { "class": "steps" });
+    t.steps.forEach(function (s) {
+      var sli = el("li", { "class": s.done ? "done" : "" });
+      var lab = el("label"); var cb = el("input", { type: "checkbox" }); cb.checked = s.done;
+      on(cb, "change", function () { s.done = cb.checked; syncFromSteps(t); changed(); });
+      lab.appendChild(cb); lab.appendChild(el("span", null, s.text)); sli.appendChild(lab);
+      var ac = el("div", { "class": "li-actions" });
+      var dc = decisionFor(s.id);
+      if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the linked decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { go("kofi"); }));
+      var kb = el("button", { type: "button", "class": "small" + (s.kofi ? " on" : ""), "aria-pressed": s.kofi ? "true" : "false", "aria-label": "Show on the launch checklist: " + s.text }, "Launch");
+      on(kb, "click", function () { s.kofi = !s.kofi; changed(); });
+      ac.appendChild(kb);
+      var rm = el("button", { type: "button", "class": "small danger", "aria-label": "Remove step: " + s.text }, "Remove");
+      on(rm, "click", function () { t.steps = t.steps.filter(function (x) { return x.id !== s.id; }); syncFromSteps(t); changed(); });
+      ac.appendChild(rm); sli.appendChild(ac); ul.appendChild(sli);
+    });
+    box.appendChild(ul);
+    var add = el("div", { "class": "inline" });
+    var inp = el("input", { type: "text", placeholder: "Add a step", "aria-label": "New step", "data-focus": "step-" + t.id, autocomplete: "off" });
+    var addBtn = el("button", { type: "button", "class": "small" }, "Add step");
+    function addStep() {
+      var v = inp.value.trim(); if (!v) return;
+      t.steps.push({ id: uid(), text: v.slice(0, 300), done: false });
+      syncFromSteps(t); focusKey = "step-" + t.id; changed();
+    }
+    on(addBtn, "click", addStep);
+    on(inp, "keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addStep(); } });
+    add.appendChild(inp); add.appendChild(addBtn); box.appendChild(add);
+    box.appendChild(el("h3", null, "Notes"));
+    var ta = el("textarea", { "aria-label": "Notes", style: "margin-top:8px" }); ta.value = t.notes;
+    on(ta, "input", function () { t.notes = ta.value.slice(0, 5000); save(); });
+    box.appendChild(ta);
+    if (!t.isNext) {
+      var ar = el("div", { "class": "actions", style: "margin-top:14px" });
+      if (t.status === "Done") ar.appendChild(on(el("button", { type: "button", "class": "small" }, "Move to Archive"), "click", function () {
+        t.arch = { at: iso(TODAY), why: "done" }; ui.detail = false; changed();
+        notify("Task moved to the Archive.", function () { t.arch = null; t.noAuto = true; changed(); });
+      }));
+      ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Remove task"), "click", function () { ui.detail = false; removeToArchive(t, "Task"); }));
+      box.appendChild(ar);
+    }
+    return box;
+  }
+
+  function renderKofi(root) {
+    root.appendChild(pinBar("kofi"));
+    root.appendChild(el("p", { "class": "hint first" }, "Everything to finish before you ship, gathered from your tasks. Tick a step here or in the Schedule and it stays in sync."));
+    var g = pgrid();
+    var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h3", { id: "h-checks" }, "Before you launch"));
+    ha.appendChild(on(el("button", { type: "button", "class": "small" }, "Add item"), "click", function () { stepDialog(true); }));
+    g.put(ha, 1, 1);
+    g.put(el("p", { "class": "hint" }, "These are steps from the Schedule. Tick one here or there and it stays in sync."), 1, 2);
+    var prog = el("p", { "class": "progress", role: "status", "aria-live": "polite" });
+    var items = kofiItems(), rows = {};
+    function progress() { var n = items.filter(function (x) { return x.s.done; }).length; prog.textContent = items.length ? n + " of " + items.length + " done" : ""; }
+    var ul = el("ul", { "class": "list check", "aria-labelledby": "h-checks" });
+    if (!items.length) ul.appendChild(el("li", { "class": "hint" }, "No steps are marked for the launch checklist. Use Launch on a step in the Schedule, or add an item."));
+    items.forEach(function (x) {
+      var li = el("li", { "class": x.s.done ? "done" : "" });
+      var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = x.s.done;
+      on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); var ids = autoArchive(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); if (ids.length) archivedToast(ids); });
+      label.appendChild(box); label.appendChild(el("span", null, x.s.text)); li.appendChild(label);
+      var meta = el("div", { "class": "cnote" });
+      if (x.t.arch) meta.appendChild(document.createTextNode(dispProject(x.t) + ": " + short(dispWhat(x.t), 40) + " (archived)"));
+      else meta.appendChild(on(el("button", { type: "button", "class": "textbtn" }, dispProject(x.t) + ": " + short(dispWhat(x.t), 48)), "click", function () { openTask(x.t.id); }));
+      var dc = decisionFor(x.s.id);
+      if (dc) meta.appendChild(document.createTextNode(" \u00b7 Decision " + (dc.a ? "decided" : "open")));
+      li.appendChild(meta);
+      rows[x.s.id] = { li: li, box: box }; ul.appendChild(li);
+    });
+    progress();
+    var lb = el("div", { "class": "listbox" }); lb.appendChild(prog); lb.appendChild(ul); g.put(lb, 1, 3);
+
+    var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", { id: "h-dec" }, "Decisions"));
+    hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add decision"), "click", function () { decisionDialog(); }));
+    g.put(hd, 2, 1);
+    g.put(el("p", { "class": "hint" }, "Write down the answer once you settle it. Answering a decision ticks its linked step, and clearing the answer unticks it."), 2, 2);
+    var dl = el("ul", { "class": "list", "aria-labelledby": "h-dec" });
+    var ds = live(state.decisions);
+    if (!ds.length) dl.appendChild(el("li", { "class": "hint" }, "No open decisions."));
+    ds.forEach(function (d) {
+      var li = el("li", { "class": "decision" });
+      var q = el("div"); q.appendChild(el("span", { "class": "dq" }, d.q));
+      var stt = el("span", { "class": "dstate" + (d.a ? " ok" : "") }, d.a ? "Decided" : "Open"); q.appendChild(stt); li.appendChild(q);
+      var inp = el("input", { type: "text", placeholder: "Your answer", "aria-label": "Answer: " + d.q, autocomplete: "off" }); inp.value = d.a;
+      on(inp, "input", function () {
+        d.a = inp.value.slice(0, 1000); stt.textContent = d.a ? "Decided" : "Open"; stt.className = "dstate" + (d.a ? " ok" : "");
+        var ls = findStep(d.step);
+        if (ls) {
+          ls.s.done = d.a !== ""; syncFromSteps(ls.t);
+          var r = rows[ls.s.id]; if (r) { r.box.checked = ls.s.done; r.li.className = ls.s.done ? "done" : ""; progress(); }
+          renderChrome();
+        }
+        var ids = autoArchive(); save(); if (ids.length) archivedToast(ids);
+      });
+      li.appendChild(inp);
+      var lf = el("div", { "class": "field" }); lf.appendChild(el("label", { "for": "ds-" + d.id }, "Linked step"));
+      var sel = el("select", { id: "ds-" + d.id, "class": "plain" });
+      stepOptions().forEach(function (o) { var op = el("option", { value: o.value }, o.label); if (o.value === d.step) op.selected = true; sel.appendChild(op); });
+      on(sel, "change", function () { d.step = sel.value; save(); renderView(); });
+      lf.appendChild(sel); li.appendChild(lf);
+      var rm = el("button", { type: "button", "class": "small danger", style: "margin-top:10px" }, "Remove");
+      on(rm, "click", function () { removeToArchive(d, "Decision"); });
+      li.appendChild(rm); dl.appendChild(li);
+    });
+    g.put(dl, 2, 3); root.appendChild(g);
+    root.appendChild(el("p", { "class": "note" }, "Everything here is saved in this browser only."));
+  }
+
+  function pinBar(key) {
+    var bar = el("div", { "class": "pinbar" }), pinned = isPinned(key);
+    var b = el("button", { type: "button", "class": "small" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false" }, pinned ? "Unpin from sidebar" : "Pin to sidebar");
+    on(b, "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
+    bar.appendChild(b); return bar;
+  }
+  function pagesSection() {
+    var sec = el("div");
+    sec.appendChild(el("h3", { style: "margin-top:28px" }, "Pages and projects"));
+    sec.appendChild(el("p", { "class": "hint" }, "Pin a page to the sidebar for quick access. Removing a page from the sidebar only hides it there. It stays listed here."));
+    var ul = el("ul", { "class": "list" });
+    var rows = [{ key: "kofi", name: "Launch checklist", meta: "Pre-launch steps and decisions" }];
+    projectNames().forEach(function (n) { rows.push({ key: "proj:" + n, name: n, meta: projectMeta(n) }); });
+    rows.forEach(function (r) {
+      var li = el("li"), row = el("div", { "class": "crow" });
+      var nm = el("div", { style: "flex:1 1 200px" }); nm.appendChild(el("span", { style: "font-weight:600" }, r.name)); nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, r.meta));
+      row.appendChild(nm);
+      var acts = el("div", { "class": "li-actions" }), pinned = isPinned(r.key);
+      acts.appendChild(on(el("button", { type: "button", "class": "small" }, "Open"), "click", function () { go(r.key); }));
+      acts.appendChild(on(el("button", { type: "button", "class": "small" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + r.name }, pinned ? "Unpin" : "Pin to sidebar"), "click", function () { if (pinned) unpinPage(r.key); else pinPage(r.key); }));
+      row.appendChild(acts); li.appendChild(row); ul.appendChild(li);
+    });
+    sec.appendChild(ul); return sec;
+  }
+  function renderProjectPage(root, name) {
+    var key = "proj:" + name;
+    root.appendChild(pinBar(key));
+    root.appendChild(el("p", { "class": "hint first" }, projectMeta(name)));
+    var cand = liveCands().filter(function (c) { return c.name === name; })[0];
+    if (cand) {
+      var cb = el("div", { "class": "box", style: "margin-top:16px" });
+      cb.appendChild(el("p", { "class": "first" }, cand.note || "Candidate for the next slot."));
+      var ca = el("div", { "class": "actions" });
+      if (state.next === cand.id) ca.appendChild(on(el("button", { type: "button" }, "Clear my choice"), "click", function () { unchooseNext(); changed(); }));
+      else ca.appendChild(on(el("button", { type: "button", "class": "primary" }, "Choose as next project"), "click", function () { chooseNext(cand.id); }));
+      cb.appendChild(ca); root.appendChild(cb);
+    }
+    var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", null, "Tasks"));
+    hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add task"), "click", function () { taskDialog(name); }));
+    root.appendChild(hd);
+    var ts = ordered().filter(function (t) { return !t.isNext && t.project === name; }).concat(backlogTasks().filter(function (t) { return t.project === name; }));
+    if (!ts.length) root.appendChild(el("p", { "class": "hint" }, "No tasks yet."));
+    else {
+      var ul = el("ul", { "class": "tlist" });
+      ts.forEach(function (t) {
+        var li = el("li"), b = el("button", { type: "button", "class": "item" + (t.status === "Done" ? " done" : "") });
+        b.appendChild(el("div", { "class": "l1" }, t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
+        b.appendChild(el("div", { "class": "l2" }, t.what));
+        var l3 = el("div", { "class": "l3" });
+        l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+        if (t.steps.length) l3.appendChild(el("span", null, t.steps.filter(function (x) { return x.done; }).length + " of " + t.steps.length + " steps"));
+        if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
+        b.appendChild(l3); on(b, "click", function () { openTask(t.id); }); li.appendChild(b); ul.appendChild(li);
+      });
+      root.appendChild(ul);
+    }
+    root.appendChild(el("h3", null, "Schedule"));
+    var own = state.pset[name], eff = pset(name);
+    root.appendChild(el("p", { "class": "hint" }, own ? "This project has its own start date and pace." : "This project uses the defaults from Settings. Change either value to give it its own."));
+    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
+    function sfield(id, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); sg.appendChild(w); }
+    var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
+    var pm = el("input", { type: "number", id: "proj-mult", min: "0.25", max: "5", step: "0.25" }); pm.value = eff.mult;
+    function applyOwn() {
+      var sv = ps.value, mv = parseFloat(pm.value);
+      if (!isISO(sv)) { ps.value = eff.start; smsg.textContent = "Enter a valid start date."; return; }
+      if (isNaN(mv) || mv < 0.25 || mv > 5) { pm.value = eff.mult; smsg.textContent = "The time multiplier must be from 0.25 to 5."; return; }
+      state.pset[name] = { start: sv, mult: mv }; changed(); notify(name + " schedule saved.");
+    }
+    on(ps, "change", applyOwn); on(pm, "change", applyOwn);
+    var pe = el("input", { type: "number", id: "proj-est", min: "1", max: "60", step: "1", placeholder: "None" }); pe.value = state.pest[name] || "";
+    on(pe, "change", function () {
+      if (pe.value.trim() === "") { delete state.pest[name]; changed(); notify("Estimate cleared."); return; }
+      var v = parseInt(pe.value, 10);
+      if (isNaN(v) || v < 1 || v > 60) { pe.value = state.pest[name] || ""; smsg.textContent = "Enter a number of months from 1 to 60, or leave it empty."; return; }
+      state.pest[name] = v; changed(); notify(name + " estimate saved.");
+    });
+    sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm); sfield("proj-est", "Estimated length after these tasks (months, optional)", pe);
+    root.appendChild(sg); root.appendChild(smsg);
+    root.appendChild(el("p", { "class": "hint" }, "The estimate shows as a light bar after the project's last task on the Timeline. It is an estimate, not a promise."));
+    if (own) root.appendChild(on(el("button", { type: "button", "class": "small" }, "Use the defaults"), "click", function () { delete state.pset[name]; changed(); notify(name + " now uses the defaults."); }));
+    root.appendChild(el("h3", null, "Notes"));
+    var ta = el("textarea", { "aria-label": "Notes for " + name, style: "margin-top:8px" }); ta.value = state.pnotes[name] || "";
+    on(ta, "input", function () { state.pnotes[name] = ta.value.slice(0, 5000); save(); });
+    root.appendChild(ta);
+  }
+
+  function chooseNext(id) {
+    state.next = id;
+    var t = state.tasks.filter(function (x) { return x.isNext; })[0];
+    if (t) t.status = "Done";
+    changed();
+  }
+  function unchooseNext() {
+    state.next = null;
+    var t = state.tasks.filter(function (x) { return x.isNext; })[0];
+    if (t && t.status === "Done") t.status = "Not started";
+  }
+  function standingBlock(c) {
+    var wrap = el("div");
+    wrap.appendChild(el("h3", { "class": "first" }, "Where things stand"));
+    wrap.appendChild(el("p", { "class": "hint" }, "Built from your open tasks, ordered by when each project's next task starts."));
+    var box = el("div", { "class": "box", style: "margin-top:10px" });
+    var groups = {}, order = [];
+    ordered().forEach(function (t) {
+      if (t.isNext || t.status === "Done") return;
+      var g = groups[t.project]; if (!g) { g = groups[t.project] = { name: t.project, open: 0, first: t }; order.push(g); }
+      g.open++;
+    });
+    order.sort(function (a, b) { return taskStart(a.first) - taskStart(b.first); });
+    var ul = el("ul", { "class": "standing" });
+    if (!order.length) ul.appendChild(el("li", null, "No open tasks."));
+    order.forEach(function (g) {
+      var li = el("li"), top = el("div", { "class": "srow" });
+      var nm = el("button", { type: "button", "class": "textbtn plink" }, g.name);
+      on(nm, "click", function () { go(validPage("proj:" + g.name) ? "proj:" + g.name : "projects"); });
+      top.appendChild(nm); top.appendChild(el("span", { "class": "scount" }, g.open + " open " + (g.open === 1 ? "task" : "tasks")));
+      li.appendChild(top);
+      var nx = el("div", { "class": "snext" }); nx.appendChild(document.createTextNode("Next up: "));
+      var tl = el("button", { type: "button", "class": "textbtn" }, short(g.first.what, 90));
+      on(tl, "click", function () { openTask(g.first.id); });
+      nx.appendChild(tl); nx.appendChild(document.createTextNode(" \u00b7 " + fmt(taskStart(g.first))));
+      li.appendChild(nx); ul.appendChild(li);
+    });
+    var sl = el("li"), st = el("div", { "class": "srow" });
+    st.appendChild(el("span", { "class": "slabel" }, "Next slot"));
+    if (c) { var cl = el("button", { type: "button", "class": "textbtn plink" }, c.name); on(cl, "click", function () { go("proj:" + c.name); }); st.appendChild(cl); }
+    else st.appendChild(el("span", { "class": "scount" }, "Not chosen yet"));
+    sl.appendChild(st); ul.appendChild(sl);
+    box.appendChild(ul); wrap.appendChild(box);
+    return wrap;
+  }
+  function renderProjects(root) {
+    var c = chosen();
+    root.appendChild(standingBlock(c));
+    var g = pgrid(); g.style.marginTop = "22px";
+    var h1 = el("div", { "class": "sechead" }); h1.appendChild(el("h3", null, "Candidates"));
+    h1.appendChild(on(el("button", { type: "button", "class": "small" }, "Add project"), "click", function () { projectDialog(); })); g.put(h1, 1, 1);
+    g.put(el("p", { "class": "hint" }, "Choose which project gets the next slot."), 1, 2);
+    var list = el("ul", { "class": "list" });
+    var cs = liveCands();
+    if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a project."));
+    cs.forEach(function (cd) {
+      var li = el("li"), row = el("div", { "class": "crow" });
+      var lab = el("label"); var rb = el("input", { type: "radio", name: "nextProject" }); rb.checked = state.next === cd.id;
+      on(rb, "change", function () { chooseNext(cd.id); });
+      lab.appendChild(rb); lab.appendChild(el("span", null, cd.name)); row.appendChild(lab);
+      var acts = el("div", { "class": "li-actions" });
+      acts.appendChild(on(el("button", { type: "button", "class": "small" }, "Park it"), "click", function () {
+        if (state.next === cd.id) unchooseNext();
+        state.candidates = state.candidates.filter(function (x) { return x.id !== cd.id; });
+        state.parked.push({ id: uid(), text: cd.name, note: cd.note }); changed();
+      }));
+      var rm = el("button", { type: "button", "class": "small danger" }, "Remove");
+      on(rm, "click", function () { removeToArchive(cd, "Project", function () { if (state.next === cd.id) unchooseNext(); }); });
+      acts.appendChild(rm); row.appendChild(acts); li.appendChild(row);
+      if (cd.note) li.appendChild(el("p", { "class": "cnote" }, cd.note));
+      if (state.next === cd.id) {
+        var f = el("div", { "class": "cfields" });
+        var f1 = el("div", { "class": "field" }); f1.appendChild(el("label", { "for": "cs-" + cd.id }, "Start date (optional)"));
+        var sd = el("input", { type: "date", id: "cs-" + cd.id }); sd.value = cd.start;
+        on(sd, "change", function () { cd.start = isISO(sd.value) ? sd.value : ""; save(); notify("Start date saved. See it on the Timeline."); });
+        f1.appendChild(sd);
+        var f2 = el("div", { "class": "field" }); f2.appendChild(el("label", { "for": "cm-" + cd.id }, "Estimated months (optional)"));
+        var mo = el("input", { type: "number", id: "cm-" + cd.id, min: "1", max: "36", step: "1" }); mo.value = cd.months;
+        on(mo, "change", function () { var v = parseInt(mo.value, 10); cd.months = (v >= 1 && v <= 36) ? v : ""; if (cd.months === "") mo.value = ""; save(); });
+        f2.appendChild(mo); f.appendChild(f1); f.appendChild(f2); li.appendChild(f);
+      }
+      list.appendChild(li);
+    });
+    g.put(list, 1, 3);
+    if (state.next) g.put(on(el("button", { type: "button", "class": "small" }, "Clear my choice"), "click", function () { unchooseNext(); changed(); }), 1, 4);
+    var h2 = el("div", { "class": "sechead" }); h2.appendChild(el("h3", null, "Parking lot"));
+    h2.appendChild(on(el("button", { type: "button", "class": "small" }, "Add idea"), "click", function () { ideaDialog(); })); g.put(h2, 2, 1);
+    g.put(el("p", { "class": "hint" }, "Ideas and waiting items that are not competing for the next slot."), 2, 2);
+    var pl = el("ul", { "class": "list" });
+    var ps = live(state.parked);
+    if (!ps.length) pl.appendChild(el("li", { "class": "hint" }, "Nothing parked."));
+    ps.forEach(function (p) {
+      var li = el("li"), row = el("div", { "class": "crow" });
+      var nm = el("div", { style: "flex:1 1 200px" }); nm.appendChild(el("span", { style: "font-weight:600" }, p.text));
+      if (p.note) nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, p.note));
+      row.appendChild(nm);
+      var acts = el("div", { "class": "li-actions" });
+      acts.appendChild(on(el("button", { type: "button", "class": "small" }, "Make it a candidate"), "click", function () {
+        state.parked = state.parked.filter(function (x) { return x.id !== p.id; });
+        state.candidates.push({ id: uid(), name: p.text, note: p.note, start: "", months: "" }); changed();
+      }));
+      var rm = el("button", { type: "button", "class": "small danger" }, "Remove");
+      on(rm, "click", function () { removeToArchive(p, "Idea"); });
+      acts.appendChild(rm); row.appendChild(acts); li.appendChild(row); pl.appendChild(li);
+    });
+    g.put(pl, 2, 3); root.appendChild(g);
+    root.appendChild(pagesSection());
+  }
+
+  function svgEl(tag, attrs, text) {
+    var e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    if (text !== undefined) e.textContent = text; return e;
+  }
+  function drawChart(host, wide) {
+    host.innerHTML = "";
+    var total = totalUnits(), cps = checkpoints(), n = cps.length;
+    var acts = state.actual.map(function (a, i) { return (a === null && i === 0) ? total : a; });
+    var ymax = Math.max(total, 1); acts.forEach(function (a) { if (a !== null && a > ymax) ymax = a; });
+    var tick = Math.max(1, Math.ceil(ymax / 8));
+    var W = wide ? 960 : 640, H = wide ? 320 : 300, L = 40, R = 18, T = 16, B = 44;
+    var svg = svgEl("svg", { "class": "chart", viewBox: "0 0 " + W + " " + H, role: "img" });
+    var pl = cps.map(planned);
+    svg.setAttribute("aria-label", "Burn-down chart. Planned items remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".");
+    function x(i) { return L + (W - L - R) * i / (n - 1); }
+    function y(v) { return T + (H - T - B) * (1 - v / ymax); }
+    for (var v = 0; v <= ymax; v += tick) {
+      svg.appendChild(svgEl("line", { "class": "grid", x1: L, x2: W - R, y1: y(v), y2: y(v) }));
+      svg.appendChild(svgEl("text", { "class": "axis", x: L - 10, y: y(v) + 4, "text-anchor": "end" }, String(v)));
+    }
+    cps.forEach(function (ms, i) { svg.appendChild(svgEl("text", { "class": "axis", x: x(i), y: H - 16, "text-anchor": "middle" }, fmt(ms))); });
+    svg.appendChild(svgEl("polyline", { "class": "planned", points: pl.map(function (p, i) { return x(i) + "," + y(p); }).join(" ") }));
+    var seg = [];
+    function flush() { if (seg.length > 1) svg.appendChild(svgEl("polyline", { "class": "actual", points: seg.join(" ") })); seg = []; }
+    acts.forEach(function (a, i) { if (a === null) { flush(); return; } seg.push(x(i) + "," + y(a)); });
+    flush();
+    acts.forEach(function (a, i) { if (a !== null) svg.appendChild(svgEl("circle", { "class": "dot", cx: x(i), cy: y(a), r: 5.5 })); });
+    host.appendChild(svg);
+  }
+
+  function rangeBlock() {
+    var wrap = el("div", { "class": "range" });
+    var s0 = chartStart(), d0 = new Date(s0);
+    var rs = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), 1);
+    var lanes = [], groups = {}, order = [];
+    counted().forEach(function (t) {
+      if (t.isNext || t.block === 0) return;
+      var g = groups[t.project], a = taskStart(t), b = taskEnd(t);
+      if (!g) { g = groups[t.project] = { name: t.project, a: a, b: b }; order.push(t.project); }
+      if (a < g.a) g.a = a;
+      if (b > g.b) g.b = b;
+    });
+    var maxEnd = addDays(s0, 400);
+    order.forEach(function (nm) {
+      var g = groups[nm], bars = [{ a: g.a, b: g.b, cls: "" }], dates = fmt(g.a) + " to " + fmt(g.b), est = state.pest[nm];
+      if (est) { var ea = addDays(g.b, 1), eb = addMonths(ea, est); bars.push({ a: ea, b: eb, cls: "est" }); dates += ", estimate to " + fmtY(eb); if (eb > maxEnd) maxEnd = eb; }
+      lanes.push({ name: g.name, bars: bars, dates: dates });
+    });
+    var c = chosen(), openEnded = false;
+    if (c && c.start) {
+      var ca = parseISO(c.start), cb;
+      if (c.months) { cb = addMonths(ca, c.months); lanes.push({ name: c.name, bars: [{ a: ca, b: cb, cls: "" }], dates: fmt(ca) + " to " + fmtY(cb) }); if (cb > maxEnd) maxEnd = cb; }
+      else { openEnded = true; lanes.push({ name: c.name, bars: [{ a: ca, b: null, cls: "open" }], dates: "from " + fmtY(ca) }); }
+    }
+    var mss = [];
+    live(state.milestones).forEach(function (m) { mss.push({ id: m.id, text: m.text, date: parseISO(m.date) }); });
+    mss.forEach(function (m) { if (m.date > maxEnd) maxEnd = m.date; });
+    var capEnd = addMonths(rs, 25); if (maxEnd > capEnd) maxEnd = capEnd;
+    var e0 = new Date(maxEnd);
+    var re = Date.UTC(e0.getUTCFullYear(), e0.getUTCMonth() + 1, 1);
+    function pct(ms) { return Math.max(0, Math.min(100, 100 * (ms - rs) / (re - rs))); }
+    var months = el("div", { "class": "months" });
+    var mcount = 0, cur = rs;
+    while (cur < re && mcount < 30) {
+      var dd = new Date(cur), lab = dd.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+      if (mcount === 0 || dd.getUTCMonth() === 0) lab += " '" + String(dd.getUTCFullYear()).slice(2);
+      months.appendChild(el("span", { style: "left:" + pct(cur) + "%" }, lab));
+      cur = addMonths(cur, 1); mcount++;
+    }
+    wrap.appendChild(months);
+    var area = el("div", { style: "position:relative" });
+    lanes.forEach(function (ln) {
+      var lane = el("div", { "class": "lane" });
+      var nm = el("div", { "class": "lname" }, ln.name); nm.appendChild(el("span", { "class": "ldates" }, ln.dates)); lane.appendChild(nm);
+      var tr = el("div", { "class": "track" });
+      ln.bars.forEach(function (bar) {
+        var left = pct(bar.a), right = bar.b === null ? 100 : pct(bar.b);
+        tr.appendChild(el("div", { "class": "bar " + bar.cls, style: "left:" + left + "%;width:" + Math.max(0.6, right - left) + "%" }));
+      });
+      lane.appendChild(tr); area.appendChild(lane);
+    });
+    var ml = el("div", { "class": "lane" }); ml.appendChild(el("div", { "class": "lname" }, "Milestones"));
+    var mt = el("div", { "class": "track" });
+    mss.forEach(function (m) { mt.appendChild(el("span", { "class": "ms", style: "left:" + pct(m.date) + "%", title: m.text + ", " + fmtY(m.date) })); });
+    ml.appendChild(mt); area.appendChild(ml);
+    if (TODAY >= rs && TODAY <= re) area.appendChild(el("div", { "class": "today", style: "left:" + pct(TODAY) + "%", title: "Today" }));
+    wrap.appendChild(area);
+    wrap.appendChild(el("p", { "class": "hint", style: "margin-top:10px" }, "The orange line marks today." + (openEnded ? " The chosen project has no length set, so its bar runs open-ended." : "")));
+    return { node: wrap, milestones: mss };
+  }
+  function renderTimeline(root) {
+    var r = rangeBlock(); root.appendChild(r.node);
+    var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", null, "Milestones"));
+    hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add milestone"), "click", function () { milestoneDialog(); })); root.appendChild(hd);
+    var mbox = el("div", { "class": "box", style: "margin-top:10px" });
+    var ul = el("ul", { "class": "mslist" });
+    if (!r.milestones.length) ul.appendChild(el("li", { "class": "hint" }, "No milestones yet. Add one to see it on the timeline."));
+    r.milestones.slice().sort(function (a, b) { return a.date - b.date; }).forEach(function (m) {
+      var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date))); li.appendChild(el("span", null, m.text));
+      if (!m.auto) {
+        var rm = el("button", { type: "button", "class": "small danger" }, "Remove");
+        on(rm, "click", function () { var orig = state.milestones.filter(function (x) { return x.id === m.id; })[0]; if (orig) removeToArchive(orig, "Milestone"); });
+        li.appendChild(rm);
+      }
+      ul.appendChild(li);
+    });
+    mbox.appendChild(ul); root.appendChild(mbox);
+    root.appendChild(burnPanel({ wide: true, level: "h3" }));
+    root.appendChild(el("h3", null, "Weekly counts"));
+    root.appendChild(el("p", { "class": "hint" }, "Enter the number of items left each week to draw your actual line on the burn-down."));
+    var wrap = el("div", { "class": "tablewrap weekly" }); var table = el("table");
+    var thead = el("thead"); var hr = el("tr"); ["Week starting", "Planned remaining", "Actual remaining"].forEach(function (h) { hr.appendChild(el("th", null, h)); }); thead.appendChild(hr); table.appendChild(thead);
+    var body = el("tbody"); var tot = totalUnits();
+    checkpoints().forEach(function (ms, i) {
+      var tr = el("tr"); tr.appendChild(el("td", null, fmt(ms))); tr.appendChild(el("td", null, String(planned(ms))));
+      var td = el("td");
+      var inp = el("input", { type: "number", min: "0", max: "1000", step: "1", inputmode: "numeric", "aria-label": "Actual items remaining, week of " + fmt(ms) });
+      if (state.actual[i] !== null) inp.value = state.actual[i]; else if (i === 0) inp.placeholder = String(tot);
+      on(inp, "input", function () {
+        var v = inp.value === "" ? null : parseInt(inp.value, 10);
+        if (v !== null && (isNaN(v) || v < 0 || v > 1000)) return;
+        state.actual[i] = v; save();
+      });
+      td.appendChild(inp); tr.appendChild(td); body.appendChild(tr);
+    });
+    table.appendChild(body); wrap.appendChild(table); root.appendChild(wrap);
+  }
+
+  /* search */
+  var SEARCH_LABELS = { task: "Tasks", step: "Steps", project: "Projects", idea: "Ideas", decision: "Decisions", milestone: "Milestones" };
+  var SEARCH_ORDER = ["task", "step", "project", "idea", "decision", "milestone"];
+  var searchFlat = [];
+  function escRe(t) { return t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+  function searchTerms(q) { return q.toLowerCase().split(/\s+/).filter(Boolean); }
+  function highlight(text, terms) {
+    var frag = document.createDocumentFragment();
+    if (!terms.length) { frag.appendChild(document.createTextNode(text)); return frag; }
+    var parts = text.split(new RegExp("(" + terms.map(escRe).join("|") + ")", "gi"));
+    parts.forEach(function (part, i) { if (!part) return; if (i % 2 === 1) frag.appendChild(el("mark", null, part)); else frag.appendChild(document.createTextNode(part)); });
+    return frag;
+  }
+  function snippetOf(text, terms) {
+    var flat = text.replace(/\s+/g, " "), low = flat.toLowerCase(), at = -1;
+    terms.forEach(function (t) { var i = low.indexOf(t); if (i >= 0 && (at < 0 || i < at)) at = i; });
+    if (at < 0) return null;
+    var a = Math.max(0, at - 40), b = Math.min(flat.length, at + 110);
+    return (a > 0 ? "\u2026" : "") + flat.slice(a, b) + (b < flat.length ? "\u2026" : "");
+  }
+  function searchAll(q, includeArchive) {
+    var terms = searchTerms(q), groups = {};
+    SEARCH_ORDER.forEach(function (k) { groups[k] = []; });
+    function consider(kind, title, fields, sub, open, arch, fieldLabels) {
+      if (arch && !includeArchive) return;
+      var hay = [title].concat(fields).filter(Boolean).join("\n").toLowerCase();
+      for (var i = 0; i < terms.length; i++) if (hay.indexOf(terms[i]) < 0) return;
+      var tl = title.toLowerCase(), inTitle = terms.every(function (t) { return tl.indexOf(t) >= 0; });
+      var snip = null;
+      for (var j = 0; j < fields.length; j++) {
+        var lbl = fieldLabels ? fieldLabels[j] : "";
+        if (!fields[j] || !lbl) continue;
+        var sn = snippetOf(fields[j], terms); if (sn) { snip = { label: lbl, text: sn }; break; }
+      }
+      groups[kind].push({ kind: kind, title: title, sub: sub, snip: snip, arch: !!arch, score: inTitle ? 2 : 0, idx: groups[kind].length, open: open });
+    }
+    state.tasks.forEach(function (t) {
+      var when = t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t));
+      consider("task", t.what, [t.notes, t.done, t.project, dispProject(t)], dispProject(t) + " \u00b7 " + when + " \u00b7 " + t.status, function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch, ["Notes", "Done when", "", ""]);
+      t.steps.forEach(function (st) {
+        consider("step", st.text, [], "Step of " + dispProject(t) + ": " + short(t.what, 50) + (st.done ? " \u00b7 done" : ""), function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch);
+      });
+    });
+    projectNames().forEach(function (n) {
+      var cand = liveCands().filter(function (c) { return c.name === n; })[0];
+      consider("project", n, [state.pnotes[n], cand && cand.note], projectMeta(n), function () { go(validPage("proj:" + n) ? "proj:" + n : "projects"); }, false, ["Notes", "Note"]);
+    });
+    state.candidates.forEach(function (c) { if (c.arch) consider("project", c.name, [c.note], "Archived project", function () { go("archive"); }, true, ["Note"]); });
+    state.parked.forEach(function (p) { consider("idea", p.text, [p.note], "Parking lot", function () { go(p.arch ? "archive" : "projects"); }, !!p.arch, ["Note"]); });
+    state.decisions.forEach(function (d) { consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { go(d.arch ? "archive" : "kofi"); }, !!d.arch, ["Answer"]); });
+    state.milestones.forEach(function (m) { consider("milestone", m.text, [fmtY(parseISO(m.date)), m.date], fmtY(parseISO(m.date)), function () { go(m.arch ? "archive" : "timeline"); }, !!m.arch); });
+    SEARCH_ORDER.forEach(function (k) { groups[k].sort(function (a, b) { return b.score - a.score || a.idx - b.idx; }); });
+    return { terms: terms, groups: groups };
+  }
+  function updateSearchResults() {
+    var box = $("searchResults"); if (!box) return;
+    box.innerHTML = ""; searchFlat = [];
+    var status = $("searchStatus"), q = ui.query.trim();
+    if (!q) { if (status) status.textContent = ""; box.appendChild(el("p", { "class": "hint" }, "Type to search tasks, steps, notes, projects, ideas, decisions, and milestones. Enter opens the first result.")); return; }
+    var res = searchAll(q, ui.searchArchive), total = 0;
+    SEARCH_ORDER.forEach(function (k) { total += res.groups[k].length; });
+    if (status) status.textContent = total + (total === 1 ? " result" : " results");
+    if (!total) {
+      box.appendChild(el("p", { "class": "hint" }, "No matches for \u201c" + q + "\u201d." + (ui.searchArchive ? "" : " Try including the Archive.")));
+      return;
+    }
+    var CAP = 30;
+    SEARCH_ORDER.forEach(function (k) {
+      var list = res.groups[k]; if (!list.length) return;
+      var sec = el("section", { "class": "sgroup", "data-kind": k });
+      sec.appendChild(el("h3", null, SEARCH_LABELS[k] + " (" + list.length + ")"));
+      var ul = el("ul", { "class": "tlist", style: "margin-top:10px" });
+      list.slice(0, CAP).forEach(function (r) {
+        searchFlat.push(r);
+        var li = el("li"), b = el("button", { type: "button", "class": "item" });
+        var l1 = el("div", { "class": "l1" }); l1.appendChild(document.createTextNode(r.sub)); if (r.arch) { l1.appendChild(document.createTextNode(" ")); l1.appendChild(el("span", { "class": "chip arch" }, "Archived")); }
+        b.appendChild(l1);
+        var l2 = el("div", { "class": "l2" }); l2.appendChild(highlight(r.title, res.terms)); b.appendChild(l2);
+        if (r.snip) { var sn = el("div", { "class": "snip" }); if (r.snip.label) sn.appendChild(document.createTextNode(r.snip.label + ": ")); sn.appendChild(highlight(r.snip.text, res.terms)); b.appendChild(sn); }
+        on(b, "click", function () { r.open(); });
+        li.appendChild(b); ul.appendChild(li);
+      });
+      sec.appendChild(ul);
+      if (list.length > CAP) sec.appendChild(el("p", { "class": "hint" }, (list.length - CAP) + " more. Add a word to narrow the search."));
+      box.appendChild(sec);
+    });
+  }
+  function setQuery(q, from) {
+    ui.query = q;
+    var sb = $("searchBox"), mb = $("searchMain");
+    if (sb && from !== "side") sb.value = q;
+    if (mb && from !== "main") mb.value = q;
+  }
+  function openSearch(focusMain) {
+    if (ui.view !== "search") { ui.prev = ui.view; ui.view = "search"; ui.detail = false; renderAll(); scrollTop(); }
+    if (focusMain) { var m = $("searchMain"); if (m) m.focus(); }
+  }
+  function closeSearch() { setQuery("", ""); ui.view = ui.prev || "today"; if (ui.view === "search") ui.view = "today"; renderAll(); }
+  function firstResult() { return searchFlat[0] || null; }
+  function wireSearchInput(inp, from) {
+    on(inp, "input", function () {
+      setQuery(inp.value, from);
+      if (!ui.query.trim() && from === "side") { if (ui.view === "search") closeSearch(); return; }
+      if (ui.view !== "search") openSearch(false); else updateSearchResults();
+    });
+    on(inp, "keydown", function (e) {
+      if (e.key === "Escape") { e.preventDefault(); setQuery("", ""); if (ui.view === "search") closeSearch(); inp.blur(); }
+      else if (e.key === "Enter") { var r = firstResult(); if (r) { e.preventDefault(); r.open(); } }
+    });
+  }
+  function focusSearch() {
+    var box = $("searchBox");
+    if (box && box.offsetParent !== null) { box.focus(); box.select(); return; }
+    openSearch(true);
+  }
+  function renderSearch(root) {
+    var bar = el("div", { "class": "searchbar" });
+    var inp = el("input", { type: "search", id: "searchMain", placeholder: "Search tasks, steps, notes, projects, decisions", "aria-label": "Search", autocomplete: "off" }); inp.value = ui.query;
+    wireSearchInput(inp, "main"); bar.appendChild(inp);
+    var lab = el("label"), cb = el("input", { type: "checkbox", id: "searchArch" }); cb.checked = ui.searchArchive;
+    on(cb, "change", function () { ui.searchArchive = cb.checked; updateSearchResults(); });
+    lab.appendChild(cb); lab.appendChild(document.createTextNode("Include the Archive")); bar.appendChild(lab);
+    root.appendChild(bar);
+    root.appendChild(el("p", { "class": "msg", id: "searchStatus", role: "status", "aria-live": "polite" }));
+    root.appendChild(el("div", { id: "searchResults" }));
+    updateSearchResults();
+  }
+
+  function renderView() {
+    var root = $("view"); root.innerHTML = "";
+    if (ui.view.indexOf("proj:") === 0 && !validPage(ui.view)) ui.view = "projects";
+    root.className = "content" + (ui.view === "timeline" ? " wide" : "");
+    if (ui.view === "today") renderToday(root);
+    else if (ui.view === "schedule") renderSchedule(root);
+    else if (ui.view === "kofi") renderKofi(root);
+    else if (ui.view === "projects") renderProjects(root);
+    else if (ui.view === "search") renderSearch(root);
+    else if (ui.view === "archive") renderArchive(root);
+    else if (ui.view === "settings") renderSettings(root);
+    else if (ui.view === "help") renderHelp(root);
+    else if (ui.view.indexOf("proj:") === 0) renderProjectPage(root, ui.view.slice(5));
+    else renderTimeline(root);
+    renderChrome();
+    if (focusKey) { var f = document.querySelector('[data-focus="' + focusKey + '"]'); if (f) f.focus(); focusKey = null; }
+  }
+  function renderAll() { renderView(); }
+  function autoArchive() {
+    var rule = state.settings.archiveRule, ids = [];
+    state.tasks.forEach(function (t) {
+      if (t.status !== "Done") { t.doneAt = ""; t.noAuto = false; return; }
+      if (!t.doneAt) t.doneAt = iso(TODAY);
+      if (t.arch || t.isNext || t.noAuto || rule === "never") return;
+      if (rule === "immediate" || (rule === "week" && parseISO(t.doneAt) + 7 * DAY <= TODAY)) { t.arch = { at: iso(TODAY), why: "done" }; ids.push(t.id); }
+    });
+    return ids;
+  }
+  function archivedToast(ids) {
+    notify(ids.length === 1 ? "Task completed and moved to the Archive." : ids.length + " completed tasks moved to the Archive.", function () {
+      ids.forEach(function (id) { var t = findAnyTask(id); if (t) { t.arch = null; t.noAuto = true; } });
+      changed();
+    });
+  }
+  function changed() {
+    var ids = autoArchive(); save(); renderAll();
+    if (ids.length) archivedToast(ids);
+  }
+  function removeToArchive(item, label, before) {
+    if (before) before();
+    item.arch = { at: iso(TODAY), why: "removed" };
+    changed();
+    notify(label + " moved to the Archive.", function () { item.arch = null; changed(); });
+  }
+  function applyTheme() {
+    var th = state.settings && state.settings.theme, r = document.documentElement;
+    if (th === "light" || th === "dark") r.setAttribute("data-theme", th); else r.removeAttribute("data-theme");
+  }
+  function launchNote() { return ""; }
+
+  /* modal */
+  var modalReturn = null;
+  function openModal(title, build) {
+    modalReturn = document.activeElement;
+    $("modalTitle").textContent = title;
+    var body = $("modalBody"); body.innerHTML = "";
+    build(body);
+    $("overlay").hidden = false;
+    var first = body.querySelector("input, textarea, select, button");
+    if (first) first.focus();
+  }
+  function closeModal() {
+    $("overlay").hidden = true; $("modalBody").innerHTML = "";
+    if (modalReturn && document.body.contains(modalReturn) && modalReturn.focus) modalReturn.focus();
+    modalReturn = null;
+  }
+  on($("modalClose"), "click", closeModal);
+  on($("overlay"), "click", function (e) { if (e.target === $("overlay")) closeModal(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      if (!$("overlay").hidden) { closeModal(); return; }
+      closeMenus(true);
+    }
+    if (e.key === "Tab" && !$("overlay").hidden) {
+      var f = Array.prototype.slice.call($("overlay").querySelectorAll("button, input, textarea, select, a[href]")).filter(function (x) { return !x.disabled && !x.hidden && x.offsetParent !== null || x === document.activeElement; });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
+  function formDialog(title, fields, submitLabel, onSubmit, intro) {
+    openModal(title, function (body) {
+      if (intro) body.appendChild(el("p", { "class": "hint first" }, intro));
+      var inputs = {};
+      fields.forEach(function (f) {
+        var w = el("div", { "class": "field" }); var id = "f-" + f.key;
+        w.appendChild(el("label", { "for": id }, f.label));
+        var inp;
+        if (f.type === "select") {
+          inp = el("select", { id: id, "class": "plain" });
+          (f.options || []).forEach(function (o) { inp.appendChild(el("option", { value: o.value }, o.label)); });
+        } else {
+          inp = el("input", { type: f.type || "text", id: id, autocomplete: "off" });
+          if (f.list) inp.setAttribute("list", f.list);
+          if (f.min !== undefined) inp.setAttribute("min", f.min);
+          if (f.max !== undefined) inp.setAttribute("max", f.max);
+          if (f.step !== undefined) inp.setAttribute("step", f.step);
+        }
+        if (f.placeholder) inp.setAttribute("placeholder", f.placeholder);
+        if (f.value !== undefined) inp.value = f.value;
+        w.appendChild(inp); body.appendChild(w); inputs[f.key] = inp;
+      });
+      var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
+      var acts = el("div", { "class": "actions", style: "margin-top:6px" });
+      var ok = el("button", { type: "button", "class": "primary" }, submitLabel), cancel = el("button", { type: "button" }, "Cancel");
+      function submit() {
+        var vals = {}; Object.keys(inputs).forEach(function (k) { vals[k] = inputs[k].value.trim(); });
+        var res = onSubmit(vals);
+        if (typeof res === "string") { err.textContent = res; return; }
+        closeModal(); if (res && res.msg) notify(res.msg);
+      }
+      on(ok, "click", submit); on(cancel, "click", closeModal);
+      on(body, "keydown", function (e) { if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); submit(); } });
+      acts.appendChild(ok); acts.appendChild(cancel); body.appendChild(acts);
+    });
+  }
+
+  function taskDialog(prefill, backlog) {
+    var names = {}; counted().forEach(function (t) { var n = dispProject(t); if (n !== "Next project") names[n] = 1; });
+    liveCands().forEach(function (c) { names[c.name] = 1; });
+    var dl = $("projectNames"); if (dl) dl.remove();
+    dl = el("datalist", { id: "projectNames" }); Object.keys(names).forEach(function (n) { dl.appendChild(el("option", { value: n })); }); document.body.appendChild(dl);
+    var nt = nextTask();
+    formDialog(backlog ? "New backlog item" : "New task", [
+      { key: "project", label: "Project", list: "projectNames", value: typeof prefill === "string" ? prefill : (nt && !nt.isNext ? nt.project : "") },
+      { key: "what", label: "What you do" },
+      { key: "done", label: "Done when (optional)" },
+      { key: "block", label: wd() + " number (1 to 12), or leave empty for the Backlog", type: "number", min: 1, max: 12, step: 1, placeholder: "Backlog", value: backlog ? "" : (nt ? nt.block : 4) }
+    ], backlog ? "Add to Backlog" : "Add task", function (v) {
+      var blk = v.block === "" ? 0 : Number(v.block);
+      if (!v.project || !v.what) return "Enter a project and what you do.";
+      if (v.block !== "" && (!Number.isInteger(blk) || blk < 1 || blk > 12)) return wd() + " number must be from 1 to 12, or empty for the Backlog.";
+      var t = task("c" + uid(), blk, v.project.slice(0, 120), v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true });
+      state.tasks.push(t); ui.sel = t.id; changed();
+      return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(blockStartFor(v.project, blk)) + " to " + fmt(blockEndFor(v.project, blk)) + ")." };
+    }, wpC() + " set the dates. " + wd() + " 1 starts on the project's start date. Leave it empty to put the task in the Backlog.");
+  }
+  function projectDialog() {
+    formDialog("New project", [{ key: "name", label: "Project name" }, { key: "note", label: "Short note (optional)" }], "Add project", function (v) {
+      if (!v.name) return "Enter a project name.";
+      state.candidates.push({ id: uid(), name: v.name.slice(0, 120), note: v.note.slice(0, 300), start: "", months: "" }); changed();
+      return { msg: v.name + " added as a candidate for the next slot." };
+    }, "It joins the candidates for the next slot. You can park it later.");
+  }
+  function ideaDialog() {
+    formDialog("New idea", [{ key: "text", label: "Idea or waiting item" }, { key: "note", label: "Note (optional)" }], "Add to parking lot", function (v) {
+      if (!v.text) return "Enter the idea.";
+      state.parked.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 300) }); changed();
+      return { msg: "Added to the parking lot." };
+    });
+  }
+  function decisionDialog() {
+    formDialog("New decision", [
+      { key: "q", label: "What needs deciding?" },
+      { key: "step", label: "Link to a step (optional)", type: "select", options: stepOptions(), value: "" }
+    ], "Add decision", function (v) {
+      if (!v.q) return "Enter the decision.";
+      state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: v.step }); changed();
+      return { msg: "Decision added on the Launch page." };
+    }, "Linking a step means answering the decision ticks that step.");
+  }
+  function stepDialog(kofi) {
+    if (!orderedAll().length) { notify("Add a task first."); return; }
+    var pick = ui.sel && findTask(ui.sel) ? ui.sel : (nextTask() || orderedAll()[0]).id;
+    formDialog(kofi ? "New launch item" : "New step", [
+      { key: "task", label: "Task", type: "select", options: taskOptions(), value: pick },
+      { key: "text", label: kofi ? "What needs doing before you launch?" : "Step" }
+    ], "Add step", function (v) {
+      var t = findTask(v.task);
+      if (!v.text) return "Enter the step.";
+      if (!t) return "Choose a task.";
+      t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false, kofi: !!kofi }); syncFromSteps(t); changed();
+      return { msg: "Step added to " + dispProject(t) + (kofi ? " and the launch checklist." : ".") };
+    }, kofi ? "The step lives in a task and also shows on the launch checklist." : "");
+  }
+  function milestoneDialog() {
+    formDialog("New milestone", [{ key: "text", label: "Milestone" }, { key: "date", label: "Date", type: "date" }], "Add milestone", function (v) {
+      if (!v.text || !isISO(v.date)) return "Enter a milestone and a date.";
+      state.milestones.push({ id: uid(), text: v.text.slice(0, 200), date: v.date }); changed();
+      return { msg: "Milestone added to the Timeline." };
+    });
+  }
+  function slipDialog() {
+    openModal("Slip the schedule", function (body) {
+      body.appendChild(el("p", { "class": "hint first" }, "This moves start dates later, so the dates that follow them move too." + launchNote("currently ")));
+      var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": "slipDays" }, "Days to slip (1 to 90)"));
+      var inp = el("input", { type: "number", id: "slipDays", min: "1", max: "90", step: "1" }); inp.value = "7"; w.appendChild(inp); body.appendChild(w);
+      var tw = el("div", { "class": "field" }); tw.appendChild(el("label", { "for": "slipWhat" }, "What to slip"));
+      var sel = el("select", { id: "slipWhat", "class": "plain" }); sel.appendChild(el("option", { value: "" }, "Everything"));
+      var seen = {}; ordered().forEach(function (t) { if (!t.isNext && !seen[t.project]) { seen[t.project] = 1; sel.appendChild(el("option", { value: t.project }, "Only " + t.project)); } });
+      tw.appendChild(sel); body.appendChild(tw);
+      var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
+      var acts = el("div", { "class": "actions", style: "margin-top:6px" });
+      acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo" }, "Slip schedule"), "click", function () {
+        var n = parseInt(inp.value, 10), target = sel.value;
+        if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
+        var snap = { start: state.start, pset: JSON.parse(JSON.stringify(state.pset)) };
+        if (target === "") {
+          state.start = iso(addDays(parseISO(state.start), n));
+          Object.keys(state.pset).forEach(function (k) { if (state.pset[k].start) state.pset[k].start = iso(addDays(parseISO(state.pset[k].start), n)); });
+        } else {
+          var eff = pset(target); state.pset[target] = { start: iso(addDays(parseISO(eff.start), n)), mult: eff.mult };
+        }
+        state.lastSlip = { days: n, snap: snap };
+        changed(); closeModal();
+        notify((target === "" ? "Everything" : target) + " moved back " + n + (n === 1 ? " day" : " days") + "." + launchNote("now "));
+      }));
+      if (state.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo" }, "Undo last slip (" + state.lastSlip.days + " days)"), "click", function () {
+        state.start = state.lastSlip.snap.start; state.pset = cleanPset(state.lastSlip.snap.pset); state.lastSlip = null; changed(); closeModal();
+        notify("Slip undone." + launchNote(""));
+      }));
+      acts.appendChild(on(el("button", { type: "button" }, "Cancel"), "click", closeModal));
+      body.appendChild(acts);
+    });
+  }
+
+  /* backup */
+  var downloads = null, dlWaiters = [];
+  try {
+    if (window.claude && typeof window.claude.use === "function") {
+      window.claude.use("downloads").then(function (d) { downloads = d; dlWaiters.forEach(function (fn) { fn(); }); }).catch(function () { /* unavailable */ });
+    }
+  } catch (e) { /* unavailable */ }
+  function backupJSON() { return JSON.stringify(state, null, 2); }
+  function backupControls(host, msg) {
+    var acts = el("div", { "class": "actions" });
+    var saveBtn = el("button", { type: "button", "class": "primary", id: "saveFile" }, "Save backup file"); saveBtn.hidden = !downloads;
+    dlWaiters.push(function () { saveBtn.hidden = !downloads; });
+    on(saveBtn, "click", function () {
+      if (!downloads) return;
+      downloads.save({ filename: "sidequest-backup-" + iso(TODAY) + ".json", data: backupJSON() })
+        .then(function () { msg.textContent = "Backup saved."; })
+        .catch(function (err) { msg.textContent = (err && err.code === "declined") ? "Save cancelled." : "The file could not be saved. Use the backup text instead."; });
+    });
+    acts.appendChild(saveBtn);
+    var tbox = el("div", { style: "margin-top:12px" }); tbox.hidden = true;
+    tbox.appendChild(el("label", { "for": "backupText", "class": "hint" }, "Copy this text and keep it somewhere safe."));
+    var bt = el("textarea", { id: "backupText", readonly: "readonly" }); tbox.appendChild(bt);
+    acts.appendChild(on(el("button", { type: "button", id: "showText" }, "Show backup text"), "click", function () { bt.value = backupJSON(); tbox.hidden = false; bt.focus(); bt.select(); }));
+    host.appendChild(acts); host.appendChild(tbox);
+  }
+  function backupPanel(root) {
+    root.appendChild(el("p", { "class": "hint" }, "Everything is saved in this browser on this device only. Save a backup now and then."));
+    var msg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
+    backupControls(root, msg);
+    root.appendChild(el("h3", null, "Restore"));
+    var ff = el("div", { "class": "field" }); ff.appendChild(el("label", { "for": "restoreFile" }, "Choose a backup file"));
+    var file = el("input", { type: "file", id: "restoreFile", accept: ".json,application/json" }); ff.appendChild(file); root.appendChild(ff);
+    var tf = el("div", { "class": "field" }); tf.appendChild(el("label", { "for": "restoreText" }, "Or paste backup text"));
+    var rt = el("textarea", { id: "restoreText" }); tf.appendChild(rt); root.appendChild(tf);
+    function restoreFrom(text) {
+      try {
+        var obj = JSON.parse(text);
+        if (!obj || typeof obj !== "object" || !Array.isArray(obj.tasks)) { msg.textContent = "That does not look like a schedule backup."; return; }
+        state = normalize(obj); ui.sel = null; ui.detail = false; applyTheme(); save(); renderAll();
+        var m2 = $("restoreMsg"); if (m2) m2.textContent = "Restored. " + state.tasks.length + " tasks loaded.";
+      } catch (e) { msg.textContent = "That text could not be read. Paste the full backup text."; }
+    }
+    on(file, "change", function () {
+      var f = file.files && file.files[0]; if (!f) return;
+      var r = new FileReader(); r.onload = function () { restoreFrom(String(r.result || "")); }; r.onerror = function () { msg.textContent = "The file could not be read."; }; r.readAsText(f);
+    });
+    var a2 = el("div", { "class": "actions" });
+    a2.appendChild(on(el("button", { type: "button", id: "restoreBtn" }, "Restore from text"), "click", function () { restoreFrom(rt.value); }));
+    root.appendChild(a2); root.appendChild(msg);
+    root.appendChild(el("p", { "class": "msg", id: "restoreMsg", role: "status", "aria-live": "polite" }));
+  }
+
+  function confirmDialog(title, text, label, onConfirm) {
+    openModal(title, function (body) {
+      body.appendChild(el("p", { "class": "first" }, text));
+      var acts = el("div", { "class": "actions" });
+      var no = el("button", { type: "button" }, "Cancel"), yes = el("button", { type: "button", "class": "dangerfill", id: "confirmYes" }, label);
+      on(no, "click", closeModal); on(yes, "click", function () { closeModal(); onConfirm(); });
+      acts.appendChild(no); acts.appendChild(yes); body.appendChild(acts);
+    });
+  }
+
+  /* archive */
+  var KIND_LABEL = { task: "Task", project: "Project", idea: "Idea", decision: "Decision", milestone: "Milestone" };
+  var KIND_FILTERS = [["all", "All"], ["task", "Tasks"], ["project", "Projects"], ["idea", "Ideas"], ["decision", "Decisions"], ["milestone", "Milestones"]];
+  function archiveEntries() {
+    var out = [];
+    state.tasks.forEach(function (t) { if (t.arch) out.push({ kind: "task", list: "tasks", item: t, title: dispProject(t) + ": " + short(dispWhat(t), 90) }); });
+    state.candidates.forEach(function (c) { if (c.arch) out.push({ kind: "project", list: "candidates", item: c, title: c.name }); });
+    state.parked.forEach(function (p) { if (p.arch) out.push({ kind: "idea", list: "parked", item: p, title: p.text }); });
+    state.decisions.forEach(function (d) { if (d.arch) out.push({ kind: "decision", list: "decisions", item: d, title: d.q }); });
+    state.milestones.forEach(function (m) { if (m.arch) out.push({ kind: "milestone", list: "milestones", item: m, title: m.text + " (" + fmtY(parseISO(m.date)) + ")" }); });
+    return out.sort(function (a, b) { return a.item.arch.at < b.item.arch.at ? 1 : (a.item.arch.at > b.item.arch.at ? -1 : 0); });
+  }
+  function dropEntry(e) { state[e.list] = state[e.list].filter(function (x) { return x !== e.item; }); }
+  function restoreEntry(e) {
+    var wasDone = e.item.arch && e.item.arch.why === "done";
+    e.item.arch = null; if (e.kind === "task" && wasDone) e.item.noAuto = true;
+    changed(); notify(KIND_LABEL[e.kind] + " restored.");
+  }
+  function deleteForever(e) {
+    var extra = e.kind === "task" ? " Its steps also stop counting in the burn-down and on the launch checklist." : "";
+    confirmDialog("Delete forever?", "\u201c" + short(e.title, 80) + "\u201d will be permanently deleted. This cannot be undone." + extra, "Delete forever", function () {
+      dropEntry(e); save(); renderAll(); notify("Deleted.");
+    });
+  }
+  function emptyArchive() {
+    var all = archiveEntries();
+    confirmDialog("Empty the Archive?", all.length + (all.length === 1 ? " item" : " items") + " will be permanently deleted. This cannot be undone.", "Delete everything in the Archive", function () {
+      all.forEach(dropEntry); save(); renderAll(); notify("Archive emptied.");
+    });
+  }
+  function renderArchive(root) {
+    var all = archiveEntries(), filter = ui.archFilter || "all";
+    root.appendChild(el("p", { "class": "hint first" }, "Completed tasks and removed items live here. Restore puts an item back where it was. Deleting from the Archive is permanent."));
+    var counts = { all: all.length }; all.forEach(function (e) { counts[e.kind] = (counts[e.kind] || 0) + 1; });
+    var chips = el("div", { "class": "chips", role: "group", "aria-label": "Filter the Archive" });
+    KIND_FILTERS.forEach(function (f) {
+      var b = el("button", { type: "button", "class": "chipbtn", "aria-pressed": filter === f[0] ? "true" : "false" }, f[1] + " (" + (counts[f[0]] || 0) + ")");
+      on(b, "click", function () { ui.archFilter = f[0]; renderView(); });
+      chips.appendChild(b);
+    });
+    root.appendChild(chips);
+    var shown = all.filter(function (e) { return filter === "all" || e.kind === filter; });
+    if (!shown.length) { root.appendChild(el("p", { "class": "hint" }, all.length ? "Nothing of that kind in the Archive." : "The Archive is empty. Completed tasks and removed items appear here.")); return; }
+    var ul = el("ul", { "class": "list" });
+    shown.forEach(function (e) {
+      var li = el("li"), row = el("div", { "class": "crow" });
+      var info = el("div", { style: "flex:1 1 220px" });
+      info.appendChild(el("span", { "class": "chip" }, KIND_LABEL[e.kind]));
+      info.appendChild(el("span", { style: "margin-left:8px;font-weight:600" }, e.title));
+      info.appendChild(el("p", { "class": "hint", style: "margin-top:4px" }, (e.item.arch.why === "done" ? "Completed " : "Removed ") + fmtY(parseISO(e.item.arch.at))));
+      row.appendChild(info);
+      var acts = el("div", { "class": "li-actions" });
+      acts.appendChild(on(el("button", { type: "button", "class": "small primary" }, "Restore"), "click", function () { restoreEntry(e); }));
+      acts.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Delete forever"), "click", function () { deleteForever(e); }));
+      row.appendChild(acts); li.appendChild(row); ul.appendChild(li);
+    });
+    root.appendChild(ul);
+    root.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:16px" }, "Empty archive"), "click", emptyArchive));
+  }
+
+  /* help */
+  function helpMarkup(text) {
+    var frag = document.createDocumentFragment();
+    text.split(/(\*\*[^*]+\*\*|\[\[[^\]]+\]\])/).forEach(function (part) {
+      if (!part) return;
+      if (part.indexOf("**") === 0) frag.appendChild(el("b", null, part.slice(2, -2)));
+      else if (part.indexOf("[[") === 0) frag.appendChild(el("kbd", null, part.slice(2, -2)));
+      else frag.appendChild(document.createTextNode(part));
+    });
+    return frag;
+  }
+  function helpTopics() {
+    var W = wd(), w = wl();
+    return [
+      ["Find your way around", [
+        "On a computer, use the sidebar on the left. On a phone, use the tabs along the bottom.",
+        "The menu button (three lines, top right) lists every page.",
+        "The **+** button adds things: a task, backlog item, step, project, idea, decision, or milestone.",
+        "Search: press [[/]] on a computer, or tap the magnifier on a phone. Press [[Enter]] to open the first result and [[Esc]] to clear it. On a phone, tap the **X** where the magnifier was to cancel."]],
+      ["Work through your day (Today)", [
+        "**Next up** shows the task to do now. Use **Start**, **Mark done**, or **Open task**.",
+        "Anything past its end date appears below it. If you are running behind, use **Slip the schedule** in the menu.",
+        "The burn-down shows work left against the plan. Tap **Record this week** to add your actual count to the chart."]],
+      ["Add and schedule tasks", [
+        "Tap **+**, then **New task**. Enter the project, what you do, and when it is done.",
+        "The " + W + " number sets the dates. " + W + " 1 starts on the project's start date. Leave it empty to put the task in the Backlog.",
+        "Open a task in the **Schedule** to change its status, add steps and notes, or move it to another " + w + ".",
+        "Finishing every step marks the task done."]],
+      ["Use the Backlog", [
+        "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
+        "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burn-down until you do."]],
+      ["Manage projects", [
+        "Each project has its own page. Open **Projects**, then **Open** beside its name. Set its start date, pace, an optional length estimate, and notes.",
+        "**Candidates** are projects that could take the next slot. Choose one with its circle. The **Parking lot** holds ideas that are not ready.",
+        "Use **Pin to sidebar** on any page for quick access. Unpinning only hides it. The page stays listed under **Projects**."]],
+      ["Read the Timeline", [
+        "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
+        "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline.",
+        "The full-width burn-down and the weekly counts are further down the page."]],
+      ["Launch page: steps and decisions", [
+        "On any task, tap **Launch** beside a step to put that step on the **Launch** page. Ticking it there or in the Schedule keeps both in sync.",
+        "Link a decision to a step. Answering the decision ticks the step, and clearing the answer unticks it.",
+        "Use **Add item** to create a new step for the list, and **Add decision** to add a question to settle."]],
+      ["Archive and undo", [
+        "Completed tasks move to the **Archive** by default, and so does anything you remove. An **Undo** button appears for a few seconds.",
+        "In the Archive, **Restore** puts an item back where it was. **Delete forever** always asks first, and it cannot be undone.",
+        "Change when completed tasks are archived in **Settings**."]],
+      ["Slip the schedule", [
+        "Open the menu and choose **Slip the schedule**. Pick the number of days, and whether to move everything or one project.",
+        "**Undo last slip** in the same dialog reverses it."]],
+      ["Settings, backup, and starting over", [
+        "In **Settings**, set the default start date and pace, what to call a stretch of work (Block, Sprint, and so on), the date format, the theme, and when to archive completed tasks.",
+        "Everything is saved in this browser only. Under **Backup and restore**, copy your data as text, or save a file if your browser offers it, and paste it back later.",
+        "**Start fresh** erases everything after a warning. Save a backup first. You can begin empty or with the starting projects."]]
+    ];
+  }
+  function renderHelp(root) {
+    root.appendChild(el("p", { "class": "hint first" }, "Everything you can do in Sidequest, in short. Tap a topic to open it."));
+    var acts = el("div", { "class": "actions", style: "margin-top:10px" }), items = [];
+    var openAll = el("button", { type: "button", "class": "small", id: "helpOpen" }, "Open all"), closeAll = el("button", { type: "button", "class": "small", id: "helpClose" }, "Close all");
+    on(openAll, "click", function () { items.forEach(function (d) { d.open = true; }); });
+    on(closeAll, "click", function () { items.forEach(function (d) { d.open = false; }); });
+    acts.appendChild(openAll); acts.appendChild(closeAll); root.appendChild(acts);
+    helpTopics().forEach(function (t, i) {
+      var d = el("details", { "class": "helpitem" }); if (i === 0) d.open = true;
+      d.appendChild(el("summary", null, t[0]));
+      var body = el("div", { "class": "hbody" }), ul = el("ul");
+      t[1].forEach(function (line) { var li = el("li"); li.appendChild(helpMarkup(line)); ul.appendChild(li); });
+      body.appendChild(ul); d.appendChild(body); root.appendChild(d); items.push(d);
+    });
+  }
+
+  /* settings */
+  function blankState() {
+    var d = defaults();
+    d.tasks = []; d.decisions = []; d.candidates = []; d.parked = []; d.milestones = []; d.pins = []; d.pnotes = {}; d.pset = {}; d.pest = {}; d.next = null; d.lastSlip = null;
+    d.start = iso(TODAY); d.mult = state.mult; d.days = state.days; d.settings = state.settings;
+    return d;
+  }
+  function startFreshDialog() {
+    openModal("Start fresh", function (body) {
+      body.appendChild(el("p", { "class": "first" }, "Start fresh erases every task, project, decision, note, milestone, and everything in the Archive stored in this browser. This cannot be undone."));
+      body.appendChild(el("p", { "class": "hint" }, "Save a backup first if you might want anything back."));
+      var msg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
+      backupControls(body, msg); body.appendChild(msg);
+      body.appendChild(el("h3", null, "Start with"));
+      var choices = [["empty", "An empty planner"], ["original", "The sample projects"]], picked = "empty";
+      choices.forEach(function (c) {
+        var lab = el("label", { "class": "radiorow" }); var rb = el("input", { type: "radio", name: "fresh", value: c[0] }); rb.checked = c[0] === picked;
+        on(rb, "change", function () { picked = c[0]; });
+        lab.appendChild(rb); lab.appendChild(el("span", null, c[1])); body.appendChild(lab);
+      });
+      var ack = el("label", { "class": "radiorow" }); var cb = el("input", { type: "checkbox", id: "freshAck" });
+      ack.appendChild(cb); ack.appendChild(el("span", null, "I understand this will erase everything.")); body.appendChild(ack);
+      var acts = el("div", { "class": "actions" });
+      var go1 = el("button", { type: "button", "class": "dangerfill", id: "freshGo" }, "Erase everything"); go1.disabled = true;
+      on(cb, "change", function () { go1.disabled = !cb.checked; });
+      on(go1, "click", function () {
+        var keep = state.settings; keep.hideWelcome = true;
+        if (picked === "original") { state = defaults(); state.settings = keep; } else { state = blankState(); }
+        ui.sel = null; ui.detail = false; ui.archFilter = "all"; applyTheme(); save(); closeModal(); go("today"); notify("Started fresh.");
+      });
+      acts.appendChild(on(el("button", { type: "button" }, "Cancel"), "click", closeModal)); acts.appendChild(go1); body.appendChild(acts);
+    });
+  }
+  function renderSettings(root) {
+    dlWaiters = [];
+    var msg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
+    root.appendChild(el("h3", { "class": "first" }, "Schedule defaults"));
+    root.appendChild(el("p", { "class": "hint" }, "Each project can set its own start date and pace on its page. These are used by any project that has not. At 1.5x each " + wl() + " runs about 50% longer. Lengths are rounded down to whole days."));
+    var grid = el("div", { "class": "setgrid" });
+    function fieldOf(id, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); grid.appendChild(w); }
+    var st = el("input", { type: "date", id: "set-start" }); st.value = state.start;
+    on(st, "change", function () { if (!isISO(st.value)) { st.value = state.start; msg.textContent = "Enter a valid start date."; return; } state.start = st.value; state.lastSlip = null; changed(); notify("Start date saved." + launchNote("now ")); });
+    var mu = el("input", { type: "number", id: "set-mult", min: "0.25", max: "5", step: "0.25" }); mu.value = state.mult;
+    on(mu, "change", function () { var v = parseFloat(mu.value); if (isNaN(v) || v < 0.25 || v > 5) { mu.value = state.mult; msg.textContent = "The time multiplier must be from 0.25 to 5."; return; } state.mult = v; changed(); notify("Time multiplier saved." + launchNote("now ")); });
+    var da = el("input", { type: "number", id: "set-days", min: "1", max: "30", step: "1" }); da.value = state.days;
+    on(da, "change", function () { var v = parseInt(da.value, 10); if (isNaN(v) || v < 1 || v > 30) { da.value = state.days; msg.textContent = wd() + " length must be from 1 to 30 days."; return; } state.days = v; changed(); notify(wd() + " length saved." + launchNote("now ")); });
+    fieldOf("set-start", "Default start date", st); fieldOf("set-mult", "Default time multiplier", mu); fieldOf("set-days", wd() + " length in days (at 1.0x)", da);
+    var bwSel = el("select", { id: "set-word", "class": "plain" });
+    Object.keys(WORDS).forEach(function (k) { var op = el("option", { value: k }, k); if (k === wd()) op.selected = true; bwSel.appendChild(op); });
+    on(bwSel, "change", function () { state.settings.blockWord = bwSel.value; changed(); });
+    fieldOf("set-word", "Call each stretch of work a", bwSel);
+    root.appendChild(grid); root.appendChild(msg);
+
+    root.appendChild(el("h3", null, "Appearance and formats"));
+    var ag = el("div", { "class": "setgrid" });
+    var tw = el("div", { "class": "field" }); tw.appendChild(el("label", { "for": "set-theme" }, "Theme"));
+    var th = el("select", { id: "set-theme", "class": "plain" });
+    [["auto", "Match this device"], ["light", "Light"], ["dark", "Dark"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if (o[0] === state.settings.theme) op.selected = true; th.appendChild(op); });
+    on(th, "change", function () { state.settings.theme = th.value; applyTheme(); save(); });
+    tw.appendChild(th); ag.appendChild(tw);
+    var fw = el("div", { "class": "field" }); fw.appendChild(el("label", { "for": "set-datefmt" }, "Date format"));
+    var df = el("select", { id: "set-datefmt", "class": "plain" });
+    var sample = Date.UTC(2026, 8, 21);
+    ["us", "intl", "mdy", "dmy", "iso"].forEach(function (k) {
+      var keep = state.settings.dateFormat; state.settings.dateFormat = k;
+      var op = el("option", { value: k }, fmtY(sample)); state.settings.dateFormat = keep;
+      if (k === keep) op.selected = true; df.appendChild(op);
+    });
+    on(df, "change", function () { state.settings.dateFormat = df.value; changed(); });
+    fw.appendChild(df); ag.appendChild(fw); root.appendChild(ag);
+    root.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device's own format. Nothing here uses a time of day yet."));
+
+    root.appendChild(el("h3", null, "Archive"));
+    root.appendChild(el("p", { "class": "hint" }, "Removed items always go to the Archive. This sets what happens when a task is completed."));
+    var aw = el("div", { "class": "field" }); aw.appendChild(el("label", { "for": "set-arch" }, "Move completed tasks to the Archive"));
+    var ar = el("select", { id: "set-arch", "class": "plain" });
+    [["immediate", "Right away"], ["week", "After 7 days"], ["never", "Never (I will do it myself)"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if (o[0] === state.settings.archiveRule) op.selected = true; ar.appendChild(op); });
+    on(ar, "change", function () { state.settings.archiveRule = ar.value; changed(); });
+    aw.appendChild(ar); var ag2 = el("div", { "class": "setgrid" }); ag2.appendChild(aw); root.appendChild(ag2);
+    var n = archiveEntries().length;
+    root.appendChild(on(el("button", { type: "button", "class": "small", style: "margin-top:12px" }, "Open the Archive (" + n + (n === 1 ? " item" : " items") + ")"), "click", function () { go("archive"); }));
+
+    root.appendChild(el("h3", null, "Backup and restore"));
+    backupPanel(root);
+
+    root.appendChild(el("h3", null, "Start fresh"));
+    var box = el("div", { "class": "dangerbox" });
+    box.appendChild(el("p", { "class": "first" }, "Erase everything in this browser and begin again. You will see a warning and a chance to save a backup first."));
+    box.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:12px", id: "startFresh" }, "Start fresh\u2026"), "click", startFreshDialog));
+    root.appendChild(box);
+
+    root.appendChild(el("h3", null, "About"));
+    var ab = el("div", { "class": "box about" });
+    ab.appendChild(el("p", { style: "font-weight:600", "class": "first" }, APP_NAME));
+    ab.appendChild(el("p", { "class": "hint" }, "Version " + APP_VERSION));
+    var cp = el("p", { "class": "hint" }); cp.appendChild(document.createTextNode("\u00a9 "));
+    cp.appendChild(el("a", { href: "https://samoff.com", target: "_blank", rel: "noopener", "class": "textbtn" }, "Tim Samoff")); ab.appendChild(cp);
+    root.appendChild(ab);
+  }
+
+  /* menus */
+  function closeMenus(returnFocus) {
+    ["newMenu", "moreMenu"].forEach(function (id) {
+      var m = $(id), b = $(id === "newMenu" ? "newBtn" : "moreBtn");
+      if (!m.hidden) { m.hidden = true; b.setAttribute("aria-expanded", "false"); if (returnFocus) b.focus(); }
+    });
+  }
+  function wireMenu(btnId, menuId) {
+    var b = $(btnId), m = $(menuId);
+    on(b, "click", function (e) {
+      e.stopPropagation();
+      var wasOpen = !m.hidden; closeMenus(false);
+      if (!wasOpen) { m.hidden = false; b.setAttribute("aria-expanded", "true"); var f = m.querySelector("button"); if (f) f.focus(); }
+    });
+    on(m, "click", function (e) {
+      var t = e.target.closest ? e.target.closest("button[data-act], button[data-view]") : null; if (!t) return;
+      closeMenus(false);
+      if (t.getAttribute("data-view")) { go(t.getAttribute("data-view")); return; }
+      var act = t.getAttribute("data-act");
+      ({ newTask: taskDialog, newBacklog: function () { taskDialog(undefined, true); }, newStep: function () { stepDialog(false); }, newProject: projectDialog, newIdea: ideaDialog, newDecision: decisionDialog, newMilestone: milestoneDialog, slip: slipDialog, archive: function () { go("archive"); }, settings: function () { go("settings"); } })[act]();
+    });
+    on(m, "keydown", function (e) {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      var items = Array.prototype.slice.call(m.querySelectorAll("button")); var i = items.indexOf(document.activeElement);
+      e.preventDefault(); items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length].focus();
+    });
+  }
+  wireMenu("newBtn", "newMenu"); wireMenu("moreBtn", "moreMenu");
+  wireSearchInput($("searchBox"), "side");
+  on($("searchBtn"), "click", function () { if (ui.view === "search") closeSearch(); else openSearch(true); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+    var t = e.target, tag = t && t.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
+    if (!$("overlay").hidden) return;
+    e.preventDefault(); focusSearch();
+  });
+  document.addEventListener("click", function (e) {
+    if (!e.target.closest || !e.target.closest(".menuwrap")) closeMenus(false);
+  });
+
+  $("brand").textContent = APP_NAME;
+  applyTheme();
+  var bootIds = autoArchive(); if (bootIds.length) save();
+  renderAll();
+  if (bootIds.length) archivedToast(bootIds);
+})();
+</script>
+</body>
+</html>

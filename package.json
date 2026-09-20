@@ -1,0 +1,15 @@
+{
+  "name": "sidequest",
+  "version": "1.0.0",
+  "description": "A small, single-file project planner that runs in the browser.",
+  "private": true,
+  "scripts": {
+    "test": "node tests/run.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.0"
+  }
+}
