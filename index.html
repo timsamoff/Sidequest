@@ -1259,7 +1259,12 @@ tbody tr:last-child td { border-bottom: 0; }
     function flush() { if (seg.length > 1) svg.appendChild(svgEl("polyline", { "class": "actual", points: seg.join(" ") })); seg = []; }
     acts.forEach(function (a, i) { if (a === null) { flush(); return; } seg.push(x(i) + "," + y(a)); });
     flush();
-    acts.forEach(function (a, i) { if (a !== null) svg.appendChild(svgEl("circle", { "class": "dot", cx: x(i), cy: y(a), r: 5.5 })); });
+    acts.forEach(function (a, i) {
+      if (a === null) return;
+      var dot = svgEl("circle", { "class": "dot", cx: x(i), cy: y(a), r: 5.5 });
+      dot.appendChild(svgEl("title", null, fmtY(cps[i]) + ": " + a + (a === 1 ? " item" : " items") + " remaining"));
+      svg.appendChild(dot);
+    });
     host.appendChild(svg);
   }
 
