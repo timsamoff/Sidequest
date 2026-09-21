@@ -396,24 +396,26 @@ tbody tr:last-child td { border-bottom: 0; }
   }
   function sampleData() {
     var n = new Date(), D = 86400000;
-    var m0 = Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - ((n.getDay() + 6) % 7));
+    var thisMon = Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - ((n.getDay() + 6) % 7));
+    var m0 = thisMon - 14 * D;
     function day(k) { return new Date(m0 + k * D).toISOString().slice(0, 10); }
     var yest = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 1)).toISOString().slice(0, 10);
+    var lastWeek = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 7)).toISOString().slice(0, 10);
     var tasks = [
-      task("a1", 1, "Sample App", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Done", doneAt: yest, arch: { at: yest, why: "done" } }),
-      task("a2", 1, "Sample App", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", false, true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "In progress", notes: "Ask a friend to try this on an older phone before moving on." }),
-      task("a3", 2, "Sample App", "Build the home screen", "The list loads quickly and scrolls smoothly", [st("a3a", "Show the list of items"), st("a3b", "Add pull to refresh"), st("a3c", "Handle an empty list")]),
-      task("a4", 3, "Sample App", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link", true), st("a4c", "Collect and sort the feedback")]),
-      task("a5", 4, "Sample App", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true, true), st("a5a", "Write the store description", true), st("a5b", "Prepare screenshots", true), st("a5c", "Submit for review", true)]),
+      task("a1", 1, "Sample App", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Done", doneAt: lastWeek, arch: { at: lastWeek, why: "done" } }),
+      task("a2", 2, "Sample App", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", false, true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "Done", doneAt: yest, arch: { at: yest, why: "done" } }),
+      task("a3", 3, "Sample App", "Build the home screen", "The list loads quickly and scrolls smoothly", [st("a3a", "Show the list of items", false, true), st("a3b", "Add pull to refresh"), st("a3c", "Handle an empty list")], { status: "In progress", notes: "Ask a friend to try this on an older phone before moving on." }),
+      task("a4", 4, "Sample App", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link", true), st("a4c", "Collect and sort the feedback")]),
+      task("a5", 5, "Sample App", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true, true), st("a5a", "Write the store description", true), st("a5b", "Prepare screenshots", true), st("a5c", "Submit for review", true)]),
       task("a6", 0, "Sample App", "Add a dark mode", "Dark mode works on every screen", []),
-      task("w1", 1, "Sample Website", "Write the page copy", "Every page has final text", [st("w1a", "Write the home page"), st("w1b", "Write the about page"), st("w1c", "Write the contact page")]),
+      task("w1", 1, "Sample Website", "Write the page copy", "Every page has final text", [st("w1a", "Write the home page", false, true), st("w1b", "Write the about page"), st("w1c", "Write the contact page")], { status: "In progress" }),
       task("w2", 2, "Sample Website", "Build the layout", "Pages look right on a phone and a laptop", [st("w2a", "Build the header and footer"), st("w2b", "Make the layout work on phones"), st("w2c", "Compress the images")]),
       task("w3", 3, "Sample Website", "Launch the site", "The site is live and checked", [st("w3a", "Point the domain at the site", true), st("w3b", "Check every page on a phone", true), st("w3c", "Announce it", true)]),
       task("g1", 1, "Sample Game", "Prototype the core mechanic", "Someone can play for one minute", [st("g1a", "Make the player move"), st("g1b", "Add one obstacle"), st("g1c", "Add a win and a lose state")]),
       task("g2", 2, "Sample Game", "Make the first ten levels", "Ten playable levels"),
       task("g3", 3, "Sample Game", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid", true), st("g3c", "Record a trailer", true)]),
       task("g4", 0, "Sample Game", "Add a level editor", "Players can make their own levels"),
-      task("n1", 4, "Next project", "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true })
+      task("n1", 6, "Next project", "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true })
     ];
     return {
       tasks: tasks,
@@ -433,9 +435,9 @@ tbody tr:last-child td { border-bottom: 0; }
       ],
       milestones: [
         { id: "m1", text: "Sample App beta opens", date: day(21) },
-        { id: "m2", text: "Sample Game demo day", date: day(70) }
+        { id: "m2", text: "Sample Game demo day", date: day(63) }
       ],
-      pset: { "Sample Website": { start: day(14), mult: 1 }, "Sample Game": { start: day(28), mult: 2 } },
+      pset: { "Sample Website": { start: day(14), mult: 1 }, "Sample Game": { start: day(21), mult: 2 } },
       pest: { "Sample Game": 4 },
       pnotes: { "Sample App": "A simple habit tracker. Keep the first version small and add features after the beta." },
       start: day(0)
@@ -445,7 +447,7 @@ tbody tr:last-child td { border-bottom: 0; }
     var d = sampleData();
     return {
       v: 4, start: d.start, mult: 1, days: 7,
-      tasks: d.tasks, actual: [null, null, null, null, null, null, null],
+      tasks: d.tasks, actual: [34, 31, 25, null, null, null, null],
       decisions: d.decisions, candidates: d.candidates, parked: d.parked,
       next: null, milestones: d.milestones, lastSlip: null, pins: ["kofi"], pnotes: d.pnotes, pset: d.pset, pest: d.pest,
       settings: { theme: "auto", archiveRule: "immediate", dateFormat: "us", blockWord: "Sprint", hideWelcome: false }

@@ -48,17 +48,17 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
   // Today content
   ok(k.$("view").textContent.includes("Next up") && k.d.querySelector("#view .chartbox svg") && /\d+ items remaining, out of \d+/.test(k.$("view").textContent), "Today works with sample data");
   const next = k.d.querySelector("#view .panel .ptitle").textContent;
-  ok(next === "Build the sign-in flow", "Next up is the in-progress sample task: " + next);
-  const projLink = k.btn(k.d.querySelector("#view .panel"), "Sample App");
+  ok(next === "Write the page copy", "Next up is the lowest-block open sample task: " + next);
+  const projLink = k.btn(k.d.querySelector("#view .panel"), "Sample Website");
   ok(!!projLink && projLink.classList.contains("plink"), "Next up names the project as a link");
   k.click(projLink);
-  ok(k.$("viewTitle").textContent === "Sample App", "clicking the project link opens that project's page");
+  ok(k.$("viewTitle").textContent === "Sample Website", "clicking the project link opens that project's page");
 }
 
 /* ---- sample projects ---- */
 {
   const k = kit(mk()); k.tab("projects");
-  ok(k.stand().join() === "Sample App,Sample Website,Sample Game,Next slot", "Where things stand lists the three sample projects (" + k.stand().join() + ")");
+  ok(k.stand().join() === "Sample Website,Sample App,Sample Game,Next slot", "Where things stand lists the three sample projects (" + k.stand().join() + ")");
   const pagesList = [...k.d.querySelectorAll("#view .list")].pop().textContent;
   ok(pagesList.includes("Launch checklist") && pagesList.includes("Sample App") && pagesList.includes("Sample Website") && pagesList.includes("Sample Game"), "Pages and projects lists them");
   ok(k.d.querySelectorAll('#view input[type=radio]').length === 2 && k.$("view").textContent.includes("Sample Browser Extension") && k.$("view").textContent.includes("Sample Command-Line Tool"), "two sample candidates");
@@ -66,7 +66,7 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
   ok(k.$("view").textContent.includes("Try a new game engine") && k.$("view").textContent.includes("Write up lessons learned") && !k.$("view").textContent.includes("Redesign the logo"), "parking lot samples (removed one is in the Archive)");
   k.tab("schedule");
   const rows = [...k.d.querySelectorAll(".listpane .tlist")[0].querySelectorAll(".item")].map(b => b.textContent);
-  ok(rows.length === 11, "11 scheduled tasks (three projects plus the next-project slot) (got " + rows.length + ")");
+  ok(rows.length === 10, "10 scheduled tasks (two Sample App tasks are now archived) (got " + rows.length + ")");
   ok(k.$("view").textContent.includes("Backlog (2)") && k.$("view").textContent.includes("Add a dark mode") && k.$("view").textContent.includes("Add a level editor"), "backlog has two samples");
   ok(k.d.getElementById("task-block").textContent.includes("Sprint 1"), "vocabulary is Sprint in the samples");
   // per-project schedules
@@ -117,7 +117,7 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
 {
   const k = kit(mk()); k.tab("archive");
   const t = k.$("view").textContent;
-  ok(t.includes("Sketch the main screens") && t.includes("Redesign the logo") && t.includes("Should the site use a page builder?") && t.includes("All (3)"), "Archive already shows three sample items");
+  ok(t.includes("Sketch the main screens") && t.includes("Build the sign-in flow") && t.includes("Redesign the logo") && t.includes("Should the site use a page builder?") && t.includes("All (4)"), "Archive already shows four sample items");
   ok(t.includes("Completed") && t.includes("Removed"), "shows both completed and removed samples");
 }
 
@@ -169,9 +169,9 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
   const projSel = k.$("f-project"), taskSel = k.$("f-task");
   ok(!!projSel && !!taskSel, "New step form has a project filter and a task select");
   ok(projSel.value === "", "with nothing selected in Schedule, the project filter starts on All projects");
-  ok(taskSel.selectedOptions[0].label === "Sample App: Build the sign-in flow", "the task select still defaults to the next-up task");
+  ok(taskSel.selectedOptions[0].label === "Sample Website: Write the page copy", "the task select still defaults to the next-up task");
   const allProjects = [...taskSel.options].map(o => o.label);
-  ok(allProjects.some(l => l.startsWith("Sample Website:")) && allProjects.some(l => l.startsWith("Sample Game:")), "All projects shows every project's tasks");
+  ok(allProjects.some(l => l.startsWith("Sample App:")) && allProjects.some(l => l.startsWith("Sample Game:")), "All projects shows every project's tasks");
   k.setField("project", "Sample Game"); k.fire(projSel);
   const afterGame = [...taskSel.options].map(o => o.label);
   ok(afterGame.length > 0 && afterGame.every(l => l.startsWith("Sample Game:")), "choosing a project narrows the task list to only that project's tasks");
