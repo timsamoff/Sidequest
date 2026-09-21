@@ -631,10 +631,10 @@ tbody tr:last-child td { border-bottom: 0; }
     var parts = [];
     if (ts.length) {
       var tot = 0, dn = 0, bk = ts.filter(function (t) { return t.block === 0; }).length; ts.forEach(function (t) { tot += weight(t); dn += doneUnits(t); });
-      parts.push(ts.length + (ts.length === 1 ? " task, " : " tasks, ") + dn + " of " + tot + " items done" + (bk ? " (" + bk + " in the Backlog)" : ""));
+      parts.push(ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " (" + bk + " in the Backlog)" : "") + ". " + dn + " of " + tot + " items done.");
     }
-    if (cand) parts.push(state.next === cand.id ? "Chosen as the next project" : "Candidate for the next slot");
-    return parts.length ? parts.join(" \u00b7 ") : "No tasks yet";
+    if (cand) parts.push(state.next === cand.id ? "Chosen as the next project." : "Candidate for the next slot.");
+    return parts.length ? parts.join(" ") : "No tasks yet";
   }
   function findStep(id) {
     if (!id) return null;
@@ -1171,12 +1171,22 @@ tbody tr:last-child td { border-bottom: 0; }
         var f = el("div", { "class": "cfields" });
         var f1 = el("div", { "class": "field" }); f1.appendChild(el("label", { "for": "cs-" + cd.id }, "Start date (optional)"));
         var sd = el("input", { type: "date", id: "cs-" + cd.id }); sd.value = cd.start;
-        on(sd, "change", function () { cd.start = isISO(sd.value) ? sd.value : ""; save(); notify("Start date saved. See it on the Timeline."); });
+        on(sd, "change", function () { cd.start = isISO(sd.value) ? sd.value : ""; cf.disabled = !cd.start; if (!cd.start) cf.value = ""; save(); notify("Start date saved. See it on the Timeline."); });
         f1.appendChild(sd);
         var f2 = el("div", { "class": "field" }); f2.appendChild(el("label", { "for": "cm-" + cd.id }, "Estimated months (optional)"));
         var mo = el("input", { type: "number", id: "cm-" + cd.id, min: "1", max: "36", step: "1" }); mo.value = cd.months;
-        on(mo, "change", function () { var v = parseInt(mo.value, 10); cd.months = (v >= 1 && v <= 36) ? v : ""; if (cd.months === "") mo.value = ""; save(); });
-        f2.appendChild(mo); f.appendChild(f1); f.appendChild(f2); li.appendChild(f);
+        on(mo, "change", function () { var v = parseInt(mo.value, 10); cd.months = (v >= 1 && v <= 36) ? v : ""; if (cd.months === "") mo.value = ""; if (cf) cf.value = ""; save(); });
+        f2.appendChild(mo); f.appendChild(f1); f.appendChild(f2);
+        var f3 = el("div", { "class": "field" }); f3.appendChild(el("label", { "for": "cf-" + cd.id }, "Or pick a target completion date (optional)"));
+        var cf = el("input", cd.start ? { type: "date", id: "cf-" + cd.id } : { type: "date", id: "cf-" + cd.id, disabled: "disabled" });
+        on(cf, "change", function () {
+          if (!cd.start || !isISO(cf.value)) { cf.value = ""; return; }
+          var months = Math.round((parseISO(cf.value) - parseISO(cd.start)) / (DAY * 30.44));
+          if (months < 1 || months > 36) { cf.value = ""; notify("Pick a date between 1 and 36 months from the start date."); return; }
+          cd.months = months; mo.value = months; save(); notify("Completion date saved as about " + months + (months === 1 ? " month" : " months") + ".");
+        });
+        f3.appendChild(cf);
+        f.appendChild(f3); li.appendChild(f);
         var startNote = el("p", { "class": "cnote" });
         startNote.appendChild(document.createTextNode("Chosen as the next project. "));
         startNote.appendChild(on(el("button", { type: "button", "class": "textbtn" }, "Open its project page"), "click", function () { go("proj:" + cd.name); }));
@@ -1617,7 +1627,7 @@ tbody tr:last-child td { border-bottom: 0; }
     }, "It joins the candidates for the next slot. You can park it later.");
   }
   function ideaDialog() {
-    formDialog("New idea", [{ key: "text", label: "Idea or waiting item" }, { key: "note", label: "Note (optional)" }], "Add to parking lot", function (v) {
+    formDialog("New idea", [{ key: "text", label: "Idea" }, { key: "note", label: "Note (optional)" }], "Add to parking lot", function (v) {
       if (!v.text) return "Enter the idea.";
       state.parked.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 300) }); changed();
       return { msg: "Added to the parking lot." };
