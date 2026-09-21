@@ -1618,13 +1618,13 @@ tbody tr:last-child td { border-bottom: 0; }
   }
   function decisionDialog() {
     formDialog("New decision", [
-      { key: "q", label: "What needs deciding?" },
+      { key: "q", label: "Decision" },
       { key: "step", label: "Link to a step (optional)", type: "select", options: stepOptions(), value: "" }
     ], "Add decision", function (v) {
       if (!v.q) return "Enter the decision.";
       state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: v.step }); changed();
       return { msg: "Decision added on the Launch page." };
-    }, "Linking a step means answering the decision ticks that step.");
+    }, "A decision is something you need to figure out before you can move forward. Optionally link it to a step so answering it automatically checks that step off.");
   }
   function stepDialog(kofi) {
     if (!orderedAll().length) { notify("Add a task first."); return; }

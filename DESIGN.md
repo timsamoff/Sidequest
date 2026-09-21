@@ -32,6 +32,28 @@ Consequence: **persistence does not change.** Still `localStorage`, still per-br
 
 Currently, design tokens are a `:root` CSS custom-properties block inside the single `index.html` file. In the multi-file structure, this becomes an actual shared file (e.g. `tokens.css` or similar) that every component/module references, rather than one block sitting at the top of one big file. This is a natural consequence of splitting into multiple files, not a new idea layered on top — the current token *values* and *naming* are expected to carry over; the mechanism they live in changes.
 
+## What's changing: per-project scoping for decisions and the Launch page
+
+### Problem, found via user testing (2026-09-21)
+
+Decisions and the Launch checklist ("kofi" page, internally named after the user's own Ryewired Ko-fi fundraising campaign — a real, specific example of the underlying problem, not just a hypothetical) are currently global and shared across every project in the app, with no per-project scoping at all:
+
+- `state.decisions` (index.html) is one flat list. Any decision, regardless of which project it's conceptually about, appears on the single shared Launch/"kofi" page.
+- A step's `kofi` flag (marking it "Launch-critical") works the same way: any task from any project can have a step flagged for the Launch checklist, and it all lands on that one shared page.
+- Concretely: the user is building a specific fundraising campaign called "Ko-fi" as a subtask of their Ryewired project. Because Sidequest's built-in Launch-checklist feature is also internally called "kofi," and because it's global rather than scoped, there's a real risk of the two concepts bleeding into each other, and more generally, any project's launch-critical steps/decisions currently show up mixed in with every other project's on one page, with no way to keep them separate.
+- The confirmation message a user sees after adding a decision ("Decision added on the Launch page") is accurate today, but doesn't convey that this is one page shared by every project, which is why a newly created decision can feel like it "disappeared" if the user expected something project-specific.
+
+### Decision: scope decisions (and the Launch checklist) per-project
+
+Rather than a copy-only fix, this becomes a real data-model change, deliberately deferred for proper design work rather than implemented ad hoc (2026-09-21). Needs answers before implementation:
+
+1. **Does each project get its own Launch page, or does one shared page filter/group by project?** A separate page per project changes navigation/pinning (currently one `kofi` pin in `state.pins`); a filtered single page keeps one page but adds a project-selector or grouped sections.
+2. **Does a decision require a project, or can it stand alone (e.g. for the "Next project" placeholder, which isn't a real named project yet)?** `decisions` currently link to a step (`step: "..."`), not directly to a project — project scoping would likely be derived from the linked step's task's project, but decisions can also exist with no linked step at all (`step: ""` is valid), which needs its own answer.
+3. **Migration for existing saved data.** Every current user's saved decisions and launch-flagged steps have no project association today. `normalize()` needs a real default/backfill strategy (e.g. infer project from the linked step, or dump unscoped decisions into a general/unassigned bucket) so existing data doesn't break or silently vanish.
+4. **Pinning behavior.** If Launch becomes per-project, does the pin model change (one pin per project's Launch page) or does the single `kofi` pin become a launcher to a project-picker?
+
+This is a v1 architecture fix (the current single-file app), independent of the v2 pivot (multi-file rebuild, gamification) described below — it should likely be designed and possibly implemented before or during the v1 backlog work, not bundled into the v2 rebuild.
+
 ## What's changing: gamification layer
 
 ### Decision: HP is pure emotional flavor, not a real stakes mechanic
