@@ -381,7 +381,7 @@ tbody tr:last-child td { border-bottom: 0; }
   var STATUSES = ["Not started", "In progress", "Done"];
   var CHECKPOINTS = 7;
   var CORE = [["today", "Today"], ["schedule", "Schedule"], ["projects", "Projects"], ["timeline", "Timeline"]];
-  var BOTTOM = [["archive", "Archive"], ["help", "Help"], ["settings", "Settings"]];
+  var BOTTOM = [["parking", "Parking lot"], ["archive", "Archive"], ["help", "Help"], ["settings", "Settings"]];
   var APP_VERSION = "1.0.0";
   var APP_NAME = "Sidequest";
 
@@ -1146,10 +1146,9 @@ tbody tr:last-child td { border-bottom: 0; }
   function renderProjects(root) {
     var c = chosen();
     root.appendChild(standingBlock(c));
-    var g = pgrid(); g.style.marginTop = "22px";
-    var h1 = el("div", { "class": "sechead" }); h1.appendChild(el("h3", null, "Candidates"));
-    h1.appendChild(on(el("button", { type: "button", "class": "small" }, "Add project"), "click", function () { projectDialog(); })); g.put(h1, 1, 1);
-    g.put(el("p", { "class": "hint" }, "Choose which project gets the next slot."), 1, 2);
+    var hd = el("div", { "class": "sechead", style: "margin-top:22px" }); hd.appendChild(el("h3", { "class": "first" }, "Candidates"));
+    hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add project"), "click", function () { projectDialog(); })); root.appendChild(hd);
+    root.appendChild(el("p", { "class": "hint" }, "Choose which project gets the next slot."));
     var list = el("ul", { "class": "list" });
     var cs = liveCands();
     if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a project."));
@@ -1178,15 +1177,23 @@ tbody tr:last-child td { border-bottom: 0; }
         var mo = el("input", { type: "number", id: "cm-" + cd.id, min: "1", max: "36", step: "1" }); mo.value = cd.months;
         on(mo, "change", function () { var v = parseInt(mo.value, 10); cd.months = (v >= 1 && v <= 36) ? v : ""; if (cd.months === "") mo.value = ""; save(); });
         f2.appendChild(mo); f.appendChild(f1); f.appendChild(f2); li.appendChild(f);
+        var startNote = el("p", { "class": "cnote" });
+        startNote.appendChild(document.createTextNode("Chosen as the next project. "));
+        startNote.appendChild(on(el("button", { type: "button", "class": "textbtn" }, "Open its project page"), "click", function () { go("proj:" + cd.name); }));
+        startNote.appendChild(document.createTextNode(" and add a task to actually start it."));
+        li.appendChild(startNote);
       }
       list.appendChild(li);
     });
-    g.put(list, 1, 3);
-    if (state.next) g.put(on(el("button", { type: "button", "class": "small" }, "Clear my choice"), "click", function () { unchooseNext(); changed(); }), 1, 4);
-    var h2 = el("div", { "class": "sechead" }); h2.appendChild(el("h3", null, "Parking lot"));
-    h2.appendChild(on(el("button", { type: "button", "class": "small" }, "Add idea"), "click", function () { ideaDialog(); })); g.put(h2, 2, 1);
-    g.put(el("p", { "class": "hint" }, "Ideas and waiting items that are not competing for the next slot."), 2, 2);
-    var pl = el("ul", { "class": "list" });
+    root.appendChild(list);
+    if (state.next) root.appendChild(on(el("button", { type: "button", "class": "small", style: "margin-top:12px" }, "Clear my choice"), "click", function () { unchooseNext(); changed(); }));
+    root.appendChild(pagesSection());
+  }
+  function renderParkingLot(root) {
+    root.appendChild(el("p", { "class": "hint first" }, "Ideas and waiting items that are not competing for the next slot."));
+    var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", null, "Parking lot"));
+    hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add idea"), "click", function () { ideaDialog(); })); root.appendChild(hd);
+    var pl = el("ul", { "class": "list", style: "margin-top:12px" });
     var ps = live(state.parked);
     if (!ps.length) pl.appendChild(el("li", { "class": "hint" }, "Nothing parked."));
     ps.forEach(function (p) {
@@ -1203,8 +1210,7 @@ tbody tr:last-child td { border-bottom: 0; }
       on(rm, "click", function () { removeToArchive(p, "Idea"); });
       acts.appendChild(rm); row.appendChild(acts); li.appendChild(row); pl.appendChild(li);
     });
-    g.put(pl, 2, 3); root.appendChild(g);
-    root.appendChild(pagesSection());
+    root.appendChild(pl);
   }
 
   function svgEl(tag, attrs, text) {
@@ -1384,7 +1390,7 @@ tbody tr:last-child td { border-bottom: 0; }
       consider("project", n, [state.pnotes[n], cand && cand.note], projectMeta(n), function () { go(validPage("proj:" + n) ? "proj:" + n : "projects"); }, false, ["Notes", "Note"]);
     });
     state.candidates.forEach(function (c) { if (c.arch) consider("project", c.name, [c.note], "Archived project", function () { go("archive"); }, true, ["Note"]); });
-    state.parked.forEach(function (p) { consider("idea", p.text, [p.note], "Parking lot", function () { go(p.arch ? "archive" : "projects"); }, !!p.arch, ["Note"]); });
+    state.parked.forEach(function (p) { consider("idea", p.text, [p.note], "Parking lot", function () { go(p.arch ? "archive" : "parking"); }, !!p.arch, ["Note"]); });
     state.decisions.forEach(function (d) { consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { go(d.arch ? "archive" : "kofi"); }, !!d.arch, ["Answer"]); });
     state.milestones.forEach(function (m) { consider("milestone", m.text, [fmtY(parseISO(m.date)), m.date], fmtY(parseISO(m.date)), function () { go(m.arch ? "archive" : "timeline"); }, !!m.arch); });
     SEARCH_ORDER.forEach(function (k) { groups[k].sort(function (a, b) { return b.score - a.score || a.idx - b.idx; }); });
@@ -1472,6 +1478,7 @@ tbody tr:last-child td { border-bottom: 0; }
     else if (ui.view === "schedule") renderSchedule(root);
     else if (ui.view === "kofi") renderKofi(root);
     else if (ui.view === "projects") renderProjects(root);
+    else if (ui.view === "parking") renderParkingLot(root);
     else if (ui.view === "search") renderSearch(root);
     else if (ui.view === "archive") renderArchive(root);
     else if (ui.view === "settings") renderSettings(root);
@@ -1837,7 +1844,7 @@ tbody tr:last-child td { border-bottom: 0; }
         "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burn-down until you do."]],
       ["Manage projects", [
         "Each project has its own page. Open **Projects**, then **Open** beside its name. Set its start date, pace, an optional length estimate, and notes.",
-        "**Candidates** are projects that could take the next slot. Choose one with its circle. The **Parking lot** holds ideas that are not ready.",
+        "**Candidates** are projects that could take the next slot. Choose one with its circle. Ideas that are not ready yet live on their own **Parking lot** page.",
         "Use **Pin to sidebar** on any page for quick access. Unpinning only hides it. The page stays listed under **Projects**."]],
       ["Read the Timeline", [
         "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",

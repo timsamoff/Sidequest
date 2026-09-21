@@ -58,6 +58,7 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
   const pagesList = [...k.d.querySelectorAll("#view .list")].pop().textContent;
   ok(pagesList.includes("Launch checklist") && pagesList.includes("Sample App") && pagesList.includes("Sample Website") && pagesList.includes("Sample Game"), "Pages and projects lists them");
   ok(k.d.querySelectorAll('#view input[type=radio]').length === 2 && k.$("view").textContent.includes("Sample Browser Extension") && k.$("view").textContent.includes("Sample Command-Line Tool"), "two sample candidates");
+  k.tab("parking");
   ok(k.$("view").textContent.includes("Try a new game engine") && k.$("view").textContent.includes("Write up lessons learned") && !k.$("view").textContent.includes("Redesign the logo"), "parking lot samples (removed one is in the Archive)");
   k.tab("schedule");
   const rows = [...k.d.querySelectorAll(".listpane .tlist")[0].querySelectorAll(".item")].map(b => b.textContent);
@@ -105,7 +106,7 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
   ok(titles.length === 10 && titles.includes("Launch page: steps and decisions") && titles.indexOf("Launch page: steps and decisions") === titles.indexOf("Archive and undo") - 1, "template Help keeps the Launch page topic (" + titles.length + " topics)");
   ok(k.$("view").textContent.includes("tap Launch beside a step"), "and the topic explains the Launch button");
-  ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Archive,Help,Settings", "Help sits between Archive and Settings");
+  ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Parking lot,Archive,Help,Settings", "Help sits between Archive and Settings");
 }
 
 /* ---- archive samples ---- */
