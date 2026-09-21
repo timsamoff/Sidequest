@@ -316,17 +316,17 @@ tbody tr:last-child td { border-bottom: 0; }
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="sqLogo" viewBox="0 0 512 512">
-    <rect width="512" height="512" rx="112" fill="#B9CCE0"/>
-    <path d="M190 84 V 160" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M154 190 H 138 Q 100 190 100 228 V 322" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M226 190 H 262 Q 298 190 298 226 V 254" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M266 296 H 250 Q 224 296 224 322 V 384" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M330 296 H 350 Q 384 296 384 330 V 344" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="190" cy="190" r="36" fill="#FFFFFF" stroke="#2F5D8A" stroke-width="16"/>
-    <circle cx="298" cy="296" r="32" fill="#FFFFFF" stroke="#2F5D8A" stroke-width="16"/>
-    <rect x="74" y="324" width="52" height="52" rx="8" fill="#2F5D8A"/>
-    <rect x="198" y="382" width="52" height="52" rx="8" fill="#2F5D8A"/>
-    <rect x="344" y="344" width="80" height="80" rx="9" transform="rotate(45 384 384)" fill="#C62F2F"/>
+    <rect width="512" height="512" rx="112" fill="var(--est)"/>
+    <path d="M190 84 V 160" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M154 190 H 138 Q 100 190 100 228 V 322" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M226 190 H 262 Q 298 190 298 226 V 254" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M266 296 H 250 Q 224 296 224 322 V 384" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M330 296 H 350 Q 384 296 384 330 V 344" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="190" cy="190" r="36" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/>
+    <circle cx="298" cy="296" r="32" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/>
+    <rect x="74" y="324" width="52" height="52" rx="8" fill="var(--planned)"/>
+    <rect x="198" y="382" width="52" height="52" rx="8" fill="var(--planned)"/>
+    <rect x="344" y="344" width="80" height="80" rx="9" transform="rotate(45 384 384)" fill="var(--burn)"/>
   </symbol>
 </svg>
 <div class="app">
@@ -343,7 +343,7 @@ tbody tr:last-child td { border-bottom: 0; }
         <h1 id="viewTitle">Today</h1>
       </div>
       <div class="topact">
-        <button id="searchBtn" type="button" class="iconbtn only-mobile" aria-label="Search" title="Search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></button>
+        <button id="searchBtn" type="button" class="iconbtn only-mobile" aria-label="Search" title="Search"></button>
         <div class="menuwrap">
           <button class="iconbtn primary" id="newBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="newMenu" aria-label="New" title="New"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg></button>
           <div class="menu" id="newMenu" role="menu" hidden>
