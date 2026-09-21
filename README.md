@@ -17,7 +17,7 @@ It is built for someone juggling several projects at once: a few tasks in each, 
 - **Help:** short instructions for everything, inside the app.
 - **Settings:** call each stretch of work a Block, Sprint, Iteration, Phase, or Week. Pick a date format and a theme, choose when completed tasks are archived, back up and restore, or start fresh.
 
-It works on phones too, in a web browser. On a small screen the sidebar becomes a bottom tab bar, and the menu button lists every page. See **Your data** below if you plan to use Sidequest as a Claude Artifact on a phone. The Claude mobile app itself cannot save your work.
+It works on phones too, in a web browser. On a small screen the sidebar becomes a bottom tab bar, and the menu button lists every page.
 
 ## Try it
 
@@ -35,7 +35,7 @@ Everything is saved in your own browser with `localStorage`. Nothing is sent any
 - Clearing your browser data clears your planner.
 - **Settings, Backup and restore** shows your data as text you can copy and paste back in later. Do this now and then.
 
-**Important if you're using Sidequest through Claude:** it must be open in an actual web browser tab to save anything. That includes the Claude website on your computer or phone, or opening the artifact link directly in your phone's browser. The Claude mobile app itself does not give web pages access to browser storage, so if you open Sidequest inside the Claude app, it will look and work normally, but nothing you do will be saved once you leave or close it. There's no warning from the app when this happens, since it isn't something Sidequest can detect on its own. If you're on mobile, always open it through your browser, not the Claude app.
+**Important on mobile:** Sidequest must be open in an actual web browser tab to save anything. Some apps that embed a web page do not give it access to browser storage, so if you open Sidequest inside one of those, it will look and work normally, but nothing you do will be saved once you leave or close it. There's no warning from the app when this happens, since it isn't something Sidequest can detect on its own. If you're on mobile, always open it through your browser.
 
 ## Tests
 

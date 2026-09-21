@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sidequest</title>
+<meta property="og:title" content="Sidequest">
+<meta property="og:description" content="A small project planner that runs entirely in your browser. There is no account, no server, and no build step.">
+<meta property="og:image" content="https://samoff.com/sidequest/assets/sidequest-icon-512.png">
+<meta property="og:url" content="https://samoff.com/sidequest/">
+<meta property="og:type" content="website">
 <link rel="icon" type="image/svg+xml" href="assets/sidequest-icon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -826,7 +831,7 @@ tbody tr:last-child td { border-bottom: 0; }
     var box = el("div", { "class": "box", style: "margin-bottom:22px" });
     box.appendChild(el("h2", { style: "margin-bottom:4px" }, "Welcome to Sidequest"));
     box.appendChild(el("p", { "class": "hint first" }, "The projects here are samples, so you can see how everything fits together. Look around, change things, and press / to search. When you are ready to start your own, open Settings and choose Start fresh."));
-    box.appendChild(el("p", { "class": "hint" }, "On a phone, open this in your web browser, not the Claude app. The Claude app cannot save your work here."));
+    box.appendChild(el("p", { "class": "hint" }, "On a phone, open this in your web browser rather than inside another app. Some apps that embed a web page cannot save your work here."));
     var acts = el("div", { "class": "actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings" }, "Open Settings"), "click", function () { go("settings"); }));
     acts.appendChild(on(el("button", { type: "button", id: "welcomeDismiss" }, "Dismiss"), "click", function () { state.settings.hideWelcome = true; save(); renderView(); }));
@@ -1751,7 +1756,7 @@ tbody tr:last-child td { border-bottom: 0; }
   }
   function backupPanel(root) {
     root.appendChild(el("p", { "class": "hint" }, "Everything is saved in this browser on this device only. Save a backup now and then."));
-    root.appendChild(el("p", { "class": "hint" }, "Using this inside the Claude phone app? It cannot save your work. Open this page in your phone's web browser instead."));
+    root.appendChild(el("p", { "class": "hint" }, "Using this inside another app on your phone? Some apps that embed a web page cannot save your work. Open this page in your phone's web browser instead."));
     var msg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
     backupControls(root, msg);
     root.appendChild(el("h3", null, "Restore"));
@@ -1900,7 +1905,7 @@ tbody tr:last-child td { border-bottom: 0; }
       ["Settings, backup, and starting over", [
         "In **Settings**, set the default start date and pace, what to call a stretch of work (Block, Sprint, and so on), the date format, the theme, and when to archive completed tasks.",
         "Everything is saved in this browser only. Under **Backup and restore**, copy your data as text, or save a file if your browser offers it, and paste it back later.",
-        "On a phone, always open Sidequest in your web browser, not the Claude app itself. The Claude app cannot save anything you do here, even though it will look and work normally.",
+        "On a phone, always open Sidequest in your web browser rather than inside another app. Some apps that embed a web page cannot save anything you do here, even though it will look and work normally.",
         "**Start fresh** erases everything after a warning. Save a backup first. You can begin empty or with the starting projects."]]
     ];
   }
