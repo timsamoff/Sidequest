@@ -751,7 +751,7 @@ tbody tr:last-child td { border-bottom: 0; }
     meta.appendChild(document.createTextNode(" · " + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + " "));
     if (isLate(t)) meta.appendChild(el("span", { "class": "badge" }, "Overdue"));
     box.appendChild(meta);
-    if (!(t.isNext && !chosen())) box.appendChild(el("p", { "class": "pline" }, "Done when: " + t.done));
+    if (!(t.isNext && !chosen())) box.appendChild(el("p", { "class": "pline" }, "How you'll know it's done: " + t.done));
     var open = t.steps.filter(function (s) { return !s.done; })[0];
     if (open && t.steps.length) box.appendChild(el("p", { "class": "pline" }, "Next step: " + open.text));
     var acts = el("div", { "class": "actions" });
@@ -887,7 +887,7 @@ tbody tr:last-child td { border-bottom: 0; }
     on(sel, "change", function () { setStatus(t, sel.value); changed(); });
     top.appendChild(sel); box.appendChild(top);
     box.appendChild(el("p", { "class": "what" }, dispWhat(t)));
-    if (!(t.isNext && chosen())) box.appendChild(el("p", { "class": "dmeta" }, "Done when: " + t.done));
+    if (!(t.isNext && chosen())) box.appendChild(el("p", { "class": "dmeta" }, "How you'll know it's done: " + t.done));
     if (!t.isNext) {
       var bw = el("div", { "class": "field", style: "max-width:24rem" }); bw.appendChild(el("label", { "for": "task-block" }, wd()));
       var bs = el("select", { id: "task-block", "class": "plain" });
@@ -1374,7 +1374,7 @@ tbody tr:last-child td { border-bottom: 0; }
     }
     state.tasks.forEach(function (t) {
       var when = t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t));
-      consider("task", t.what, [t.notes, t.done, t.project, dispProject(t)], dispProject(t) + " \u00b7 " + when + " \u00b7 " + t.status, function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch, ["Notes", "Done when", "", ""]);
+      consider("task", t.what, [t.notes, t.done, t.project, dispProject(t)], dispProject(t) + " \u00b7 " + when + " \u00b7 " + t.status, function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch, ["Notes", "How you'll know it's done", "", ""]);
       t.steps.forEach(function (st) {
         consider("step", st.text, [], "Step of " + dispProject(t) + ": " + short(t.what, 50) + (st.done ? " \u00b7 done" : ""), function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch);
       });
@@ -1590,8 +1590,8 @@ tbody tr:last-child td { border-bottom: 0; }
     var nt = nextTask();
     formDialog(backlog ? "New backlog item" : "New task", [
       { key: "project", label: "Project", list: "projectNames", value: typeof prefill === "string" ? prefill : (nt && !nt.isNext ? nt.project : "") },
-      { key: "what", label: "What you do" },
-      { key: "done", label: "Done when (optional)" },
+      { key: "what", label: "Task" },
+      { key: "done", label: "How you'll know it's done (optional)" },
       { key: "block", label: wd() + " number (1 to 12), or leave empty for the Backlog", type: "number", min: 1, max: 12, step: 1, placeholder: "Backlog", value: backlog ? "" : (nt ? nt.block : 4) }
     ], backlog ? "Add to Backlog" : "Add task", function (v) {
       var blk = v.block === "" ? 0 : Number(v.block);
