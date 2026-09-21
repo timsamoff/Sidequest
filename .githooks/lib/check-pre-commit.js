@@ -474,6 +474,71 @@ function checkDuplicatedIconMarkup() {
 }
 
 // ---------------------------------------------------------------------------
+// Social meta description drift check
+// ---------------------------------------------------------------------------
+// index.html's <meta property="og:description"> was deliberately copied from
+// README.md's opening paragraph (minus its trailing "Open index.html and start"
+// sentence, which doesn't belong in a social share preview). This is a real,
+// separate drift risk from the general README-touched gate above: og:description
+// is a hardcoded literal duplicating README prose, and nothing else re-derives
+// it, so a future README rewrite can silently leave the social preview stale.
+//
+// This is a presence/prefix check, not a semantic-accuracy check: it confirms
+// og:description's exact text still appears as the leading portion of README's
+// current opening paragraph, not that the two are still "about the same thing"
+// in some looser sense. If the wording is deliberately shortened or reworded on
+// either side, this check needs updating along with it, same as any other
+// content-keyed check in this file.
+
+function extractOgDescription(source) {
+  const m = source.match(/<meta\s+property="og:description"\s+content="([^"]*)"/);
+  return m ? m[1] : null;
+}
+
+function extractReadmeOpeningParagraph(readmeText) {
+  // First non-heading, non-blank paragraph line.
+  const lines = readmeText.split("\n");
+  for (const line of lines) {
+    const t = line.trim();
+    if (t && !t.startsWith("#")) return t;
+  }
+  return null;
+}
+
+function checkSocialMetaDrift() {
+  const violations = [];
+  const touchesIndex = common.isStaged("index.html");
+  const touchesReadme = common.isStaged("README.md");
+  if (!touchesIndex && !touchesReadme) return violations;
+
+  const exception = common.findException("social-meta-drift");
+  if (exception) return violations;
+
+  const indexSource = common.stagedContent("index.html");
+  const readmeSource = common.stagedContent("README.md");
+  if (indexSource === null || readmeSource === null) return violations; // one of the files was deleted in this commit
+
+  const ogDesc = extractOgDescription(indexSource);
+  if (ogDesc === null) return violations; // no og:description tag present; nothing to check
+
+  const readmeOpening = extractReadmeOpeningParagraph(readmeSource);
+  if (readmeOpening === null || !readmeOpening.startsWith(ogDesc)) {
+    violations.push(
+      common.violation(
+        "social-meta-drift",
+        "index.html",
+        null,
+        `index.html's <meta property="og:description"> content ("${ogDesc.slice(0, 60)}...") no longer matches the ` +
+        `start of README.md's opening paragraph. This tag was deliberately copied from README's intro so shared links ` +
+        `show an accurate description -- update og:description to match README's current wording (it can be a ` +
+        `shortened prefix of the README sentence, but must start the same way).`
+      )
+    );
+  }
+  return violations;
+}
+
+// ---------------------------------------------------------------------------
 // npm test gate
 // ---------------------------------------------------------------------------
 // This runs the actual test suite. It is intentionally the LAST check run (see
@@ -512,6 +577,7 @@ module.exports = {
   extractNormalizeBody,
   checkHardcodedHex,
   checkDuplicatedIconMarkup,
+  checkSocialMetaDrift,
   runNpmTest,
   README_KEYWORDS,
 };

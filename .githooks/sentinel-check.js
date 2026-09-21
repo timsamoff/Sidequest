@@ -121,6 +121,25 @@ function fullScanCrossListPairing() {
   return violations;
 }
 
+function fullScanSocialMetaDrift() {
+  const indexSource = common.diskRead("index.html");
+  const readmeSource = common.diskRead("README.md");
+  if (!indexSource || !readmeSource) return [];
+  const ogMatch = indexSource.match(/<meta\s+property="og:description"\s+content="([^"]*)"/);
+  if (!ogMatch) return [];
+  const ogDesc = ogMatch[1];
+  const lines = readmeSource.split("\n");
+  let readmeOpening = null;
+  for (const line of lines) {
+    const t = line.trim();
+    if (t && !t.startsWith("#")) { readmeOpening = t; break; }
+  }
+  if (readmeOpening === null || !readmeOpening.startsWith(ogDesc)) {
+    return [common.violation("social-meta-drift", "index.html", null, `og:description ("${ogDesc.slice(0, 60)}...") no longer matches the start of README's opening paragraph.`)];
+  }
+  return [];
+}
+
 function fullScanHookIntegrity() {
   const violations = [];
   const { execFileSync } = require("child_process");
@@ -163,6 +182,7 @@ function runFullScan() {
   violations = violations.concat(fullScanNormalizeDefaultsPairing());
   violations = violations.concat(fullScanCrossListPairing());
   violations = violations.concat(fullScanHookIntegrity());
+  violations = violations.concat(fullScanSocialMetaDrift());
   // README keyword map, whole-repo version: every current CORE/BOTTOM/pinned-page
   // label should appear in README's current text.
   const source = common.diskRead("index.html");
@@ -198,6 +218,7 @@ function main() {
     violations = violations.concat(checks.checkNormalizeDefaultsPairing());
     violations = violations.concat(checks.checkHardcodedHex());
     violations = violations.concat(checks.checkDuplicatedIconMarkup());
+    violations = violations.concat(checks.checkSocialMetaDrift());
     violations = violations.concat(checks.runNpmTest());
     if (violations.length) {
       common.printViolations(violations, "Sentinel: sentinel-check found violations (diff-scoped)");

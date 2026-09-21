@@ -18,6 +18,7 @@ function main() {
   violations = violations.concat(checks.checkNormalizeDefaultsPairing());
   violations = violations.concat(checks.checkHardcodedHex());
   violations = violations.concat(checks.checkDuplicatedIconMarkup());
+  violations = violations.concat(checks.checkSocialMetaDrift());
 
   if (violations.length) {
     common.printViolations(violations, "Sentinel: pre-commit check failed");
