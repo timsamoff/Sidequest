@@ -42,7 +42,7 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
   ok(k.$("viewTitle").textContent === "Today" && k.d.title.includes("Sidequest"), "opens on Today");
   ok(k.$("view").textContent.includes("Welcome to Sidequest") && k.$("view").textContent.includes("samples") && !!k.$("welcomeSettings") && !!k.$("welcomeDismiss"), "welcome box explains the samples");
   ok(k.d.querySelector('.tab[data-view=kofi]').textContent.trim() === "Launch" && k.d.querySelector("#nav").textContent.includes("Pinned"), "'Launch' checklist is the pinned page");
-  ok([...k.d.querySelectorAll("#nav .tab")].map(t => t.dataset.view).join() === "today,schedule,projects,timeline,kofi", "sidebar: core pages + one pinned page");
+  ok([...k.d.querySelectorAll("#nav .tab")].map(t => t.dataset.view).join() === "today,projects,schedule,timeline,kofi", "sidebar: core pages + one pinned page");
   // dismiss
   k.click(k.$("welcomeDismiss")); ok(!k.$("view").textContent.includes("Welcome to Sidequest") && k.saved().settings.hideWelcome === true, "dismissing hides it and remembers");
   // Today content

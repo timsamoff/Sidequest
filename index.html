@@ -380,7 +380,7 @@ tbody tr:last-child td { border-bottom: 0; }
   var DAY = 86400000;
   var STATUSES = ["Not started", "In progress", "Done"];
   var CHECKPOINTS = 7;
-  var CORE = [["today", "Today"], ["schedule", "Schedule"], ["projects", "Projects"], ["timeline", "Timeline"]];
+  var CORE = [["today", "Today"], ["projects", "Projects"], ["schedule", "Tasks"], ["timeline", "Timeline"]];
   var BOTTOM = [["parking", "Parking lot"], ["archive", "Archive"], ["help", "Help"], ["settings", "Settings"]];
   var APP_VERSION = "1.0.0";
   var APP_NAME = "Sidequest";
@@ -957,17 +957,17 @@ tbody tr:last-child td { border-bottom: 0; }
 
   function renderKofi(root) {
     root.appendChild(pinBar("kofi"));
-    root.appendChild(el("p", { "class": "hint first" }, "Everything to finish before you ship, gathered from your tasks. Tick a step here or in the Schedule and it stays in sync."));
+    root.appendChild(el("p", { "class": "hint first" }, "Everything to finish before you ship, gathered from your tasks. Tick a step here or in Tasks and it stays in sync."));
     var g = pgrid();
     var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h3", { id: "h-checks" }, "Before you launch"));
     ha.appendChild(on(el("button", { type: "button", "class": "small" }, "Add item"), "click", function () { stepDialog(true); }));
     g.put(ha, 1, 1);
-    g.put(el("p", { "class": "hint" }, "These are steps from the Schedule. Tick one here or there and it stays in sync."), 1, 2);
+    g.put(el("p", { "class": "hint" }, "These are steps from Tasks. Tick one here or there and it stays in sync."), 1, 2);
     var prog = el("p", { "class": "progress", role: "status", "aria-live": "polite" });
     var items = kofiItems(), rows = {};
     function progress() { var n = items.filter(function (x) { return x.s.done; }).length; prog.textContent = items.length ? n + " of " + items.length + " done" : ""; }
     var ul = el("ul", { "class": "list check", "aria-labelledby": "h-checks" });
-    if (!items.length) ul.appendChild(el("li", { "class": "hint" }, "No steps are marked for the launch checklist. Use Launch on a step in the Schedule, or add an item."));
+    if (!items.length) ul.appendChild(el("li", { "class": "hint" }, "No steps are marked for the launch checklist. Use Launch on a step in Tasks, or add an item."));
     items.forEach(function (x) {
       var li = el("li", { "class": x.s.done ? "done" : "" });
       var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = x.s.done;
@@ -1873,7 +1873,7 @@ tbody tr:last-child td { border-bottom: 0; }
       ["Add and schedule tasks", [
         "Tap **+**, then **New task**. Enter the project, what you do, and when it is done.",
         "The " + W + " number sets the dates. " + W + " 1 starts on the project's start date. Leave it empty to put the task in the Backlog.",
-        "Open a task in the **Schedule** to change its status, add steps and notes, or move it to another " + w + ".",
+        "Open a task in **Tasks** to change its status, add steps and notes, or move it to another " + w + ".",
         "Finishing every step marks the task done."]],
       ["Use the Backlog", [
         "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
@@ -1887,7 +1887,7 @@ tbody tr:last-child td { border-bottom: 0; }
         "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline.",
         "The full-width burndown and the weekly counts are further down the page."]],
       ["Launch page: steps and decisions", [
-        "On any task, tap **Launch** beside a step to put that step on the **Launch** page. Ticking it there or in the Schedule keeps both in sync.",
+        "On any task, tap **Launch** beside a step to put that step on the **Launch** page. Ticking it there or in **Tasks** keeps both in sync.",
         "Link a decision to a step. Answering the decision ticks the step, and clearing the answer unticks it.",
         "Use **Add item** to create a new step for the list, and **Add decision** to add a question to settle."]],
       ["Archive and undo", [

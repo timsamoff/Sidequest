@@ -7,10 +7,10 @@ It is built for someone juggling several projects at once: a few tasks in each, 
 ## What it does
 
 - **Today:** the one task to work on next, anything overdue, and a burndown chart.
-- **Schedule:** every task with steps, notes, and a status. Move tasks between sprints, or park them in the Backlog until you are ready.
 - **Projects:** each project has its own page, start date, pace, and notes. Choose which candidate gets the next slot.
+- **Tasks:** every task with steps, notes, and a status. Move tasks between sprints, or park them in the Backlog until you are ready.
 - **Timeline:** every project on one timeline, with optional estimates and your own milestones, plus the full-width burndown.
-- **Launch checklist:** a pinned page built from any step you flag as "Launch", with decisions linked to the steps they unblock. Tick a step here or in the Schedule and both stay in sync.
+- **Launch checklist:** a pinned page built from any step you flag as "Launch", with decisions linked to the steps they unblock. Tick a step here or in Tasks and both stay in sync.
 - **Parking lot:** a dedicated page for loose ideas and waiting items that are not competing for the next project slot.
 - **Archive:** completed tasks and anything you remove land here first. Restore items, or delete them for good after a warning.
 - **Search:** press `/` anywhere to search tasks, steps, notes, projects, decisions, milestones, and the Archive.
