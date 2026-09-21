@@ -49,6 +49,10 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
   ok(k.$("view").textContent.includes("Next up") && k.d.querySelector("#view .chartbox svg") && /\d+ items remaining, out of \d+/.test(k.$("view").textContent), "Today works with sample data");
   const next = k.d.querySelector("#view .panel .ptitle").textContent;
   ok(next === "Build the sign-in flow", "Next up is the in-progress sample task: " + next);
+  const projLink = k.btn(k.d.querySelector("#view .panel"), "Sample App");
+  ok(!!projLink && projLink.classList.contains("plink"), "Next up names the project as a link");
+  k.click(projLink);
+  ok(k.$("viewTitle").textContent === "Sample App", "clicking the project link opens that project's page");
 }
 
 /* ---- sample projects ---- */

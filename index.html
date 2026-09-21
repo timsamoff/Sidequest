@@ -751,11 +751,16 @@ tbody tr:last-child td { border-bottom: 0; }
     }
     box.appendChild(el("p", { "class": "ptitle" }, dispWhat(t)));
     var meta = el("p", { "class": "pmeta" });
-    meta.appendChild(el("b", null, dispProject(t)));
+    var pname = dispProject(t);
+    if (validPage("proj:" + pname)) {
+      var pl = el("button", { type: "button", "class": "textbtn plink" }, pname);
+      on(pl, "click", function () { go("proj:" + pname); });
+      meta.appendChild(pl);
+    } else meta.appendChild(el("b", null, pname));
     meta.appendChild(document.createTextNode(" · " + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + " "));
     if (isLate(t)) meta.appendChild(el("span", { "class": "badge" }, "Overdue"));
     box.appendChild(meta);
-    if (!(t.isNext && !chosen())) box.appendChild(el("p", { "class": "pline" }, "How you'll know it's done: " + t.done));
+    if (!(t.isNext && !chosen())) box.appendChild(el("p", { "class": "pline" }, "Done when: " + t.done));
     var open = t.steps.filter(function (s) { return !s.done; })[0];
     if (open && t.steps.length) box.appendChild(el("p", { "class": "pline" }, "Next step: " + open.text));
     var acts = el("div", { "class": "actions" });
@@ -891,7 +896,7 @@ tbody tr:last-child td { border-bottom: 0; }
     on(sel, "change", function () { setStatus(t, sel.value); changed(); });
     top.appendChild(sel); box.appendChild(top);
     box.appendChild(el("p", { "class": "what" }, dispWhat(t)));
-    if (!(t.isNext && chosen())) box.appendChild(el("p", { "class": "dmeta" }, "How you'll know it's done: " + t.done));
+    if (!(t.isNext && chosen())) box.appendChild(el("p", { "class": "dmeta" }, "Done when: " + t.done));
     if (!t.isNext) {
       var bw = el("div", { "class": "field", style: "max-width:24rem" }); bw.appendChild(el("label", { "for": "task-block" }, wd()));
       var bs = el("select", { id: "task-block", "class": "plain" });
@@ -1394,7 +1399,7 @@ tbody tr:last-child td { border-bottom: 0; }
     }
     state.tasks.forEach(function (t) {
       var when = t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t));
-      consider("task", t.what, [t.notes, t.done, t.project, dispProject(t)], dispProject(t) + " \u00b7 " + when + " \u00b7 " + t.status, function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch, ["Notes", "How you'll know it's done", "", ""]);
+      consider("task", t.what, [t.notes, t.done, t.project, dispProject(t)], dispProject(t) + " \u00b7 " + when + " \u00b7 " + t.status, function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch, ["Notes", "Done when", "", ""]);
       t.steps.forEach(function (st) {
         consider("step", st.text, [], "Step of " + dispProject(t) + ": " + short(t.what, 50) + (st.done ? " \u00b7 done" : ""), function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch);
       });
