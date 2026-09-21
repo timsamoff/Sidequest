@@ -797,12 +797,12 @@ tbody tr:last-child td { border-bottom: 0; }
     box.appendChild(on(el("button", { type: "button", "class": "textbtn", style: "margin-top:10px" }, "Running behind? Slip the schedule"), "click", function () { slipDialog(); }));
     return box;
   }
-  function recordThisWeek() {
+  function currentCheckpointIndex() {
     var cps = checkpoints(), idx = 0;
     cps.forEach(function (ms, i) { if (ms <= TODAY) idx = i; });
-    state.actual[idx] = remainingUnits(); save();
-    renderView(); notify("Recorded " + remainingUnits() + " items remaining for the week of " + fmt(cps[idx]) + ".");
+    return idx;
   }
+  function recordCurrentWeek() { state.actual[currentCheckpointIndex()] = remainingUnits(); }
   function burnParts(o) {
     o = o || {};
     var h = el(o.level || "h2", null, "Burn-down");
@@ -814,14 +814,12 @@ tbody tr:last-child td { border-bottom: 0; }
     drawChart(host, o.wide);
     var rn = remainingUnits(), rb = el("div", { "class": "box" }), nbk = backlogTasks().length;
     rb.appendChild(el("p", { "class": "hint first remaining" }, rn + (rn === 1 ? " item" : " items") + " remaining, out of " + totalUnits() + (nbk ? ". " + nbk + (nbk === 1 ? " backlog item is" : " backlog items are") + " not counted until scheduled." : "")));
-    var acts = el("div", { "class": "actions" });
-    acts.appendChild(on(el("button", { type: "button", "class": "primary" }, "Record this week"), "click", recordThisWeek));
-    return { h: h, chart: cb, count: rb, actions: acts };
+    return { h: h, chart: cb, count: rb };
   }
   function burnPanel(o) {
     var box = el("div"), b = burnParts(o);
     b.count.style.marginTop = "12px";
-    box.appendChild(b.h); box.appendChild(b.chart); box.appendChild(b.count); box.appendChild(b.actions);
+    box.appendChild(b.h); box.appendChild(b.chart); box.appendChild(b.count);
     return box;
   }
   function welcomeBox() {
@@ -839,7 +837,7 @@ tbody tr:last-child td { border-bottom: 0; }
     if (!state.settings.hideWelcome) root.appendChild(welcomeBox());
     var g = pgrid(), b = burnParts({});
     g.put(el("h2", null, "Next up"), 1, 1); g.put(nextUpPanel(), 1, 2); g.put(overduePanel(), 1, 3);
-    g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(b.count, 2, 3); g.put(b.actions, 2, 4);
+    g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(b.count, 2, 3);
     root.appendChild(g);
   }
 
@@ -1527,7 +1525,7 @@ tbody tr:last-child td { border-bottom: 0; }
     });
   }
   function changed() {
-    var ids = autoArchive(); save(); renderAll();
+    var ids = autoArchive(); recordCurrentWeek(); save(); renderAll();
     if (ids.length) archivedToast(ids);
   }
   function removeToArchive(item, label, before) {
@@ -1866,7 +1864,7 @@ tbody tr:last-child td { border-bottom: 0; }
       ["Work through your day (Today)", [
         "**Next up** shows the task to do now. Use **Start**, **Mark done**, or **Open task**.",
         "Anything past its end date appears below it. If you are running behind, use **Slip the schedule** in the menu.",
-        "The burn-down shows work left against the plan. Tap **Record this week** to add your actual count to the chart."]],
+        "The burn-down shows work left against the plan. It records this week's count automatically whenever you make a change."]],
       ["Add and schedule tasks", [
         "Tap **+**, then **New task**. Enter the project, what you do, and when it is done.",
         "The " + W + " number sets the dates. " + W + " 1 starts on the project's start date. Leave it empty to put the task in the Backlog.",
