@@ -8,9 +8,9 @@ Sidequest is changing in two ways at once: how it's built (single self-contained
 
 ## What Sidequest is (unchanged)
 
-Sidequest is a project planner for someone juggling several side projects at once: a backlog of tasks, each broken into steps, scheduled into blocks (renamed Sprint/Iteration/Phase/Week per user preference), with a burn-down chart tracking progress against a plan. Projects have their own pace, start date, and notes. A parking lot holds ideas not ready to become projects yet. Decisions can block launch-critical steps. Completed and removed items go to an Archive, not straight to deletion.
+Sidequest is a project planner for someone juggling several side projects at once: a backlog of tasks, each broken into steps, scheduled into blocks (renamed Sprint/Iteration/Phase/Week per user preference), with a burndown chart tracking progress against a plan. Projects have their own pace, start date, and notes. A parking lot holds ideas not ready to become projects yet. Decisions can block launch-critical steps. Completed and removed items go to an Archive, not straight to deletion.
 
-**This model does not change.** The task/step/block data structure, the burn-down math, the Backlog/Candidates/Parking-lot/Archive workflow, and the terminology-flexibility feature are the working core of the app and are considered done and good. Any new work (architecture or gamification) builds on top of this model or reads from it; it does not replace, duplicate, or route around it.
+**This model does not change.** The task/step/block data structure, the burndown math, the Backlog/Candidates/Parking-lot/Archive workflow, and the terminology-flexibility feature are the working core of the app and are considered done and good. Any new work (architecture or gamification) builds on top of this model or reads from it; it does not replace, duplicate, or route around it.
 
 ## What's changing: distribution and architecture
 
@@ -75,7 +75,7 @@ What "prominent" means in practice (visual placement, exact triggers) is still o
 
 These need real decisions, not defaults, before the gamification layer can be built:
 
-1. **XP/Score mapping.** Should XP per completion reuse the existing burn-down `weight()` concept (a task's step count, minimum 1) directly, so game-score and burn-down accounting are always the same number? Or should score be a separate, independently-tuned value?
+1. **XP/Score mapping.** Should XP per completion reuse the existing burndown `weight()` concept (a task's step count, minimum 1) directly, so game-score and burndown accounting are always the same number? Or should score be a separate, independently-tuned value?
 2. **HP trigger and readout.** What specifically decreases HP — the existing `isLate()` overdue concept? Something else? Is HP a single global number, or per-project? What does the "prominent" readout actually look like (a top-of-page bar like a game HUD, a badge, something else)?
 3. **Reward triggers.** Visual/audio effects on completion — which completion events trigger them (a step, a task, a whole project)? Is this the cheapest, lowest-risk gamification element to prototype first, independent of the bigger architecture change (nothing about a completion animation requires the multi-file rebuild)?
 4. **File/module structure.** What the actual split looks like (by view, by concern, a components directory, a build step or none) is not yet decided.

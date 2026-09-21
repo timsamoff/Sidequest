@@ -805,7 +805,7 @@ tbody tr:last-child td { border-bottom: 0; }
   function recordCurrentWeek() { state.actual[currentCheckpointIndex()] = remainingUnits(); }
   function burnParts(o) {
     o = o || {};
-    var h = el(o.level || "h2", null, "Burn-down");
+    var h = el(o.level || "h2", null, "Burndown");
     var cb = el("div", { "class": "chartbox" }); var host = el("div"); cb.appendChild(host);
     var lg = el("div", { "class": "legend" });
     var l1 = el("span"); l1.appendChild(el("i", { "class": "p" })); l1.appendChild(document.createTextNode("Planned"));
@@ -909,7 +909,7 @@ tbody tr:last-child td { border-bottom: 0; }
 
     var nDone = t.steps.filter(function (s) { return s.done; }).length;
     box.appendChild(el("h3", null, t.steps.length ? "Steps (" + nDone + " of " + t.steps.length + " done)" : "Steps"));
-    if (!t.steps.length) box.appendChild(el("p", { "class": "hint" }, "No steps yet. This task counts as one item in the burn-down. Add steps to break it up."));
+    if (!t.steps.length) box.appendChild(el("p", { "class": "hint" }, "No steps yet. This task counts as one item in the burndown. Add steps to break it up."));
     if (t.steps.length) box.appendChild(el("p", { "class": "hint" }, "Launch puts a step on the Launch checklist. It stays one step, so nothing is counted twice."));
     var ul = el("ul", { "class": "steps" });
     t.steps.forEach(function (s) {
@@ -1246,7 +1246,7 @@ tbody tr:last-child td { border-bottom: 0; }
     var W = wide ? 960 : 640, H = wide ? 320 : 300, L = 40, R = 18, T = 16, B = 44;
     var svg = svgEl("svg", { "class": "chart", viewBox: "0 0 " + W + " " + H, role: "img" });
     var pl = cps.map(planned);
-    svg.setAttribute("aria-label", "Burn-down chart. Planned items remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".");
+    svg.setAttribute("aria-label", "Burndown chart. Planned items remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".");
     function x(i) { return L + (W - L - R) * i / (n - 1); }
     function y(v) { return T + (H - T - B) * (1 - v / ymax); }
     for (var v = 0; v <= ymax; v += tick) {
@@ -1342,7 +1342,7 @@ tbody tr:last-child td { border-bottom: 0; }
     mbox.appendChild(ul); root.appendChild(mbox);
     root.appendChild(burnPanel({ wide: true, level: "h3" }));
     root.appendChild(el("h3", null, "Weekly counts"));
-    root.appendChild(el("p", { "class": "hint" }, "Enter the number of items left each week to draw your actual line on the burn-down."));
+    root.appendChild(el("p", { "class": "hint" }, "Enter the number of items left each week to draw your actual line on the burndown."));
     var wrap = el("div", { "class": "tablewrap weekly" }); var table = el("table");
     var thead = el("thead"); var hr = el("tr"); ["Week starting", "Planned remaining", "Actual remaining"].forEach(function (h) { hr.appendChild(el("th", null, h)); }); thead.appendChild(hr); table.appendChild(thead);
     var body = el("tbody"); var tot = totalUnits();
@@ -1801,7 +1801,7 @@ tbody tr:last-child td { border-bottom: 0; }
     changed(); notify(KIND_LABEL[e.kind] + " restored.");
   }
   function deleteForever(e) {
-    var extra = e.kind === "task" ? " Its steps also stop counting in the burn-down and on the launch checklist." : "";
+    var extra = e.kind === "task" ? " Its steps also stop counting in the burndown and on the launch checklist." : "";
     confirmDialog("Delete forever?", "\u201c" + short(e.title, 80) + "\u201d will be permanently deleted. This cannot be undone." + extra, "Delete forever", function () {
       dropEntry(e); save(); renderAll(); notify("Deleted.");
     });
@@ -1864,7 +1864,7 @@ tbody tr:last-child td { border-bottom: 0; }
       ["Work through your day (Today)", [
         "**Next up** shows the task to do now. Use **Start**, **Mark done**, or **Open task**.",
         "Anything past its end date appears below it. If you are running behind, use **Slip the schedule** in the menu.",
-        "The burn-down shows work left against the plan. It records this week's count automatically whenever you make a change."]],
+        "The burndown shows work left against the plan. It records this week's count automatically whenever you make a change."]],
       ["Add and schedule tasks", [
         "Tap **+**, then **New task**. Enter the project, what you do, and when it is done.",
         "The " + W + " number sets the dates. " + W + " 1 starts on the project's start date. Leave it empty to put the task in the Backlog.",
@@ -1872,7 +1872,7 @@ tbody tr:last-child td { border-bottom: 0; }
         "Finishing every step marks the task done."]],
       ["Use the Backlog", [
         "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
-        "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burn-down until you do."]],
+        "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burndown until you do."]],
       ["Manage projects", [
         "Each project has its own page. Open **Projects**, then **Open** beside its name. Set its start date, pace, an optional length estimate, and notes.",
         "**Candidates** are projects that could take the next slot. Choose one with its circle. Ideas that are not ready yet live on their own **Parking lot** page.",
@@ -1880,7 +1880,7 @@ tbody tr:last-child td { border-bottom: 0; }
       ["Read the Timeline", [
         "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
         "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline.",
-        "The full-width burn-down and the weekly counts are further down the page."]],
+        "The full-width burndown and the weekly counts are further down the page."]],
       ["Launch page: steps and decisions", [
         "On any task, tap **Launch** beside a step to put that step on the **Launch** page. Ticking it there or in the Schedule keeps both in sync.",
         "Link a decision to a step. Answering the decision ticks the step, and clearing the answer unticks it.",
