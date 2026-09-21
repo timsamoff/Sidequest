@@ -157,4 +157,26 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
   // reload keeps changes and skips the welcome
   const k2 = kit(mk(k.saved())); ok(k2.$("viewTitle").textContent === "Today" && !k2.$("view").textContent.includes("Welcome to Sidequest") || k2.saved !== undefined, "reload opens on Today");
 }
+
+/* ---- new step: project filter ---- */
+{
+  const k = kit(mk());
+  k.menuAct("newBtn", "newStep");
+  const projSel = k.$("f-project"), taskSel = k.$("f-task");
+  ok(!!projSel && !!taskSel, "New step form has a project filter and a task select");
+  ok(projSel.value === "", "with nothing selected in Schedule, the project filter starts on All projects");
+  ok(taskSel.selectedOptions[0].label === "Sample App: Build the sign-in flow", "the task select still defaults to the next-up task");
+  const allProjects = [...taskSel.options].map(o => o.label);
+  ok(allProjects.some(l => l.startsWith("Sample Website:")) && allProjects.some(l => l.startsWith("Sample Game:")), "All projects shows every project's tasks");
+  k.setField("project", "Sample Game"); k.fire(projSel);
+  const afterGame = [...taskSel.options].map(o => o.label);
+  ok(afterGame.length > 0 && afterGame.every(l => l.startsWith("Sample Game:")), "choosing a project narrows the task list to only that project's tasks");
+  k.setField("text", "A step added via the filtered picker");
+  k.click(k.btn(k.$("modalBody"), "Add step"));
+  ok(k.$("toast").textContent.includes("Sample Game"), "step is added to the task chosen after filtering");
+  // opening a task first changes the default filter to that task's project
+  k.tab("schedule"); k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Build the layout")));
+  k.menuAct("newBtn", "newStep");
+  ok(k.$("f-project").value === "Sample Website", "with a task open in Schedule, defaults the filter to that task's project");
+}
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

@@ -650,7 +650,11 @@ tbody tr:last-child td { border-bottom: 0; }
     orderedCounted().forEach(function (t) { t.steps.forEach(function (s) { o.push({ value: s.id, label: dispProject(t) + ": " + short(s.text, 60) }); }); });
     return o;
   }
-  function taskOptions() { return orderedAll().map(function (t) { return { value: t.id, label: dispProject(t) + ": " + short(dispWhat(t), 60) }; }); }
+  function taskOptions(projectFilter) {
+    var ts = orderedAll();
+    if (projectFilter) ts = ts.filter(function (t) { return dispProject(t) === projectFilter; });
+    return ts.map(function (t) { return { value: t.id, label: dispProject(t) + ": " + short(dispWhat(t), 60) }; });
+  }
   function findTask(id) { var a = live(state.tasks); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
   function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (state.tasks[i].id === id) return state.tasks[i]; return null; }
 
@@ -1645,9 +1649,13 @@ tbody tr:last-child td { border-bottom: 0; }
   }
   function stepDialog(kofi) {
     if (!orderedAll().length) { notify("Add a task first."); return; }
-    var pick = ui.sel && findTask(ui.sel) ? ui.sel : (nextTask() || orderedAll()[0]).id;
+    var selTask = ui.sel && findTask(ui.sel);
+    var pick = selTask ? selTask.id : (nextTask() || orderedAll()[0]).id;
+    var startProject = selTask ? dispProject(selTask) : "";
+    var projOpts = [{ value: "", label: "All projects" }].concat(projectNames().map(function (n) { return { value: n, label: n }; }));
     formDialog(kofi ? "New launch item" : "New step", [
-      { key: "task", label: "Task", type: "select", options: taskOptions(), value: pick },
+      { key: "project", label: "Project", type: "select", options: projOpts, value: startProject },
+      { key: "task", label: "Task", type: "select", options: taskOptions(startProject), value: pick },
       { key: "text", label: kofi ? "What needs doing before you launch?" : "Step" }
     ], "Add step", function (v) {
       var t = findTask(v.task);
@@ -1656,6 +1664,14 @@ tbody tr:last-child td { border-bottom: 0; }
       t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false, kofi: !!kofi }); syncFromSteps(t); changed();
       return { msg: "Step added to " + dispProject(t) + (kofi ? " and the launch checklist." : ".") };
     }, kofi ? "The step lives in a task and also shows on the launch checklist." : "");
+    var projSel = $("f-project"), taskSel = $("f-task");
+    if (projSel && taskSel) {
+      on(projSel, "change", function () {
+        var opts = taskOptions(projSel.value);
+        taskSel.innerHTML = "";
+        opts.forEach(function (o) { taskSel.appendChild(el("option", { value: o.value }, o.label)); });
+      });
+    }
   }
   function milestoneDialog() {
     formDialog("New milestone", [{ key: "text", label: "Milestone" }, { key: "date", label: "Date", type: "date" }], "Add milestone", function (v) {
