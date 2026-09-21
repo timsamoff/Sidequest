@@ -1,0 +1,4 @@
+#!/bin/sh
+# Sentinel pre-commit hook. Tracked at .githooks/pre-commit.
+# Installed via: git config core.hooksPath .githooks
+exec node "$(git rev-parse --show-toplevel)/.githooks/pre-commit.js"

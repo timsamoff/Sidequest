@@ -4,7 +4,9 @@
   "description": "A small, single-file project planner that runs in the browser.",
   "private": true,
   "scripts": {
-    "test": "node tests/run.js"
+    "test": "node tests/run.js",
+    "sentinel:check": "node .githooks/sentinel-check.js",
+    "sentinel:check:full": "node .githooks/sentinel-check.js --full"
   },
   "engines": {
     "node": ">=22"

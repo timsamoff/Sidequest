@@ -1,0 +1,4 @@
+#!/bin/sh
+# Sentinel commit-msg hook. Tracked at .githooks/commit-msg.
+# Installed via: git config core.hooksPath .githooks
+exec node "$(git rev-parse --show-toplevel)/.githooks/commit-msg.js" "$1"

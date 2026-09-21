@@ -1,0 +1,7 @@
+(no extension)
+.html
+.js
+.json
+.md
+.png
+.svg

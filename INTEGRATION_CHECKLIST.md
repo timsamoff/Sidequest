@@ -209,6 +209,24 @@ Both are now recorded in `CLAUDE.md`'s "Conventions established" section as sett
 
 ---
 
+## Part 6 — Implementation status (Gate-Check Implementation `03`, run 2026-09-21)
+
+Mechanism: native git hooks, tracked at `.githooks/` (`commit-msg`, `pre-commit`, plus `lib/*.js` for the shared check logic), installed via `git config core.hooksPath .githooks`. Manual command: `node .githooks/sentinel-check.js` (diff-scoped, mirrors the pre-commit hook) and `node .githooks/sentinel-check.js --full` (whole-repo structural scan, enforcing).
+
+- **Gate 1, CLAUDE.md-touched**: **Implemented.** `.githooks/lib/check-pre-commit.js`, `checkClaudeMdTouched()`. Uses filesystem mtime (`common.diskMTimeMs`) against HEAD's commit time, never `git diff`, per the gitignored-file constraint identified here. Tested against a real staged `CORE`-array addition (fired correctly) and against a bumped `CLAUDE.md` mtime (cleared correctly).
+- **Gate 2, README-touched**: **Implemented, including the optional keyword-mapping layer.** `.githooks/lib/check-pre-commit.js`, `checkReadmeTouched()`. The keyword-mapping second layer was built as recommended in this checklist's own tradeoff analysis, but was NOT reconfirmed live with the user during `03` (non-interactive run) — flagged in `03`'s report and `sentinel-notes/TODO.md` (`readme-keyword-mapping-maintenance`) as needing a look to confirm the maintenance cost is still acceptable.
+- **Gate 3, design document**: **N/A, as decided here.** Not implemented; no `DESIGN.md` exists.
+- **Gate 4, TODO.md completion-sync**: **Implemented (hard check); soft check implemented as a non-blocking reminder.** `.githooks/lib/check-pre-commit.js`, `checkTodoSync()` (hard, mtime-based, design-brief-linked) and `todoBacklogReminder()` (soft, prints a non-blocking count of open items on every pre-commit run).
+- **npm test gate**: **Implemented.** `.githooks/lib/check-pre-commit.js`, `runNpmTest()`. Runs last in the pre-commit hook (slowest check, so it runs after the cheap ones). Tested with a deliberately broken assertion — confirmed blocking.
+- **normalize()/defaults() pairing**: **Implemented.** `.githooks/lib/check-pre-commit.js`, `checkNormalizeDefaultsPairing()`, plus a whole-file version in the full-scan mode. A content-keyed `INTENTIONALLY_UNPAIRED` allowlist (currently just `v`) covers the one legitimate exception. Tested for a new unpaired key and for deletion of an existing paired branch.
+- **Cross-list consistency (`WORDS`/`SEARCH_LABELS`/`KIND_LABEL`)**: **Implemented in narrowed form.** Per this checklist's own caution that the full 4-list version needs careful design, `03` built a conservative version limited to `SEARCH_LABELS`/`SEARCH_ORDER` and `KIND_LABEL`/`KIND_FILTERS` only — two pairs that are genuinely meant to enumerate the same concept from two sides. `WORDS` was excluded (unrelated closed vocabulary, not a pairing) and `CORE`/`BOTTOM` were not folded in (not the same two-sided shape). Runs only in the full-scan mode (`sentinel-check.js --full`), not per-commit, since it needs the whole file. Flagged as new/unconfirmed in `03`'s report.
+- **Hardcoded-hex-outside-tokens**: **Implemented.** `.githooks/lib/check-pre-commit.js`, `checkHardcodedHex()`. Scans only added lines for new hex literals landing outside the `:root` token blocks; `assets/sidequest-icon.svg` is excluded from this rule specifically (documented reason: it's a static favicon asset that cannot use CSS custom properties), not given a blanket exemption from other checks.
+- **Duplicated-icon/SVG-markup**: **Implemented.** `.githooks/lib/check-pre-commit.js`, `checkDuplicatedIconMarkup()`. Flags a newly-added static `<svg>` block whose path data exactly matches an existing `ICON_*` JS constant's path data — the same shape as the real `search-icon-dedup` fix.
+- **Part 0b, new-file-extension check**: **Implemented as a standing default**, independent of this checklist. `.githooks/lib/check-new-extension.js`; manifest at `.githooks/sentinel-known-extensions.txt` (tracked, not under gitignored `sentinel-notes/` — a fork resolved without live confirmation, flagged in `03`'s report). Seeded from the current working tree.
+- **Known gaps not made into hard checks** (a11y-tooling, contrast-unverified, spacing-scale): left as-is, per this checklist's own assessment that they aren't easily gateable yet. Not attempted in `03`.
+
+Baseline: a report-only full-scan pass (`sentinel-notes/sentinel-baseline.json`) found **zero pre-existing violations** across all implemented checks — nothing needed logging to `sentinel-notes/TODO.md`'s Open section as backlog.
+
 ## Next step
 
-Per the prompt's sequencing: run the Gate-Check Implementation prompt (`03`) next, once Part 4's two open questions are answered and this checklist has been reviewed.
+Sequence complete for this pass. See `03`'s own report for open questions (README keyword-mapping confirmation, commit-autonomy level, numeric thresholds) still needing the user's live confirmation.
