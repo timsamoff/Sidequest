@@ -14,19 +14,20 @@ Sidequest is a project planner for someone juggling several side projects at onc
 
 ## What's changing: distribution and architecture
 
-### Decision: drop Claude Artifact support
+### Decision: drop Claude Artifact support (and any AI-tool library-item consideration)
 
-Sidequest will no longer be distributed or maintained as a Claude Artifact. This was a deliberate trade, made explicitly (2026-09-21), not an accidental casualty of the architecture change:
+Sidequest will no longer be distributed or maintained as a Claude Artifact, or as a "library item" for another AI chat tool. This was a deliberate trade, made explicitly (2026-09-21), not an accidental casualty of the architecture change. **This part of the decision is already in effect today**, independent of whether the multi-file rebuild described below has happened yet — it governs the current single-file v1 code too, not just the planned v2:
 
 - An Artifact must be one self-contained HTML file with everything inline. Splitting the app into logical files/modules with a shared design-token source is incompatible with that constraint.
 - The original reason Sidequest was pursued as an Artifact was distribution and reach through Claude's user base, not a belief that the artifact sandbox made the planner itself better. Once the sandbox's constraints (single file, no build step, restricted CDN allowlist, no `window.claude`/capability APIs, no reliable persistence on the Claude mobile app) stopped being worth the reach they bought, dropping them was the right call.
 - Practical effect: no more publishing to a claude.ai artifact link. `assets/` and repo-only icon files are no longer "extras that must be optional" — they're just normal project assets now. External scripts are no longer restricted to Claude's CDN allowlist. `window.claude`/`window.storage` are irrelevant; there was never a real API by that second name, and the real one (`db`) is off the table along with the rest of the artifact model.
+- Also effective immediately, in the current v1 code: no user-facing mention of Claude, an AI, an artifact, or a library item anywhere in `index.html` or `README.md`, including generic/hedged phrasing about "apps that embed a web page." A mobile-storage warning was written and then removed the same day (2026-09-21) once this became the settled direction — see `sentinel-notes/storage-persistence-design-brief.md`'s "Superseded" section. The underlying platform fact that warning described (an embedded webview can lack `localStorage` access) has not changed; the decision is that it's no longer worth designing or writing around, given Sidequest's narrowed distribution surface.
 
 ### Decision: static multi-file site, still no backend
 
 Sidequest becomes a normal small static site: separate HTML/CSS/JS files (structure to be decided — see Open Questions), served from GitHub Pages exactly as today, with **no server-side code and no database.** This is not a "web app with a backend" in the sense of accounts, sync, or a server process — it's the same static-file model Sidequest already uses, just organized as more than one file.
 
-Consequence: **persistence does not change.** Still `localStorage`, still per-browser, still no cross-device sync, still the same backup/restore workflow, still the same Claude-mobile-app warning already shipped (2026-09-21) — that warning becomes somewhat less relevant once there's no Claude Artifact to open from the mobile app, but the underlying "a browser is required, localStorage doesn't sync" fact still applies to anyone using the GitHub Pages site on multiple devices.
+Consequence: **persistence does not change.** Still `localStorage`, still per-browser, still no cross-device sync, still the same backup/restore workflow. No in-app warning exists anymore about embedded/in-app browser contexts (removed 2026-09-21, see the decision above) — but the underlying "a browser is required, `localStorage` doesn't sync" fact still applies to anyone using the GitHub Pages site on multiple devices; there's just no copy calling that out explicitly.
 
 ### Decision: shared design-token source of truth
 

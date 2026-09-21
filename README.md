@@ -35,8 +35,6 @@ Everything is saved in your own browser with `localStorage`. Nothing is sent any
 - Clearing your browser data clears your planner.
 - **Settings, Backup and restore** shows your data as text you can copy and paste back in later. Do this now and then.
 
-**Important on mobile:** Sidequest must be open in an actual web browser tab to save anything. Some apps that embed a web page do not give it access to browser storage, so if you open Sidequest inside one of those, it will look and work normally, but nothing you do will be saved once you leave or close it. There's no warning from the app when this happens, since it isn't something Sidequest can detect on its own. If you're on mobile, always open it through your browser.
-
 ## Tests
 
 The tests use a simulated browser, so they run in Node without any setup beyond the install:
