@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node tests/run.js",
     "sentinel:check": "node .githooks/sentinel-check.js",
-    "sentinel:check:full": "node .githooks/sentinel-check.js --full"
+    "sentinel:check:full": "node .githooks/sentinel-check.js --full",
+    "build:artifact": "node scripts/build-artifact.js"
   },
   "engines": {
     "node": ">=22"
