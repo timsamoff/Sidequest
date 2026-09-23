@@ -28,7 +28,7 @@ const path = require("path");
 const ROOT = path.join(__dirname, "..");
 const APP_DIR = path.join(ROOT, "app");
 const OUT_DIR = path.join(ROOT, "Claude-Sidequest");
-const OUT_FILE = path.join(OUT_DIR, "index.html");
+const OUT_FILE = path.join(OUT_DIR, "sidequest.html");
 
 // Dependency order, hand-verified against each file's own `import` lines
 // (see the comment above: hoisting makes exact order mostly irrelevant for
