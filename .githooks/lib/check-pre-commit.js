@@ -14,9 +14,29 @@ const common = require("./sentinel-common");
 // ---------------------------------------------------------------------------
 // Gate 1: CLAUDE.md-touched (highest priority)
 // ---------------------------------------------------------------------------
-// Trigger: staged index.html diff touches a "recurring unit of work" registry/area.
-// CLAUDE.md is gitignored, so "was it touched" is answered by filesystem mtime
-// versus the current HEAD commit time, not git diff --name-only.
+// Trigger: staged diff of one of the app's source files touches a "recurring
+// unit of work" registry/area. CLAUDE.md is gitignored, so "was it touched" is
+// answered by filesystem mtime versus the current HEAD commit time, not
+// git diff --name-only.
+//
+// Post-JS-split (Phase 2, 2026-09-21): the logic that used to live in one
+// index.html <script> block is now spread across app/*.js modules. Each pattern
+// below is checked against every file in SOURCE_FILES, not just index.html --
+// index.html itself is kept in the list since a future change could still touch
+// markup-level registries there (e.g. new static nav markup), and dropping it
+// would silently stop checking it.
+
+const SOURCE_FILES = [
+  "index.html",
+  "app/app.js",
+  "app/state.js",
+  "app/model.js",
+  "app/dom.js",
+  "app/views.js",
+  "app/dialogs.js",
+  "app/search.js",
+  "app/chart.js",
+];
 
 const TRIGGER_PATTERNS = [
   { name: "CORE array (new view/page)", re: /^\+.*\bCORE\s*=/m },
@@ -27,20 +47,34 @@ const TRIGGER_PATTERNS = [
   { name: "WORDS registry (new vocabulary)", re: /^\+.*\bWORDS\s*=/m },
   { name: "SEARCH_LABELS/SEARCH_ORDER (new searchable kind)", re: /^\+.*\bSEARCH_(LABELS|ORDER)\s*=/m },
   { name: "KIND_LABEL/KIND_FILTERS (new archivable kind)", re: /^\+.*\bKIND_(LABEL|FILTERS)\s*=/m },
-  { name: "new xDialog() function (new UI feature)", re: /^\+\s*function \w*Dialog\s*\(/m },
+  { name: "new xDialog() function (new UI feature)", re: /^\+\s*(export )?function \w*Dialog\s*\(/m },
 ];
 
+// Kept for any external caller (e.g. tests) that still names this function
+// against a single diff string -- callers within this file use
+// classifySourceDiffs() below, which checks every SOURCE_FILES entry.
 function classifyIndexHtmlDiff(diffText) {
   if (!diffText) return [];
   return TRIGGER_PATTERNS.filter((p) => p.re.test(diffText)).map((p) => p.name);
 }
 
+// Classifies the staged diff across ALL of SOURCE_FILES, returning the union of
+// trigger names hit in any of them plus which staged files were touched at all
+// (so callers can decide whether to even run).
+function classifySourceDiffs() {
+  const touchedFiles = SOURCE_FILES.filter((f) => common.isStaged(f));
+  const hitNames = new Set();
+  touchedFiles.forEach((f) => {
+    const diff = common.stagedDiff(f);
+    classifyIndexHtmlDiff(diff).forEach((name) => hitNames.add(name));
+  });
+  return { touchedFiles, hits: Array.from(hitNames) };
+}
+
 function checkClaudeMdTouched() {
   const violations = [];
-  if (!common.isStaged("index.html")) return violations;
-  const diff = common.stagedDiff("index.html");
-  const hits = classifyIndexHtmlDiff(diff);
-  if (!hits.length) return violations;
+  const { touchedFiles, hits } = classifySourceDiffs();
+  if (!touchedFiles.length || !hits.length) return violations;
 
   const exception = common.findException("claude-md-touched");
   if (exception) return violations;
@@ -55,7 +89,7 @@ function checkClaudeMdTouched() {
         "claude-md-touched",
         "CLAUDE.md",
         null,
-        `index.html diff touches: ${hits.join("; ")}. This looks like a new view/page, state field, or UI feature ` +
+        `${touchedFiles.join(", ")} diff touches: ${hits.join("; ")}. This looks like a new view/page, state field, or UI feature ` +
         `(the project's three recurring units of work), but CLAUDE.md has not been modified since the last commit. ` +
         `Does this change need a mention in CLAUDE.md's "Conventions established" or "What this project is" section? ` +
         `(CLAUDE.md is gitignored, so this check reads its file-modification time directly off disk, not from git.)`
@@ -77,10 +111,8 @@ const README_KEYWORDS = [
 
 function checkReadmeTouched() {
   const violations = [];
-  if (!common.isStaged("index.html")) return violations;
-  const diff = common.stagedDiff("index.html");
-  const hits = classifyIndexHtmlDiff(diff);
-  if (!hits.length) return violations;
+  const { touchedFiles, hits } = classifySourceDiffs();
+  if (!touchedFiles.length || !hits.length) return violations;
 
   const exception = common.findException("readme-touched");
   if (exception) return violations;
@@ -91,7 +123,7 @@ function checkReadmeTouched() {
         "readme-touched",
         "README.md",
         null,
-        `index.html diff touches: ${hits.join("; ")}, which may be user-facing (a new view/page, feature, or control), ` +
+        `${touchedFiles.join(", ")} diff touches: ${hits.join("; ")}, which may be user-facing (a new view/page, feature, or control), ` +
         `but README.md was not part of this commit. If this change is user-visible, document it in README.md's ` +
         `"What it does" section.`
       )
@@ -99,14 +131,16 @@ function checkReadmeTouched() {
     return violations; // file-level check failed; keyword layer would be redundant noise on top of this
   }
 
-  // Keyword-mapping second layer: if CORE/BOTTOM gained a new page-name literal in
-  // this diff, require that literal string to appear somewhere in README's CURRENT
-  // (staged) text. This is a presence check only -- it confirms a keyword exists,
-  // not that the surrounding prose is accurate.
+  // Keyword-mapping second layer: if CORE/BOTTOM (app/model.js, post-JS-split)
+  // gained a new page-name literal in this commit's diff, require that literal
+  // string to appear somewhere in README's CURRENT (staged) text. This is a
+  // presence check only -- it confirms a keyword exists, not that the
+  // surrounding prose is accurate.
   const addedPageNames = [];
   const coreBottomAdd = /^\+.*\[\s*"([a-z0-9:_-]+)"\s*,\s*"([^"]+)"\s*\]/gim;
+  const modelDiff = common.isStaged("app/model.js") ? common.stagedDiff("app/model.js") : "";
   let m;
-  while ((m = coreBottomAdd.exec(diff || "")) !== null) {
+  while ((m = coreBottomAdd.exec(modelDiff || "")) !== null) {
     addedPageNames.push(m[2]);
   }
   if (addedPageNames.length) {
@@ -246,8 +280,13 @@ function todoBacklogReminder() {
 // in an unrelated comment (accepted false-negative risk, documented in the report).
 
 function extractDefaultsKeys(source) {
-  const fnMatch = source.match(/function defaults\s*\(\s*\)\s*\{([\s\S]*?)\n  \}\n/);
-  if (!fnMatch) common.failLoud("could not locate defaults() function body in index.html to run the normalize/defaults pairing check");
+  // Post-JS-split (2026-09-21): defaults() lives in app/state.js as a top-level
+  // `export function`, indented one level shallower than it was inside
+  // index.html's old IIFE -- its closing brace is at column 0 ("\n}\n"), not
+  // "\n  }\n". The "export "? prefix is optional so this still matches if a
+  // future refactor makes it a plain (non-exported) function.
+  const fnMatch = source.match(/(?:export\s+)?function defaults\s*\(\s*\)\s*\{([\s\S]*?)\n\}\n/);
+  if (!fnMatch) common.failLoud("could not locate defaults() function body in app/state.js to run the normalize/defaults pairing check");
   const body = fnMatch[1];
   // Find the object literal that's returned and pull ONLY its top-level "key:"
   // names -- a nested object literal (e.g. settings: { theme: ..., ... }) has its
@@ -277,16 +316,16 @@ function extractDefaultsKeys(source) {
 }
 
 function extractNormalizeBody(source) {
-  const fnMatch = source.match(/function normalize\s*\(\s*s\s*\)\s*\{([\s\S]*?)\n  \}\n/);
-  if (!fnMatch) common.failLoud("could not locate normalize() function body in index.html to run the normalize/defaults pairing check");
+  const fnMatch = source.match(/(?:export\s+)?function normalize\s*\(\s*s\s*\)\s*\{([\s\S]*?)\n\}\n/);
+  if (!fnMatch) common.failLoud("could not locate normalize() function body in app/state.js to run the normalize/defaults pairing check");
   return fnMatch[1];
 }
 
 function checkNormalizeDefaultsPairing() {
   const violations = [];
-  if (!common.isStaged("index.html")) return violations;
-  const source = common.stagedContent("index.html");
-  if (source === null) return violations; // index.html deleted in this commit; nothing to pair
+  if (!common.isStaged("app/state.js")) return violations;
+  const source = common.stagedContent("app/state.js");
+  if (source === null) return violations; // app/state.js deleted in this commit; nothing to pair
 
   let defaultsKeys, normalizeBody;
   try {
@@ -318,7 +357,7 @@ function checkNormalizeDefaultsPairing() {
     violations.push(
       common.violation(
         "normalize-defaults-pairing",
-        "index.html",
+        "app/state.js",
         null,
         `defaults() sets a top-level key "${key}" but normalize() has no branch referencing "d.${key}". If this key ` +
         `is new, saved data from before it existed will silently revert "${key}" to its default on every load, ` +
@@ -368,46 +407,71 @@ function isInsideTokenBlock(fullText, matchIndex) {
   return depth > 0;
 }
 
+// Files this check scans. Post-Phase-1 CSS split (2026-09-21), the :root token
+// block itself lives only in css/tokens.css -- index.html has had ZERO ":root"
+// occurrences since that split, which silently made this check a no-op for
+// index.html (isInsideTokenBlock() always returned false there for lack of any
+// :root block to find, but index.html also stopped containing any CSS at all
+// after that split, so there was nothing left to false-negative on in practice).
+// This was not caught or fixed at the time -- flagged here now, fixed as part of
+// this same pass: css/styles.css (added lines could reintroduce a hardcoded hex
+// there) and css/tokens.css (the token block itself; a literal added INSIDE it is
+// exactly what a token is supposed to be, so isInsideTokenBlock's exemption is
+// still correct there) are the real CSS-side surface now, not index.html.
+//
+// Post-JS-split (Phase 2), app/*.js is a second, genuinely new risk surface: a
+// dynamically-generated inline style (e.g. `el("div", { style: "color:#fff" })`)
+// could hardcode a hex literal in JS the same way old inline <style> markup once
+// could. Checked here too, though CLAUDE.md/state.js's own findings show no such
+// literal exists yet -- this is a forward-looking check, not a fix for an
+// existing violation.
+const HEX_SCAN_FILES = ["css/tokens.css", "css/styles.css", "app/app.js", "app/state.js", "app/model.js", "app/dom.js", "app/views.js", "app/dialogs.js", "app/search.js", "app/chart.js"];
+
 function checkHardcodedHex() {
   const violations = [];
-  if (!common.isStaged("index.html")) return violations;
-  const diff = common.stagedDiff("index.html") || "";
-  const addedLines = diff.split("\n").filter((l) => l.startsWith("+") && !l.startsWith("+++"));
-  const source = common.stagedContent("index.html") || "";
-
   const exception = common.findException("hardcoded-hex-outside-tokens");
 
-  addedLines.forEach((line) => {
-    const content = line.slice(1);
-    let m;
-    HEX_COLOR_RE.lastIndex = 0;
-    while ((m = HEX_COLOR_RE.exec(content)) !== null) {
-      // Confirm this literal hex actually lands outside a token block in the FULL
-      // staged file (the diff line alone has no block context) by locating one
-      // occurrence of the same literal text outside a :root block anywhere in source.
-      const literal = m[0];
-      const occursOutsideToken = (() => {
-        const re = new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
-        let mm;
-        while ((mm = re.exec(source)) !== null) {
-          if (!isInsideTokenBlock(source, mm.index)) return true;
-        }
-        return false;
-      })();
-      if (!occursOutsideToken) continue;
-      if (exception && exception.scope === literal) continue;
-      violations.push(
-        common.violation(
-          "hardcoded-hex-outside-tokens",
-          "index.html",
-          null,
-          `Added line introduces a literal hex color "${literal}" outside the :root token block: "${content.trim().slice(0, 80)}". ` +
-          `Reference an existing --token or add a new one instead, per the project's design-token convention. ` +
-          `(assets/sidequest-icon.svg is exempt from this rule -- it is a static favicon asset that cannot use CSS ` +
-          `custom properties -- but index.html is not.)`
-        )
-      );
-    }
+  HEX_SCAN_FILES.forEach((file) => {
+    if (!common.isStaged(file)) return;
+    const diff = common.stagedDiff(file) || "";
+    const addedLines = diff.split("\n").filter((l) => l.startsWith("+") && !l.startsWith("+++"));
+    const source = common.stagedContent(file) || "";
+
+    addedLines.forEach((line) => {
+      const content = line.slice(1);
+      let m;
+      HEX_COLOR_RE.lastIndex = 0;
+      while ((m = HEX_COLOR_RE.exec(content)) !== null) {
+        // Confirm this literal hex actually lands outside a token block in the FULL
+        // staged file (the diff line alone has no block context) by locating one
+        // occurrence of the same literal text outside a :root block anywhere in
+        // source. app/*.js files have no :root block at all, so isInsideTokenBlock
+        // trivially returns false for them -- correct, since there is no legitimate
+        // "inside the token definition" location for a hex literal in JS.
+        const literal = m[0];
+        const occursOutsideToken = (() => {
+          const re = new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
+          let mm;
+          while ((mm = re.exec(source)) !== null) {
+            if (!isInsideTokenBlock(source, mm.index)) return true;
+          }
+          return false;
+        })();
+        if (!occursOutsideToken) continue;
+        if (exception && exception.scope === literal) continue;
+        violations.push(
+          common.violation(
+            "hardcoded-hex-outside-tokens",
+            file,
+            null,
+            `Added line introduces a literal hex color "${literal}" outside the :root token block: "${content.trim().slice(0, 80)}". ` +
+            `Reference an existing --token or add a new one instead, per the project's design-token convention. ` +
+            `(assets/sidequest-icon.svg is exempt from this rule -- it is a static favicon asset that cannot use CSS ` +
+            `custom properties -- but ${file} is not.)`
+          )
+        );
+      }
+    });
   });
   return violations;
 }
@@ -442,10 +506,17 @@ function extractPathData(svgMarkup) {
 
 function checkDuplicatedIconMarkup() {
   const violations = [];
+  // ICON_SEARCH/ICON_CANCEL moved to app/app.js in the JS module split
+  // (2026-09-21) -- read the known path data from THAT file's current staged
+  // content (falling back to its on-disk content if it isn't part of this
+  // commit, since the constants still need to be known even when only
+  // index.html's markup changed). Static SVG markup that could duplicate them
+  // still lives in index.html's HTML body (e.g. the #sqLogo symbol), so that
+  // remains the file whose diff is scanned for a newly-added duplicate.
   if (!common.isStaged("index.html")) return violations;
   const diff = common.stagedDiff("index.html") || "";
-  const source = common.stagedContent("index.html") || "";
-  const icons = extractIconConstants(source);
+  const iconSource = common.isStaged("app/app.js") ? common.stagedContent("app/app.js") : common.diskRead("app/app.js");
+  const icons = extractIconConstants(iconSource || "");
   const knownPathData = new Set();
   Object.keys(icons).forEach((k) => extractPathData(icons[k]).forEach((d) => knownPathData.add(d)));
   if (!knownPathData.size) return violations;
@@ -568,6 +639,8 @@ function runNpmTest() {
 
 module.exports = {
   classifyIndexHtmlDiff,
+  classifySourceDiffs,
+  SOURCE_FILES,
   checkClaudeMdTouched,
   checkReadmeTouched,
   checkTodoSync,

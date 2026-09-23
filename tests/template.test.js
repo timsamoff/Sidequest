@@ -1,9 +1,50 @@
 const { JSDOM } = require("jsdom");
 const fs = require("fs");
-const html = fs.readFileSync(require("path").join(__dirname, "..", "index.html"), "utf8");
-function mk(saved) {
-  return new JSDOM(html, { runScripts: "dangerously", url: "https://example.test/", pretendToBeVisual: true,
-    beforeParse(win) { win.scrollTo = () => {}; if (saved) win.localStorage.setItem("sidequest-template-v1", JSON.stringify(saved)); } });
+const path = require("path");
+const { register } = require("module");
+const { pathToFileURL } = require("url");
+const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+
+// index.html now loads its logic as real ES modules (app/app.js and everything it
+// imports), not an inline <script>. jsdom 30's own <script type="module"> support
+// is not something to rely on here (untested against this project, version-
+// dependent, and historically incomplete) -- instead, each test window gets its
+// own jsdom instance, and the app's module graph is loaded directly through
+// Node's native ESM loader against that window's document/localStorage, set as
+// temporary globals for the duration of the dynamic import() (the app code reads
+// bare `window`/`document`/`localStorage` globals, same as it did inline).
+//
+// A fresh, unique query string on ONLY the entry-point import (app/app.js?t=N)
+// is NOT enough to isolate `state` between tests: confirmed by direct testing,
+// app.js's own internal `import "./state.js"` carries no query of its own, so
+// every mk() call's app.js graph still resolved the SAME state.js instance,
+// silently leaking mutations (marking a task done, archiving it, etc.) from one
+// test's dom into the next test's "fresh" one. tests/isolate-loader.mjs is a
+// Node module customization hook that rewrites every resolution of a file under
+// app/ to carry the current run's tag, so the WHOLE graph (state, dates, model,
+// dom, views, dialogs, search, chart) reloads fresh each call, not just the
+// entry module.
+register(pathToFileURL(path.join(__dirname, "isolate-loader.mjs")));
+
+let counter = 0;
+async function mk(saved) {
+  const dom = new JSDOM(html, { url: "https://example.test/", pretendToBeVisual: true });
+  dom.window.scrollTo = () => {};
+  if (saved) dom.window.localStorage.setItem("sidequest-template-v1", JSON.stringify(saved));
+  global.window = dom.window;
+  global.document = dom.window.document;
+  // Node 22+ has its own built-in `localStorage` global, defined as a getter --
+  // a plain `global.localStorage = ...` assignment throws (see Node's webstorage
+  // internal). Redefine the property instead so jsdom's window.localStorage wins.
+  Object.defineProperty(global, "localStorage", { value: dom.window.localStorage, configurable: true, writable: true });
+  global.FileReader = dom.window.FileReader;
+  await import("../app/app.js?run=" + (++counter));
+  // app.js's own boot sequence (rendering the initial view, wiring menus and
+  // search) is deferred one microtask past module evaluation -- see app/app.js's
+  // comment on this -- so tests must wait a tick for it to have run.
+  await Promise.resolve();
+  await Promise.resolve();
+  return dom;
 }
 let fails = 0;
 const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) fails++; };
@@ -20,10 +61,17 @@ function kit(dom) {
     stand: () => [...d.querySelectorAll("#view .standing li")].map(li => (li.querySelector(".plink,.slabel") || {}).textContent) };
 }
 
+async function main() {
+
 /* ---- housekeeping ---- */
-ok(!/\u2014/.test(html), "no em dashes");
+ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
-ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") && html.includes('APP_VERSION = "1.0.0"'), "credit, link, and version kept");
+{
+  const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
+  ok(stateJs.includes('APP_VERSION = "1.0.0"'), "version kept in state.js");
+  const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
+  ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
+}
 
 /* ---- icon files and links ---- */
 {
@@ -38,7 +86,7 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
 
 /* ---- first run ---- */
 {
-  const k = kit(mk());
+  const k = kit(await mk());
   ok(k.$("viewTitle").textContent === "Today" && k.d.title.includes("Sidequest"), "opens on Today");
   ok(k.$("view").textContent.includes("Welcome to Sidequest") && k.$("view").textContent.includes("samples") && !!k.$("welcomeSettings") && !!k.$("welcomeDismiss"), "welcome box explains the samples");
   ok(k.d.querySelector('.tab[data-view=kofi]').textContent.trim() === "Launch" && k.d.querySelector("#nav").textContent.includes("Pinned"), "'Launch' checklist is the pinned page");
@@ -57,7 +105,7 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
 
 /* ---- sample projects ---- */
 {
-  const k = kit(mk()); k.tab("projects");
+  const k = kit(await mk()); k.tab("projects");
   ok(k.stand().join() === "Sample Website,Sample App,Sample Game,Next slot", "Where things stand lists the three sample projects (" + k.stand().join() + ")");
   const pagesList = [...k.d.querySelectorAll("#view .list")].pop().textContent;
   ok(pagesList.includes("Launch checklist") && pagesList.includes("Sample App") && pagesList.includes("Sample Website") && pagesList.includes("Sample Game"), "Pages and projects lists them");
@@ -86,7 +134,7 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
 
 /* ---- Launch checklist ---- */
 {
-  const k = kit(mk()); k.tab("kofi");
+  const k = kit(await mk()); k.tab("kofi");
   ok(k.$("viewTitle").textContent === "Launch" && k.$("view").textContent.includes("Before you launch") && k.$("view").textContent.includes("Everything to finish before you ship"), "Launch page copy is generic");
   ok(!k.d.querySelector("#view a.linkbtn"), "no external link button");
   const lb = k.d.querySelector("#view .listbox");
@@ -106,7 +154,7 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
 
 /* ---- Help in the template ---- */
 {
-  const k = kit(mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
+  const k = kit(await mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
   ok(titles.length === 10 && titles.includes("Launch page: steps and decisions") && titles.indexOf("Launch page: steps and decisions") === titles.indexOf("Archive and undo") - 1, "template Help keeps the Launch page topic (" + titles.length + " topics)");
   ok(k.$("view").textContent.includes("tap Launch beside a step"), "and the topic explains the Launch button");
@@ -115,7 +163,7 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
 
 /* ---- archive samples ---- */
 {
-  const k = kit(mk()); k.tab("archive");
+  const k = kit(await mk()); k.tab("archive");
   const t = k.$("view").textContent;
   ok(t.includes("Sketch the main screens") && t.includes("Build the sign-in flow") && t.includes("Redesign the logo") && t.includes("Should the site use a page builder?") && t.includes("All (4)"), "Archive already shows four sample items");
   ok(t.includes("Completed") && t.includes("Removed"), "shows both completed and removed samples");
@@ -123,14 +171,14 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
 
 /* ---- search works on samples ---- */
 {
-  const k = kit(mk()); k.type("beta");
+  const k = kit(await mk()); k.type("beta");
   ok(k.d.querySelectorAll("#searchResults .sgroup").length >= 2 && k.$("searchStatus").textContent.match(/\d+ results?/), "search finds the beta tasks and milestone");
   k.type("logo"); ok(k.d.querySelector("#searchResults .chip.arch"), "search finds archived samples");
 }
 
 /* ---- Start fresh and reload samples ---- */
 {
-  const k = kit(mk()); k.tab("settings");
+  const k = kit(await mk()); k.tab("settings");
   ok(k.$("view").textContent.includes("Start fresh"), "Start fresh is in Settings");
   k.click(k.$("startFresh")); ok(k.$("modalBody").textContent.includes("The sample projects") && k.$("modalBody").textContent.includes("An empty planner"), "offers empty or sample projects");
   const a = k.$("freshAck"); a.checked = true; k.fire(a); k.click(k.$("freshGo"));
@@ -147,11 +195,11 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
 
 /* ---- core behavior still intact ---- */
 {
-  const k = kit(mk());
+  const k = kit(await mk());
   k.tab("schedule"); const sel = k.d.querySelector(".detailpane select.status");
   ok(sel && sel.value === "In progress", "schedule shows the selected sample task");
   k.tab("settings"); ok(k.d.getElementById("set-word").value === "Sprint" && k.$("view").textContent.includes("Sprint length in days"), "Settings show the Sprint vocabulary");
-  ok(k.d.querySelector("#view .about").textContent.includes("\u00a9 Tim Samoff"), "About keeps the credit");
+  ok(k.d.querySelector("#view .about").textContent.includes("© Tim Samoff"), "About keeps the credit");
   // completing a sample task archives it
   k.tab("today"); k.click(k.btn(k.$("view"), "Mark done"));
   ok(k.$("toast").textContent.includes("Archive"), "completing a task moves it to the Archive");
@@ -159,12 +207,12 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
   k.tab("settings"); k.click(k.$("showText")); const j = JSON.parse(k.$("backupText").value);
   ok(j.tasks.length === 14 && j.pset["Sample Game"].mult === 2, "backup export contains the sample data");
   // reload keeps changes and skips the welcome
-  const k2 = kit(mk(k.saved())); ok(k2.$("viewTitle").textContent === "Today" && !k2.$("view").textContent.includes("Welcome to Sidequest") || k2.saved !== undefined, "reload opens on Today");
+  const k2 = kit(await mk(k.saved())); ok(k2.$("viewTitle").textContent === "Today" && !k2.$("view").textContent.includes("Welcome to Sidequest") || k2.saved !== undefined, "reload opens on Today");
 }
 
 /* ---- new step: project filter ---- */
 {
-  const k = kit(mk());
+  const k = kit(await mk());
   k.menuAct("newBtn", "newStep");
   const projSel = k.$("f-project"), taskSel = k.$("f-task");
   ok(!!projSel && !!taskSel, "New step form has a project filter and a task select");
@@ -183,4 +231,10 @@ ok(html.includes('href: "https://samoff.com"') && html.includes("Tim Samoff") &&
   k.menuAct("newBtn", "newStep");
   ok(k.$("f-project").value === "Sample Website", "with a task open in Schedule, defaults the filter to that task's project");
 }
+
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
+process.exit(fails ? 1 : 0);
+
+}
+
+main().catch(e => { console.error(e); process.exit(1); });

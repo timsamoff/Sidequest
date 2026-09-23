@@ -51,7 +51,9 @@ function writeBaseline(violations) {
 // --- Full-repo structural scans (things a single commit's diff cannot reveal) ---
 
 function fullScanNormalizeDefaultsPairing() {
-  const source = common.diskRead("index.html");
+  // defaults()/normalize() moved to app/state.js in the JS module split
+  // (2026-09-21) -- was index.html, read via common.diskRead("index.html").
+  const source = common.diskRead("app/state.js");
   const defaultsKeys = checks.extractDefaultsKeys(source);
   const normalizeBody = checks.extractNormalizeBody(source);
   const INTENTIONALLY_UNPAIRED = new Set(["v"]);
@@ -60,7 +62,7 @@ function fullScanNormalizeDefaultsPairing() {
     if (INTENTIONALLY_UNPAIRED.has(key)) return;
     const refRe = new RegExp("\\bd\\." + key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b");
     if (!refRe.test(normalizeBody)) {
-      violations.push(common.violation("normalize-defaults-pairing", "index.html", null, `defaults() key "${key}" has no matching normalize() branch.`));
+      violations.push(common.violation("normalize-defaults-pairing", "app/state.js", null, `defaults() key "${key}" has no matching normalize() branch.`));
     }
   });
   return violations;
@@ -72,14 +74,20 @@ function fullScanCrossListPairing() {
   // See report: this is the conservative version of the cross-list-consistency
   // idea, limited to the two pairs that are actually meant to enumerate the same
   // concept from two sides.
-  const source = common.diskRead("index.html");
+  //
+  // Post-JS-split: SEARCH_LABELS/SEARCH_ORDER now live in app/search.js, and
+  // KIND_LABEL/KIND_FILTERS now live in app/views.js -- both were index.html
+  // before. Each pair is read from its own current file rather than one shared
+  // `source` string.
+  const searchSource = common.diskRead("app/search.js") || "";
+  const viewsSource = common.diskRead("app/views.js") || "";
   const violations = [];
 
-  function pairCheck(labelName, orderOrFilterName, extractOrderKeys) {
+  function pairCheck(source, file, labelName, orderOrFilterName, extractOrderKeys) {
     const labelMatch = source.match(new RegExp(labelName + "\\s*=\\s*\\{([\\s\\S]*?)\\};"));
     const orderMatch = source.match(new RegExp(orderOrFilterName + "\\s*=\\s*(\\[[\\s\\S]*?\\]);"));
     if (!labelMatch || !orderMatch) {
-      violations.push(common.violation("cross-list-consistency", "index.html", null, `Could not locate ${labelName} or ${orderOrFilterName} to verify they stay paired -- check manually.`));
+      violations.push(common.violation("cross-list-consistency", file, null, `Could not locate ${labelName} or ${orderOrFilterName} to verify they stay paired -- check manually.`));
       return;
     }
     const labelKeys = new Set();
@@ -89,13 +97,14 @@ function fullScanCrossListPairing() {
     const orderKeys = new Set(extractOrderKeys(orderMatch[1]));
     // Content-keyed exclusion, not positional: "all" in KIND_FILTERS is a real,
     // intentional UI-only "show everything" filter option, never used as a lookup
-    // key into KIND_LABEL (confirmed by reading index.html:1780-1792 -- KIND_LABEL
-    // is only indexed by an entry's actual kind, never by the filter value). This
-    // asymmetry is a known, accepted design, not a miss -- exclude it by name so
-    // it doesn't re-report as noise on every future full scan.
+    // key into KIND_LABEL (confirmed by reading app/views.js's archiveEntries()/
+    // renderArchive() -- KIND_LABEL is only indexed by an entry's actual kind,
+    // never by the filter value). This asymmetry is a known, accepted design, not
+    // a miss -- exclude it by name so it doesn't re-report as noise on every
+    // future full scan.
     const INTENTIONAL_ASYMMETRY = new Set(["all"]);
-    labelKeys.forEach((k) => { if (!orderKeys.has(k)) violations.push(common.violation("cross-list-consistency", "index.html", null, `${labelName} has key "${k}" with no matching entry in ${orderOrFilterName}.`)); });
-    orderKeys.forEach((k) => { if (!labelKeys.has(k) && !INTENTIONAL_ASYMMETRY.has(k)) violations.push(common.violation("cross-list-consistency", "index.html", null, `${orderOrFilterName} references "${k}" with no matching entry in ${labelName}.`)); });
+    labelKeys.forEach((k) => { if (!orderKeys.has(k)) violations.push(common.violation("cross-list-consistency", file, null, `${labelName} has key "${k}" with no matching entry in ${orderOrFilterName}.`)); });
+    orderKeys.forEach((k) => { if (!labelKeys.has(k) && !INTENTIONAL_ASYMMETRY.has(k)) violations.push(common.violation("cross-list-consistency", file, null, `${orderOrFilterName} references "${k}" with no matching entry in ${labelName}.`)); });
   }
 
   function extractQuoted(text) {
@@ -106,11 +115,13 @@ function fullScanCrossListPairing() {
     return out;
   }
   // SEARCH_ORDER is a flat array of quoted kind-keys: ["task", "step", ...].
-  pairCheck("SEARCH_LABELS", "SEARCH_ORDER", extractQuoted);
+  // Both SEARCH_LABELS and SEARCH_ORDER live in app/search.js.
+  pairCheck(searchSource, "app/search.js", "SEARCH_LABELS", "SEARCH_ORDER", extractQuoted);
   // KIND_FILTERS is an array of [key, label] pairs: [["all","All"],["task","Tasks"],...].
   // Only the FIRST quoted string in each [..] pair is the key; the second is a
   // display label and must not be treated as another key to match against KIND_LABEL.
-  pairCheck("KIND_LABEL", "KIND_FILTERS", (text) => {
+  // Both KIND_LABEL and KIND_FILTERS live in app/views.js.
+  pairCheck(viewsSource, "app/views.js", "KIND_LABEL", "KIND_FILTERS", (text) => {
     const out = [];
     const re = /\[\s*"(\w+)"\s*,\s*"[^"]*"\s*\]/g;
     let mm;
@@ -184,10 +195,19 @@ function runFullScan() {
   violations = violations.concat(fullScanHookIntegrity());
   violations = violations.concat(fullScanSocialMetaDrift());
   // README keyword map, whole-repo version: every current CORE/BOTTOM/pinned-page
-  // label should appear in README's current text.
-  const source = common.diskRead("index.html");
+  // label should appear in README's current text. CORE/BOTTOM moved to
+  // app/model.js in the JS module split (2026-09-21) -- was index.html.
+  //
+  // Bug found and fixed while migrating this line to the new file (pre-existing,
+  // not introduced by the split): the old regex `\[[^\]]*\]` cannot match CORE/
+  // BOTTOM's actual shape, an array of [key, label] pairs (nested brackets), so
+  // it matched the FIRST inner pair's closing "]" and stopped -- meaning
+  // coreBottomMatch was always [] and this whole keyword-map block was silently
+  // a no-op on every full scan, on index.html before the split too. Confirmed by
+  // running the old regex against `git show HEAD:index.html` before this fix.
+  const source = common.diskRead("app/model.js");
   const readme = common.diskRead("README.md");
-  const coreBottomMatch = source.match(/var (?:CORE|BOTTOM) = (\[[^\]]*\]);/g) || [];
+  const coreBottomMatch = source.match(/(?:export )?var (?:CORE|BOTTOM) = (\[(?:\[[^\]]*\],?\s*)*\]);/g) || [];
   coreBottomMatch.forEach((decl) => {
     const labels = (decl.match(/"([^"]+)"\s*\]/g) || []).map((s) => s.match(/"([^"]+)"/)[1]);
     labels.forEach((label) => {
