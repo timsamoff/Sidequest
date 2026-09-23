@@ -143,6 +143,52 @@ export function normalize(s) {
   if (s.lastSlip && s.lastSlip.snap && isISO(s.lastSlip.snap.start)) d.lastSlip = { days: Math.round(+s.lastSlip.days) || 0, snap: { start: s.lastSlip.snap.start, pset: cleanPset(s.lastSlip.snap.pset) } };
   return d;
 }
+// Storage adapter: localStorage (web app) is synchronous and always available;
+// Claude's db capability (artifact version) is asynchronous and may resolve
+// null (not served as a published artifact, not granted, or failed to load --
+// indistinguishable by design, per the db capability contract). Rather than
+// make every one of the ~150 call sites across app/*.js that read `state.x`
+// synchronously deal with that, the whole app keeps reading `state` as a
+// plain, already-populated object -- this adapter is the only place that
+// knows storage might be async, at the load/save boundary alone. See
+// DESIGN.md's "Solved" subsection under "Claude Artifact parity version" for
+// the full reasoning.
+//
+// db, once resolved, stays a live reference for the rest of the page's life
+// (per the capability contract: "Awaiting use('db') again is free (memoized)").
+// null means either "this isn't a published artifact with db granted" (the
+// normal web-app case) or "db failed to load" -- both fall back to
+// localStorage identically, since a page that can't reach the network
+// shouldn't lose the ability to save at all.
+var dbPromise = null;
+function getDb() {
+  if (dbPromise) return dbPromise;
+  dbPromise = (typeof window !== "undefined" && window.claude && typeof window.claude.use === "function")
+    ? window.claude.use("db").catch(function () { return null; })
+    : Promise.resolve(null);
+  return dbPromise;
+}
+
+// One write in flight at a time per the db capability's own contract ("ONE
+// WRITE AT A TIME per document... await each set/update before the next").
+// A rapid burst of saves (e.g. several quick edits) coalesces into: whichever
+// write is already running finishes, then exactly one more write carrying
+// the LATEST state runs after it -- never a growing backlog of queued writes,
+// and never two writes racing on the same document.
+var dbWriteInFlight = null, dbWritePending = false;
+function dbSave(rawState) {
+  if (dbWriteInFlight) { dbWritePending = true; return; }
+  getDb().then(function (db) {
+    if (!db) return; // no db in this view: localStorage (below) is already the real save
+    dbWriteInFlight = db.doc("state/main").set({ json: JSON.stringify(rawState) })
+      .catch(function () { /* transient store error: localStorage already has this save; next change retries */ })
+      .then(function () {
+        dbWriteInFlight = null;
+        if (dbWritePending) { dbWritePending = false; dbSave(state); }
+      });
+  });
+}
+
 export function load() {
   try {
     var raw = window.localStorage.getItem(KEY2);
@@ -152,7 +198,30 @@ export function load() {
 }
 export var state = load();
 export function setState(newState) { state = newState; }
-export function save() { try { window.localStorage.setItem(KEY2, JSON.stringify(state)); } catch (e) { /* ignore */ } }
+export function save() {
+  try { window.localStorage.setItem(KEY2, JSON.stringify(state)); } catch (e) { /* ignore */ }
+  dbSave(state);
+}
+
+// Runs once at boot (called from app.js's deferred boot sequence, after the
+// page has already rendered from load()'s synchronous localStorage/defaults
+// result -- never blocks the initial paint on this). If db is available and
+// holds real saved data, swap it in and ask the caller to re-render. Resolves
+// to true if state was swapped (caller should re-render), false otherwise.
+export function loadFromDbIfAvailable() {
+  return getDb().then(function (db) {
+    if (!db) return false;
+    return db.doc("state/main").get().then(function (snap) {
+      if (!snap.exists) return false;
+      var data = snap.data();
+      if (!data || typeof data.json !== "string") return false;
+      var parsed;
+      try { parsed = JSON.parse(data.json); } catch (e) { return false; }
+      state = normalize(parsed);
+      return true;
+    }).catch(function () { return false; });
+  });
+}
 
 export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchArchive: true };
 /* The app always opens on Today, on every device. */
