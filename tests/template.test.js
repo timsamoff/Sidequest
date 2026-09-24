@@ -114,7 +114,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("view").textContent.includes("Try a new game engine") && k.$("view").textContent.includes("Write up lessons learned") && !k.$("view").textContent.includes("Redesign the logo"), "parking lot samples (removed one is in the Archive)");
   k.tab("schedule");
   const rows = [...k.d.querySelectorAll(".listpane .tlist")[0].querySelectorAll(".item")].map(b => b.textContent);
-  ok(rows.length === 10, "10 scheduled tasks (two Sample App tasks are now archived) (got " + rows.length + ")");
+  ok(rows.length === 12, "12 scheduled tasks (all tasks stay visible now -- completed ones aren't archived) (got " + rows.length + ")");
   ok(k.$("view").textContent.includes("Backlog (2)") && k.$("view").textContent.includes("Add a dark mode") && k.$("view").textContent.includes("Add a level editor"), "backlog has two samples");
   ok(k.d.getElementById("task-block").textContent.includes("Sprint 1"), "vocabulary is Sprint in the samples");
   // per-project schedules
@@ -169,12 +169,23 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Parking lot,Archive,Help,Settings", "Help sits between Archive and Settings");
 }
 
-/* ---- archive samples ---- */
+/* ---- archive samples: only Projects and Ideas archive now ---- */
 {
   const k = kit(await mk()); k.tab("archive");
   const t = k.$("view").textContent;
-  ok(t.includes("Sketch the main screens") && t.includes("Build the sign-in flow") && t.includes("Redesign the logo") && t.includes("Should the site use a page builder?") && t.includes("All (4)"), "Archive already shows four sample items");
-  ok(t.includes("Completed") && t.includes("Removed"), "shows both completed and removed samples");
+  ok(t.includes("Redesign the logo") && t.includes("All (1)"), "Archive shows just the one archived sample idea (" + t.match(/All \(\d+\)/) + ")");
+  ok(!t.includes("Sketch the main screens") && !t.includes("Should the site use a page builder?"), "completed tasks and decisions no longer appear in the Archive -- they live in their project instead");
+  const filters = [...k.d.querySelectorAll("#view .chipbtn")].map(b => b.textContent.trim());
+  ok(filters.join() === "All (1),Projects (0),Ideas (1)", "Archive filters are just All/Projects/Ideas now (" + filters.join() + ")");
+}
+/* ---- completed tasks stay visible, sorted to the bottom ---- */
+{
+  const k = kit(await mk()); k.tab("schedule");
+  const rows = [...k.d.querySelectorAll(".listpane .tlist")[0].querySelectorAll(".item")];
+  const statuses = rows.map(b => b.classList.contains("done"));
+  const firstDone = statuses.indexOf(true);
+  ok(firstDone === -1 || statuses.slice(firstDone).every(Boolean), "once a completed task appears, every task after it in the list is also completed (sunk to the bottom)");
+  ok(rows.length === 12, "completed tasks (Sketch the main screens, Build the sign-in flow) stay in the Tasks list, not moved to the Archive (" + rows.length + ")");
 }
 
 /* ---- search works on samples ---- */
@@ -211,9 +222,12 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(sel && sel.value === "In progress", "schedule shows the selected sample task");
   k.tab("settings"); ok(k.d.getElementById("set-word").value === "Sprint" && k.$("view").textContent.includes("Sprint length in days"), "Settings show the Sprint vocabulary");
   ok(k.d.querySelector("#view .about").textContent.includes("© Tim Samoff"), "About keeps the credit");
-  // completing a sample task archives it
-  k.tab("today"); k.click(k.btn(k.$("view"), "Mark done"));
-  ok(k.$("toast").textContent.includes("Archive"), "completing a task moves it to the Archive");
+  // completing a sample task marks it Completed but keeps it visible (no archiving)
+  k.tab("today"); const nextTaskTitle = k.d.querySelector("#view .panel .ptitle").textContent;
+  k.click(k.btn(k.$("view"), "Mark completed"));
+  k.tab("schedule");
+  const completedRow = [...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes(nextTaskTitle));
+  ok(completedRow && completedRow.classList.contains("done"), "the task shows as completed in Tasks, not moved anywhere");
   // backup text
   k.tab("settings"); k.click(k.$("showText")); const j = JSON.parse(k.$("backupText").value);
   ok(j.tasks.length === 14 && j.projects.find(p => p.name === "Sample Game").mult === 2, "backup export contains the sample data");

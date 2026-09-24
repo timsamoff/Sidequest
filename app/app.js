@@ -1,4 +1,4 @@
-import { state, ui, save, saveUI, autoArchive, archivedToast, APP_NAME, loadFromDbIfAvailable } from "./state.js";
+import { state, ui, save, saveUI, autoArchive, APP_NAME, loadFromDbIfAvailable } from "./state.js";
 import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask } from "./model.js";
 import { $, el, on, focusKey, setFocusKey, scrollTop, notify } from "./dom.js";
 import { lateTasks } from "./model.js";
@@ -124,9 +124,8 @@ export function wireMenu(btnId, menuId) {
 Promise.resolve().then(function () {
   $("brand").textContent = APP_NAME;
   applyTheme();
-  var bootIds = autoArchive(); if (bootIds.length) save();
+  autoArchive(); save();
   renderAll();
-  if (bootIds.length) archivedToast(bootIds);
 
   // If this view is running as a published Claude artifact with the db
   // capability granted, its saved state lives there, not in this browser's
@@ -136,9 +135,8 @@ Promise.resolve().then(function () {
   // DESIGN.md's "Claude Artifact parity version" section.
   loadFromDbIfAvailable().then(function (swapped) {
     if (!swapped) return;
-    var swappedIds = autoArchive(); if (swappedIds.length) save();
+    autoArchive(); save();
     renderAll();
-    if (swappedIds.length) archivedToast(swappedIds);
   });
 
   wireMenu("newBtn", "newMenu"); wireMenu("moreBtn", "moreMenu");

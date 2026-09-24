@@ -5,13 +5,13 @@ import { recordCurrentWeek } from "./views.js";
 import { renderAll } from "./app.js";
 
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
-export var STATUSES = ["Not started", "In progress", "Done"];
+export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
 export var APP_VERSION = "1.0.0";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
-export function st(id, text, launch, done) { return { id: id, text: text, done: done === true, kofi: launch === true }; }
+export function st(id, text, launch, done) { return { id: id, text: text, done: done === true, launch: launch === true }; }
 export function task(id, block, projectId, what, done, steps, extra) {
   var t = { id: id, block: block, projectId: projectId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false };
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
@@ -41,8 +41,8 @@ export function sampleData() {
     project("pCli", "Sample Command-Line Tool", "candidate", { note: "Would save time on your own projects" })
   ];
   var tasks = [
-    task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Done", doneAt: lastWeek, arch: { at: lastWeek, why: "done" } }),
-    task("a2", 2, "pApp", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", false, true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "Done", doneAt: yest, arch: { at: yest, why: "done" } }),
+    task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Completed", doneAt: lastWeek }),
+    task("a2", 2, "pApp", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", false, true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "Completed", doneAt: yest }),
     task("a3", 3, "pApp", "Build the home screen", "The list loads quickly and scrolls smoothly", [st("a3a", "Show the list of items", false, true), st("a3b", "Add pull to refresh"), st("a3c", "Handle an empty list")], { status: "In progress", notes: "Ask a friend to try this on an older phone before moving on." }),
     task("a4", 4, "pApp", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link", true), st("a4c", "Collect and sort the feedback")]),
     task("a5", 5, "pApp", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true, true), st("a5a", "Write the store description", true), st("a5b", "Prepare screenshots", true), st("a5c", "Submit for review", true)]),
@@ -70,7 +70,7 @@ export function sampleData() {
     decisions: [
       { id: "d1", q: "Which app store should you launch on first?", a: "Start with one store, then add the other.", step: "a5z" },
       { id: "d2", q: "Will the game be free, paid, or free with a paid upgrade?", a: "", step: "g3d" },
-      { id: "d3", q: "Should the site use a page builder?", a: "No, plain pages are enough.", step: "w3a", arch: { at: yest, why: "removed" } }
+      { id: "d3", q: "Should the site use a page builder?", a: "No, plain pages are enough.", step: "w3a" }
     ],
     // Milestones now require a direct project link (no step/task chain to derive it from).
     milestones: [
@@ -87,7 +87,7 @@ export function defaults() {
     tasks: d.tasks, actual: [34, 31, 25, null, null, null, null],
     decisions: d.decisions, projects: d.projects, parked: d.parked,
     milestones: d.milestones, lastSlip: null, pins: ["proj:pApp"],
-    settings: { theme: "auto", archiveRule: "immediate", dateFormat: "us", blockWord: "Sprint", hideWelcome: false }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false }
   };
 }
 
@@ -136,14 +136,14 @@ export function normalize(s) {
       if (!pid && !t.isNext) return;
       var steps = [];
       if (Array.isArray(t.steps)) t.steps.forEach(function (x) {
-        if (x && typeof x.id === "string") steps.push({ id: S(x.id, 40), text: S(x.text, 300), done: x.done === true, kofi: x.kofi === true });
+        if (x && typeof x.id === "string") steps.push({ id: S(x.id, 40), text: S(x.text, 300), done: x.done === true, launch: x.launch === true });
       });
       var b = typeof t.block === "number" ? Math.round(t.block) : 1;
       ts.push({
         id: S(t.id, 40), block: Math.min(12, Math.max(0, b)), projectId: pid, what: S(t.what, 400), done: S(t.done, 200),
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
         custom: t.custom === true, isNext: t.isNext === true,
-        arch: validArch(t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : "", noAuto: t.noAuto === true
+        arch: validArch(t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : ""
       });
     });
     d.tasks = ts;
@@ -158,15 +158,13 @@ export function normalize(s) {
   // Decisions require a real step link (Project -> Task -> Step -> Decision) --
   // a decision with no step, or one pointing at a step that doesn't exist, is
   // dropped rather than kept in a state the UI can't render meaningfully.
-  // Archived decisions are exempt: their step may have been archived/removed
-  // since, and an archived decision is read-only history, not something a
-  // user needs to keep re-attaching.
+  // Decisions no longer archive independently (confirmed 2026-09-24 -- only
+  // Projects/Ideas do), so there's no "archived, exempt from this rule" case
+  // anymore: every decision must resolve to a real, live step.
   if (Array.isArray(s.decisions)) {
     d.decisions = s.decisions.filter(function (x) {
-      if (!x || typeof x.id !== "string") return false;
-      var arch = validArch(x.arch);
-      return arch || (typeof x.step === "string" && liveStepIds[x.step]);
-    }).map(function (x) { return { id: S(x.id, 40), q: S(x.q, 300), a: S(x.a, 1000), step: S(x.step, 40), arch: validArch(x.arch) }; });
+      return x && typeof x.id === "string" && typeof x.step === "string" && liveStepIds[x.step];
+    }).map(function (x) { return { id: S(x.id, 40), q: S(x.q, 300), a: S(x.a, 1000), step: S(x.step, 40) }; });
   }
   if (Array.isArray(s.parked)) d.parked = s.parked.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 300), arch: validArch(x.arch) }; });
   // Milestones require a direct project link (no task/step chain to derive it
@@ -174,11 +172,10 @@ export function normalize(s) {
   if (Array.isArray(s.milestones)) {
     d.milestones = s.milestones.filter(function (x) {
       return x && typeof x.id === "string" && isISO(x.date) && typeof x.projectId === "string" && projectIds[x.projectId];
-    }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), date: x.date, projectId: x.projectId, arch: validArch(x.arch) }; });
+    }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), date: x.date, projectId: x.projectId }; });
   }
   if (s.settings && typeof s.settings === "object") {
     if (["auto", "light", "dark"].indexOf(s.settings.theme) >= 0) d.settings.theme = s.settings.theme;
-    if (["immediate", "week", "never"].indexOf(s.settings.archiveRule) >= 0) d.settings.archiveRule = s.settings.archiveRule;
     if (["us", "intl", "mdy", "dmy", "iso"].indexOf(s.settings.dateFormat) >= 0) d.settings.dateFormat = s.settings.dateFormat;
     if (["Block", "Sprint", "Iteration", "Phase", "Week"].indexOf(s.settings.blockWord) >= 0) d.settings.blockWord = s.settings.blockWord;
     if (typeof s.settings.hideWelcome === "boolean") d.settings.hideWelcome = s.settings.hideWelcome;
@@ -271,24 +268,18 @@ export var ui = { view: "today", sel: null, detail: false, query: "", prev: "tod
 /* The app always opens on Today, on every device. */
 export function saveUI() { /* nothing to save */ }
 
+// Stamps a task's completion date the moment its status becomes Done, and
+// clears it if the task is reopened. Only Projects and Ideas independently
+// archive now (confirmed 2026-09-24) -- a completed task just stays visible,
+// marked Done, inside its live Project; this function no longer moves
+// anything to the Archive itself.
 export function autoArchive() {
-  var rule = state.settings.archiveRule, ids = [];
   state.tasks.forEach(function (t) {
-    if (t.status !== "Done") { t.doneAt = ""; t.noAuto = false; return; }
+    if (t.status !== "Completed") { t.doneAt = ""; return; }
     if (!t.doneAt) t.doneAt = iso(TODAY);
-    if (t.arch || t.isNext || t.noAuto || rule === "never") return;
-    if (rule === "immediate" || (rule === "week" && parseISO(t.doneAt) + 7 * DAY <= TODAY)) { t.arch = { at: iso(TODAY), why: "done" }; ids.push(t.id); }
-  });
-  return ids;
-}
-export function archivedToast(ids) {
-  notify(ids.length === 1 ? "Task completed and moved to the Archive." : ids.length + " completed tasks moved to the Archive.", function () {
-    ids.forEach(function (id) { var t = findAnyTask(id); if (t) { t.arch = null; t.noAuto = true; } });
-    changed();
   });
 }
 export function changed() {
-  var ids = autoArchive(); recordCurrentWeek(); save(); renderAll();
-  if (ids.length) archivedToast(ids);
+  autoArchive(); recordCurrentWeek(); save(); renderAll();
 }
 

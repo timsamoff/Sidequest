@@ -52,32 +52,38 @@ export function chosen() { var a = activeProjects(); for (var i = 0; i < a.lengt
 export function dispProject(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next project"; } var p = findProject(t.projectId); return p ? p.name : ""; }
 export function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next project. Add its first tasks with the + button."; return t.what; }
 export function weight(t) { return Math.max(1, t.steps.length); }
-export function doneUnits(t) { return t.status === "Done" ? weight(t) : t.steps.filter(function (s) { return s.done; }).length; }
+export function doneUnits(t) { return t.status === "Completed" ? weight(t) : t.steps.filter(function (s) { return s.done; }).length; }
 export function totalUnits() { return burnTasks().reduce(function (a, t) { return a + weight(t); }, 0); }
 export function remainingUnits() { return burnTasks().reduce(function (a, t) { return a + weight(t) - doneUnits(t); }, 0); }
 export function planned(ms) { var d = 0; burnTasks().forEach(function (t) { if (taskEnd(t) <= ms) d += weight(t); }); return totalUnits() - d; }
 export function sortTasks(list) {
-  return list.map(function (t) { return { t: t, i: state.tasks.indexOf(t) }; }).sort(function (a, b) { return (a.t.block || 99) - (b.t.block || 99) || a.i - b.i; }).map(function (x) { return x.t; });
+  // Completed tasks sink to the bottom (confirmed 2026-09-24, since a task no
+  // longer archives away once done -- it stays visible in this same list
+  // permanently), ahead of the existing block/insertion-order sort.
+  return list.map(function (t) { return { t: t, i: state.tasks.indexOf(t) }; }).sort(function (a, b) {
+    var aDone = a.t.status === "Completed" ? 1 : 0, bDone = b.t.status === "Completed" ? 1 : 0;
+    return aDone - bDone || (a.t.block || 99) - (b.t.block || 99) || a.i - b.i;
+  }).map(function (x) { return x.t; });
 }
 export function ordered() { return sortTasks(live(state.tasks).filter(function (t) { return t.block > 0; })); }
 export function orderedAll() { return sortTasks(live(state.tasks)); }
 export function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0; })); }
 export function burnTasks() { return counted().filter(function (t) { return t.block > 0; }); }
 export function orderedCounted() { return sortTasks(counted()); }
-export function isLate(t) { return t.block > 0 && t.status !== "Done" && taskEnd(t) < TODAY; }
+export function isLate(t) { return t.block > 0 && t.status !== "Completed" && taskEnd(t) < TODAY; }
 export function lateTasks() { return ordered().filter(isLate); }
-export function setStatus(t, v) { t.status = v; if (v === "Done") t.steps.forEach(function (s) { s.done = true; }); }
+export function setStatus(t, v) { t.status = v; if (v === "Completed") t.steps.forEach(function (s) { s.done = true; }); }
 export function syncFromSteps(t) {
   var n = t.steps.filter(function (s) { return s.done; }).length;
-  if (t.steps.length && n === t.steps.length) t.status = "Done";
+  if (t.steps.length && n === t.steps.length) t.status = "Completed";
   else if (n > 0 && t.status === "Not started") t.status = "In progress";
-  else if (t.status === "Done" && n < t.steps.length) t.status = "In progress";
+  else if (t.status === "Completed" && n < t.steps.length) t.status = "In progress";
 }
-export function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Done") return o[i]; return null; }
+export function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Completed") return o[i]; return null; }
 export function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
 // "proj:" + id routes to a project's own page -- id-based, not name-based, so
 // renaming a project never breaks its pin or an in-flight link to it. No
-// separate Launch/"kofi" page exists anymore (see DESIGN.md: only Projects
+// separate standalone Launch page exists anymore (see DESIGN.md: only Projects
 // are pinnable, launch-critical items render as a section on a project's own page).
 export function validPage(key) { return typeof key === "string" && key.indexOf("proj:") === 0 && !!findProject(key.slice(5)); }
 export function pageTitle(key) {
@@ -113,7 +119,7 @@ export function short(str, n) { return str.length > n ? str.slice(0, n - 1) + "â
 // that project's own page (no separate global Launch page anymore).
 export function launchItems(projectId) {
   var out = [];
-  orderedCounted().forEach(function (t) { if (t.projectId !== projectId) return; t.steps.forEach(function (s) { if (s.kofi) out.push({ t: t, s: s }); }); });
+  orderedCounted().forEach(function (t) { if (t.projectId !== projectId) return; t.steps.forEach(function (s) { if (s.launch) out.push({ t: t, s: s }); }); });
   return out;
 }
 // A decision must link to a real step (Project -> Task -> Step -> Decision,

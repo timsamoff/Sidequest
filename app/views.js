@@ -1,4 +1,4 @@
-import { state, ui, save, changed, autoArchive, archivedToast, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, project as makeProject } from "./state.js";
+import { state, ui, save, changed, autoArchive, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, project as makeProject } from "./state.js";
 import { DAY, iso, parseISO, TODAY, fmt, fmtY } from "./dates.js";
 import {
   WORDS, wd, wl, pset, blockStartFor, blockEndFor, projKey, taskStart, taskEnd,
@@ -44,7 +44,7 @@ export function nextUpPanel() {
     acts.appendChild(on(el("button", { type: "button", "class": "primary" }, "Choose the next project"), "click", function () { go("projects"); }));
   } else {
     if (t.status === "Not started") acts.appendChild(on(el("button", { type: "button", "class": "primary" }, "Start"), "click", function () { t.status = "In progress"; changed(); }));
-    acts.appendChild(on(el("button", { type: "button", "class": t.status === "Not started" ? "" : "primary" }, "Mark done"), "click", function () { setStatus(t, "Done"); changed(); }));
+    acts.appendChild(on(el("button", { type: "button", "class": t.status === "Not started" ? "" : "primary" }, "Mark completed"), "click", function () { setStatus(t, "Completed"); changed(); }));
   }
   acts.appendChild(on(el("button", { type: "button" }, "Open task"), "click", function () { openTask(t.id); }));
   box.appendChild(acts);
@@ -116,7 +116,7 @@ export function renderToday(root) {
 
 export function taskRow(t) {
   var li = el("li");
-  var b = el("button", { type: "button", "class": "item" + (t.status === "Done" ? " done" : "") });
+  var b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : "") });
   if (t.id === ui.sel) b.setAttribute("aria-current", "true");
   var l1 = el("div", { "class": "l1" }); l1.appendChild(el("b", null, dispProject(t)));
   l1.appendChild(document.createTextNode(" · " + (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)))));
@@ -193,8 +193,8 @@ export function buildDetail(t) {
     var ac = el("div", { "class": "li-actions" });
     var dc = decisionFor(s.id);
     if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the linked decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { go("proj:" + t.projectId); }));
-    var kb = el("button", { type: "button", "class": "small" + (s.kofi ? " on" : ""), "aria-pressed": s.kofi ? "true" : "false", "aria-label": "Show on the launch checklist: " + s.text }, "Launch");
-    on(kb, "click", function () { s.kofi = !s.kofi; changed(); });
+    var kb = el("button", { type: "button", "class": "small" + (s.launch ? " on" : ""), "aria-pressed": s.launch ? "true" : "false", "aria-label": "Show on the launch checklist: " + s.text }, "Launch");
+    on(kb, "click", function () { s.launch = !s.launch; changed(); });
     ac.appendChild(kb);
     var rm = el("button", { type: "button", "class": "small danger", "aria-label": "Remove step: " + s.text }, "Remove");
     on(rm, "click", function () { t.steps = t.steps.filter(function (x) { return x.id !== s.id; }); syncFromSteps(t); changed(); });
@@ -218,18 +218,14 @@ export function buildDetail(t) {
   box.appendChild(ta);
   if (!t.isNext) {
     var ar = el("div", { "class": "actions", style: "margin-top:14px" });
-    if (t.status === "Done") ar.appendChild(on(el("button", { type: "button", "class": "small" }, "Move to Archive"), "click", function () {
-      t.arch = { at: iso(TODAY), why: "done" }; ui.detail = false; changed();
-      notify("Task moved to the Archive.", function () { t.arch = null; t.noAuto = true; changed(); });
-    }));
-    ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Remove task"), "click", function () { ui.detail = false; removeToArchive(t, "Task"); }));
+    ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Remove"), "click", function () { ui.detail = false; removeNow(t, "tasks", "Task"); }));
     box.appendChild(ar);
   }
   return box;
 }
 
 // Launch-critical items and Decisions render as sections on a project's own
-// page, scoped to that project's tasks -- no separate Launch/"kofi" page
+// page, scoped to that project's tasks -- no separate standalone Launch page
 // exists anymore (see DESIGN.md: only Projects are pinnable).
 export function launchSection(root, p) {
   var g = pgrid();
@@ -245,7 +241,7 @@ export function launchSection(root, p) {
   items.forEach(function (x) {
     var li = el("li", { "class": x.s.done ? "done" : "" });
     var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = x.s.done;
-    on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); var ids = autoArchive(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); if (ids.length) archivedToast(ids); });
+    on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); autoArchive(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); });
     label.appendChild(box); label.appendChild(el("span", null, x.s.text)); li.appendChild(label);
     var meta = el("div", { "class": "cnote" });
     if (x.t.arch) meta.appendChild(document.createTextNode(short(dispWhat(x.t), 48) + " (archived)"));
@@ -278,7 +274,7 @@ export function launchSection(root, p) {
         var r = rows[ls.s.id]; if (r) { r.box.checked = ls.s.done; r.li.className = ls.s.done ? "done" : ""; progress(); }
         renderChrome();
       }
-      var ids = autoArchive(); save(); if (ids.length) archivedToast(ids);
+      autoArchive(); save();
     });
     li.appendChild(inp);
     var lf = el("div", { "class": "field" }); lf.appendChild(el("label", { "for": "ds-" + d.id }, "Linked step"));
@@ -287,7 +283,7 @@ export function launchSection(root, p) {
     on(sel, "change", function () { d.step = sel.value; save(); renderView(); });
     lf.appendChild(sel); li.appendChild(lf);
     var rm = el("button", { type: "button", "class": "small danger", style: "margin-top:10px" }, "Remove");
-    on(rm, "click", function () { removeToArchive(d, "Decision"); });
+    on(rm, "click", function () { removeNow(d, "decisions", "Decision"); });
     li.appendChild(rm); dl.appendChild(li);
   });
   g.put(dl, 2, 3); root.appendChild(g);
@@ -364,7 +360,7 @@ export function renderProjectPage(root, id) {
   else {
     var ul = el("ul", { "class": "tlist" });
     ts.forEach(function (t) {
-      var li = el("li"), b = el("button", { type: "button", "class": "item" + (t.status === "Done" ? " done" : "") });
+      var li = el("li"), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : "") });
       b.appendChild(el("div", { "class": "l1" }, t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
       b.appendChild(el("div", { "class": "l2" }, t.what));
       var l3 = el("div", { "class": "l3" });
@@ -400,7 +396,7 @@ export function renderProjectPage(root, id) {
   launchSection(root, p);
 
   var ar = el("div", { "class": "actions", style: "margin-top:14px" });
-  ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Archive project"), "click", function () {
+  ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Archive"), "click", function () {
     // Archiving a project cascades to its still-open tasks -- otherwise they'd
     // dangle under a project no longer in the live list (dispProject only
     // resolves live projects), showing a blank project name in Schedule/Today.
@@ -419,7 +415,7 @@ export function promoteToActive(id) {
   if (!p) return;
   p.status = "active";
   var t = state.tasks.filter(function (x) { return x.isNext; })[0];
-  if (t) t.status = "Done";
+  if (t) t.status = "Completed";
   changed();
 }
 export function standingBlock(c) {
@@ -429,7 +425,7 @@ export function standingBlock(c) {
   var box = el("div", { "class": "box", style: "margin-top:10px" });
   var groups = {}, order = [];
   ordered().forEach(function (t) {
-    if (t.isNext || t.status === "Done") return;
+    if (t.isNext || t.status === "Completed") return;
     var g = groups[t.projectId]; if (!g) { g = groups[t.projectId] = { projectId: t.projectId, name: dispProject(t), open: 0, first: t }; order.push(g); }
     g.open++;
   });
@@ -519,7 +515,7 @@ export function renderTimeline(root) {
     var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date))); li.appendChild(el("span", null, m.text));
     if (!m.auto) {
       var rm = el("button", { type: "button", "class": "small danger" }, "Remove");
-      on(rm, "click", function () { var orig = state.milestones.filter(function (x) { return x.id === m.id; })[0]; if (orig) removeToArchive(orig, "Milestone"); });
+      on(rm, "click", function () { var orig = state.milestones.filter(function (x) { return x.id === m.id; })[0]; if (orig) removeNow(orig, "milestones", "Milestone"); });
       li.appendChild(rm);
     }
     ul.appendChild(li);
@@ -546,29 +542,40 @@ export function renderTimeline(root) {
   table.appendChild(body); wrap.appendChild(table); root.appendChild(wrap);
 }
 
+// Only Projects and Ideas are independently archivable (confirmed 2026-09-24)
+// -- everything else (Tasks, Decisions, Milestones) lives inside its owning
+// Project and is removed immediately with a lightweight undo, not archived
+// as its own entry. See removeNow() below for that path.
 export function removeToArchive(item, label, before) {
   if (before) before();
   item.arch = { at: iso(TODAY), why: "removed" };
   changed();
   notify(label + " moved to the Archive.", function () { item.arch = null; changed(); });
 }
+// Lightweight removal for Tasks/Decisions/Milestones: deleted immediately
+// (spliced out of state[list]), with a short-lived Undo toast that
+// re-inserts the exact same object at its original index -- no Archive
+// entry, no `arch` field involved. Confirmed 2026-09-24: these three kinds
+// no longer get their own Archive presence; only Projects/Ideas do.
+export function removeNow(item, list, label) {
+  var arr = state[list], idx = arr.indexOf(item);
+  if (idx < 0) return;
+  arr.splice(idx, 1); changed();
+  notify(label + " removed.", function () { arr.splice(idx, 0, item); changed(); });
+}
 
 /* archive */
-export var KIND_LABEL = { task: "Task", project: "Project", idea: "Idea", decision: "Decision", milestone: "Milestone" };
-export var KIND_FILTERS = [["all", "All"], ["task", "Tasks"], ["project", "Projects"], ["idea", "Ideas"], ["decision", "Decisions"], ["milestone", "Milestones"]];
+export var KIND_LABEL = { project: "Project", idea: "Idea" };
+export var KIND_FILTERS = [["all", "All"], ["project", "Projects"], ["idea", "Ideas"]];
 export function archiveEntries() {
   var out = [];
-  state.tasks.forEach(function (t) { if (t.arch) out.push({ kind: "task", list: "tasks", item: t, title: dispProject(t) + ": " + short(dispWhat(t), 90) }); });
   state.projects.forEach(function (p) { if (p.arch) out.push({ kind: "project", list: "projects", item: p, title: p.name }); });
   state.parked.forEach(function (p) { if (p.arch) out.push({ kind: "idea", list: "parked", item: p, title: p.text }); });
-  state.decisions.forEach(function (d) { if (d.arch) out.push({ kind: "decision", list: "decisions", item: d, title: d.q }); });
-  state.milestones.forEach(function (m) { if (m.arch) out.push({ kind: "milestone", list: "milestones", item: m, title: m.text + " (" + fmtY(parseISO(m.date)) + ")" }); });
   return out.sort(function (a, b) { return a.item.arch.at < b.item.arch.at ? 1 : (a.item.arch.at > b.item.arch.at ? -1 : 0); });
 }
 export function dropEntry(e) { state[e.list] = state[e.list].filter(function (x) { return x !== e.item; }); }
 export function restoreEntry(e) {
-  var wasDone = e.item.arch && e.item.arch.why === "done";
-  e.item.arch = null; if (e.kind === "task" && wasDone) e.item.noAuto = true;
+  e.item.arch = null;
   changed(); notify(KIND_LABEL[e.kind] + " restored.");
 }
 export function deleteForever(e) {
@@ -657,9 +664,9 @@ export function helpTopics() {
       "A decision always links to a step. Answering the decision ticks the step, and clearing the answer unticks it.",
       "Use **Add item** to create a new step for the list, and **Add decision** to add a question to settle."]],
     ["Archive and undo", [
-      "Completed tasks move to the **Archive** by default, and so does anything you remove. An **Undo** button appears for a few seconds.",
-      "In the Archive, **Restore** puts an item back where it was. **Delete forever** always asks first, and it cannot be undone.",
-      "Change when completed tasks are archived in **Settings**."]],
+      "Only **Projects** and **Ideas** go to the **Archive**, when you remove them. A completed task just stays visible in its project, marked done.",
+      "Removing a task, decision, or milestone deletes it right away, with a short **Undo** in case you didn't mean to.",
+      "In the Archive, **Restore** puts a project or idea back where it was. **Delete forever** always asks first, and it cannot be undone."]],
     ["Slip the schedule", [
       "Open the menu and choose **Slip the schedule**. Pick the number of days, and whether to move everything or one project.",
       "**Undo last slip** in the same dialog reverses it."]],
@@ -758,12 +765,7 @@ export function renderSettings(root) {
   root.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device's own format. Nothing here uses a time of day yet."));
 
   root.appendChild(el("h3", null, "Archive"));
-  root.appendChild(el("p", { "class": "hint" }, "Removed items always go to the Archive. This sets what happens when a task is completed."));
-  var aw = el("div", { "class": "field" }); aw.appendChild(el("label", { "for": "set-arch" }, "Move completed tasks to the Archive"));
-  var ar = el("select", { id: "set-arch", "class": "plain" });
-  [["immediate", "Right away"], ["week", "After 7 days"], ["never", "Never (I will do it myself)"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if (o[0] === state.settings.archiveRule) op.selected = true; ar.appendChild(op); });
-  on(ar, "change", function () { state.settings.archiveRule = ar.value; changed(); });
-  aw.appendChild(ar); var ag2 = el("div", { "class": "setgrid" }); ag2.appendChild(aw); root.appendChild(ag2);
+  root.appendChild(el("p", { "class": "hint" }, "Removing a project or an idea sends it to the Archive. A completed task just stays visible in its project."));
   var n = archiveEntries().length;
   root.appendChild(on(el("button", { type: "button", "class": "small", style: "margin-top:12px" }, "Open the Archive (" + n + (n === 1 ? " item" : " items") + ")"), "click", function () { go("archive"); }));
 

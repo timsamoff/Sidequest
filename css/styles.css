@@ -122,7 +122,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .tabbadge { min-width: 22px; text-align: center; padding: 0 6px; }
 .chip { display: inline-block; padding: 1px 10px; border-radius: 999px; font-size: .82rem; background: var(--chip-idle); color: var(--chip-ink); }
 .chip[data-v="In progress"] { background: var(--chip-work); }
-.chip[data-v="Done"] { background: var(--chip-done); }
+.chip[data-v="Completed"] { background: var(--chip-done); }
 .tlist { list-style: none; margin: 10px 0 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
 .tlist li { border-bottom: 1px solid var(--line); }
 .tlist li:last-child { border-bottom: 0; }
@@ -144,7 +144,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .detail .dmeta { color: var(--muted); margin-top: 4px; }
 select.status { border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
 select.status[data-v="In progress"] { background: var(--chip-work); }
-select.status[data-v="Done"] { background: var(--chip-done); }
+select.status[data-v="Completed"] { background: var(--chip-done); }
 .steps { list-style: none; margin: 8px 0 0; padding: 0; }
 .steps li { display: flex; gap: 10px; align-items: flex-start; padding: 5px 0; }
 .steps li label { display: flex; gap: 10px; align-items: flex-start; flex: 1 1 auto; cursor: pointer; }

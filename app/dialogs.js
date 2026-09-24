@@ -125,23 +125,23 @@ export function decisionDialog(prefillProjectId) {
     return { msg: "Decision added." };
   }, "A decision is something you need to figure out before you can move forward. Linking it to a step means answering it automatically checks that step off.");
 }
-export function stepDialog(kofi, prefillProjectId) {
+export function stepDialog(launchItem, prefillProjectId) {
   if (!orderedAll().length) { notify("Add a task first."); return; }
   var selTask = ui.sel && findTask(ui.sel);
   var startId = prefillProjectId || (selTask ? selTask.projectId : "");
   var projOpts = [{ value: "", label: "All projects" }].concat(liveProjects().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; }));
   var pick = selTask ? selTask.id : ((nextTask() || orderedAll()[0]).id);
-  formDialog(kofi ? "New launch item" : "New step", [
+  formDialog(launchItem ? "New launch item" : "New step", [
     { key: "project", label: "Project", type: "select", options: projOpts, value: startId },
     { key: "task", label: "Task", type: "select", options: taskOptions(startId), value: pick },
-    { key: "text", label: kofi ? "What needs doing before you launch?" : "Step" }
+    { key: "text", label: launchItem ? "What needs doing before you launch?" : "Step" }
   ], "Add step", function (v) {
     var t = findTask(v.task);
     if (!v.text) return "Enter the step.";
     if (!t) return "Choose a task.";
-    t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false, kofi: !!kofi }); syncFromSteps(t); changed();
-    return { msg: "Step added to " + dispProject(t) + (kofi ? " and the launch checklist." : ".") };
-  }, kofi ? "The step lives in a task and also shows on this project's launch checklist." : "");
+    t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false, launch: !!launchItem }); syncFromSteps(t); changed();
+    return { msg: "Step added to " + dispProject(t) + (launchItem ? " and the launch checklist." : ".") };
+  }, launchItem ? "The step lives in a task and also shows on this project's launch checklist." : "");
   var projSel = $("f-project"), taskSel = $("f-task");
   if (projSel && taskSel) {
     on(projSel, "change", function () {

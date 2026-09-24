@@ -173,7 +173,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .tabbadge { min-width: 22px; text-align: center; padding: 0 6px; }
 .chip { display: inline-block; padding: 1px 10px; border-radius: 999px; font-size: .82rem; background: var(--chip-idle); color: var(--chip-ink); }
 .chip[data-v="In progress"] { background: var(--chip-work); }
-.chip[data-v="Done"] { background: var(--chip-done); }
+.chip[data-v="Completed"] { background: var(--chip-done); }
 .tlist { list-style: none; margin: 10px 0 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
 .tlist li { border-bottom: 1px solid var(--line); }
 .tlist li:last-child { border-bottom: 0; }
@@ -195,7 +195,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .detail .dmeta { color: var(--muted); margin-top: 4px; }
 select.status { border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
 select.status[data-v="In progress"] { background: var(--chip-work); }
-select.status[data-v="Done"] { background: var(--chip-done); }
+select.status[data-v="Completed"] { background: var(--chip-done); }
 .steps { list-style: none; margin: 8px 0 0; padding: 0; }
 .steps li { display: flex; gap: 10px; align-items: flex-start; padding: 5px 0; }
 .steps li label { display: flex; gap: 10px; align-items: flex-start; flex: 1 1 auto; cursor: pointer; }
@@ -503,32 +503,38 @@ function chosen() { var a = activeProjects(); for (var i = 0; i < a.length; i++)
 function dispProject(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next project"; } var p = findProject(t.projectId); return p ? p.name : ""; }
 function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next project. Add its first tasks with the + button."; return t.what; }
 function weight(t) { return Math.max(1, t.steps.length); }
-function doneUnits(t) { return t.status === "Done" ? weight(t) : t.steps.filter(function (s) { return s.done; }).length; }
+function doneUnits(t) { return t.status === "Completed" ? weight(t) : t.steps.filter(function (s) { return s.done; }).length; }
 function totalUnits() { return burnTasks().reduce(function (a, t) { return a + weight(t); }, 0); }
 function remainingUnits() { return burnTasks().reduce(function (a, t) { return a + weight(t) - doneUnits(t); }, 0); }
 function planned(ms) { var d = 0; burnTasks().forEach(function (t) { if (taskEnd(t) <= ms) d += weight(t); }); return totalUnits() - d; }
 function sortTasks(list) {
-  return list.map(function (t) { return { t: t, i: state.tasks.indexOf(t) }; }).sort(function (a, b) { return (a.t.block || 99) - (b.t.block || 99) || a.i - b.i; }).map(function (x) { return x.t; });
+  // Completed tasks sink to the bottom (confirmed 2026-09-24, since a task no
+  // longer archives away once done -- it stays visible in this same list
+  // permanently), ahead of the existing block/insertion-order sort.
+  return list.map(function (t) { return { t: t, i: state.tasks.indexOf(t) }; }).sort(function (a, b) {
+    var aDone = a.t.status === "Completed" ? 1 : 0, bDone = b.t.status === "Completed" ? 1 : 0;
+    return aDone - bDone || (a.t.block || 99) - (b.t.block || 99) || a.i - b.i;
+  }).map(function (x) { return x.t; });
 }
 function ordered() { return sortTasks(live(state.tasks).filter(function (t) { return t.block > 0; })); }
 function orderedAll() { return sortTasks(live(state.tasks)); }
 function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0; })); }
 function burnTasks() { return counted().filter(function (t) { return t.block > 0; }); }
 function orderedCounted() { return sortTasks(counted()); }
-function isLate(t) { return t.block > 0 && t.status !== "Done" && taskEnd(t) < TODAY; }
+function isLate(t) { return t.block > 0 && t.status !== "Completed" && taskEnd(t) < TODAY; }
 function lateTasks() { return ordered().filter(isLate); }
-function setStatus(t, v) { t.status = v; if (v === "Done") t.steps.forEach(function (s) { s.done = true; }); }
+function setStatus(t, v) { t.status = v; if (v === "Completed") t.steps.forEach(function (s) { s.done = true; }); }
 function syncFromSteps(t) {
   var n = t.steps.filter(function (s) { return s.done; }).length;
-  if (t.steps.length && n === t.steps.length) t.status = "Done";
+  if (t.steps.length && n === t.steps.length) t.status = "Completed";
   else if (n > 0 && t.status === "Not started") t.status = "In progress";
-  else if (t.status === "Done" && n < t.steps.length) t.status = "In progress";
+  else if (t.status === "Completed" && n < t.steps.length) t.status = "In progress";
 }
-function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Done") return o[i]; return null; }
+function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Completed") return o[i]; return null; }
 function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
 // "proj:" + id routes to a project's own page -- id-based, not name-based, so
 // renaming a project never breaks its pin or an in-flight link to it. No
-// separate Launch/"kofi" page exists anymore (see DESIGN.md: only Projects
+// separate standalone Launch page exists anymore (see DESIGN.md: only Projects
 // are pinnable, launch-critical items render as a section on a project's own page).
 function validPage(key) { return typeof key === "string" && key.indexOf("proj:") === 0 && !!findProject(key.slice(5)); }
 function pageTitle(key) {
@@ -564,7 +570,7 @@ function short(str, n) { return str.length > n ? str.slice(0, n - 1) + "…" : s
 // that project's own page (no separate global Launch page anymore).
 function launchItems(projectId) {
   var out = [];
-  orderedCounted().forEach(function (t) { if (t.projectId !== projectId) return; t.steps.forEach(function (s) { if (s.kofi) out.push({ t: t, s: s }); }); });
+  orderedCounted().forEach(function (t) { if (t.projectId !== projectId) return; t.steps.forEach(function (s) { if (s.launch) out.push({ t: t, s: s }); }); });
   return out;
 }
 // A decision must link to a real step (Project -> Task -> Step -> Decision,
@@ -594,13 +600,13 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 
 
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
-var STATUSES = ["Not started", "In progress", "Done"];
+var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
 var APP_VERSION = "1.0.0";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
-function st(id, text, launch, done) { return { id: id, text: text, done: done === true, kofi: launch === true }; }
+function st(id, text, launch, done) { return { id: id, text: text, done: done === true, launch: launch === true }; }
 function task(id, block, projectId, what, done, steps, extra) {
   var t = { id: id, block: block, projectId: projectId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false };
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
@@ -630,8 +636,8 @@ function sampleData() {
     project("pCli", "Sample Command-Line Tool", "candidate", { note: "Would save time on your own projects" })
   ];
   var tasks = [
-    task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Done", doneAt: lastWeek, arch: { at: lastWeek, why: "done" } }),
-    task("a2", 2, "pApp", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", false, true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "Done", doneAt: yest, arch: { at: yest, why: "done" } }),
+    task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Completed", doneAt: lastWeek }),
+    task("a2", 2, "pApp", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", false, true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "Completed", doneAt: yest }),
     task("a3", 3, "pApp", "Build the home screen", "The list loads quickly and scrolls smoothly", [st("a3a", "Show the list of items", false, true), st("a3b", "Add pull to refresh"), st("a3c", "Handle an empty list")], { status: "In progress", notes: "Ask a friend to try this on an older phone before moving on." }),
     task("a4", 4, "pApp", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link", true), st("a4c", "Collect and sort the feedback")]),
     task("a5", 5, "pApp", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true, true), st("a5a", "Write the store description", true), st("a5b", "Prepare screenshots", true), st("a5c", "Submit for review", true)]),
@@ -659,7 +665,7 @@ function sampleData() {
     decisions: [
       { id: "d1", q: "Which app store should you launch on first?", a: "Start with one store, then add the other.", step: "a5z" },
       { id: "d2", q: "Will the game be free, paid, or free with a paid upgrade?", a: "", step: "g3d" },
-      { id: "d3", q: "Should the site use a page builder?", a: "No, plain pages are enough.", step: "w3a", arch: { at: yest, why: "removed" } }
+      { id: "d3", q: "Should the site use a page builder?", a: "No, plain pages are enough.", step: "w3a" }
     ],
     // Milestones now require a direct project link (no step/task chain to derive it from).
     milestones: [
@@ -676,7 +682,7 @@ function defaults() {
     tasks: d.tasks, actual: [34, 31, 25, null, null, null, null],
     decisions: d.decisions, projects: d.projects, parked: d.parked,
     milestones: d.milestones, lastSlip: null, pins: ["proj:pApp"],
-    settings: { theme: "auto", archiveRule: "immediate", dateFormat: "us", blockWord: "Sprint", hideWelcome: false }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false }
   };
 }
 
@@ -725,14 +731,14 @@ function normalize(s) {
       if (!pid && !t.isNext) return;
       var steps = [];
       if (Array.isArray(t.steps)) t.steps.forEach(function (x) {
-        if (x && typeof x.id === "string") steps.push({ id: S(x.id, 40), text: S(x.text, 300), done: x.done === true, kofi: x.kofi === true });
+        if (x && typeof x.id === "string") steps.push({ id: S(x.id, 40), text: S(x.text, 300), done: x.done === true, launch: x.launch === true });
       });
       var b = typeof t.block === "number" ? Math.round(t.block) : 1;
       ts.push({
         id: S(t.id, 40), block: Math.min(12, Math.max(0, b)), projectId: pid, what: S(t.what, 400), done: S(t.done, 200),
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
         custom: t.custom === true, isNext: t.isNext === true,
-        arch: validArch(t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : "", noAuto: t.noAuto === true
+        arch: validArch(t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : ""
       });
     });
     d.tasks = ts;
@@ -747,15 +753,13 @@ function normalize(s) {
   // Decisions require a real step link (Project -> Task -> Step -> Decision) --
   // a decision with no step, or one pointing at a step that doesn't exist, is
   // dropped rather than kept in a state the UI can't render meaningfully.
-  // Archived decisions are exempt: their step may have been archived/removed
-  // since, and an archived decision is read-only history, not something a
-  // user needs to keep re-attaching.
+  // Decisions no longer archive independently (confirmed 2026-09-24 -- only
+  // Projects/Ideas do), so there's no "archived, exempt from this rule" case
+  // anymore: every decision must resolve to a real, live step.
   if (Array.isArray(s.decisions)) {
     d.decisions = s.decisions.filter(function (x) {
-      if (!x || typeof x.id !== "string") return false;
-      var arch = validArch(x.arch);
-      return arch || (typeof x.step === "string" && liveStepIds[x.step]);
-    }).map(function (x) { return { id: S(x.id, 40), q: S(x.q, 300), a: S(x.a, 1000), step: S(x.step, 40), arch: validArch(x.arch) }; });
+      return x && typeof x.id === "string" && typeof x.step === "string" && liveStepIds[x.step];
+    }).map(function (x) { return { id: S(x.id, 40), q: S(x.q, 300), a: S(x.a, 1000), step: S(x.step, 40) }; });
   }
   if (Array.isArray(s.parked)) d.parked = s.parked.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 300), arch: validArch(x.arch) }; });
   // Milestones require a direct project link (no task/step chain to derive it
@@ -763,11 +767,10 @@ function normalize(s) {
   if (Array.isArray(s.milestones)) {
     d.milestones = s.milestones.filter(function (x) {
       return x && typeof x.id === "string" && isISO(x.date) && typeof x.projectId === "string" && projectIds[x.projectId];
-    }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), date: x.date, projectId: x.projectId, arch: validArch(x.arch) }; });
+    }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), date: x.date, projectId: x.projectId }; });
   }
   if (s.settings && typeof s.settings === "object") {
     if (["auto", "light", "dark"].indexOf(s.settings.theme) >= 0) d.settings.theme = s.settings.theme;
-    if (["immediate", "week", "never"].indexOf(s.settings.archiveRule) >= 0) d.settings.archiveRule = s.settings.archiveRule;
     if (["us", "intl", "mdy", "dmy", "iso"].indexOf(s.settings.dateFormat) >= 0) d.settings.dateFormat = s.settings.dateFormat;
     if (["Block", "Sprint", "Iteration", "Phase", "Week"].indexOf(s.settings.blockWord) >= 0) d.settings.blockWord = s.settings.blockWord;
     if (typeof s.settings.hideWelcome === "boolean") d.settings.hideWelcome = s.settings.hideWelcome;
@@ -860,25 +863,19 @@ var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", se
 /* The app always opens on Today, on every device. */
 function saveUI() { /* nothing to save */ }
 
+// Stamps a task's completion date the moment its status becomes Done, and
+// clears it if the task is reopened. Only Projects and Ideas independently
+// archive now (confirmed 2026-09-24) -- a completed task just stays visible,
+// marked Done, inside its live Project; this function no longer moves
+// anything to the Archive itself.
 function autoArchive() {
-  var rule = state.settings.archiveRule, ids = [];
   state.tasks.forEach(function (t) {
-    if (t.status !== "Done") { t.doneAt = ""; t.noAuto = false; return; }
+    if (t.status !== "Completed") { t.doneAt = ""; return; }
     if (!t.doneAt) t.doneAt = iso(TODAY);
-    if (t.arch || t.isNext || t.noAuto || rule === "never") return;
-    if (rule === "immediate" || (rule === "week" && parseISO(t.doneAt) + 7 * DAY <= TODAY)) { t.arch = { at: iso(TODAY), why: "done" }; ids.push(t.id); }
-  });
-  return ids;
-}
-function archivedToast(ids) {
-  notify(ids.length === 1 ? "Task completed and moved to the Archive." : ids.length + " completed tasks moved to the Archive.", function () {
-    ids.forEach(function (id) { var t = findAnyTask(id); if (t) { t.arch = null; t.noAuto = true; } });
-    changed();
   });
 }
 function changed() {
-  var ids = autoArchive(); recordCurrentWeek(); save(); renderAll();
-  if (ids.length) archivedToast(ids);
+  autoArchive(); recordCurrentWeek(); save(); renderAll();
 }
 
 
@@ -1250,23 +1247,23 @@ function decisionDialog(prefillProjectId) {
     return { msg: "Decision added." };
   }, "A decision is something you need to figure out before you can move forward. Linking it to a step means answering it automatically checks that step off.");
 }
-function stepDialog(kofi, prefillProjectId) {
+function stepDialog(launchItem, prefillProjectId) {
   if (!orderedAll().length) { notify("Add a task first."); return; }
   var selTask = ui.sel && findTask(ui.sel);
   var startId = prefillProjectId || (selTask ? selTask.projectId : "");
   var projOpts = [{ value: "", label: "All projects" }].concat(liveProjects().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; }));
   var pick = selTask ? selTask.id : ((nextTask() || orderedAll()[0]).id);
-  formDialog(kofi ? "New launch item" : "New step", [
+  formDialog(launchItem ? "New launch item" : "New step", [
     { key: "project", label: "Project", type: "select", options: projOpts, value: startId },
     { key: "task", label: "Task", type: "select", options: taskOptions(startId), value: pick },
-    { key: "text", label: kofi ? "What needs doing before you launch?" : "Step" }
+    { key: "text", label: launchItem ? "What needs doing before you launch?" : "Step" }
   ], "Add step", function (v) {
     var t = findTask(v.task);
     if (!v.text) return "Enter the step.";
     if (!t) return "Choose a task.";
-    t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false, kofi: !!kofi }); syncFromSteps(t); changed();
-    return { msg: "Step added to " + dispProject(t) + (kofi ? " and the launch checklist." : ".") };
-  }, kofi ? "The step lives in a task and also shows on this project's launch checklist." : "");
+    t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false, launch: !!launchItem }); syncFromSteps(t); changed();
+    return { msg: "Step added to " + dispProject(t) + (launchItem ? " and the launch checklist." : ".") };
+  }, launchItem ? "The step lives in a task and also shows on this project's launch checklist." : "");
   var projSel = $("f-project"), taskSel = $("f-task");
   if (projSel && taskSel) {
     on(projSel, "change", function () {
@@ -1382,7 +1379,7 @@ function nextUpPanel() {
     acts.appendChild(on(el("button", { type: "button", "class": "primary" }, "Choose the next project"), "click", function () { go("projects"); }));
   } else {
     if (t.status === "Not started") acts.appendChild(on(el("button", { type: "button", "class": "primary" }, "Start"), "click", function () { t.status = "In progress"; changed(); }));
-    acts.appendChild(on(el("button", { type: "button", "class": t.status === "Not started" ? "" : "primary" }, "Mark done"), "click", function () { setStatus(t, "Done"); changed(); }));
+    acts.appendChild(on(el("button", { type: "button", "class": t.status === "Not started" ? "" : "primary" }, "Mark completed"), "click", function () { setStatus(t, "Completed"); changed(); }));
   }
   acts.appendChild(on(el("button", { type: "button" }, "Open task"), "click", function () { openTask(t.id); }));
   box.appendChild(acts);
@@ -1454,7 +1451,7 @@ function renderToday(root) {
 
 function taskRow(t) {
   var li = el("li");
-  var b = el("button", { type: "button", "class": "item" + (t.status === "Done" ? " done" : "") });
+  var b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : "") });
   if (t.id === ui.sel) b.setAttribute("aria-current", "true");
   var l1 = el("div", { "class": "l1" }); l1.appendChild(el("b", null, dispProject(t)));
   l1.appendChild(document.createTextNode(" · " + (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)))));
@@ -1531,8 +1528,8 @@ function buildDetail(t) {
     var ac = el("div", { "class": "li-actions" });
     var dc = decisionFor(s.id);
     if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the linked decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { go("proj:" + t.projectId); }));
-    var kb = el("button", { type: "button", "class": "small" + (s.kofi ? " on" : ""), "aria-pressed": s.kofi ? "true" : "false", "aria-label": "Show on the launch checklist: " + s.text }, "Launch");
-    on(kb, "click", function () { s.kofi = !s.kofi; changed(); });
+    var kb = el("button", { type: "button", "class": "small" + (s.launch ? " on" : ""), "aria-pressed": s.launch ? "true" : "false", "aria-label": "Show on the launch checklist: " + s.text }, "Launch");
+    on(kb, "click", function () { s.launch = !s.launch; changed(); });
     ac.appendChild(kb);
     var rm = el("button", { type: "button", "class": "small danger", "aria-label": "Remove step: " + s.text }, "Remove");
     on(rm, "click", function () { t.steps = t.steps.filter(function (x) { return x.id !== s.id; }); syncFromSteps(t); changed(); });
@@ -1556,18 +1553,14 @@ function buildDetail(t) {
   box.appendChild(ta);
   if (!t.isNext) {
     var ar = el("div", { "class": "actions", style: "margin-top:14px" });
-    if (t.status === "Done") ar.appendChild(on(el("button", { type: "button", "class": "small" }, "Move to Archive"), "click", function () {
-      t.arch = { at: iso(TODAY), why: "done" }; ui.detail = false; changed();
-      notify("Task moved to the Archive.", function () { t.arch = null; t.noAuto = true; changed(); });
-    }));
-    ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Remove task"), "click", function () { ui.detail = false; removeToArchive(t, "Task"); }));
+    ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Remove"), "click", function () { ui.detail = false; removeNow(t, "tasks", "Task"); }));
     box.appendChild(ar);
   }
   return box;
 }
 
 // Launch-critical items and Decisions render as sections on a project's own
-// page, scoped to that project's tasks -- no separate Launch/"kofi" page
+// page, scoped to that project's tasks -- no separate standalone Launch page
 // exists anymore (see DESIGN.md: only Projects are pinnable).
 function launchSection(root, p) {
   var g = pgrid();
@@ -1583,7 +1576,7 @@ function launchSection(root, p) {
   items.forEach(function (x) {
     var li = el("li", { "class": x.s.done ? "done" : "" });
     var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = x.s.done;
-    on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); var ids = autoArchive(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); if (ids.length) archivedToast(ids); });
+    on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); autoArchive(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); });
     label.appendChild(box); label.appendChild(el("span", null, x.s.text)); li.appendChild(label);
     var meta = el("div", { "class": "cnote" });
     if (x.t.arch) meta.appendChild(document.createTextNode(short(dispWhat(x.t), 48) + " (archived)"));
@@ -1616,7 +1609,7 @@ function launchSection(root, p) {
         var r = rows[ls.s.id]; if (r) { r.box.checked = ls.s.done; r.li.className = ls.s.done ? "done" : ""; progress(); }
         renderChrome();
       }
-      var ids = autoArchive(); save(); if (ids.length) archivedToast(ids);
+      autoArchive(); save();
     });
     li.appendChild(inp);
     var lf = el("div", { "class": "field" }); lf.appendChild(el("label", { "for": "ds-" + d.id }, "Linked step"));
@@ -1625,7 +1618,7 @@ function launchSection(root, p) {
     on(sel, "change", function () { d.step = sel.value; save(); renderView(); });
     lf.appendChild(sel); li.appendChild(lf);
     var rm = el("button", { type: "button", "class": "small danger", style: "margin-top:10px" }, "Remove");
-    on(rm, "click", function () { removeToArchive(d, "Decision"); });
+    on(rm, "click", function () { removeNow(d, "decisions", "Decision"); });
     li.appendChild(rm); dl.appendChild(li);
   });
   g.put(dl, 2, 3); root.appendChild(g);
@@ -1702,7 +1695,7 @@ function renderProjectPage(root, id) {
   else {
     var ul = el("ul", { "class": "tlist" });
     ts.forEach(function (t) {
-      var li = el("li"), b = el("button", { type: "button", "class": "item" + (t.status === "Done" ? " done" : "") });
+      var li = el("li"), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : "") });
       b.appendChild(el("div", { "class": "l1" }, t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
       b.appendChild(el("div", { "class": "l2" }, t.what));
       var l3 = el("div", { "class": "l3" });
@@ -1738,7 +1731,7 @@ function renderProjectPage(root, id) {
   launchSection(root, p);
 
   var ar = el("div", { "class": "actions", style: "margin-top:14px" });
-  ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Archive project"), "click", function () {
+  ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Archive"), "click", function () {
     // Archiving a project cascades to its still-open tasks -- otherwise they'd
     // dangle under a project no longer in the live list (dispProject only
     // resolves live projects), showing a blank project name in Schedule/Today.
@@ -1757,7 +1750,7 @@ function promoteToActive(id) {
   if (!p) return;
   p.status = "active";
   var t = state.tasks.filter(function (x) { return x.isNext; })[0];
-  if (t) t.status = "Done";
+  if (t) t.status = "Completed";
   changed();
 }
 function standingBlock(c) {
@@ -1767,7 +1760,7 @@ function standingBlock(c) {
   var box = el("div", { "class": "box", style: "margin-top:10px" });
   var groups = {}, order = [];
   ordered().forEach(function (t) {
-    if (t.isNext || t.status === "Done") return;
+    if (t.isNext || t.status === "Completed") return;
     var g = groups[t.projectId]; if (!g) { g = groups[t.projectId] = { projectId: t.projectId, name: dispProject(t), open: 0, first: t }; order.push(g); }
     g.open++;
   });
@@ -1857,7 +1850,7 @@ function renderTimeline(root) {
     var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date))); li.appendChild(el("span", null, m.text));
     if (!m.auto) {
       var rm = el("button", { type: "button", "class": "small danger" }, "Remove");
-      on(rm, "click", function () { var orig = state.milestones.filter(function (x) { return x.id === m.id; })[0]; if (orig) removeToArchive(orig, "Milestone"); });
+      on(rm, "click", function () { var orig = state.milestones.filter(function (x) { return x.id === m.id; })[0]; if (orig) removeNow(orig, "milestones", "Milestone"); });
       li.appendChild(rm);
     }
     ul.appendChild(li);
@@ -1884,29 +1877,40 @@ function renderTimeline(root) {
   table.appendChild(body); wrap.appendChild(table); root.appendChild(wrap);
 }
 
+// Only Projects and Ideas are independently archivable (confirmed 2026-09-24)
+// -- everything else (Tasks, Decisions, Milestones) lives inside its owning
+// Project and is removed immediately with a lightweight undo, not archived
+// as its own entry. See removeNow() below for that path.
 function removeToArchive(item, label, before) {
   if (before) before();
   item.arch = { at: iso(TODAY), why: "removed" };
   changed();
   notify(label + " moved to the Archive.", function () { item.arch = null; changed(); });
 }
+// Lightweight removal for Tasks/Decisions/Milestones: deleted immediately
+// (spliced out of state[list]), with a short-lived Undo toast that
+// re-inserts the exact same object at its original index -- no Archive
+// entry, no `arch` field involved. Confirmed 2026-09-24: these three kinds
+// no longer get their own Archive presence; only Projects/Ideas do.
+function removeNow(item, list, label) {
+  var arr = state[list], idx = arr.indexOf(item);
+  if (idx < 0) return;
+  arr.splice(idx, 1); changed();
+  notify(label + " removed.", function () { arr.splice(idx, 0, item); changed(); });
+}
 
 /* archive */
-var KIND_LABEL = { task: "Task", project: "Project", idea: "Idea", decision: "Decision", milestone: "Milestone" };
-var KIND_FILTERS = [["all", "All"], ["task", "Tasks"], ["project", "Projects"], ["idea", "Ideas"], ["decision", "Decisions"], ["milestone", "Milestones"]];
+var KIND_LABEL = { project: "Project", idea: "Idea" };
+var KIND_FILTERS = [["all", "All"], ["project", "Projects"], ["idea", "Ideas"]];
 function archiveEntries() {
   var out = [];
-  state.tasks.forEach(function (t) { if (t.arch) out.push({ kind: "task", list: "tasks", item: t, title: dispProject(t) + ": " + short(dispWhat(t), 90) }); });
   state.projects.forEach(function (p) { if (p.arch) out.push({ kind: "project", list: "projects", item: p, title: p.name }); });
   state.parked.forEach(function (p) { if (p.arch) out.push({ kind: "idea", list: "parked", item: p, title: p.text }); });
-  state.decisions.forEach(function (d) { if (d.arch) out.push({ kind: "decision", list: "decisions", item: d, title: d.q }); });
-  state.milestones.forEach(function (m) { if (m.arch) out.push({ kind: "milestone", list: "milestones", item: m, title: m.text + " (" + fmtY(parseISO(m.date)) + ")" }); });
   return out.sort(function (a, b) { return a.item.arch.at < b.item.arch.at ? 1 : (a.item.arch.at > b.item.arch.at ? -1 : 0); });
 }
 function dropEntry(e) { state[e.list] = state[e.list].filter(function (x) { return x !== e.item; }); }
 function restoreEntry(e) {
-  var wasDone = e.item.arch && e.item.arch.why === "done";
-  e.item.arch = null; if (e.kind === "task" && wasDone) e.item.noAuto = true;
+  e.item.arch = null;
   changed(); notify(KIND_LABEL[e.kind] + " restored.");
 }
 function deleteForever(e) {
@@ -1995,9 +1999,9 @@ function helpTopics() {
       "A decision always links to a step. Answering the decision ticks the step, and clearing the answer unticks it.",
       "Use **Add item** to create a new step for the list, and **Add decision** to add a question to settle."]],
     ["Archive and undo", [
-      "Completed tasks move to the **Archive** by default, and so does anything you remove. An **Undo** button appears for a few seconds.",
-      "In the Archive, **Restore** puts an item back where it was. **Delete forever** always asks first, and it cannot be undone.",
-      "Change when completed tasks are archived in **Settings**."]],
+      "Only **Projects** and **Ideas** go to the **Archive**, when you remove them. A completed task just stays visible in its project, marked done.",
+      "Removing a task, decision, or milestone deletes it right away, with a short **Undo** in case you didn't mean to.",
+      "In the Archive, **Restore** puts a project or idea back where it was. **Delete forever** always asks first, and it cannot be undone."]],
     ["Slip the schedule", [
       "Open the menu and choose **Slip the schedule**. Pick the number of days, and whether to move everything or one project.",
       "**Undo last slip** in the same dialog reverses it."]],
@@ -2096,12 +2100,7 @@ function renderSettings(root) {
   root.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device's own format. Nothing here uses a time of day yet."));
 
   root.appendChild(el("h3", null, "Archive"));
-  root.appendChild(el("p", { "class": "hint" }, "Removed items always go to the Archive. This sets what happens when a task is completed."));
-  var aw = el("div", { "class": "field" }); aw.appendChild(el("label", { "for": "set-arch" }, "Move completed tasks to the Archive"));
-  var ar = el("select", { id: "set-arch", "class": "plain" });
-  [["immediate", "Right away"], ["week", "After 7 days"], ["never", "Never (I will do it myself)"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if (o[0] === state.settings.archiveRule) op.selected = true; ar.appendChild(op); });
-  on(ar, "change", function () { state.settings.archiveRule = ar.value; changed(); });
-  aw.appendChild(ar); var ag2 = el("div", { "class": "setgrid" }); ag2.appendChild(aw); root.appendChild(ag2);
+  root.appendChild(el("p", { "class": "hint" }, "Removing a project or an idea sends it to the Archive. A completed task just stays visible in its project."));
   var n = archiveEntries().length;
   root.appendChild(on(el("button", { type: "button", "class": "small", style: "margin-top:12px" }, "Open the Archive (" + n + (n === 1 ? " item" : " items") + ")"), "click", function () { go("archive"); }));
 
@@ -2297,9 +2296,8 @@ function wireMenu(btnId, menuId) {
 Promise.resolve().then(function () {
   $("brand").textContent = APP_NAME;
   applyTheme();
-  var bootIds = autoArchive(); if (bootIds.length) save();
+  autoArchive(); save();
   renderAll();
-  if (bootIds.length) archivedToast(bootIds);
 
   // If this view is running as a published Claude artifact with the db
   // capability granted, its saved state lives there, not in this browser's
@@ -2309,9 +2307,8 @@ Promise.resolve().then(function () {
   // DESIGN.md's "Claude Artifact parity version" section.
   loadFromDbIfAvailable().then(function (swapped) {
     if (!swapped) return;
-    var swappedIds = autoArchive(); if (swappedIds.length) save();
+    autoArchive(); save();
     renderAll();
-    if (swappedIds.length) archivedToast(swappedIds);
   });
 
   wireMenu("newBtn", "newMenu"); wireMenu("moreBtn", "moreMenu");
