@@ -30,6 +30,34 @@ const APP_DIR = path.join(ROOT, "app");
 const OUT_DIR = path.join(ROOT, "Claude-Sidequest");
 const OUT_FILE = path.join(OUT_DIR, "sidequest.html");
 
+// A published artifact has no assets/ directory alongside it -- index.html's
+// relative favicon/apple-touch-icon <link> tags (assets/sidequest-icon.svg
+// etc.) silently fail to resolve there (confirmed 2026-09-23: Claude's own
+// publish step noticed this and substituted an emoji favicon as a stopgap).
+// Fix: extract the existing inline #sqLogo <symbol> markup from index.html
+// (the same artwork used for the in-app nav logo) and re-emit it as a
+// standalone, self-contained SVG data URI for the favicon link -- generated
+// from the one real source at build time, not a second hand-maintained copy.
+// The symbol's fill/stroke values are CSS custom properties (var(--planned)
+// etc.), which cannot resolve in a favicon's own detached rendering context
+// (no stylesheet applies there) -- substituted with the light-theme hex
+// values from css/tokens.css, matching the deliberate choice already made
+// for the repo-only assets/sidequest-icon.svg favicon file: a favicon is a
+// fixed brand mark with no theme context, not a themed UI element.
+var FAVICON_TOKEN_VALUES = { est: "#B9CCE0", planned: "#2F5D8A", surface: "#FFFFFF", burn: "#C62F2F" };
+
+function buildFaviconDataUri(html) {
+  var m = html.match(/<symbol id="sqLogo"[^>]*viewBox="([^"]+)">([\s\S]*?)<\/symbol>/);
+  if (!m) throw new Error("build-artifact: could not find the #sqLogo <symbol> markup in index.html to build a favicon from.");
+  var viewBox = m[1], inner = m[2];
+  var resolved = inner.replace(/var\(--(\w+)\)/g, function (whole, name) {
+    if (!(name in FAVICON_TOKEN_VALUES)) throw new Error("build-artifact: #sqLogo uses var(--" + name + "), which has no known favicon substitute -- add it to FAVICON_TOKEN_VALUES.");
+    return FAVICON_TOKEN_VALUES[name];
+  });
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + viewBox + '">' + resolved + "</svg>";
+  return "data:image/svg+xml;base64," + Buffer.from(svg, "utf8").toString("base64");
+}
+
 // Dependency order, hand-verified against each file's own `import` lines
 // (see the comment above: hoisting makes exact order mostly irrelevant for
 // declarations, but this order still matches the real dependency graph for
@@ -99,7 +127,13 @@ function build() {
     throw new Error("build-artifact: app/ contains file(s) not listed in MODULE_ORDER: " + missing.join(", ") + ". Add them to the build script before building.");
   }
 
+  var faviconDataUri = buildFaviconDataUri(html);
+
   var out = html
+    .replace(
+      /<link rel="icon" type="image\/svg\+xml" href="assets\/sidequest-icon\.svg">\s*\n<link rel="icon" type="image\/png" sizes="32x32" href="assets\/favicon-32\.png">\s*\n<link rel="apple-touch-icon" href="assets\/apple-touch-icon\.png">/,
+      function () { return '<link rel="icon" type="image/svg+xml" href="' + faviconDataUri + '">'; }
+    )
     .replace(
       /<link rel="stylesheet" href="css\/tokens\.css">\s*\n<link rel="stylesheet" href="css\/styles\.css">/,
       function () { return "<style>\n" + tokens + "\n" + styles + "\n</style>"; }
@@ -109,6 +143,11 @@ function build() {
       function () { return "<script>\n" + bundledScript + "</script>"; }
     );
 
+  // Only flag a RELATIVE assets/ reference (href="assets/..." / src="assets/...")
+  // -- the og:image meta tag's absolute https://samoff.com/sidequest/assets/...
+  // URL is fine as-is and must not trip this check.
+  if (/(href|src)="assets\//.test(out)) throw new Error("build-artifact: a relative assets/ reference survived into the bundle -- these don't resolve on a published artifact with no adjacent asset folder.");
+  if (out.indexOf(faviconDataUri) === -1) throw new Error("build-artifact: favicon <link> tags not found/replaced -- check index.html's <head> hasn't changed shape.");
   if (out.indexOf("<style>") === -1) throw new Error("build-artifact: css <link> tags not found/replaced -- check index.html's <head> hasn't changed shape.");
   if (out.indexOf(bundledScript) === -1) throw new Error("build-artifact: script tag not found/replaced -- check index.html's closing <body> hasn't changed shape.");
 
