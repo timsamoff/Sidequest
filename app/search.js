@@ -1,6 +1,6 @@
 import { state, ui } from "./state.js";
 import { parseISO, fmt, fmtY } from "./dates.js";
-import { taskStart, taskEnd, dispProject, projectNames, liveCands, projectMeta, short, validPage } from "./model.js";
+import { taskStart, taskEnd, dispProject, liveProjects, projectMeta, short, validPage, findStep } from "./model.js";
 import { $, el, on, scrollTop } from "./dom.js";
 import { go, openTask, renderAll } from "./app.js";
 
@@ -42,19 +42,23 @@ export function searchAll(q, includeArchive) {
   }
   state.tasks.forEach(function (t) {
     var when = t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t));
-    consider("task", t.what, [t.notes, t.done, t.project, dispProject(t)], dispProject(t) + " · " + when + " · " + t.status, function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch, ["Notes", "Done when", "", ""]);
+    consider("task", t.what, [t.notes, t.done, dispProject(t)], dispProject(t) + " · " + when + " · " + t.status, function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch, ["Notes", "Done when", ""]);
     t.steps.forEach(function (st) {
       consider("step", st.text, [], "Step of " + dispProject(t) + ": " + short(t.what, 50) + (st.done ? " · done" : ""), function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch);
     });
   });
-  projectNames().forEach(function (n) {
-    var cand = liveCands().filter(function (c) { return c.name === n; })[0];
-    consider("project", n, [state.pnotes[n], cand && cand.note], projectMeta(n), function () { go(validPage("proj:" + n) ? "proj:" + n : "projects"); }, false, ["Notes", "Note"]);
+  liveProjects().forEach(function (p) {
+    consider("project", p.name, [p.notes, p.note], projectMeta(p), function () { go(validPage("proj:" + p.id) ? "proj:" + p.id : "projects"); }, false, ["Notes", "Note"]);
   });
-  state.candidates.forEach(function (c) { if (c.arch) consider("project", c.name, [c.note], "Archived project", function () { go("archive"); }, true, ["Note"]); });
+  state.projects.forEach(function (p) { if (p.arch) consider("project", p.name, [p.note], "Archived project", function () { go("archive"); }, true, ["Note"]); });
   state.parked.forEach(function (p) { consider("idea", p.text, [p.note], "Parking lot", function () { go(p.arch ? "archive" : "parking"); }, !!p.arch, ["Note"]); });
-  state.decisions.forEach(function (d) { consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { go(d.arch ? "archive" : "kofi"); }, !!d.arch, ["Answer"]); });
-  state.milestones.forEach(function (m) { consider("milestone", m.text, [fmtY(parseISO(m.date)), m.date], fmtY(parseISO(m.date)), function () { go(m.arch ? "archive" : "timeline"); }, !!m.arch); });
+  // Decisions always link to a step (see DESIGN.md), so their project comes
+  // from following Decision -> Step -> Task -> Project, same as everywhere else.
+  state.decisions.forEach(function (d) {
+    var ls = findStep(d.step);
+    consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { go(d.arch ? "archive" : (ls ? "proj:" + ls.t.projectId : "projects")); }, !!d.arch, ["Answer"]);
+  });
+  state.milestones.forEach(function (m) { consider("milestone", m.text, [fmtY(parseISO(m.date)), m.date], fmtY(parseISO(m.date)), function () { go(m.arch ? "archive" : ("proj:" + m.projectId)); }, !!m.arch); });
   SEARCH_ORDER.forEach(function (k) { groups[k].sort(function (a, b) { return b.score - a.score || a.idx - b.idx; }); });
   return { terms: terms, groups: groups };
 }

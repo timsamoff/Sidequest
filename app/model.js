@@ -8,11 +8,22 @@ export var WORDS = { Block: ["block", "blocks"], Sprint: ["sprint", "sprints"], 
 export function wd() { return state.settings.blockWord in WORDS ? state.settings.blockWord : "Block"; }
 export function wl() { return WORDS[wd()][0]; }
 export function wpC() { var w = WORDS[wd()][1]; return w.charAt(0).toUpperCase() + w.slice(1); }
-export function pset(name) { var o = (name && state.pset[name]) || {}; return { start: o.start || state.start, mult: o.mult || state.mult }; }
-export function offsetFor(name, n) { return Math.floor(n * state.days * pset(name).mult + 1e-9); }
-export function blockStartFor(name, b) { return addDays(parseISO(pset(name).start), offsetFor(name, b - 1)); }
-export function blockEndFor(name, b) { return addDays(parseISO(pset(name).start), offsetFor(name, b) - 1); }
-export function projKey(t) { return t.isNext ? "" : t.project; }
+/* project helpers -- Project is the top-tier entity every task/decision/
+   milestone attaches to by id (see DESIGN.md, "making Project a first-class
+   entity"). A project is promoted in place from candidate to active -- one id
+   for its whole life -- so "the active project named X" and "the candidate
+   named X" are never two different records. */
+export function live(a) { return a.filter(function (x) { return !x.arch; }); }
+export function liveProjects() { return live(state.projects); }
+export function activeProjects() { return liveProjects().filter(function (p) { return p.status === "active"; }); }
+export function candidateProjects() { return liveProjects().filter(function (p) { return p.status === "candidate"; }); }
+export function findProject(id) { var p = liveProjects(); for (var i = 0; i < p.length; i++) if (p[i].id === id) return p[i]; return null; }
+export function findAnyProject(id) { for (var i = 0; i < state.projects.length; i++) if (state.projects[i].id === id) return state.projects[i]; return null; }
+export function pset(projectId) { var p = findProject(projectId); return { start: (p && p.start) || state.start, mult: (p && p.mult) || state.mult }; }
+export function offsetFor(projectId, n) { return Math.floor(n * state.days * pset(projectId).mult + 1e-9); }
+export function blockStartFor(projectId, b) { return addDays(parseISO(pset(projectId).start), offsetFor(projectId, b - 1)); }
+export function blockEndFor(projectId, b) { return addDays(parseISO(pset(projectId).start), offsetFor(projectId, b) - 1); }
+export function projKey(t) { return t.isNext ? null : t.projectId; }
 export function taskStart(t) { return blockStartFor(projKey(t), t.block); }
 export function taskEnd(t) { return blockEndFor(projKey(t), t.block); }
 export function chartStart() {
@@ -23,11 +34,22 @@ export function chartStart() {
 export function checkpoints() { var out = [], s = chartStart(); for (var i = 0; i < CHECKPOINTS; i++) out.push(addDays(s, 7 * i)); return out; }
 
 /* task helpers */
-export function live(a) { return a.filter(function (x) { return !x.arch; }); }
 export function counted() { return state.tasks.filter(function (t) { return !t.arch || t.arch.why === "done"; }); }
-export function liveCands() { return live(state.candidates); }
-export function chosen() { var c = liveCands(); for (var i = 0; i < c.length; i++) if (c[i].id === state.next) return c[i]; return null; }
-export function dispProject(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next project"; } return t.project; }
+// "Chosen as the next project" placeholder: the first active project with no
+// tasks yet -- there is no separate "next" pointer anymore (a project's own
+// status IS the chosen signal, set the moment it's promoted from candidate).
+// "Chosen as the next project" placeholder resolves to the first active
+// project (in state.projects array order, i.e. promotion order) that has no
+// tasks yet. This replaces the old explicit state.next pointer: choosing a
+// candidate now directly promotes it to "active" in place (see
+// promoteToActive() below), so a task-less active project IS the one just
+// chosen -- there's no longer a separate "chosen but not yet promoted" state
+// to track with its own pointer. Known simplification: if two active
+// projects were both promoted and neither has a task yet, this returns the
+// earlier one by array order, not necessarily the most recently promoted --
+// an acceptable edge case, not a design goal.
+export function chosen() { var a = activeProjects(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.projectId === a[i].id; })) return a[i]; return null; }
+export function dispProject(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next project"; } var p = findProject(t.projectId); return p ? p.name : ""; }
 export function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next project. Add its first tasks with the + button."; return t.what; }
 export function weight(t) { return Math.max(1, t.steps.length); }
 export function doneUnits(t) { return t.status === "Done" ? weight(t) : t.steps.filter(function (s) { return s.done; }).length; }
@@ -52,19 +74,15 @@ export function syncFromSteps(t) {
   else if (t.status === "Done" && n < t.steps.length) t.status = "In progress";
 }
 export function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Done") return o[i]; return null; }
-export function projectNames() {
-  var names = [], seen = {};
-  function add(n) { if (n && n !== "Next project" && !seen[n]) { seen[n] = 1; names.push(n); } }
-  orderedCounted().forEach(function (t) { if (!t.isNext) add(t.project); });
-  liveCands().forEach(function (c) { add(c.name); });
-  return names;
-}
 export function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
-export function validPage(key) { return key === "kofi" || (typeof key === "string" && key.indexOf("proj:") === 0 && projectNames().indexOf(key.slice(5)) >= 0); }
+// "proj:" + id routes to a project's own page -- id-based, not name-based, so
+// renaming a project never breaks its pin or an in-flight link to it. No
+// separate Launch/"kofi" page exists anymore (see DESIGN.md: only Projects
+// are pinnable, launch-critical items render as a section on a project's own page).
+export function validPage(key) { return typeof key === "string" && key.indexOf("proj:") === 0 && !!findProject(key.slice(5)); }
 export function pageTitle(key) {
-  if (key === "kofi") return "Launch";
   if (key === "search") return "Search";
-  if (typeof key === "string" && key.indexOf("proj:") === 0) return key.slice(5);
+  if (typeof key === "string" && key.indexOf("proj:") === 0) { var p = findProject(key.slice(5)); return p ? p.name : ""; }
   for (var i = 0; i < CORE.length; i++) if (CORE[i][0] === key) return CORE[i][1];
   for (var j = 0; j < BOTTOM.length; j++) if (BOTTOM[j][0] === key) return BOTTOM[j][1];
   return "";
@@ -72,15 +90,15 @@ export function pageTitle(key) {
 export function isPinned(key) { return state.pins.indexOf(key) >= 0; }
 export function pinPage(key) { if (!isPinned(key)) state.pins.push(key); changed(); notify(pageTitle(key) + " pinned to the sidebar."); }
 export function unpinPage(key) { state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); notify(pageTitle(key) + " removed from the sidebar. It is still listed under Projects."); }
-export function projectMeta(name) {
-  var ts = counted().filter(function (t) { return !t.isNext && t.project === name; });
-  var cand = liveCands().filter(function (c) { return c.name === name; })[0];
+export function projectMeta(p) {
+  var ts = counted().filter(function (t) { return !t.isNext && t.projectId === p.id; });
   var parts = [];
   if (ts.length) {
     var tot = 0, dn = 0, bk = ts.filter(function (t) { return t.block === 0; }).length; ts.forEach(function (t) { tot += weight(t); dn += doneUnits(t); });
     parts.push(ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " (" + bk + " in the Backlog)" : "") + ". " + dn + " of " + tot + " items done.");
+  } else if (p.status === "candidate") {
+    parts.push("Candidate for the next slot.");
   }
-  if (cand) parts.push(state.next === cand.id ? "Chosen as the next project." : "Candidate for the next slot.");
   return parts.length ? parts.join(" ") : "No tasks yet";
 }
 export function findStep(id) {
@@ -91,15 +109,27 @@ export function findStep(id) {
 }
 export function decisionFor(stepId) { var ds = live(state.decisions); for (var i = 0; i < ds.length; i++) if (ds[i].step === stepId) return ds[i]; return null; }
 export function short(str, n) { return str.length > n ? str.slice(0, n - 1) + "…" : str; }
-export function kofiItems() { var out = []; orderedCounted().forEach(function (t) { t.steps.forEach(function (s) { if (s.kofi) out.push({ t: t, s: s }); }); }); return out; }
-export function stepOptions() {
-  var o = [{ value: "", label: "None" }];
-  orderedCounted().forEach(function (t) { t.steps.forEach(function (s) { o.push({ value: s.id, label: dispProject(t) + ": " + short(s.text, 60) }); }); });
+// Launch-critical steps, scoped to one project -- renders as a section on
+// that project's own page (no separate global Launch page anymore).
+export function launchItems(projectId) {
+  var out = [];
+  orderedCounted().forEach(function (t) { if (t.projectId !== projectId) return; t.steps.forEach(function (s) { if (s.kofi) out.push({ t: t, s: s }); }); });
+  return out;
+}
+// A decision must link to a real step (Project -> Task -> Step -> Decision,
+// see DESIGN.md) -- no "None" option, since an unlinked decision can no
+// longer be created. If projectId is given, only that project's steps are offered.
+export function stepOptions(projectId) {
+  var o = [];
+  orderedCounted().forEach(function (t) {
+    if (projectId && t.projectId !== projectId) return;
+    t.steps.forEach(function (s) { o.push({ value: s.id, label: dispProject(t) + ": " + short(s.text, 60) }); });
+  });
   return o;
 }
-export function taskOptions(projectFilter) {
+export function taskOptions(projectId) {
   var ts = orderedAll();
-  if (projectFilter) ts = ts.filter(function (t) { return dispProject(t) === projectFilter; });
+  if (projectId) ts = ts.filter(function (t) { return t.projectId === projectId; });
   return ts.map(function (t) { return { value: t.id, label: dispProject(t) + ": " + short(dispWhat(t), 60) }; });
 }
 export function findTask(id) { var a = live(state.tasks); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }

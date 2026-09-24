@@ -3,7 +3,7 @@ import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask } from "./model
 import { $, el, on, focusKey, setFocusKey, scrollTop, notify } from "./dom.js";
 import { lateTasks } from "./model.js";
 import {
-  renderToday, renderSchedule, renderKofi, renderProjects, renderParkingLot,
+  renderToday, renderSchedule, renderProjects, renderParkingLot,
   renderArchive, renderSettings, renderHelp, renderProjectPage, renderTimeline
 } from "./views.js";
 import { renderSearch, openSearch, closeSearch, wireSearchInput, focusSearch } from "./search.js";
@@ -66,7 +66,6 @@ export function renderView() {
   root.className = "content" + (ui.view === "timeline" ? " wide" : "");
   if (ui.view === "today") renderToday(root);
   else if (ui.view === "schedule") renderSchedule(root);
-  else if (ui.view === "kofi") renderKofi(root);
   else if (ui.view === "projects") renderProjects(root);
   else if (ui.view === "parking") renderParkingLot(root);
   else if (ui.view === "search") renderSearch(root);

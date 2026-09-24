@@ -1,8 +1,8 @@
-import { state, ui, changed, isISO, cleanPset, task } from "./state.js";
+import { state, ui, changed, isISO, task, project as makeProject } from "./state.js";
 import { iso, addDays, parseISO, fmt } from "./dates.js";
 import {
-  wd, wpC, counted, liveCands, dispProject, nextTask, findTask,
-  orderedAll, taskOptions, stepOptions, syncFromSteps, projectNames, ordered,
+  wd, wpC, counted, activeProjects, liveProjects, findProject, dispProject, nextTask, findTask,
+  orderedAll, taskOptions, stepOptions, syncFromSteps, ordered,
   pset, blockStartFor, blockEndFor
 } from "./model.js";
 import { $, el, on, uid, notify } from "./dom.js";
@@ -77,22 +77,21 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro) {
   });
 }
 
-export function taskDialog(prefill, backlog) {
-  var names = {}; counted().forEach(function (t) { var n = dispProject(t); if (n !== "Next project") names[n] = 1; });
-  liveCands().forEach(function (c) { names[c.name] = 1; });
-  var dl = $("projectNames"); if (dl) dl.remove();
-  dl = el("datalist", { id: "projectNames" }); Object.keys(names).forEach(function (n) { dl.appendChild(el("option", { value: n })); }); document.body.appendChild(dl);
+export function taskDialog(prefillProjectId, backlog) {
   var nt = nextTask();
+  var projOpts = activeProjects().map(function (p) { return { value: p.id, label: p.name }; });
+  if (!projOpts.length) { notify("Add an active project first (Projects > Choose as next project)."); return; }
+  var startId = typeof prefillProjectId === "string" ? prefillProjectId : (nt && !nt.isNext ? nt.projectId : projOpts[0].value);
   formDialog(backlog ? "New backlog item" : "New task", [
-    { key: "project", label: "Project", list: "projectNames", value: typeof prefill === "string" ? prefill : (nt && !nt.isNext ? nt.project : "") },
+    { key: "project", label: "Project", type: "select", options: projOpts, value: startId },
     { key: "what", label: "Task" },
     { key: "done", label: "How you'll know it's done (optional)" },
     { key: "block", label: wd() + " number (1 to 12), or leave empty for the Backlog", type: "number", min: 1, max: 12, step: 1, placeholder: "Backlog", value: backlog ? "" : (nt ? nt.block : 4) }
   ], backlog ? "Add to Backlog" : "Add task", function (v) {
     var blk = v.block === "" ? 0 : Number(v.block);
-    if (!v.project || !v.what) return "Enter a project and what you do.";
+    if (!v.project || !v.what) return "Choose a project and enter what you do.";
     if (v.block !== "" && (!Number.isInteger(blk) || blk < 1 || blk > 12)) return wd() + " number must be from 1 to 12, or empty for the Backlog.";
-    var t = task("c" + uid(), blk, v.project.slice(0, 120), v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true });
+    var t = task("c" + uid(), blk, v.project, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true });
     state.tasks.push(t); ui.sel = t.id; changed();
     return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(blockStartFor(v.project, blk)) + " to " + fmt(blockEndFor(v.project, blk)) + ")." };
   }, wpC() + " set the dates. " + wd() + " 1 starts on the project's start date. Leave it empty to put the task in the Backlog.");
@@ -100,7 +99,7 @@ export function taskDialog(prefill, backlog) {
 export function projectDialog() {
   formDialog("New project", [{ key: "name", label: "Project name" }, { key: "note", label: "Short note (optional)" }], "Add project", function (v) {
     if (!v.name) return "Enter a project name.";
-    state.candidates.push({ id: uid(), name: v.name.slice(0, 120), note: v.note.slice(0, 300), start: "", months: "" }); changed();
+    state.projects.push(makeProject(uid(), v.name.slice(0, 120), "candidate", { note: v.note.slice(0, 300) })); changed();
     return { msg: v.name + " added as a candidate for the next slot." };
   }, "It joins the candidates for the next slot. You can park it later.");
 }
@@ -111,25 +110,30 @@ export function ideaDialog() {
     return { msg: "Added to the parking lot." };
   });
 }
-export function decisionDialog() {
+export function decisionDialog(prefillProjectId) {
+  // A decision must link to a real step (Project -> Task -> Step -> Decision,
+  // see DESIGN.md) -- no "None"/unlinked option anymore.
+  var opts = stepOptions(prefillProjectId);
+  if (!opts.length) { notify("Add a step first (open a task and add one), then add the decision."); return; }
   formDialog("New decision", [
     { key: "q", label: "Decision" },
-    { key: "step", label: "Link to a step (optional)", type: "select", options: stepOptions(), value: "" }
+    { key: "step", label: "Linked step", type: "select", options: opts, value: opts[0].value }
   ], "Add decision", function (v) {
     if (!v.q) return "Enter the decision.";
+    if (!v.step) return "Choose a step.";
     state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: v.step }); changed();
-    return { msg: "Decision added on the Launch page." };
-  }, "A decision is something you need to figure out before you can move forward. Optionally link it to a step so answering it automatically checks that step off.");
+    return { msg: "Decision added." };
+  }, "A decision is something you need to figure out before you can move forward. Linking it to a step means answering it automatically checks that step off.");
 }
-export function stepDialog(kofi) {
+export function stepDialog(kofi, prefillProjectId) {
   if (!orderedAll().length) { notify("Add a task first."); return; }
   var selTask = ui.sel && findTask(ui.sel);
-  var pick = selTask ? selTask.id : (nextTask() || orderedAll()[0]).id;
-  var startProject = selTask ? dispProject(selTask) : "";
-  var projOpts = [{ value: "", label: "All projects" }].concat(projectNames().map(function (n) { return { value: n, label: n }; }));
+  var startId = prefillProjectId || (selTask ? selTask.projectId : "");
+  var projOpts = [{ value: "", label: "All projects" }].concat(liveProjects().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; }));
+  var pick = selTask ? selTask.id : ((nextTask() || orderedAll()[0]).id);
   formDialog(kofi ? "New launch item" : "New step", [
-    { key: "project", label: "Project", type: "select", options: projOpts, value: startProject },
-    { key: "task", label: "Task", type: "select", options: taskOptions(startProject), value: pick },
+    { key: "project", label: "Project", type: "select", options: projOpts, value: startId },
+    { key: "task", label: "Task", type: "select", options: taskOptions(startId), value: pick },
     { key: "text", label: kofi ? "What needs doing before you launch?" : "Step" }
   ], "Add step", function (v) {
     var t = findTask(v.task);
@@ -137,7 +141,7 @@ export function stepDialog(kofi) {
     if (!t) return "Choose a task.";
     t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false, kofi: !!kofi }); syncFromSteps(t); changed();
     return { msg: "Step added to " + dispProject(t) + (kofi ? " and the launch checklist." : ".") };
-  }, kofi ? "The step lives in a task and also shows on the launch checklist." : "");
+  }, kofi ? "The step lives in a task and also shows on this project's launch checklist." : "");
   var projSel = $("f-project"), taskSel = $("f-task");
   if (projSel && taskSel) {
     on(projSel, "change", function () {
@@ -148,9 +152,15 @@ export function stepDialog(kofi) {
   }
 }
 export function milestoneDialog() {
-  formDialog("New milestone", [{ key: "text", label: "Milestone" }, { key: "date", label: "Date", type: "date" }], "Add milestone", function (v) {
-    if (!v.text || !isISO(v.date)) return "Enter a milestone and a date.";
-    state.milestones.push({ id: uid(), text: v.text.slice(0, 200), date: v.date }); changed();
+  var projOpts = activeProjects().map(function (p) { return { value: p.id, label: p.name }; });
+  if (!projOpts.length) { notify("Add an active project first."); return; }
+  formDialog("New milestone", [
+    { key: "project", label: "Project", type: "select", options: projOpts, value: projOpts[0].value },
+    { key: "text", label: "Milestone" },
+    { key: "date", label: "Date", type: "date" }
+  ], "Add milestone", function (v) {
+    if (!v.project || !v.text || !isISO(v.date)) return "Choose a project, and enter a milestone and a date.";
+    state.milestones.push({ id: uid(), text: v.text.slice(0, 200), date: v.date, projectId: v.project }); changed();
     return { msg: "Milestone added to the Timeline." };
   });
 }
@@ -161,26 +171,36 @@ export function slipDialog() {
     var inp = el("input", { type: "number", id: "slipDays", min: "1", max: "90", step: "1" }); inp.value = "7"; w.appendChild(inp); body.appendChild(w);
     var tw = el("div", { "class": "field" }); tw.appendChild(el("label", { "for": "slipWhat" }, "What to slip"));
     var sel = el("select", { id: "slipWhat", "class": "plain" }); sel.appendChild(el("option", { value: "" }, "Everything"));
-    var seen = {}; ordered().forEach(function (t) { if (!t.isNext && !seen[t.project]) { seen[t.project] = 1; sel.appendChild(el("option", { value: t.project }, "Only " + t.project)); } });
+    var seen = {}; ordered().forEach(function (t) { if (!t.isNext && !seen[t.projectId]) { seen[t.projectId] = 1; sel.appendChild(el("option", { value: t.projectId }, "Only " + dispProject(t))); } });
     tw.appendChild(sel); body.appendChild(tw);
     var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo" }, "Slip schedule"), "click", function () {
       var n = parseInt(inp.value, 10), target = sel.value;
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
-      var snap = { start: state.start, pset: JSON.parse(JSON.stringify(state.pset)) };
+      // Snapshot every project's own start/mult (for undo) -- a project record
+      // is the source of truth now, not a separate state.pset dictionary.
+      var projSnap = {}; state.projects.forEach(function (p) { projSnap[p.id] = { start: p.start, mult: p.mult }; });
+      var snap = { start: state.start, projects: projSnap };
+      var targetName = target ? dispProject({ projectId: target }) : "";
       if (target === "") {
         state.start = iso(addDays(parseISO(state.start), n));
-        Object.keys(state.pset).forEach(function (k) { if (state.pset[k].start) state.pset[k].start = iso(addDays(parseISO(state.pset[k].start), n)); });
+        state.projects.forEach(function (p) { if (p.start) p.start = iso(addDays(parseISO(p.start), n)); });
       } else {
-        var eff = pset(target); state.pset[target] = { start: iso(addDays(parseISO(eff.start), n)), mult: eff.mult };
+        var eff = pset(target), p2 = findProject(target);
+        if (p2) { p2.start = iso(addDays(parseISO(eff.start), n)); p2.mult = eff.mult; }
       }
       state.lastSlip = { days: n, snap: snap };
       changed(); closeModal();
-      notify((target === "" ? "Everything" : target) + " moved back " + n + (n === 1 ? " day" : " days") + "." + launchNote("now "));
+      notify((target === "" ? "Everything" : targetName) + " moved back " + n + (n === 1 ? " day" : " days") + "." + launchNote("now "));
     }));
     if (state.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo" }, "Undo last slip (" + state.lastSlip.days + " days)"), "click", function () {
-      state.start = state.lastSlip.snap.start; state.pset = cleanPset(state.lastSlip.snap.pset); state.lastSlip = null; changed(); closeModal();
+      state.start = state.lastSlip.snap.start;
+      Object.keys(state.lastSlip.snap.projects).forEach(function (pid) {
+        var p = findProject(pid), snapped = state.lastSlip.snap.projects[pid];
+        if (p && snapped) { if (snapped.start) p.start = snapped.start; if (snapped.mult) p.mult = snapped.mult; }
+      });
+      state.lastSlip = null; changed(); closeModal();
       notify("Slip undone." + launchNote(""));
     }));
     acts.appendChild(on(el("button", { type: "button" }, "Cancel"), "click", closeModal));

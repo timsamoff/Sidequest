@@ -1,4 +1,4 @@
-# Sidequest: Design Document (v2 direction)
+ # Sidequest: Design Document (v2 direction)
 
 Status: draft, actively being developed. This document describes a planned architectural and product direction, not the current shipped state. Where it diverges from what exists in `index.html` today, the current code is the v1 baseline and this document is where v2 is being decided before implementation starts.
 
@@ -114,6 +114,8 @@ Every future feature or fix needs to land in both versions to avoid drift. This 
 The existing `claude-mentions` rule (no Claude/AI mentions anywhere in user-facing copy) was written for the single, unified app. It should be understood as scoped to the main GitHub Pages app's own user-facing copy going forward — the `Claude-Sidequest` directory's own README/instructions will necessarily mention Claude, since using that version requires uploading a file to Claude and asking it to publish an artifact. This is a carve-out for that directory specifically, not a reversal of the rule for the main app.
 
 ## What's changing: making Project a first-class entity
+
+**Implemented 2026-09-24.** `state.projects[]` is now real, with a genuine `id`/`status` (`"candidate"`/`"active"`)/`arch` lifecycle, promoted in place (one id for life) rather than a separate candidate object. Tasks, milestones reference a project by `projectId`; decisions require a real step link (Project -> Task -> Step -> Decision), which is itself now required rather than optional. The Launch/"kofi" page was removed entirely (not renamed) — launch-critical steps and decisions now render as a section on each project's own page. Only Projects are pinnable (routed by id, `"proj:" + id`, not name). Archiving a project cascades to archive its still-open tasks, and an archived project is viewable/restorable through the existing Archive machinery, same as a task or decision. Verified: `npm test` (65/65), a real Playwright pass confirming the pinned sidebar entry, the merged candidate/active project page, the Launch section, and a full archive-then-view-in-Archive round trip with zero console errors; `npm run sentinel:check:full` clean after fixing one real gate-check finding (a leftover `next: null` field with no matching `normalize()` branch, from the removed `state.next` pointer). `Claude-Sidequest/sidequest.html` rebuilt and re-verified working. This closes `project-first-class-entity`, `archived-projects-viewable`, `decisions-launch-per-project-scoping`, and `candidate-project-date-disconnect` in `sentinel-notes/TODO.md`. Project linking and the per-project Timeline/burndown rollup remain separate, not-yet-designed follow-ups (see their own subsections below). `rename-kofi-internal-key` (the `kofi` field name on steps, `stepDialog`'s `kofi` parameter) was deliberately left as-is per the plan — the page is gone, the internal field name is a separate, optional cleanup.
 
 ### Root cause identified 2026-09-24, unifying several previously-separate findings
 

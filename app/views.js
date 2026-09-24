@@ -1,12 +1,13 @@
-import { state, ui, save, changed, autoArchive, archivedToast, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize } from "./state.js";
+import { state, ui, save, changed, autoArchive, archivedToast, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, project as makeProject } from "./state.js";
 import { DAY, iso, parseISO, TODAY, fmt, fmtY } from "./dates.js";
 import {
   WORDS, wd, wl, pset, blockStartFor, blockEndFor, projKey, taskStart, taskEnd,
-  checkpoints, live, counted, liveCands, chosen, dispProject, dispWhat,
+  checkpoints, live, counted, liveProjects, activeProjects, candidateProjects,
+  findProject, findAnyProject, chosen, dispProject, dispWhat,
   totalUnits, remainingUnits, planned, ordered, backlogTasks,
   isLate, lateTasks, setStatus, syncFromSteps, nextTask,
-  projectNames, validPage, isPinned, pinPage, unpinPage, projectMeta,
-  findStep, decisionFor, short, kofiItems, stepOptions, findTask
+  validPage, isPinned, pinPage, unpinPage, projectMeta,
+  findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask
 } from "./model.js";
 import { $, el, on, uid, setFocusKey, notify, scrollTop } from "./dom.js";
 import { drawChart, rangeBlock } from "./chart.js";
@@ -27,9 +28,9 @@ export function nextUpPanel() {
   box.appendChild(el("p", { "class": "ptitle" }, dispWhat(t)));
   var meta = el("p", { "class": "pmeta" });
   var pname = dispProject(t);
-  if (validPage("proj:" + pname)) {
+  if (!t.isNext && validPage("proj:" + t.projectId)) {
     var pl = el("button", { type: "button", "class": "textbtn plink" }, pname);
-    on(pl, "click", function () { go("proj:" + pname); });
+    on(pl, "click", function () { go("proj:" + t.projectId); });
     meta.appendChild(pl);
   } else meta.appendChild(el("b", null, pname));
   meta.appendChild(document.createTextNode(" · " + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + " "));
@@ -191,7 +192,7 @@ export function buildDetail(t) {
     lab.appendChild(cb); lab.appendChild(el("span", null, s.text)); sli.appendChild(lab);
     var ac = el("div", { "class": "li-actions" });
     var dc = decisionFor(s.id);
-    if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the linked decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { go("kofi"); }));
+    if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the linked decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { go("proj:" + t.projectId); }));
     var kb = el("button", { type: "button", "class": "small" + (s.kofi ? " on" : ""), "aria-pressed": s.kofi ? "true" : "false", "aria-label": "Show on the launch checklist: " + s.text }, "Launch");
     on(kb, "click", function () { s.kofi = !s.kofi; changed(); });
     ac.appendChild(kb);
@@ -227,16 +228,17 @@ export function buildDetail(t) {
   return box;
 }
 
-export function renderKofi(root) {
-  root.appendChild(pinBar("kofi"));
-  root.appendChild(el("p", { "class": "hint first" }, "Everything to finish before you ship, gathered from your tasks. Tick a step here or in Tasks and it stays in sync."));
+// Launch-critical items and Decisions render as sections on a project's own
+// page, scoped to that project's tasks -- no separate Launch/"kofi" page
+// exists anymore (see DESIGN.md: only Projects are pinnable).
+export function launchSection(root, p) {
   var g = pgrid();
   var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h3", { id: "h-checks" }, "Before you launch"));
-  ha.appendChild(on(el("button", { type: "button", "class": "small" }, "Add item"), "click", function () { stepDialog(true); }));
+  ha.appendChild(on(el("button", { type: "button", "class": "small" }, "Add item"), "click", function () { stepDialog(true, p.id); }));
   g.put(ha, 1, 1);
-  g.put(el("p", { "class": "hint" }, "These are steps from Tasks. Tick one here or there and it stays in sync."), 1, 2);
+  g.put(el("p", { "class": "hint" }, "These are steps from this project's tasks. Tick one here or in Tasks and it stays in sync."), 1, 2);
   var prog = el("p", { "class": "progress", role: "status", "aria-live": "polite" });
-  var items = kofiItems(), rows = {};
+  var items = launchItems(p.id), rows = {};
   function progress() { var n = items.filter(function (x) { return x.s.done; }).length; prog.textContent = items.length ? n + " of " + items.length + " done" : ""; }
   var ul = el("ul", { "class": "list check", "aria-labelledby": "h-checks" });
   if (!items.length) ul.appendChild(el("li", { "class": "hint" }, "No steps are marked for the launch checklist. Use Launch on a step in Tasks, or add an item."));
@@ -246,8 +248,8 @@ export function renderKofi(root) {
     on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); var ids = autoArchive(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); if (ids.length) archivedToast(ids); });
     label.appendChild(box); label.appendChild(el("span", null, x.s.text)); li.appendChild(label);
     var meta = el("div", { "class": "cnote" });
-    if (x.t.arch) meta.appendChild(document.createTextNode(dispProject(x.t) + ": " + short(dispWhat(x.t), 40) + " (archived)"));
-    else meta.appendChild(on(el("button", { type: "button", "class": "textbtn" }, dispProject(x.t) + ": " + short(dispWhat(x.t), 48)), "click", function () { openTask(x.t.id); }));
+    if (x.t.arch) meta.appendChild(document.createTextNode(short(dispWhat(x.t), 48) + " (archived)"));
+    else meta.appendChild(on(el("button", { type: "button", "class": "textbtn" }, short(dispWhat(x.t), 48)), "click", function () { openTask(x.t.id); }));
     var dc = decisionFor(x.s.id);
     if (dc) meta.appendChild(document.createTextNode(" · Decision " + (dc.a ? "decided" : "open")));
     li.appendChild(meta);
@@ -257,11 +259,11 @@ export function renderKofi(root) {
   var lb = el("div", { "class": "listbox" }); lb.appendChild(prog); lb.appendChild(ul); g.put(lb, 1, 3);
 
   var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", { id: "h-dec" }, "Decisions"));
-  hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add decision"), "click", function () { decisionDialog(); }));
+  hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add decision"), "click", function () { decisionDialog(p.id); }));
   g.put(hd, 2, 1);
   g.put(el("p", { "class": "hint" }, "Write down the answer once you settle it. Answering a decision ticks its linked step, and clearing the answer unticks it."), 2, 2);
   var dl = el("ul", { "class": "list", "aria-labelledby": "h-dec" });
-  var ds = live(state.decisions);
+  var ds = live(state.decisions).filter(function (d) { var ls = findStep(d.step); return ls && ls.t.projectId === p.id; });
   if (!ds.length) dl.appendChild(el("li", { "class": "hint" }, "No open decisions."));
   ds.forEach(function (d) {
     var li = el("li", { "class": "decision" });
@@ -281,7 +283,7 @@ export function renderKofi(root) {
     li.appendChild(inp);
     var lf = el("div", { "class": "field" }); lf.appendChild(el("label", { "for": "ds-" + d.id }, "Linked step"));
     var sel = el("select", { id: "ds-" + d.id, "class": "plain" });
-    stepOptions().forEach(function (o) { var op = el("option", { value: o.value }, o.label); if (o.value === d.step) op.selected = true; sel.appendChild(op); });
+    stepOptions(p.id).forEach(function (o) { var op = el("option", { value: o.value }, o.label); if (o.value === d.step) op.selected = true; sel.appendChild(op); });
     on(sel, "change", function () { d.step = sel.value; save(); renderView(); });
     lf.appendChild(sel); li.appendChild(lf);
     var rm = el("button", { type: "button", "class": "small danger", style: "margin-top:10px" }, "Remove");
@@ -289,7 +291,6 @@ export function renderKofi(root) {
     li.appendChild(rm); dl.appendChild(li);
   });
   g.put(dl, 2, 3); root.appendChild(g);
-  root.appendChild(el("p", { "class": "note" }, "Everything here is saved in this browser only."));
 }
 
 export function pinBar(key) {
@@ -301,10 +302,10 @@ export function pinBar(key) {
 export function pagesSection() {
   var sec = el("div");
   sec.appendChild(el("h3", { style: "margin-top:28px" }, "Pages and projects"));
-  sec.appendChild(el("p", { "class": "hint" }, "Pin a page to the sidebar for quick access. Removing a page from the sidebar only hides it there. It stays listed here."));
+  sec.appendChild(el("p", { "class": "hint" }, "Pin a project to the sidebar for quick access. Removing it from the sidebar only hides it there. It stays listed here."));
   var ul = el("ul", { "class": "list" });
-  var rows = [{ key: "kofi", name: "Launch checklist", meta: "Pre-launch steps and decisions" }];
-  projectNames().forEach(function (n) { rows.push({ key: "proj:" + n, name: n, meta: projectMeta(n) }); });
+  var rows = liveProjects().map(function (p) { return { key: "proj:" + p.id, name: p.name, meta: projectMeta(p) }; });
+  if (!rows.length) sec.appendChild(el("p", { "class": "hint" }, "No projects yet."));
   rows.forEach(function (r) {
     var li = el("li"), row = el("div", { "class": "crow" });
     var nm = el("div", { style: "flex:1 1 200px" }); nm.appendChild(el("span", { style: "font-weight:600" }, r.name)); nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, r.meta));
@@ -316,23 +317,49 @@ export function pagesSection() {
   });
   sec.appendChild(ul); return sec;
 }
-export function renderProjectPage(root, name) {
-  var key = "proj:" + name;
+// A project's own lifecycle status decides how much of the page renders:
+// "candidate" (not yet started -- estimate fields and a Promote action) or
+// "active" (has its own Tasks/Schedule/Notes/Launch sections). Promotion is
+// in-place: the same record and id carry through, never a second record --
+// see DESIGN.md's "making Project a first-class entity" section.
+export function renderProjectPage(root, id) {
+  var p = findProject(id);
+  if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
+  var key = "proj:" + p.id;
   root.appendChild(pinBar(key));
-  root.appendChild(el("p", { "class": "hint first" }, projectMeta(name)));
-  var cand = liveCands().filter(function (c) { return c.name === name; })[0];
-  if (cand) {
+  root.appendChild(el("p", { "class": "hint first" }, projectMeta(p)));
+  if (p.note) root.appendChild(el("p", { "class": "hint" }, p.note));
+
+  if (p.status === "candidate") {
     var cb = el("div", { "class": "box", style: "margin-top:16px" });
-    cb.appendChild(el("p", { "class": "first" }, cand.note || "Candidate for the next slot."));
-    var ca = el("div", { "class": "actions" });
-    if (state.next === cand.id) ca.appendChild(on(el("button", { type: "button" }, "Clear my choice"), "click", function () { unchooseNext(); changed(); }));
-    else ca.appendChild(on(el("button", { type: "button", "class": "primary" }, "Choose as next project"), "click", function () { chooseNext(cand.id); }));
+    var f = el("div", { "class": "cfields", style: "margin:0" });
+    var f1 = el("div", { "class": "field" }); f1.appendChild(el("label", { "for": "cs-" + p.id }, "Start date (optional)"));
+    var sd = el("input", { type: "date", id: "cs-" + p.id }); sd.value = p.start;
+    on(sd, "change", function () { p.start = isISO(sd.value) ? sd.value : ""; cf.disabled = !p.start; if (!p.start) cf.value = ""; save(); notify("Start date saved. See it on the Timeline."); });
+    f1.appendChild(sd);
+    var f2 = el("div", { "class": "field" }); f2.appendChild(el("label", { "for": "cm-" + p.id }, "Estimated months (optional)"));
+    var mo = el("input", { type: "number", id: "cm-" + p.id, min: "1", max: "36", step: "1" }); mo.value = p.months;
+    on(mo, "change", function () { var v = parseInt(mo.value, 10); p.months = (v >= 1 && v <= 36) ? v : ""; if (p.months === "") mo.value = ""; if (cf) cf.value = ""; save(); });
+    f2.appendChild(mo); f.appendChild(f1); f.appendChild(f2);
+    var f3 = el("div", { "class": "field" }); f3.appendChild(el("label", { "for": "cf-" + p.id }, "Or pick a target completion date (optional)"));
+    var cf = el("input", p.start ? { type: "date", id: "cf-" + p.id } : { type: "date", id: "cf-" + p.id, disabled: "disabled" });
+    on(cf, "change", function () {
+      if (!p.start || !isISO(cf.value)) { cf.value = ""; return; }
+      var months = Math.round((parseISO(cf.value) - parseISO(p.start)) / (DAY * 30.44));
+      if (months < 1 || months > 36) { cf.value = ""; notify("Pick a date between 1 and 36 months from the start date."); return; }
+      p.months = months; mo.value = months; save(); notify("Completion date saved as about " + months + (months === 1 ? " month" : " months") + ".");
+    });
+    f3.appendChild(cf); f.appendChild(f3); cb.appendChild(f);
+    var ca = el("div", { "class": "actions", style: "margin-top:10px" });
+    ca.appendChild(on(el("button", { type: "button", "class": "primary" }, "Choose as next project"), "click", function () { promoteToActive(p.id); }));
     cb.appendChild(ca); root.appendChild(cb);
+    return;
   }
+
   var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", null, "Tasks"));
-  hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add task"), "click", function () { taskDialog(name); }));
+  hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add task"), "click", function () { taskDialog(p.id); }));
   root.appendChild(hd);
-  var ts = ordered().filter(function (t) { return !t.isNext && t.project === name; }).concat(backlogTasks().filter(function (t) { return t.project === name; }));
+  var ts = ordered().filter(function (t) { return !t.isNext && t.projectId === p.id; }).concat(backlogTasks().filter(function (t) { return t.projectId === p.id; }));
   if (!ts.length) root.appendChild(el("p", { "class": "hint" }, "No tasks yet."));
   else {
     var ul = el("ul", { "class": "tlist" });
@@ -349,46 +376,51 @@ export function renderProjectPage(root, name) {
     root.appendChild(ul);
   }
   root.appendChild(el("h3", null, "Schedule"));
-  var own = state.pset[name], eff = pset(name);
-  root.appendChild(el("p", { "class": "hint" }, own ? "This project has its own start date and pace." : "This project uses the defaults from Settings. Change either value to give it its own."));
+  var eff = pset(p.id);
+  root.appendChild(el("p", { "class": "hint" }, "Set this project's own start date and pace."));
   var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
-  function sfield(id, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); sg.appendChild(w); }
+  function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
   var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
   var pm = el("input", { type: "number", id: "proj-mult", min: "0.25", max: "5", step: "0.25" }); pm.value = eff.mult;
   function applyOwn() {
     var sv = ps.value, mv = parseFloat(pm.value);
     if (!isISO(sv)) { ps.value = eff.start; smsg.textContent = "Enter a valid start date."; return; }
     if (isNaN(mv) || mv < 0.25 || mv > 5) { pm.value = eff.mult; smsg.textContent = "The time multiplier must be from 0.25 to 5."; return; }
-    state.pset[name] = { start: sv, mult: mv }; changed(); notify(name + " schedule saved.");
+    p.start = sv; p.mult = mv; changed(); notify(p.name + " schedule saved.");
   }
   on(ps, "change", applyOwn); on(pm, "change", applyOwn);
-  var pe = el("input", { type: "number", id: "proj-est", min: "1", max: "60", step: "1", placeholder: "None" }); pe.value = state.pest[name] || "";
-  on(pe, "change", function () {
-    if (pe.value.trim() === "") { delete state.pest[name]; changed(); notify("Estimate cleared."); return; }
-    var v = parseInt(pe.value, 10);
-    if (isNaN(v) || v < 1 || v > 60) { pe.value = state.pest[name] || ""; smsg.textContent = "Enter a number of months from 1 to 60, or leave it empty."; return; }
-    state.pest[name] = v; changed(); notify(name + " estimate saved.");
-  });
-  sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm); sfield("proj-est", "Estimated length after these tasks (months, optional)", pe);
+  sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm);
   root.appendChild(sg); root.appendChild(smsg);
-  root.appendChild(el("p", { "class": "hint" }, "The estimate shows as a light bar after the project's last task on the Timeline. It is an estimate, not a promise."));
-  if (own) root.appendChild(on(el("button", { type: "button", "class": "small" }, "Use the defaults"), "click", function () { delete state.pset[name]; changed(); notify(name + " now uses the defaults."); }));
   root.appendChild(el("h3", null, "Notes"));
-  var ta = el("textarea", { "aria-label": "Notes for " + name, style: "margin-top:8px" }); ta.value = state.pnotes[name] || "";
-  on(ta, "input", function () { state.pnotes[name] = ta.value.slice(0, 5000); save(); });
+  var ta = el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" }); ta.value = p.notes;
+  on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(); });
   root.appendChild(ta);
+
+  root.appendChild(el("h3", null, "Launch"));
+  launchSection(root, p);
+
+  var ar = el("div", { "class": "actions", style: "margin-top:14px" });
+  ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Archive project"), "click", function () {
+    // Archiving a project cascades to its still-open tasks -- otherwise they'd
+    // dangle under a project no longer in the live list (dispProject only
+    // resolves live projects), showing a blank project name in Schedule/Today.
+    // A project archived-with-history should be a clean, complete snapshot.
+    removeToArchive(p, "Project", function () {
+      state.tasks.forEach(function (t) { if (t.projectId === p.id && !t.arch) t.arch = { at: iso(TODAY), why: "removed" }; });
+    });
+  }));
+  root.appendChild(ar);
 }
 
-export function chooseNext(id) {
-  state.next = id;
+// Promotes a candidate to active in place -- same record, same id, only its
+// status field changes. Replaces the old separate state.next pointer.
+export function promoteToActive(id) {
+  var p = findAnyProject(id);
+  if (!p) return;
+  p.status = "active";
   var t = state.tasks.filter(function (x) { return x.isNext; })[0];
   if (t) t.status = "Done";
   changed();
-}
-export function unchooseNext() {
-  state.next = null;
-  var t = state.tasks.filter(function (x) { return x.isNext; })[0];
-  if (t && t.status === "Done") t.status = "Not started";
 }
 export function standingBlock(c) {
   var wrap = el("div");
@@ -398,7 +430,7 @@ export function standingBlock(c) {
   var groups = {}, order = [];
   ordered().forEach(function (t) {
     if (t.isNext || t.status === "Done") return;
-    var g = groups[t.project]; if (!g) { g = groups[t.project] = { name: t.project, open: 0, first: t }; order.push(g); }
+    var g = groups[t.projectId]; if (!g) { g = groups[t.projectId] = { projectId: t.projectId, name: dispProject(t), open: 0, first: t }; order.push(g); }
     g.open++;
   });
   order.sort(function (a, b) { return taskStart(a.first) - taskStart(b.first); });
@@ -407,7 +439,7 @@ export function standingBlock(c) {
   order.forEach(function (g) {
     var li = el("li"), top = el("div", { "class": "srow" });
     var nm = el("button", { type: "button", "class": "textbtn plink" }, g.name);
-    on(nm, "click", function () { go(validPage("proj:" + g.name) ? "proj:" + g.name : "projects"); });
+    on(nm, "click", function () { go(validPage("proj:" + g.projectId) ? "proj:" + g.projectId : "projects"); });
     top.appendChild(nm); top.appendChild(el("span", { "class": "scount" }, g.open + " open " + (g.open === 1 ? "task" : "tasks")));
     li.appendChild(top);
     var nx = el("div", { "class": "snext" }); nx.appendChild(document.createTextNode("Next up: "));
@@ -418,7 +450,7 @@ export function standingBlock(c) {
   });
   var sl = el("li"), stEl = el("div", { "class": "srow" });
   stEl.appendChild(el("span", { "class": "slabel" }, "Next slot"));
-  if (c) { var cl = el("button", { type: "button", "class": "textbtn plink" }, c.name); on(cl, "click", function () { go("proj:" + c.name); }); stEl.appendChild(cl); }
+  if (c) { var cl = el("button", { type: "button", "class": "textbtn plink" }, c.name); on(cl, "click", function () { go("proj:" + c.id); }); stEl.appendChild(cl); }
   else stEl.appendChild(el("span", { "class": "scount" }, "Not chosen yet"));
   sl.appendChild(stEl); ul.appendChild(sl);
   box.appendChild(ul); wrap.appendChild(box);
@@ -431,53 +463,25 @@ export function renderProjects(root) {
   hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add project"), "click", function () { projectDialog(); })); root.appendChild(hd);
   root.appendChild(el("p", { "class": "hint" }, "Choose which project gets the next slot."));
   var list = el("ul", { "class": "list" });
-  var cs = liveCands();
+  var cs = candidateProjects();
   if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a project."));
   cs.forEach(function (cd) {
     var li = el("li"), row = el("div", { "class": "crow" });
-    var lab = el("label"); var rb = el("input", { type: "radio", name: "nextProject" }); rb.checked = state.next === cd.id;
-    on(rb, "change", function () { chooseNext(cd.id); });
-    lab.appendChild(rb); lab.appendChild(el("span", null, cd.name)); row.appendChild(lab);
+    var nm = el("button", { type: "button", "class": "textbtn plink" }, cd.name);
+    on(nm, "click", function () { go("proj:" + cd.id); });
+    row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "small" }, "Park it"), "click", function () {
-      if (state.next === cd.id) unchooseNext();
-      state.candidates = state.candidates.filter(function (x) { return x.id !== cd.id; });
+      state.projects = state.projects.filter(function (x) { return x.id !== cd.id; });
       state.parked.push({ id: uid(), text: cd.name, note: cd.note }); changed();
     }));
     var rm = el("button", { type: "button", "class": "small danger" }, "Remove");
-    on(rm, "click", function () { removeToArchive(cd, "Project", function () { if (state.next === cd.id) unchooseNext(); }); });
+    on(rm, "click", function () { removeToArchive(cd, "Project"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row);
     if (cd.note) li.appendChild(el("p", { "class": "cnote" }, cd.note));
-    if (state.next === cd.id) {
-      var f = el("div", { "class": "cfields" });
-      var f1 = el("div", { "class": "field" }); f1.appendChild(el("label", { "for": "cs-" + cd.id }, "Start date (optional)"));
-      var sd = el("input", { type: "date", id: "cs-" + cd.id }); sd.value = cd.start;
-      on(sd, "change", function () { cd.start = isISO(sd.value) ? sd.value : ""; cf.disabled = !cd.start; if (!cd.start) cf.value = ""; save(); notify("Start date saved. See it on the Timeline."); });
-      f1.appendChild(sd);
-      var f2 = el("div", { "class": "field" }); f2.appendChild(el("label", { "for": "cm-" + cd.id }, "Estimated months (optional)"));
-      var mo = el("input", { type: "number", id: "cm-" + cd.id, min: "1", max: "36", step: "1" }); mo.value = cd.months;
-      on(mo, "change", function () { var v = parseInt(mo.value, 10); cd.months = (v >= 1 && v <= 36) ? v : ""; if (cd.months === "") mo.value = ""; if (cf) cf.value = ""; save(); });
-      f2.appendChild(mo); f.appendChild(f1); f.appendChild(f2);
-      var f3 = el("div", { "class": "field" }); f3.appendChild(el("label", { "for": "cf-" + cd.id }, "Or pick a target completion date (optional)"));
-      var cf = el("input", cd.start ? { type: "date", id: "cf-" + cd.id } : { type: "date", id: "cf-" + cd.id, disabled: "disabled" });
-      on(cf, "change", function () {
-        if (!cd.start || !isISO(cf.value)) { cf.value = ""; return; }
-        var months = Math.round((parseISO(cf.value) - parseISO(cd.start)) / (DAY * 30.44));
-        if (months < 1 || months > 36) { cf.value = ""; notify("Pick a date between 1 and 36 months from the start date."); return; }
-        cd.months = months; mo.value = months; save(); notify("Completion date saved as about " + months + (months === 1 ? " month" : " months") + ".");
-      });
-      f3.appendChild(cf);
-      f.appendChild(f3); li.appendChild(f);
-      var startNote = el("p", { "class": "cnote" });
-      startNote.appendChild(document.createTextNode("Chosen as the next project. "));
-      startNote.appendChild(on(el("button", { type: "button", "class": "textbtn" }, "Open its project page"), "click", function () { go("proj:" + cd.name); }));
-      startNote.appendChild(document.createTextNode(" and add a task to actually start it."));
-      li.appendChild(startNote);
-    }
     list.appendChild(li);
   });
   root.appendChild(list);
-  if (state.next) root.appendChild(on(el("button", { type: "button", "class": "small", style: "margin-top:12px" }, "Clear my choice"), "click", function () { unchooseNext(); changed(); }));
   root.appendChild(pagesSection());
 }
 export function renderParkingLot(root) {
@@ -495,7 +499,7 @@ export function renderParkingLot(root) {
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "small" }, "Make it a candidate"), "click", function () {
       state.parked = state.parked.filter(function (x) { return x.id !== p.id; });
-      state.candidates.push({ id: uid(), name: p.text, note: p.note, start: "", months: "" }); changed();
+      state.projects.push(makeProject(uid(), p.text, "candidate", { note: p.note })); changed();
     }));
     var rm = el("button", { type: "button", "class": "small danger" }, "Remove");
     on(rm, "click", function () { removeToArchive(p, "Idea"); });
@@ -555,7 +559,7 @@ export var KIND_FILTERS = [["all", "All"], ["task", "Tasks"], ["project", "Proje
 export function archiveEntries() {
   var out = [];
   state.tasks.forEach(function (t) { if (t.arch) out.push({ kind: "task", list: "tasks", item: t, title: dispProject(t) + ": " + short(dispWhat(t), 90) }); });
-  state.candidates.forEach(function (c) { if (c.arch) out.push({ kind: "project", list: "candidates", item: c, title: c.name }); });
+  state.projects.forEach(function (p) { if (p.arch) out.push({ kind: "project", list: "projects", item: p, title: p.name }); });
   state.parked.forEach(function (p) { if (p.arch) out.push({ kind: "idea", list: "parked", item: p, title: p.text }); });
   state.decisions.forEach(function (d) { if (d.arch) out.push({ kind: "decision", list: "decisions", item: d, title: d.q }); });
   state.milestones.forEach(function (m) { if (m.arch) out.push({ kind: "milestone", list: "milestones", item: m, title: m.text + " (" + fmtY(parseISO(m.date)) + ")" }); });
@@ -649,8 +653,8 @@ export function helpTopics() {
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline.",
       "The full-width burndown and the weekly counts are further down the page."]],
     ["Launch page: steps and decisions", [
-      "On any task, tap **Launch** beside a step to put that step on the **Launch** page. Ticking it there or in **Tasks** keeps both in sync.",
-      "Link a decision to a step. Answering the decision ticks the step, and clearing the answer unticks it.",
+      "On any task, tap **Launch** beside a step to put that step on that project's own **Launch** section. Ticking it there or in **Tasks** keeps both in sync.",
+      "A decision always links to a step. Answering the decision ticks the step, and clearing the answer unticks it.",
       "Use **Add item** to create a new step for the list, and **Add decision** to add a question to settle."]],
     ["Archive and undo", [
       "Completed tasks move to the **Archive** by default, and so does anything you remove. An **Undo** button appears for a few seconds.",
@@ -684,7 +688,7 @@ export function renderHelp(root) {
 /* settings */
 export function blankState() {
   var d = defaults();
-  d.tasks = []; d.decisions = []; d.candidates = []; d.parked = []; d.milestones = []; d.pins = []; d.pnotes = {}; d.pset = {}; d.pest = {}; d.next = null; d.lastSlip = null;
+  d.tasks = []; d.decisions = []; d.projects = []; d.parked = []; d.milestones = []; d.pins = []; d.lastSlip = null;
   d.start = iso(TODAY); d.mult = state.mult; d.days = state.days; d.settings = state.settings;
   return d;
 }

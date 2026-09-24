@@ -89,8 +89,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk());
   ok(k.$("viewTitle").textContent === "Today" && k.d.title.includes("Sidequest"), "opens on Today");
   ok(k.$("view").textContent.includes("Welcome to Sidequest") && k.$("view").textContent.includes("samples") && !!k.$("welcomeSettings") && !!k.$("welcomeDismiss"), "welcome box explains the samples");
-  ok(k.d.querySelector('.tab[data-view=kofi]').textContent.trim() === "Launch" && k.d.querySelector("#nav").textContent.includes("Pinned"), "'Launch' checklist is the pinned page");
-  ok([...k.d.querySelectorAll("#nav .tab")].map(t => t.dataset.view).join() === "today,projects,schedule,timeline,kofi", "sidebar: core pages + one pinned page");
+  ok(k.d.querySelector('.tab[data-view="proj:pApp"]').textContent.trim() === "Sample App" && k.d.querySelector("#nav").textContent.includes("Pinned"), "Sample App is the pinned project");
+  ok([...k.d.querySelectorAll("#nav .tab")].map(t => t.dataset.view).join() === "today,projects,schedule,timeline,proj:pApp", "sidebar: core pages + one pinned project");
   // dismiss
   k.click(k.$("welcomeDismiss")); ok(!k.$("view").textContent.includes("Welcome to Sidequest") && k.saved().settings.hideWelcome === true, "dismissing hides it and remembers");
   // Today content
@@ -108,8 +108,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk()); k.tab("projects");
   ok(k.stand().join() === "Sample Website,Sample App,Sample Game,Next slot", "Where things stand lists the three sample projects (" + k.stand().join() + ")");
   const pagesList = [...k.d.querySelectorAll("#view .list")].pop().textContent;
-  ok(pagesList.includes("Launch checklist") && pagesList.includes("Sample App") && pagesList.includes("Sample Website") && pagesList.includes("Sample Game"), "Pages and projects lists them");
-  ok(k.d.querySelectorAll('#view input[type=radio]').length === 2 && k.$("view").textContent.includes("Sample Browser Extension") && k.$("view").textContent.includes("Sample Command-Line Tool"), "two sample candidates");
+  ok(pagesList.includes("Sample App") && pagesList.includes("Sample Website") && pagesList.includes("Sample Game"), "Pages and projects lists the active projects");
+  ok(k.$("view").textContent.includes("Sample Browser Extension") && k.$("view").textContent.includes("Sample Command-Line Tool"), "two sample candidates listed");
   k.tab("parking");
   ok(k.$("view").textContent.includes("Try a new game engine") && k.$("view").textContent.includes("Write up lessons learned") && !k.$("view").textContent.includes("Redesign the logo"), "parking lot samples (removed one is in the Archive)");
   k.tab("schedule");
@@ -132,15 +132,14 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(new Set(l1.map(t => t.split("·")[1].trim().split(" to ")[0])).size >= 5, "projects start at different times (own start dates and pace)");
 }
 
-/* ---- Launch checklist ---- */
+/* ---- Launch section on a project page ---- */
 {
-  const k = kit(await mk()); k.tab("kofi");
-  ok(k.$("viewTitle").textContent === "Launch" && k.$("view").textContent.includes("Before you launch") && k.$("view").textContent.includes("Everything to finish before you ship"), "Launch page copy is generic");
-  ok(!k.d.querySelector("#view a.linkbtn"), "no external link button");
+  const k = kit(await mk()); k.tab("today"); k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  ok(k.$("viewTitle").textContent === "Sample App" && k.$("view").textContent.includes("Before you launch") && k.$("view").textContent.includes("Launch"), "project page has a Launch section, scoped to this project");
   const lb = k.d.querySelector("#view .listbox");
-  ok(/^\d+ of \d+ done$/.test(lb.querySelector(".progress").textContent) && lb.querySelectorAll("ul.list.check li").length === 10, "checklist built from launch-flagged steps (" + lb.querySelectorAll("ul.list.check li").length + ")");
+  ok(/^\d+ of \d+ done$/.test(lb.querySelector(".progress").textContent) && lb.querySelectorAll("ul.list.check li").length === 5, "Sample App's checklist is built from its own 5 launch-flagged steps (" + lb.querySelectorAll("ul.list.check li").length + ")");
   const decs = [...k.d.querySelectorAll("#view .decision")];
-  ok(decs.length === 2 && decs[0].querySelector("input").value.startsWith("Start with one store") && decs[1].querySelector("input").value === "", "two sample decisions, one answered");
+  ok(decs.length === 1 && decs[0].querySelector("input").value.startsWith("Start with one store"), "Sample App's own decision shows here, not the Game's");
   ok(k.d.querySelector("#view .list.check li.done") && k.d.querySelector("#view .list.check").textContent.includes("Choose the first app store"), "answered decision's step is already ticked");
   // sync
   const before = k.d.querySelector("#view .progress").textContent;
@@ -149,14 +148,23 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // step toggle wording
   k.tab("schedule"); k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Submit to the app store")));
   ok(k.btn(k.d.querySelector(".detailpane"), "Launch") && k.d.querySelector(".detailpane").textContent.includes("Launch puts a step on the Launch checklist"), "step toggle says Launch");
-  k.tab("kofi"); k.click(k.btn(k.$("view"), "Add item")); ok(k.$("modalTitle").textContent === "New launch item", "Add item dialog uses launch wording"); k.click(k.$("modalClose"));
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App")); k.click(k.btn(k.$("view"), "Add item")); ok(k.$("modalTitle").textContent === "New launch item", "Add item dialog uses launch wording"); k.click(k.$("modalClose"));
+}
+
+/* ---- decision requires a step ---- */
+{
+  const k = kit(await mk()); k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  k.click(k.btn(k.$("view"), "Add decision"));
+  ok(k.$("modalTitle").textContent === "New decision", "decision dialog opens");
+  ok(!k.d.querySelector('#modalBody option[value=""]'), "no unlinked/None option -- a step link is required");
+  k.click(k.$("modalClose"));
 }
 
 /* ---- Help in the template ---- */
 {
   const k = kit(await mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
-  ok(titles.length === 10 && titles.includes("Launch page: steps and decisions") && titles.indexOf("Launch page: steps and decisions") === titles.indexOf("Archive and undo") - 1, "template Help keeps the Launch page topic (" + titles.length + " topics)");
+  ok(titles.length === 10 && titles.includes("Launch page: steps and decisions"), "template Help keeps the Launch page topic (" + titles.length + " topics)");
   ok(k.$("view").textContent.includes("tap Launch beside a step"), "and the topic explains the Launch button");
   ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Parking lot,Archive,Help,Settings", "Help sits between Archive and Settings");
 }
@@ -183,14 +191,17 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.$("startFresh")); ok(k.$("modalBody").textContent.includes("The sample projects") && k.$("modalBody").textContent.includes("An empty planner"), "offers empty or sample projects");
   const a = k.$("freshAck"); a.checked = true; k.fire(a); k.click(k.$("freshGo"));
   ok(k.$("view").textContent.includes("No tasks yet") && k.saved().tasks.length === 0 && k.saved().settings.hideWelcome === true, "empty planner: nothing left, welcome stays hidden");
-  ok(![...k.d.querySelectorAll("#nav .tab")].some(t => t.dataset.view === "kofi"), "no pinned page after a fresh start");
-  // add own project from scratch
-  k.menuAct("newBtn", "newTask"); k.setField("project", "My App"); k.setField("what", "First task"); k.setField("block", "1"); k.click(k.btn(k.$("modalBody"), "Add task"));
-  k.tab("today"); ok(k.$("view").textContent.includes("First task"), "can start working right away");
+  ok(k.saved().projects.length === 0 && k.saved().pins.length === 0, "no projects and no pins after a fresh start");
+  // add own project from scratch: a task needs an active project to attach to
+  k.menuAct("newBtn", "newProject"); k.setField("name", "My App"); k.click(k.btn(k.$("modalBody"), "Add project"));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "My App"));
+  k.click(k.btn(k.$("view"), "Choose as next project"));
+  k.menuAct("newBtn", "newTask"); k.setField("what", "First task"); k.setField("block", "1"); k.click(k.btn(k.$("modalBody"), "Add task"));
+  k.tab("today"); ok(k.$("view").textContent.includes("First task"), "can start working right away, once a project exists");
   // reload samples
   k.tab("settings"); k.click(k.$("startFresh")); const r = [...k.d.querySelectorAll('#modalBody input[name=fresh]')]; r[1].checked = true; k.fire(r[1]);
   const a2 = k.$("freshAck"); a2.checked = true; k.fire(a2); k.click(k.$("freshGo"));
-  ok(k.saved().tasks.length === 14 && k.saved().pins.includes("kofi"), "the samples can be reloaded");
+  ok(k.saved().tasks.length === 14 && k.saved().pins.includes("proj:pApp"), "the samples can be reloaded");
 }
 
 /* ---- core behavior still intact ---- */
@@ -205,7 +216,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("toast").textContent.includes("Archive"), "completing a task moves it to the Archive");
   // backup text
   k.tab("settings"); k.click(k.$("showText")); const j = JSON.parse(k.$("backupText").value);
-  ok(j.tasks.length === 14 && j.pset["Sample Game"].mult === 2, "backup export contains the sample data");
+  ok(j.tasks.length === 14 && j.projects.find(p => p.name === "Sample Game").mult === 2, "backup export contains the sample data");
   // reload keeps changes and skips the welcome
   const k2 = kit(await mk(k.saved())); ok(k2.$("viewTitle").textContent === "Today" && !k2.$("view").textContent.includes("Welcome to Sidequest") || k2.saved !== undefined, "reload opens on Today");
 }
@@ -220,7 +231,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(taskSel.selectedOptions[0].label === "Sample Website: Write the page copy", "the task select still defaults to the next-up task");
   const allProjects = [...taskSel.options].map(o => o.label);
   ok(allProjects.some(l => l.startsWith("Sample App:")) && allProjects.some(l => l.startsWith("Sample Game:")), "All projects shows every project's tasks");
-  k.setField("project", "Sample Game"); k.fire(projSel);
+  k.setField("project", "pGame"); k.fire(projSel);
   const afterGame = [...taskSel.options].map(o => o.label);
   ok(afterGame.length > 0 && afterGame.every(l => l.startsWith("Sample Game:")), "choosing a project narrows the task list to only that project's tasks");
   k.setField("text", "A step added via the filtered picker");
@@ -229,7 +240,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // opening a task first changes the default filter to that task's project
   k.tab("schedule"); k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Build the layout")));
   k.menuAct("newBtn", "newStep");
-  ok(k.$("f-project").value === "Sample Website", "with a task open in Schedule, defaults the filter to that task's project");
+  ok(k.$("f-project").value === "pSite", "with a task open in Schedule, defaults the filter to that task's project");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

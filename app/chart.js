@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { fmt, fmtY, addDays, addMonths, parseISO, TODAY } from "./dates.js";
-import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, live } from "./model.js";
+import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, live, dispProject, findProject } from "./model.js";
 import { el } from "./dom.js";
 
 export function svgEl(tag, attrs, text) {
@@ -46,14 +46,14 @@ export function rangeBlock() {
   var lanes = [], groups = {}, order = [];
   counted().forEach(function (t) {
     if (t.isNext || t.block === 0) return;
-    var g = groups[t.project], a = taskStart(t), b = taskEnd(t);
-    if (!g) { g = groups[t.project] = { name: t.project, a: a, b: b }; order.push(t.project); }
+    var g = groups[t.projectId], a = taskStart(t), b = taskEnd(t);
+    if (!g) { g = groups[t.projectId] = { projectId: t.projectId, name: dispProject(t), a: a, b: b }; order.push(t.projectId); }
     if (a < g.a) g.a = a;
     if (b > g.b) g.b = b;
   });
   var maxEnd = addDays(s0, 400);
-  order.forEach(function (nm) {
-    var g = groups[nm], bars = [{ a: g.a, b: g.b, cls: "" }], dates = fmt(g.a) + " to " + fmt(g.b), est = state.pest[nm];
+  order.forEach(function (pid) {
+    var g = groups[pid], p = findProject(pid), bars = [{ a: g.a, b: g.b, cls: "" }], dates = fmt(g.a) + " to " + fmt(g.b), est = p && p.months;
     if (est) { var ea = addDays(g.b, 1), eb = addMonths(ea, est); bars.push({ a: ea, b: eb, cls: "est" }); dates += ", estimate to " + fmtY(eb); if (eb > maxEnd) maxEnd = eb; }
     lanes.push({ name: g.name, bars: bars, dates: dates });
   });
@@ -63,8 +63,10 @@ export function rangeBlock() {
     if (c.months) { cb = addMonths(ca, c.months); lanes.push({ name: c.name, bars: [{ a: ca, b: cb, cls: "" }], dates: fmt(ca) + " to " + fmtY(cb) }); if (cb > maxEnd) maxEnd = cb; }
     else { openEnded = true; lanes.push({ name: c.name, bars: [{ a: ca, b: null, cls: "open" }], dates: "from " + fmtY(ca) }); }
   }
+  // Milestones require a direct project link (see DESIGN.md) -- labeled by
+  // project name here since the Timeline shows every project's milestones together.
   var mss = [];
-  live(state.milestones).forEach(function (m) { mss.push({ id: m.id, text: m.text, date: parseISO(m.date) }); });
+  live(state.milestones).forEach(function (m) { var p = findProject(m.projectId); mss.push({ id: m.id, text: (p ? p.name + ": " : "") + m.text, date: parseISO(m.date) }); });
   mss.forEach(function (m) { if (m.date > maxEnd) maxEnd = m.date; });
   var capEnd = addMonths(rs, 25); if (maxEnd > capEnd) maxEnd = capEnd;
   var e0 = new Date(maxEnd);

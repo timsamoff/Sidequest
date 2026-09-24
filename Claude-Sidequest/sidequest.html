@@ -459,11 +459,22 @@ var WORDS = { Block: ["block", "blocks"], Sprint: ["sprint", "sprints"], Iterati
 function wd() { return state.settings.blockWord in WORDS ? state.settings.blockWord : "Block"; }
 function wl() { return WORDS[wd()][0]; }
 function wpC() { var w = WORDS[wd()][1]; return w.charAt(0).toUpperCase() + w.slice(1); }
-function pset(name) { var o = (name && state.pset[name]) || {}; return { start: o.start || state.start, mult: o.mult || state.mult }; }
-function offsetFor(name, n) { return Math.floor(n * state.days * pset(name).mult + 1e-9); }
-function blockStartFor(name, b) { return addDays(parseISO(pset(name).start), offsetFor(name, b - 1)); }
-function blockEndFor(name, b) { return addDays(parseISO(pset(name).start), offsetFor(name, b) - 1); }
-function projKey(t) { return t.isNext ? "" : t.project; }
+/* project helpers -- Project is the top-tier entity every task/decision/
+   milestone attaches to by id (see DESIGN.md, "making Project a first-class
+   entity"). A project is promoted in place from candidate to active -- one id
+   for its whole life -- so "the active project named X" and "the candidate
+   named X" are never two different records. */
+function live(a) { return a.filter(function (x) { return !x.arch; }); }
+function liveProjects() { return live(state.projects); }
+function activeProjects() { return liveProjects().filter(function (p) { return p.status === "active"; }); }
+function candidateProjects() { return liveProjects().filter(function (p) { return p.status === "candidate"; }); }
+function findProject(id) { var p = liveProjects(); for (var i = 0; i < p.length; i++) if (p[i].id === id) return p[i]; return null; }
+function findAnyProject(id) { for (var i = 0; i < state.projects.length; i++) if (state.projects[i].id === id) return state.projects[i]; return null; }
+function pset(projectId) { var p = findProject(projectId); return { start: (p && p.start) || state.start, mult: (p && p.mult) || state.mult }; }
+function offsetFor(projectId, n) { return Math.floor(n * state.days * pset(projectId).mult + 1e-9); }
+function blockStartFor(projectId, b) { return addDays(parseISO(pset(projectId).start), offsetFor(projectId, b - 1)); }
+function blockEndFor(projectId, b) { return addDays(parseISO(pset(projectId).start), offsetFor(projectId, b) - 1); }
+function projKey(t) { return t.isNext ? null : t.projectId; }
 function taskStart(t) { return blockStartFor(projKey(t), t.block); }
 function taskEnd(t) { return blockEndFor(projKey(t), t.block); }
 function chartStart() {
@@ -474,11 +485,22 @@ function chartStart() {
 function checkpoints() { var out = [], s = chartStart(); for (var i = 0; i < CHECKPOINTS; i++) out.push(addDays(s, 7 * i)); return out; }
 
 /* task helpers */
-function live(a) { return a.filter(function (x) { return !x.arch; }); }
 function counted() { return state.tasks.filter(function (t) { return !t.arch || t.arch.why === "done"; }); }
-function liveCands() { return live(state.candidates); }
-function chosen() { var c = liveCands(); for (var i = 0; i < c.length; i++) if (c[i].id === state.next) return c[i]; return null; }
-function dispProject(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next project"; } return t.project; }
+// "Chosen as the next project" placeholder: the first active project with no
+// tasks yet -- there is no separate "next" pointer anymore (a project's own
+// status IS the chosen signal, set the moment it's promoted from candidate).
+// "Chosen as the next project" placeholder resolves to the first active
+// project (in state.projects array order, i.e. promotion order) that has no
+// tasks yet. This replaces the old explicit state.next pointer: choosing a
+// candidate now directly promotes it to "active" in place (see
+// promoteToActive() below), so a task-less active project IS the one just
+// chosen -- there's no longer a separate "chosen but not yet promoted" state
+// to track with its own pointer. Known simplification: if two active
+// projects were both promoted and neither has a task yet, this returns the
+// earlier one by array order, not necessarily the most recently promoted --
+// an acceptable edge case, not a design goal.
+function chosen() { var a = activeProjects(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.projectId === a[i].id; })) return a[i]; return null; }
+function dispProject(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next project"; } var p = findProject(t.projectId); return p ? p.name : ""; }
 function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next project. Add its first tasks with the + button."; return t.what; }
 function weight(t) { return Math.max(1, t.steps.length); }
 function doneUnits(t) { return t.status === "Done" ? weight(t) : t.steps.filter(function (s) { return s.done; }).length; }
@@ -503,19 +525,15 @@ function syncFromSteps(t) {
   else if (t.status === "Done" && n < t.steps.length) t.status = "In progress";
 }
 function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Done") return o[i]; return null; }
-function projectNames() {
-  var names = [], seen = {};
-  function add(n) { if (n && n !== "Next project" && !seen[n]) { seen[n] = 1; names.push(n); } }
-  orderedCounted().forEach(function (t) { if (!t.isNext) add(t.project); });
-  liveCands().forEach(function (c) { add(c.name); });
-  return names;
-}
 function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
-function validPage(key) { return key === "kofi" || (typeof key === "string" && key.indexOf("proj:") === 0 && projectNames().indexOf(key.slice(5)) >= 0); }
+// "proj:" + id routes to a project's own page -- id-based, not name-based, so
+// renaming a project never breaks its pin or an in-flight link to it. No
+// separate Launch/"kofi" page exists anymore (see DESIGN.md: only Projects
+// are pinnable, launch-critical items render as a section on a project's own page).
+function validPage(key) { return typeof key === "string" && key.indexOf("proj:") === 0 && !!findProject(key.slice(5)); }
 function pageTitle(key) {
-  if (key === "kofi") return "Launch";
   if (key === "search") return "Search";
-  if (typeof key === "string" && key.indexOf("proj:") === 0) return key.slice(5);
+  if (typeof key === "string" && key.indexOf("proj:") === 0) { var p = findProject(key.slice(5)); return p ? p.name : ""; }
   for (var i = 0; i < CORE.length; i++) if (CORE[i][0] === key) return CORE[i][1];
   for (var j = 0; j < BOTTOM.length; j++) if (BOTTOM[j][0] === key) return BOTTOM[j][1];
   return "";
@@ -523,15 +541,15 @@ function pageTitle(key) {
 function isPinned(key) { return state.pins.indexOf(key) >= 0; }
 function pinPage(key) { if (!isPinned(key)) state.pins.push(key); changed(); notify(pageTitle(key) + " pinned to the sidebar."); }
 function unpinPage(key) { state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); notify(pageTitle(key) + " removed from the sidebar. It is still listed under Projects."); }
-function projectMeta(name) {
-  var ts = counted().filter(function (t) { return !t.isNext && t.project === name; });
-  var cand = liveCands().filter(function (c) { return c.name === name; })[0];
+function projectMeta(p) {
+  var ts = counted().filter(function (t) { return !t.isNext && t.projectId === p.id; });
   var parts = [];
   if (ts.length) {
     var tot = 0, dn = 0, bk = ts.filter(function (t) { return t.block === 0; }).length; ts.forEach(function (t) { tot += weight(t); dn += doneUnits(t); });
     parts.push(ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " (" + bk + " in the Backlog)" : "") + ". " + dn + " of " + tot + " items done.");
+  } else if (p.status === "candidate") {
+    parts.push("Candidate for the next slot.");
   }
-  if (cand) parts.push(state.next === cand.id ? "Chosen as the next project." : "Candidate for the next slot.");
   return parts.length ? parts.join(" ") : "No tasks yet";
 }
 function findStep(id) {
@@ -542,15 +560,27 @@ function findStep(id) {
 }
 function decisionFor(stepId) { var ds = live(state.decisions); for (var i = 0; i < ds.length; i++) if (ds[i].step === stepId) return ds[i]; return null; }
 function short(str, n) { return str.length > n ? str.slice(0, n - 1) + "…" : str; }
-function kofiItems() { var out = []; orderedCounted().forEach(function (t) { t.steps.forEach(function (s) { if (s.kofi) out.push({ t: t, s: s }); }); }); return out; }
-function stepOptions() {
-  var o = [{ value: "", label: "None" }];
-  orderedCounted().forEach(function (t) { t.steps.forEach(function (s) { o.push({ value: s.id, label: dispProject(t) + ": " + short(s.text, 60) }); }); });
+// Launch-critical steps, scoped to one project -- renders as a section on
+// that project's own page (no separate global Launch page anymore).
+function launchItems(projectId) {
+  var out = [];
+  orderedCounted().forEach(function (t) { if (t.projectId !== projectId) return; t.steps.forEach(function (s) { if (s.kofi) out.push({ t: t, s: s }); }); });
+  return out;
+}
+// A decision must link to a real step (Project -> Task -> Step -> Decision,
+// see DESIGN.md) -- no "None" option, since an unlinked decision can no
+// longer be created. If projectId is given, only that project's steps are offered.
+function stepOptions(projectId) {
+  var o = [];
+  orderedCounted().forEach(function (t) {
+    if (projectId && t.projectId !== projectId) return;
+    t.steps.forEach(function (s) { o.push({ value: s.id, label: dispProject(t) + ": " + short(s.text, 60) }); });
+  });
   return o;
 }
-function taskOptions(projectFilter) {
+function taskOptions(projectId) {
   var ts = orderedAll();
-  if (projectFilter) ts = ts.filter(function (t) { return dispProject(t) === projectFilter; });
+  if (projectId) ts = ts.filter(function (t) { return t.projectId === projectId; });
   return ts.map(function (t) { return { value: t.id, label: dispProject(t) + ": " + short(dispWhat(t), 60) }; });
 }
 function findTask(id) { var a = live(state.tasks); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
@@ -571,10 +601,19 @@ var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
 function st(id, text, launch, done) { return { id: id, text: text, done: done === true, kofi: launch === true }; }
-function task(id, block, project, what, done, steps, extra) {
-  var t = { id: id, block: block, project: project, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false };
+function task(id, block, projectId, what, done, steps, extra) {
+  var t = { id: id, block: block, projectId: projectId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false };
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
   return t;
+}
+// A project's own lifecycle: "candidate" (competing for the next slot, not yet
+// started) or "active" (chosen, has tasks). Promoted in place -- the same
+// record and id carry through Candidate -> Active -> Archived, never a second
+// record. See DESIGN.md's "making Project a first-class entity" section.
+function project(id, name, status, extra) {
+  var p = { id: id, name: name, note: "", status: status, start: "", mult: 1, months: "", notes: "", arch: null };
+  if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
+  return p;
 }
 function sampleData() {
   var n = new Date(), D = 86400000;
@@ -583,92 +622,114 @@ function sampleData() {
   function day(k) { return new Date(m0 + k * D).toISOString().slice(0, 10); }
   var yest = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 1)).toISOString().slice(0, 10);
   var lastWeek = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 7)).toISOString().slice(0, 10);
+  var projects = [
+    project("pApp", "Sample App", "active", { notes: "A simple habit tracker. Keep the first version small and add features after the beta." }),
+    project("pSite", "Sample Website", "active", { start: day(14), mult: 1 }),
+    project("pGame", "Sample Game", "active", { start: day(21), mult: 2, months: 4 }),
+    project("pExt", "Sample Browser Extension", "candidate", { note: "A small tool that could ship in a month" }),
+    project("pCli", "Sample Command-Line Tool", "candidate", { note: "Would save time on your own projects" })
+  ];
   var tasks = [
-    task("a1", 1, "Sample App", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Done", doneAt: lastWeek, arch: { at: lastWeek, why: "done" } }),
-    task("a2", 2, "Sample App", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", false, true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "Done", doneAt: yest, arch: { at: yest, why: "done" } }),
-    task("a3", 3, "Sample App", "Build the home screen", "The list loads quickly and scrolls smoothly", [st("a3a", "Show the list of items", false, true), st("a3b", "Add pull to refresh"), st("a3c", "Handle an empty list")], { status: "In progress", notes: "Ask a friend to try this on an older phone before moving on." }),
-    task("a4", 4, "Sample App", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link", true), st("a4c", "Collect and sort the feedback")]),
-    task("a5", 5, "Sample App", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true, true), st("a5a", "Write the store description", true), st("a5b", "Prepare screenshots", true), st("a5c", "Submit for review", true)]),
-    task("a6", 0, "Sample App", "Add a dark mode", "Dark mode works on every screen", []),
-    task("w1", 1, "Sample Website", "Write the page copy", "Every page has final text", [st("w1a", "Write the home page", false, true), st("w1b", "Write the about page"), st("w1c", "Write the contact page")], { status: "In progress" }),
-    task("w2", 2, "Sample Website", "Build the layout", "Pages look right on a phone and a laptop", [st("w2a", "Build the header and footer"), st("w2b", "Make the layout work on phones"), st("w2c", "Compress the images")]),
-    task("w3", 3, "Sample Website", "Launch the site", "The site is live and checked", [st("w3a", "Point the domain at the site", true), st("w3b", "Check every page on a phone", true), st("w3c", "Announce it", true)]),
-    task("g1", 1, "Sample Game", "Prototype the core mechanic", "Someone can play for one minute", [st("g1a", "Make the player move"), st("g1b", "Add one obstacle"), st("g1c", "Add a win and a lose state")]),
-    task("g2", 2, "Sample Game", "Make the first ten levels", "Ten playable levels"),
-    task("g3", 3, "Sample Game", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid", true), st("g3c", "Record a trailer", true)]),
-    task("g4", 0, "Sample Game", "Add a level editor", "Players can make their own levels"),
-    task("n1", 6, "Next project", "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true })
+    task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Done", doneAt: lastWeek, arch: { at: lastWeek, why: "done" } }),
+    task("a2", 2, "pApp", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", false, true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "Done", doneAt: yest, arch: { at: yest, why: "done" } }),
+    task("a3", 3, "pApp", "Build the home screen", "The list loads quickly and scrolls smoothly", [st("a3a", "Show the list of items", false, true), st("a3b", "Add pull to refresh"), st("a3c", "Handle an empty list")], { status: "In progress", notes: "Ask a friend to try this on an older phone before moving on." }),
+    task("a4", 4, "pApp", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link", true), st("a4c", "Collect and sort the feedback")]),
+    task("a5", 5, "pApp", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true, true), st("a5a", "Write the store description", true), st("a5b", "Prepare screenshots", true), st("a5c", "Submit for review", true)]),
+    task("a6", 0, "pApp", "Add a dark mode", "Dark mode works on every screen", []),
+    task("w1", 1, "pSite", "Write the page copy", "Every page has final text", [st("w1a", "Write the home page", false, true), st("w1b", "Write the about page"), st("w1c", "Write the contact page")], { status: "In progress" }),
+    task("w2", 2, "pSite", "Build the layout", "Pages look right on a phone and a laptop", [st("w2a", "Build the header and footer"), st("w2b", "Make the layout work on phones"), st("w2c", "Compress the images")]),
+    task("w3", 3, "pSite", "Launch the site", "The site is live and checked", [st("w3a", "Point the domain at the site", true), st("w3b", "Check every page on a phone", true), st("w3c", "Announce it", true)]),
+    task("g1", 1, "pGame", "Prototype the core mechanic", "Someone can play for one minute", [st("g1a", "Make the player move"), st("g1b", "Add one obstacle"), st("g1c", "Add a win and a lose state")]),
+    task("g2", 2, "pGame", "Make the first ten levels", "Ten playable levels"),
+    task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid", true), st("g3c", "Record a trailer", true)]),
+    task("g4", 0, "pGame", "Add a level editor", "Players can make their own levels"),
+    task("n1", 6, null, "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true })
   ];
   return {
     tasks: tasks,
-    candidates: [
-      { id: "c1", name: "Sample Browser Extension", note: "A small tool that could ship in a month", start: "", months: "" },
-      { id: "c2", name: "Sample Command-Line Tool", note: "Would save time on your own projects", start: "", months: "" }
-    ],
+    projects: projects,
     parked: [
       { id: "p1", text: "Try a new game engine", note: "Not competing for the next slot" },
       { id: "p2", text: "Write up lessons learned", note: "After the website launches" },
       { id: "p3", text: "Redesign the logo", note: "", arch: { at: yest, why: "removed" } }
     ],
+    // Decisions attach through a required step link (Project -> Task -> Step ->
+    // Decision) -- see DESIGN.md. d3 demonstrates an archived decision, which
+    // predates the required-step rule and is kept archived rather than backfilled.
     decisions: [
       { id: "d1", q: "Which app store should you launch on first?", a: "Start with one store, then add the other.", step: "a5z" },
       { id: "d2", q: "Will the game be free, paid, or free with a paid upgrade?", a: "", step: "g3d" },
-      { id: "d3", q: "Should the site use a page builder?", a: "No, plain pages are enough.", step: "", arch: { at: yest, why: "removed" } }
+      { id: "d3", q: "Should the site use a page builder?", a: "No, plain pages are enough.", step: "w3a", arch: { at: yest, why: "removed" } }
     ],
+    // Milestones now require a direct project link (no step/task chain to derive it from).
     milestones: [
-      { id: "m1", text: "Sample App beta opens", date: day(21) },
-      { id: "m2", text: "Sample Game demo day", date: day(63) }
+      { id: "m1", text: "Sample App beta opens", date: day(21), projectId: "pApp" },
+      { id: "m2", text: "Sample Game demo day", date: day(63), projectId: "pGame" }
     ],
-    pset: { "Sample Website": { start: day(14), mult: 1 }, "Sample Game": { start: day(21), mult: 2 } },
-    pest: { "Sample Game": 4 },
-    pnotes: { "Sample App": "A simple habit tracker. Keep the first version small and add features after the beta." },
     start: day(0)
   };
 }
 function defaults() {
   var d = sampleData();
   return {
-    v: 4, start: d.start, mult: 1, days: 7,
+    v: 5, start: d.start, mult: 1, days: 7,
     tasks: d.tasks, actual: [34, 31, 25, null, null, null, null],
-    decisions: d.decisions, candidates: d.candidates, parked: d.parked,
-    next: null, milestones: d.milestones, lastSlip: null, pins: ["kofi"], pnotes: d.pnotes, pset: d.pset, pest: d.pest,
+    decisions: d.decisions, projects: d.projects, parked: d.parked,
+    milestones: d.milestones, lastSlip: null, pins: ["proj:pApp"],
     settings: { theme: "auto", archiveRule: "immediate", dateFormat: "us", blockWord: "Sprint", hideWelcome: false }
   };
 }
 
-function cleanEst(o) {
+function validArch(a) { return (a && typeof a === "object" && isISO(a.at) && (a.why === "done" || a.why === "removed")) ? { at: a.at, why: a.why } : null; }
+function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
+// A slip-snapshot's per-project start/mult pairs (used by slipDialog's undo).
+// Content-validated the same way a real project's own start/mult are.
+function cleanProjectSnap(o) {
   var out = {};
-  if (o && typeof o === "object" && !Array.isArray(o)) Object.keys(o).slice(0, 60).forEach(function (k) { var v = o[k]; if (typeof v === "number" && v >= 1 && v <= 60) out[k.slice(0, 120)] = Math.round(v); });
-  return out;
-}
-function cleanPset(o) {
-  var out = {};
-  if (o && typeof o === "object" && !Array.isArray(o)) Object.keys(o).slice(0, 60).forEach(function (k) {
+  if (o && typeof o === "object" && !Array.isArray(o)) Object.keys(o).slice(0, 200).forEach(function (k) {
     var v = o[k]; if (!v || typeof v !== "object") return;
     var e = {}; if (isISO(v.start)) e.start = v.start; if (typeof v.mult === "number" && v.mult >= 0.25 && v.mult <= 5) e.mult = v.mult;
-    if (e.start || e.mult) out[k.slice(0, 120)] = e;
+    if (e.start || e.mult) out[S(k, 40)] = e;
   });
   return out;
 }
-function validArch(a) { return (a && typeof a === "object" && isISO(a.at) && (a.why === "done" || a.why === "removed")) ? { at: a.at, why: a.why } : null; }
-function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
 function normalize(s) {
   var d = defaults();
   if (!s || typeof s !== "object") return d;
   if (isISO(s.start)) d.start = s.start;
   if (typeof s.mult === "number" && s.mult >= 0.25 && s.mult <= 5) d.mult = s.mult;
   if (typeof s.days === "number" && s.days >= 1 && s.days <= 30) d.days = Math.round(s.days);
+  if (Array.isArray(s.projects)) {
+    d.projects = s.projects.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) {
+      return {
+        id: S(x.id, 40), name: S(x.name, 120), note: S(x.note, 300),
+        status: (x.status === "active" || x.status === "candidate") ? x.status : "candidate",
+        start: isISO(x.start) ? x.start : "", mult: (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? x.mult : 1,
+        months: (typeof x.months === "number" && x.months >= 1 && x.months <= 36) ? Math.round(x.months) : "",
+        notes: S(x.notes, 5000), arch: validArch(x.arch)
+      };
+    });
+  }
+  var projectIds = {}; d.projects.forEach(function (p) { projectIds[p.id] = true; });
   if (Array.isArray(s.tasks)) {
     var ts = [];
     s.tasks.forEach(function (t) {
       if (!t || typeof t !== "object" || typeof t.id !== "string") return;
+      // A task's projectId must match a real project, or (for the "Next
+      // project" placeholder only) be null/absent. An orphaned projectId --
+      // pointing at nothing -- drops the task rather than silently keeping it
+      // unreachable; there is no real saved data yet for this to affect (see
+      // DESIGN.md's migration decision), so this is a clean-shape guarantee,
+      // not a data-loss risk being accepted.
+      var pid = (typeof t.projectId === "string" && projectIds[t.projectId]) ? t.projectId : null;
+      if (!pid && !t.isNext) return;
       var steps = [];
       if (Array.isArray(t.steps)) t.steps.forEach(function (x) {
         if (x && typeof x.id === "string") steps.push({ id: S(x.id, 40), text: S(x.text, 300), done: x.done === true, kofi: x.kofi === true });
       });
       var b = typeof t.block === "number" ? Math.round(t.block) : 1;
       ts.push({
-        id: S(t.id, 40), block: Math.min(12, Math.max(0, b)), project: S(t.project, 120), what: S(t.what, 400), done: S(t.done, 200),
+        id: S(t.id, 40), block: Math.min(12, Math.max(0, b)), projectId: pid, what: S(t.what, 400), done: S(t.done, 200),
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
         custom: t.custom === true, isNext: t.isNext === true,
         arch: validArch(t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : "", noAuto: t.noAuto === true
@@ -679,12 +740,31 @@ function normalize(s) {
   if (Array.isArray(s.actual) && s.actual.length === CHECKPOINTS) {
     d.actual = s.actual.map(function (v) { return (typeof v === "number" && v >= 0 && v <= 1000) ? v : null; });
   }
-  if (Array.isArray(s.decisions)) d.decisions = s.decisions.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), q: S(x.q, 300), a: S(x.a, 1000), step: S(x.step, 40), arch: validArch(x.arch) }; });
-  if (Array.isArray(s.candidates)) d.candidates = s.candidates.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) {
-    return { id: S(x.id, 40), name: S(x.name, 120), note: S(x.note, 300), start: isISO(x.start) ? x.start : "", months: (typeof x.months === "number" && x.months >= 1 && x.months <= 36) ? Math.round(x.months) : "", arch: validArch(x.arch) };
-  });
+  // A step id belonging to any live (non-archived) task, across every project --
+  // used below to require a decision's step link points at something real.
+  var liveStepIds = {};
+  d.tasks.forEach(function (t) { if (!t.arch) t.steps.forEach(function (x) { liveStepIds[x.id] = true; }); });
+  // Decisions require a real step link (Project -> Task -> Step -> Decision) --
+  // a decision with no step, or one pointing at a step that doesn't exist, is
+  // dropped rather than kept in a state the UI can't render meaningfully.
+  // Archived decisions are exempt: their step may have been archived/removed
+  // since, and an archived decision is read-only history, not something a
+  // user needs to keep re-attaching.
+  if (Array.isArray(s.decisions)) {
+    d.decisions = s.decisions.filter(function (x) {
+      if (!x || typeof x.id !== "string") return false;
+      var arch = validArch(x.arch);
+      return arch || (typeof x.step === "string" && liveStepIds[x.step]);
+    }).map(function (x) { return { id: S(x.id, 40), q: S(x.q, 300), a: S(x.a, 1000), step: S(x.step, 40), arch: validArch(x.arch) }; });
+  }
   if (Array.isArray(s.parked)) d.parked = s.parked.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 300), arch: validArch(x.arch) }; });
-  if (Array.isArray(s.milestones)) d.milestones = s.milestones.filter(function (x) { return x && typeof x.id === "string" && isISO(x.date); }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), date: x.date, arch: validArch(x.arch) }; });
+  // Milestones require a direct project link (no task/step chain to derive it
+  // from) -- one pointing at a project that no longer exists is dropped.
+  if (Array.isArray(s.milestones)) {
+    d.milestones = s.milestones.filter(function (x) {
+      return x && typeof x.id === "string" && isISO(x.date) && typeof x.projectId === "string" && projectIds[x.projectId];
+    }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), date: x.date, projectId: x.projectId, arch: validArch(x.arch) }; });
+  }
   if (s.settings && typeof s.settings === "object") {
     if (["auto", "light", "dark"].indexOf(s.settings.theme) >= 0) d.settings.theme = s.settings.theme;
     if (["immediate", "week", "never"].indexOf(s.settings.archiveRule) >= 0) d.settings.archiveRule = s.settings.archiveRule;
@@ -693,13 +773,7 @@ function normalize(s) {
     if (typeof s.settings.hideWelcome === "boolean") d.settings.hideWelcome = s.settings.hideWelcome;
   }
   if (Array.isArray(s.pins)) d.pins = s.pins.filter(function (k) { return typeof k === "string" && k.length < 130; }).slice(0, 30);
-  if (s.pnotes && typeof s.pnotes === "object" && !Array.isArray(s.pnotes)) {
-    Object.keys(s.pnotes).slice(0, 60).forEach(function (k) { if (typeof s.pnotes[k] === "string") d.pnotes[k.slice(0, 120)] = s.pnotes[k].slice(0, 5000); });
-  }
-  d.next = (typeof s.next === "string" && d.candidates.some(function (c) { return c.id === s.next && !c.arch; })) ? s.next : null;
-  d.pset = cleanPset(s.pset);
-  if (s.pest && typeof s.pest === "object") d.pest = cleanEst(s.pest);
-  if (s.lastSlip && s.lastSlip.snap && isISO(s.lastSlip.snap.start)) d.lastSlip = { days: Math.round(+s.lastSlip.days) || 0, snap: { start: s.lastSlip.snap.start, pset: cleanPset(s.lastSlip.snap.pset) } };
+  if (s.lastSlip && s.lastSlip.snap && isISO(s.lastSlip.snap.start)) d.lastSlip = { days: Math.round(+s.lastSlip.days) || 0, snap: { start: s.lastSlip.snap.start, projects: cleanProjectSnap(s.lastSlip.snap.projects) } };
   return d;
 }
 // Storage adapter: localStorage (web app) is synchronous and always available;
@@ -857,14 +931,14 @@ function rangeBlock() {
   var lanes = [], groups = {}, order = [];
   counted().forEach(function (t) {
     if (t.isNext || t.block === 0) return;
-    var g = groups[t.project], a = taskStart(t), b = taskEnd(t);
-    if (!g) { g = groups[t.project] = { name: t.project, a: a, b: b }; order.push(t.project); }
+    var g = groups[t.projectId], a = taskStart(t), b = taskEnd(t);
+    if (!g) { g = groups[t.projectId] = { projectId: t.projectId, name: dispProject(t), a: a, b: b }; order.push(t.projectId); }
     if (a < g.a) g.a = a;
     if (b > g.b) g.b = b;
   });
   var maxEnd = addDays(s0, 400);
-  order.forEach(function (nm) {
-    var g = groups[nm], bars = [{ a: g.a, b: g.b, cls: "" }], dates = fmt(g.a) + " to " + fmt(g.b), est = state.pest[nm];
+  order.forEach(function (pid) {
+    var g = groups[pid], p = findProject(pid), bars = [{ a: g.a, b: g.b, cls: "" }], dates = fmt(g.a) + " to " + fmt(g.b), est = p && p.months;
     if (est) { var ea = addDays(g.b, 1), eb = addMonths(ea, est); bars.push({ a: ea, b: eb, cls: "est" }); dates += ", estimate to " + fmtY(eb); if (eb > maxEnd) maxEnd = eb; }
     lanes.push({ name: g.name, bars: bars, dates: dates });
   });
@@ -874,8 +948,10 @@ function rangeBlock() {
     if (c.months) { cb = addMonths(ca, c.months); lanes.push({ name: c.name, bars: [{ a: ca, b: cb, cls: "" }], dates: fmt(ca) + " to " + fmtY(cb) }); if (cb > maxEnd) maxEnd = cb; }
     else { openEnded = true; lanes.push({ name: c.name, bars: [{ a: ca, b: null, cls: "open" }], dates: "from " + fmtY(ca) }); }
   }
+  // Milestones require a direct project link (see DESIGN.md) -- labeled by
+  // project name here since the Timeline shows every project's milestones together.
   var mss = [];
-  live(state.milestones).forEach(function (m) { mss.push({ id: m.id, text: m.text, date: parseISO(m.date) }); });
+  live(state.milestones).forEach(function (m) { var p = findProject(m.projectId); mss.push({ id: m.id, text: (p ? p.name + ": " : "") + m.text, date: parseISO(m.date) }); });
   mss.forEach(function (m) { if (m.date > maxEnd) maxEnd = m.date; });
   var capEnd = addMonths(rs, 25); if (maxEnd > capEnd) maxEnd = capEnd;
   var e0 = new Date(maxEnd);
@@ -956,19 +1032,23 @@ function searchAll(q, includeArchive) {
   }
   state.tasks.forEach(function (t) {
     var when = t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t));
-    consider("task", t.what, [t.notes, t.done, t.project, dispProject(t)], dispProject(t) + " · " + when + " · " + t.status, function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch, ["Notes", "Done when", "", ""]);
+    consider("task", t.what, [t.notes, t.done, dispProject(t)], dispProject(t) + " · " + when + " · " + t.status, function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch, ["Notes", "Done when", ""]);
     t.steps.forEach(function (st) {
       consider("step", st.text, [], "Step of " + dispProject(t) + ": " + short(t.what, 50) + (st.done ? " · done" : ""), function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch);
     });
   });
-  projectNames().forEach(function (n) {
-    var cand = liveCands().filter(function (c) { return c.name === n; })[0];
-    consider("project", n, [state.pnotes[n], cand && cand.note], projectMeta(n), function () { go(validPage("proj:" + n) ? "proj:" + n : "projects"); }, false, ["Notes", "Note"]);
+  liveProjects().forEach(function (p) {
+    consider("project", p.name, [p.notes, p.note], projectMeta(p), function () { go(validPage("proj:" + p.id) ? "proj:" + p.id : "projects"); }, false, ["Notes", "Note"]);
   });
-  state.candidates.forEach(function (c) { if (c.arch) consider("project", c.name, [c.note], "Archived project", function () { go("archive"); }, true, ["Note"]); });
+  state.projects.forEach(function (p) { if (p.arch) consider("project", p.name, [p.note], "Archived project", function () { go("archive"); }, true, ["Note"]); });
   state.parked.forEach(function (p) { consider("idea", p.text, [p.note], "Parking lot", function () { go(p.arch ? "archive" : "parking"); }, !!p.arch, ["Note"]); });
-  state.decisions.forEach(function (d) { consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { go(d.arch ? "archive" : "kofi"); }, !!d.arch, ["Answer"]); });
-  state.milestones.forEach(function (m) { consider("milestone", m.text, [fmtY(parseISO(m.date)), m.date], fmtY(parseISO(m.date)), function () { go(m.arch ? "archive" : "timeline"); }, !!m.arch); });
+  // Decisions always link to a step (see DESIGN.md), so their project comes
+  // from following Decision -> Step -> Task -> Project, same as everywhere else.
+  state.decisions.forEach(function (d) {
+    var ls = findStep(d.step);
+    consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { go(d.arch ? "archive" : (ls ? "proj:" + ls.t.projectId : "projects")); }, !!d.arch, ["Answer"]);
+  });
+  state.milestones.forEach(function (m) { consider("milestone", m.text, [fmtY(parseISO(m.date)), m.date], fmtY(parseISO(m.date)), function () { go(m.arch ? "archive" : ("proj:" + m.projectId)); }, !!m.arch); });
   SEARCH_ORDER.forEach(function (k) { groups[k].sort(function (a, b) { return b.score - a.score || a.idx - b.idx; }); });
   return { terms: terms, groups: groups };
 }
@@ -1122,22 +1202,21 @@ function formDialog(title, fields, submitLabel, onSubmit, intro) {
   });
 }
 
-function taskDialog(prefill, backlog) {
-  var names = {}; counted().forEach(function (t) { var n = dispProject(t); if (n !== "Next project") names[n] = 1; });
-  liveCands().forEach(function (c) { names[c.name] = 1; });
-  var dl = $("projectNames"); if (dl) dl.remove();
-  dl = el("datalist", { id: "projectNames" }); Object.keys(names).forEach(function (n) { dl.appendChild(el("option", { value: n })); }); document.body.appendChild(dl);
+function taskDialog(prefillProjectId, backlog) {
   var nt = nextTask();
+  var projOpts = activeProjects().map(function (p) { return { value: p.id, label: p.name }; });
+  if (!projOpts.length) { notify("Add an active project first (Projects > Choose as next project)."); return; }
+  var startId = typeof prefillProjectId === "string" ? prefillProjectId : (nt && !nt.isNext ? nt.projectId : projOpts[0].value);
   formDialog(backlog ? "New backlog item" : "New task", [
-    { key: "project", label: "Project", list: "projectNames", value: typeof prefill === "string" ? prefill : (nt && !nt.isNext ? nt.project : "") },
+    { key: "project", label: "Project", type: "select", options: projOpts, value: startId },
     { key: "what", label: "Task" },
     { key: "done", label: "How you'll know it's done (optional)" },
     { key: "block", label: wd() + " number (1 to 12), or leave empty for the Backlog", type: "number", min: 1, max: 12, step: 1, placeholder: "Backlog", value: backlog ? "" : (nt ? nt.block : 4) }
   ], backlog ? "Add to Backlog" : "Add task", function (v) {
     var blk = v.block === "" ? 0 : Number(v.block);
-    if (!v.project || !v.what) return "Enter a project and what you do.";
+    if (!v.project || !v.what) return "Choose a project and enter what you do.";
     if (v.block !== "" && (!Number.isInteger(blk) || blk < 1 || blk > 12)) return wd() + " number must be from 1 to 12, or empty for the Backlog.";
-    var t = task("c" + uid(), blk, v.project.slice(0, 120), v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true });
+    var t = task("c" + uid(), blk, v.project, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true });
     state.tasks.push(t); ui.sel = t.id; changed();
     return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(blockStartFor(v.project, blk)) + " to " + fmt(blockEndFor(v.project, blk)) + ")." };
   }, wpC() + " set the dates. " + wd() + " 1 starts on the project's start date. Leave it empty to put the task in the Backlog.");
@@ -1145,7 +1224,7 @@ function taskDialog(prefill, backlog) {
 function projectDialog() {
   formDialog("New project", [{ key: "name", label: "Project name" }, { key: "note", label: "Short note (optional)" }], "Add project", function (v) {
     if (!v.name) return "Enter a project name.";
-    state.candidates.push({ id: uid(), name: v.name.slice(0, 120), note: v.note.slice(0, 300), start: "", months: "" }); changed();
+    state.projects.push(makeProject(uid(), v.name.slice(0, 120), "candidate", { note: v.note.slice(0, 300) })); changed();
     return { msg: v.name + " added as a candidate for the next slot." };
   }, "It joins the candidates for the next slot. You can park it later.");
 }
@@ -1156,25 +1235,30 @@ function ideaDialog() {
     return { msg: "Added to the parking lot." };
   });
 }
-function decisionDialog() {
+function decisionDialog(prefillProjectId) {
+  // A decision must link to a real step (Project -> Task -> Step -> Decision,
+  // see DESIGN.md) -- no "None"/unlinked option anymore.
+  var opts = stepOptions(prefillProjectId);
+  if (!opts.length) { notify("Add a step first (open a task and add one), then add the decision."); return; }
   formDialog("New decision", [
     { key: "q", label: "Decision" },
-    { key: "step", label: "Link to a step (optional)", type: "select", options: stepOptions(), value: "" }
+    { key: "step", label: "Linked step", type: "select", options: opts, value: opts[0].value }
   ], "Add decision", function (v) {
     if (!v.q) return "Enter the decision.";
+    if (!v.step) return "Choose a step.";
     state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: v.step }); changed();
-    return { msg: "Decision added on the Launch page." };
-  }, "A decision is something you need to figure out before you can move forward. Optionally link it to a step so answering it automatically checks that step off.");
+    return { msg: "Decision added." };
+  }, "A decision is something you need to figure out before you can move forward. Linking it to a step means answering it automatically checks that step off.");
 }
-function stepDialog(kofi) {
+function stepDialog(kofi, prefillProjectId) {
   if (!orderedAll().length) { notify("Add a task first."); return; }
   var selTask = ui.sel && findTask(ui.sel);
-  var pick = selTask ? selTask.id : (nextTask() || orderedAll()[0]).id;
-  var startProject = selTask ? dispProject(selTask) : "";
-  var projOpts = [{ value: "", label: "All projects" }].concat(projectNames().map(function (n) { return { value: n, label: n }; }));
+  var startId = prefillProjectId || (selTask ? selTask.projectId : "");
+  var projOpts = [{ value: "", label: "All projects" }].concat(liveProjects().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; }));
+  var pick = selTask ? selTask.id : ((nextTask() || orderedAll()[0]).id);
   formDialog(kofi ? "New launch item" : "New step", [
-    { key: "project", label: "Project", type: "select", options: projOpts, value: startProject },
-    { key: "task", label: "Task", type: "select", options: taskOptions(startProject), value: pick },
+    { key: "project", label: "Project", type: "select", options: projOpts, value: startId },
+    { key: "task", label: "Task", type: "select", options: taskOptions(startId), value: pick },
     { key: "text", label: kofi ? "What needs doing before you launch?" : "Step" }
   ], "Add step", function (v) {
     var t = findTask(v.task);
@@ -1182,7 +1266,7 @@ function stepDialog(kofi) {
     if (!t) return "Choose a task.";
     t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false, kofi: !!kofi }); syncFromSteps(t); changed();
     return { msg: "Step added to " + dispProject(t) + (kofi ? " and the launch checklist." : ".") };
-  }, kofi ? "The step lives in a task and also shows on the launch checklist." : "");
+  }, kofi ? "The step lives in a task and also shows on this project's launch checklist." : "");
   var projSel = $("f-project"), taskSel = $("f-task");
   if (projSel && taskSel) {
     on(projSel, "change", function () {
@@ -1193,9 +1277,15 @@ function stepDialog(kofi) {
   }
 }
 function milestoneDialog() {
-  formDialog("New milestone", [{ key: "text", label: "Milestone" }, { key: "date", label: "Date", type: "date" }], "Add milestone", function (v) {
-    if (!v.text || !isISO(v.date)) return "Enter a milestone and a date.";
-    state.milestones.push({ id: uid(), text: v.text.slice(0, 200), date: v.date }); changed();
+  var projOpts = activeProjects().map(function (p) { return { value: p.id, label: p.name }; });
+  if (!projOpts.length) { notify("Add an active project first."); return; }
+  formDialog("New milestone", [
+    { key: "project", label: "Project", type: "select", options: projOpts, value: projOpts[0].value },
+    { key: "text", label: "Milestone" },
+    { key: "date", label: "Date", type: "date" }
+  ], "Add milestone", function (v) {
+    if (!v.project || !v.text || !isISO(v.date)) return "Choose a project, and enter a milestone and a date.";
+    state.milestones.push({ id: uid(), text: v.text.slice(0, 200), date: v.date, projectId: v.project }); changed();
     return { msg: "Milestone added to the Timeline." };
   });
 }
@@ -1206,26 +1296,36 @@ function slipDialog() {
     var inp = el("input", { type: "number", id: "slipDays", min: "1", max: "90", step: "1" }); inp.value = "7"; w.appendChild(inp); body.appendChild(w);
     var tw = el("div", { "class": "field" }); tw.appendChild(el("label", { "for": "slipWhat" }, "What to slip"));
     var sel = el("select", { id: "slipWhat", "class": "plain" }); sel.appendChild(el("option", { value: "" }, "Everything"));
-    var seen = {}; ordered().forEach(function (t) { if (!t.isNext && !seen[t.project]) { seen[t.project] = 1; sel.appendChild(el("option", { value: t.project }, "Only " + t.project)); } });
+    var seen = {}; ordered().forEach(function (t) { if (!t.isNext && !seen[t.projectId]) { seen[t.projectId] = 1; sel.appendChild(el("option", { value: t.projectId }, "Only " + dispProject(t))); } });
     tw.appendChild(sel); body.appendChild(tw);
     var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo" }, "Slip schedule"), "click", function () {
       var n = parseInt(inp.value, 10), target = sel.value;
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
-      var snap = { start: state.start, pset: JSON.parse(JSON.stringify(state.pset)) };
+      // Snapshot every project's own start/mult (for undo) -- a project record
+      // is the source of truth now, not a separate state.pset dictionary.
+      var projSnap = {}; state.projects.forEach(function (p) { projSnap[p.id] = { start: p.start, mult: p.mult }; });
+      var snap = { start: state.start, projects: projSnap };
+      var targetName = target ? dispProject({ projectId: target }) : "";
       if (target === "") {
         state.start = iso(addDays(parseISO(state.start), n));
-        Object.keys(state.pset).forEach(function (k) { if (state.pset[k].start) state.pset[k].start = iso(addDays(parseISO(state.pset[k].start), n)); });
+        state.projects.forEach(function (p) { if (p.start) p.start = iso(addDays(parseISO(p.start), n)); });
       } else {
-        var eff = pset(target); state.pset[target] = { start: iso(addDays(parseISO(eff.start), n)), mult: eff.mult };
+        var eff = pset(target), p2 = findProject(target);
+        if (p2) { p2.start = iso(addDays(parseISO(eff.start), n)); p2.mult = eff.mult; }
       }
       state.lastSlip = { days: n, snap: snap };
       changed(); closeModal();
-      notify((target === "" ? "Everything" : target) + " moved back " + n + (n === 1 ? " day" : " days") + "." + launchNote("now "));
+      notify((target === "" ? "Everything" : targetName) + " moved back " + n + (n === 1 ? " day" : " days") + "." + launchNote("now "));
     }));
     if (state.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo" }, "Undo last slip (" + state.lastSlip.days + " days)"), "click", function () {
-      state.start = state.lastSlip.snap.start; state.pset = cleanPset(state.lastSlip.snap.pset); state.lastSlip = null; changed(); closeModal();
+      state.start = state.lastSlip.snap.start;
+      Object.keys(state.lastSlip.snap.projects).forEach(function (pid) {
+        var p = findProject(pid), snapped = state.lastSlip.snap.projects[pid];
+        if (p && snapped) { if (snapped.start) p.start = snapped.start; if (snapped.mult) p.mult = snapped.mult; }
+      });
+      state.lastSlip = null; changed(); closeModal();
       notify("Slip undone." + launchNote(""));
     }));
     acts.appendChild(on(el("button", { type: "button" }, "Cancel"), "click", closeModal));
@@ -1266,9 +1366,9 @@ function nextUpPanel() {
   box.appendChild(el("p", { "class": "ptitle" }, dispWhat(t)));
   var meta = el("p", { "class": "pmeta" });
   var pname = dispProject(t);
-  if (validPage("proj:" + pname)) {
+  if (!t.isNext && validPage("proj:" + t.projectId)) {
     var pl = el("button", { type: "button", "class": "textbtn plink" }, pname);
-    on(pl, "click", function () { go("proj:" + pname); });
+    on(pl, "click", function () { go("proj:" + t.projectId); });
     meta.appendChild(pl);
   } else meta.appendChild(el("b", null, pname));
   meta.appendChild(document.createTextNode(" · " + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + " "));
@@ -1430,7 +1530,7 @@ function buildDetail(t) {
     lab.appendChild(cb); lab.appendChild(el("span", null, s.text)); sli.appendChild(lab);
     var ac = el("div", { "class": "li-actions" });
     var dc = decisionFor(s.id);
-    if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the linked decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { go("kofi"); }));
+    if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the linked decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { go("proj:" + t.projectId); }));
     var kb = el("button", { type: "button", "class": "small" + (s.kofi ? " on" : ""), "aria-pressed": s.kofi ? "true" : "false", "aria-label": "Show on the launch checklist: " + s.text }, "Launch");
     on(kb, "click", function () { s.kofi = !s.kofi; changed(); });
     ac.appendChild(kb);
@@ -1466,16 +1566,17 @@ function buildDetail(t) {
   return box;
 }
 
-function renderKofi(root) {
-  root.appendChild(pinBar("kofi"));
-  root.appendChild(el("p", { "class": "hint first" }, "Everything to finish before you ship, gathered from your tasks. Tick a step here or in Tasks and it stays in sync."));
+// Launch-critical items and Decisions render as sections on a project's own
+// page, scoped to that project's tasks -- no separate Launch/"kofi" page
+// exists anymore (see DESIGN.md: only Projects are pinnable).
+function launchSection(root, p) {
   var g = pgrid();
   var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h3", { id: "h-checks" }, "Before you launch"));
-  ha.appendChild(on(el("button", { type: "button", "class": "small" }, "Add item"), "click", function () { stepDialog(true); }));
+  ha.appendChild(on(el("button", { type: "button", "class": "small" }, "Add item"), "click", function () { stepDialog(true, p.id); }));
   g.put(ha, 1, 1);
-  g.put(el("p", { "class": "hint" }, "These are steps from Tasks. Tick one here or there and it stays in sync."), 1, 2);
+  g.put(el("p", { "class": "hint" }, "These are steps from this project's tasks. Tick one here or in Tasks and it stays in sync."), 1, 2);
   var prog = el("p", { "class": "progress", role: "status", "aria-live": "polite" });
-  var items = kofiItems(), rows = {};
+  var items = launchItems(p.id), rows = {};
   function progress() { var n = items.filter(function (x) { return x.s.done; }).length; prog.textContent = items.length ? n + " of " + items.length + " done" : ""; }
   var ul = el("ul", { "class": "list check", "aria-labelledby": "h-checks" });
   if (!items.length) ul.appendChild(el("li", { "class": "hint" }, "No steps are marked for the launch checklist. Use Launch on a step in Tasks, or add an item."));
@@ -1485,8 +1586,8 @@ function renderKofi(root) {
     on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); var ids = autoArchive(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); if (ids.length) archivedToast(ids); });
     label.appendChild(box); label.appendChild(el("span", null, x.s.text)); li.appendChild(label);
     var meta = el("div", { "class": "cnote" });
-    if (x.t.arch) meta.appendChild(document.createTextNode(dispProject(x.t) + ": " + short(dispWhat(x.t), 40) + " (archived)"));
-    else meta.appendChild(on(el("button", { type: "button", "class": "textbtn" }, dispProject(x.t) + ": " + short(dispWhat(x.t), 48)), "click", function () { openTask(x.t.id); }));
+    if (x.t.arch) meta.appendChild(document.createTextNode(short(dispWhat(x.t), 48) + " (archived)"));
+    else meta.appendChild(on(el("button", { type: "button", "class": "textbtn" }, short(dispWhat(x.t), 48)), "click", function () { openTask(x.t.id); }));
     var dc = decisionFor(x.s.id);
     if (dc) meta.appendChild(document.createTextNode(" · Decision " + (dc.a ? "decided" : "open")));
     li.appendChild(meta);
@@ -1496,11 +1597,11 @@ function renderKofi(root) {
   var lb = el("div", { "class": "listbox" }); lb.appendChild(prog); lb.appendChild(ul); g.put(lb, 1, 3);
 
   var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", { id: "h-dec" }, "Decisions"));
-  hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add decision"), "click", function () { decisionDialog(); }));
+  hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add decision"), "click", function () { decisionDialog(p.id); }));
   g.put(hd, 2, 1);
   g.put(el("p", { "class": "hint" }, "Write down the answer once you settle it. Answering a decision ticks its linked step, and clearing the answer unticks it."), 2, 2);
   var dl = el("ul", { "class": "list", "aria-labelledby": "h-dec" });
-  var ds = live(state.decisions);
+  var ds = live(state.decisions).filter(function (d) { var ls = findStep(d.step); return ls && ls.t.projectId === p.id; });
   if (!ds.length) dl.appendChild(el("li", { "class": "hint" }, "No open decisions."));
   ds.forEach(function (d) {
     var li = el("li", { "class": "decision" });
@@ -1520,7 +1621,7 @@ function renderKofi(root) {
     li.appendChild(inp);
     var lf = el("div", { "class": "field" }); lf.appendChild(el("label", { "for": "ds-" + d.id }, "Linked step"));
     var sel = el("select", { id: "ds-" + d.id, "class": "plain" });
-    stepOptions().forEach(function (o) { var op = el("option", { value: o.value }, o.label); if (o.value === d.step) op.selected = true; sel.appendChild(op); });
+    stepOptions(p.id).forEach(function (o) { var op = el("option", { value: o.value }, o.label); if (o.value === d.step) op.selected = true; sel.appendChild(op); });
     on(sel, "change", function () { d.step = sel.value; save(); renderView(); });
     lf.appendChild(sel); li.appendChild(lf);
     var rm = el("button", { type: "button", "class": "small danger", style: "margin-top:10px" }, "Remove");
@@ -1528,7 +1629,6 @@ function renderKofi(root) {
     li.appendChild(rm); dl.appendChild(li);
   });
   g.put(dl, 2, 3); root.appendChild(g);
-  root.appendChild(el("p", { "class": "note" }, "Everything here is saved in this browser only."));
 }
 
 function pinBar(key) {
@@ -1540,10 +1640,10 @@ function pinBar(key) {
 function pagesSection() {
   var sec = el("div");
   sec.appendChild(el("h3", { style: "margin-top:28px" }, "Pages and projects"));
-  sec.appendChild(el("p", { "class": "hint" }, "Pin a page to the sidebar for quick access. Removing a page from the sidebar only hides it there. It stays listed here."));
+  sec.appendChild(el("p", { "class": "hint" }, "Pin a project to the sidebar for quick access. Removing it from the sidebar only hides it there. It stays listed here."));
   var ul = el("ul", { "class": "list" });
-  var rows = [{ key: "kofi", name: "Launch checklist", meta: "Pre-launch steps and decisions" }];
-  projectNames().forEach(function (n) { rows.push({ key: "proj:" + n, name: n, meta: projectMeta(n) }); });
+  var rows = liveProjects().map(function (p) { return { key: "proj:" + p.id, name: p.name, meta: projectMeta(p) }; });
+  if (!rows.length) sec.appendChild(el("p", { "class": "hint" }, "No projects yet."));
   rows.forEach(function (r) {
     var li = el("li"), row = el("div", { "class": "crow" });
     var nm = el("div", { style: "flex:1 1 200px" }); nm.appendChild(el("span", { style: "font-weight:600" }, r.name)); nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, r.meta));
@@ -1555,23 +1655,49 @@ function pagesSection() {
   });
   sec.appendChild(ul); return sec;
 }
-function renderProjectPage(root, name) {
-  var key = "proj:" + name;
+// A project's own lifecycle status decides how much of the page renders:
+// "candidate" (not yet started -- estimate fields and a Promote action) or
+// "active" (has its own Tasks/Schedule/Notes/Launch sections). Promotion is
+// in-place: the same record and id carry through, never a second record --
+// see DESIGN.md's "making Project a first-class entity" section.
+function renderProjectPage(root, id) {
+  var p = findProject(id);
+  if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
+  var key = "proj:" + p.id;
   root.appendChild(pinBar(key));
-  root.appendChild(el("p", { "class": "hint first" }, projectMeta(name)));
-  var cand = liveCands().filter(function (c) { return c.name === name; })[0];
-  if (cand) {
+  root.appendChild(el("p", { "class": "hint first" }, projectMeta(p)));
+  if (p.note) root.appendChild(el("p", { "class": "hint" }, p.note));
+
+  if (p.status === "candidate") {
     var cb = el("div", { "class": "box", style: "margin-top:16px" });
-    cb.appendChild(el("p", { "class": "first" }, cand.note || "Candidate for the next slot."));
-    var ca = el("div", { "class": "actions" });
-    if (state.next === cand.id) ca.appendChild(on(el("button", { type: "button" }, "Clear my choice"), "click", function () { unchooseNext(); changed(); }));
-    else ca.appendChild(on(el("button", { type: "button", "class": "primary" }, "Choose as next project"), "click", function () { chooseNext(cand.id); }));
+    var f = el("div", { "class": "cfields", style: "margin:0" });
+    var f1 = el("div", { "class": "field" }); f1.appendChild(el("label", { "for": "cs-" + p.id }, "Start date (optional)"));
+    var sd = el("input", { type: "date", id: "cs-" + p.id }); sd.value = p.start;
+    on(sd, "change", function () { p.start = isISO(sd.value) ? sd.value : ""; cf.disabled = !p.start; if (!p.start) cf.value = ""; save(); notify("Start date saved. See it on the Timeline."); });
+    f1.appendChild(sd);
+    var f2 = el("div", { "class": "field" }); f2.appendChild(el("label", { "for": "cm-" + p.id }, "Estimated months (optional)"));
+    var mo = el("input", { type: "number", id: "cm-" + p.id, min: "1", max: "36", step: "1" }); mo.value = p.months;
+    on(mo, "change", function () { var v = parseInt(mo.value, 10); p.months = (v >= 1 && v <= 36) ? v : ""; if (p.months === "") mo.value = ""; if (cf) cf.value = ""; save(); });
+    f2.appendChild(mo); f.appendChild(f1); f.appendChild(f2);
+    var f3 = el("div", { "class": "field" }); f3.appendChild(el("label", { "for": "cf-" + p.id }, "Or pick a target completion date (optional)"));
+    var cf = el("input", p.start ? { type: "date", id: "cf-" + p.id } : { type: "date", id: "cf-" + p.id, disabled: "disabled" });
+    on(cf, "change", function () {
+      if (!p.start || !isISO(cf.value)) { cf.value = ""; return; }
+      var months = Math.round((parseISO(cf.value) - parseISO(p.start)) / (DAY * 30.44));
+      if (months < 1 || months > 36) { cf.value = ""; notify("Pick a date between 1 and 36 months from the start date."); return; }
+      p.months = months; mo.value = months; save(); notify("Completion date saved as about " + months + (months === 1 ? " month" : " months") + ".");
+    });
+    f3.appendChild(cf); f.appendChild(f3); cb.appendChild(f);
+    var ca = el("div", { "class": "actions", style: "margin-top:10px" });
+    ca.appendChild(on(el("button", { type: "button", "class": "primary" }, "Choose as next project"), "click", function () { promoteToActive(p.id); }));
     cb.appendChild(ca); root.appendChild(cb);
+    return;
   }
+
   var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", null, "Tasks"));
-  hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add task"), "click", function () { taskDialog(name); }));
+  hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add task"), "click", function () { taskDialog(p.id); }));
   root.appendChild(hd);
-  var ts = ordered().filter(function (t) { return !t.isNext && t.project === name; }).concat(backlogTasks().filter(function (t) { return t.project === name; }));
+  var ts = ordered().filter(function (t) { return !t.isNext && t.projectId === p.id; }).concat(backlogTasks().filter(function (t) { return t.projectId === p.id; }));
   if (!ts.length) root.appendChild(el("p", { "class": "hint" }, "No tasks yet."));
   else {
     var ul = el("ul", { "class": "tlist" });
@@ -1588,46 +1714,51 @@ function renderProjectPage(root, name) {
     root.appendChild(ul);
   }
   root.appendChild(el("h3", null, "Schedule"));
-  var own = state.pset[name], eff = pset(name);
-  root.appendChild(el("p", { "class": "hint" }, own ? "This project has its own start date and pace." : "This project uses the defaults from Settings. Change either value to give it its own."));
+  var eff = pset(p.id);
+  root.appendChild(el("p", { "class": "hint" }, "Set this project's own start date and pace."));
   var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
-  function sfield(id, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); sg.appendChild(w); }
+  function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
   var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
   var pm = el("input", { type: "number", id: "proj-mult", min: "0.25", max: "5", step: "0.25" }); pm.value = eff.mult;
   function applyOwn() {
     var sv = ps.value, mv = parseFloat(pm.value);
     if (!isISO(sv)) { ps.value = eff.start; smsg.textContent = "Enter a valid start date."; return; }
     if (isNaN(mv) || mv < 0.25 || mv > 5) { pm.value = eff.mult; smsg.textContent = "The time multiplier must be from 0.25 to 5."; return; }
-    state.pset[name] = { start: sv, mult: mv }; changed(); notify(name + " schedule saved.");
+    p.start = sv; p.mult = mv; changed(); notify(p.name + " schedule saved.");
   }
   on(ps, "change", applyOwn); on(pm, "change", applyOwn);
-  var pe = el("input", { type: "number", id: "proj-est", min: "1", max: "60", step: "1", placeholder: "None" }); pe.value = state.pest[name] || "";
-  on(pe, "change", function () {
-    if (pe.value.trim() === "") { delete state.pest[name]; changed(); notify("Estimate cleared."); return; }
-    var v = parseInt(pe.value, 10);
-    if (isNaN(v) || v < 1 || v > 60) { pe.value = state.pest[name] || ""; smsg.textContent = "Enter a number of months from 1 to 60, or leave it empty."; return; }
-    state.pest[name] = v; changed(); notify(name + " estimate saved.");
-  });
-  sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm); sfield("proj-est", "Estimated length after these tasks (months, optional)", pe);
+  sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm);
   root.appendChild(sg); root.appendChild(smsg);
-  root.appendChild(el("p", { "class": "hint" }, "The estimate shows as a light bar after the project's last task on the Timeline. It is an estimate, not a promise."));
-  if (own) root.appendChild(on(el("button", { type: "button", "class": "small" }, "Use the defaults"), "click", function () { delete state.pset[name]; changed(); notify(name + " now uses the defaults."); }));
   root.appendChild(el("h3", null, "Notes"));
-  var ta = el("textarea", { "aria-label": "Notes for " + name, style: "margin-top:8px" }); ta.value = state.pnotes[name] || "";
-  on(ta, "input", function () { state.pnotes[name] = ta.value.slice(0, 5000); save(); });
+  var ta = el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" }); ta.value = p.notes;
+  on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(); });
   root.appendChild(ta);
+
+  root.appendChild(el("h3", null, "Launch"));
+  launchSection(root, p);
+
+  var ar = el("div", { "class": "actions", style: "margin-top:14px" });
+  ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Archive project"), "click", function () {
+    // Archiving a project cascades to its still-open tasks -- otherwise they'd
+    // dangle under a project no longer in the live list (dispProject only
+    // resolves live projects), showing a blank project name in Schedule/Today.
+    // A project archived-with-history should be a clean, complete snapshot.
+    removeToArchive(p, "Project", function () {
+      state.tasks.forEach(function (t) { if (t.projectId === p.id && !t.arch) t.arch = { at: iso(TODAY), why: "removed" }; });
+    });
+  }));
+  root.appendChild(ar);
 }
 
-function chooseNext(id) {
-  state.next = id;
+// Promotes a candidate to active in place -- same record, same id, only its
+// status field changes. Replaces the old separate state.next pointer.
+function promoteToActive(id) {
+  var p = findAnyProject(id);
+  if (!p) return;
+  p.status = "active";
   var t = state.tasks.filter(function (x) { return x.isNext; })[0];
   if (t) t.status = "Done";
   changed();
-}
-function unchooseNext() {
-  state.next = null;
-  var t = state.tasks.filter(function (x) { return x.isNext; })[0];
-  if (t && t.status === "Done") t.status = "Not started";
 }
 function standingBlock(c) {
   var wrap = el("div");
@@ -1637,7 +1768,7 @@ function standingBlock(c) {
   var groups = {}, order = [];
   ordered().forEach(function (t) {
     if (t.isNext || t.status === "Done") return;
-    var g = groups[t.project]; if (!g) { g = groups[t.project] = { name: t.project, open: 0, first: t }; order.push(g); }
+    var g = groups[t.projectId]; if (!g) { g = groups[t.projectId] = { projectId: t.projectId, name: dispProject(t), open: 0, first: t }; order.push(g); }
     g.open++;
   });
   order.sort(function (a, b) { return taskStart(a.first) - taskStart(b.first); });
@@ -1646,7 +1777,7 @@ function standingBlock(c) {
   order.forEach(function (g) {
     var li = el("li"), top = el("div", { "class": "srow" });
     var nm = el("button", { type: "button", "class": "textbtn plink" }, g.name);
-    on(nm, "click", function () { go(validPage("proj:" + g.name) ? "proj:" + g.name : "projects"); });
+    on(nm, "click", function () { go(validPage("proj:" + g.projectId) ? "proj:" + g.projectId : "projects"); });
     top.appendChild(nm); top.appendChild(el("span", { "class": "scount" }, g.open + " open " + (g.open === 1 ? "task" : "tasks")));
     li.appendChild(top);
     var nx = el("div", { "class": "snext" }); nx.appendChild(document.createTextNode("Next up: "));
@@ -1657,7 +1788,7 @@ function standingBlock(c) {
   });
   var sl = el("li"), stEl = el("div", { "class": "srow" });
   stEl.appendChild(el("span", { "class": "slabel" }, "Next slot"));
-  if (c) { var cl = el("button", { type: "button", "class": "textbtn plink" }, c.name); on(cl, "click", function () { go("proj:" + c.name); }); stEl.appendChild(cl); }
+  if (c) { var cl = el("button", { type: "button", "class": "textbtn plink" }, c.name); on(cl, "click", function () { go("proj:" + c.id); }); stEl.appendChild(cl); }
   else stEl.appendChild(el("span", { "class": "scount" }, "Not chosen yet"));
   sl.appendChild(stEl); ul.appendChild(sl);
   box.appendChild(ul); wrap.appendChild(box);
@@ -1670,53 +1801,25 @@ function renderProjects(root) {
   hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add project"), "click", function () { projectDialog(); })); root.appendChild(hd);
   root.appendChild(el("p", { "class": "hint" }, "Choose which project gets the next slot."));
   var list = el("ul", { "class": "list" });
-  var cs = liveCands();
+  var cs = candidateProjects();
   if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a project."));
   cs.forEach(function (cd) {
     var li = el("li"), row = el("div", { "class": "crow" });
-    var lab = el("label"); var rb = el("input", { type: "radio", name: "nextProject" }); rb.checked = state.next === cd.id;
-    on(rb, "change", function () { chooseNext(cd.id); });
-    lab.appendChild(rb); lab.appendChild(el("span", null, cd.name)); row.appendChild(lab);
+    var nm = el("button", { type: "button", "class": "textbtn plink" }, cd.name);
+    on(nm, "click", function () { go("proj:" + cd.id); });
+    row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "small" }, "Park it"), "click", function () {
-      if (state.next === cd.id) unchooseNext();
-      state.candidates = state.candidates.filter(function (x) { return x.id !== cd.id; });
+      state.projects = state.projects.filter(function (x) { return x.id !== cd.id; });
       state.parked.push({ id: uid(), text: cd.name, note: cd.note }); changed();
     }));
     var rm = el("button", { type: "button", "class": "small danger" }, "Remove");
-    on(rm, "click", function () { removeToArchive(cd, "Project", function () { if (state.next === cd.id) unchooseNext(); }); });
+    on(rm, "click", function () { removeToArchive(cd, "Project"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row);
     if (cd.note) li.appendChild(el("p", { "class": "cnote" }, cd.note));
-    if (state.next === cd.id) {
-      var f = el("div", { "class": "cfields" });
-      var f1 = el("div", { "class": "field" }); f1.appendChild(el("label", { "for": "cs-" + cd.id }, "Start date (optional)"));
-      var sd = el("input", { type: "date", id: "cs-" + cd.id }); sd.value = cd.start;
-      on(sd, "change", function () { cd.start = isISO(sd.value) ? sd.value : ""; cf.disabled = !cd.start; if (!cd.start) cf.value = ""; save(); notify("Start date saved. See it on the Timeline."); });
-      f1.appendChild(sd);
-      var f2 = el("div", { "class": "field" }); f2.appendChild(el("label", { "for": "cm-" + cd.id }, "Estimated months (optional)"));
-      var mo = el("input", { type: "number", id: "cm-" + cd.id, min: "1", max: "36", step: "1" }); mo.value = cd.months;
-      on(mo, "change", function () { var v = parseInt(mo.value, 10); cd.months = (v >= 1 && v <= 36) ? v : ""; if (cd.months === "") mo.value = ""; if (cf) cf.value = ""; save(); });
-      f2.appendChild(mo); f.appendChild(f1); f.appendChild(f2);
-      var f3 = el("div", { "class": "field" }); f3.appendChild(el("label", { "for": "cf-" + cd.id }, "Or pick a target completion date (optional)"));
-      var cf = el("input", cd.start ? { type: "date", id: "cf-" + cd.id } : { type: "date", id: "cf-" + cd.id, disabled: "disabled" });
-      on(cf, "change", function () {
-        if (!cd.start || !isISO(cf.value)) { cf.value = ""; return; }
-        var months = Math.round((parseISO(cf.value) - parseISO(cd.start)) / (DAY * 30.44));
-        if (months < 1 || months > 36) { cf.value = ""; notify("Pick a date between 1 and 36 months from the start date."); return; }
-        cd.months = months; mo.value = months; save(); notify("Completion date saved as about " + months + (months === 1 ? " month" : " months") + ".");
-      });
-      f3.appendChild(cf);
-      f.appendChild(f3); li.appendChild(f);
-      var startNote = el("p", { "class": "cnote" });
-      startNote.appendChild(document.createTextNode("Chosen as the next project. "));
-      startNote.appendChild(on(el("button", { type: "button", "class": "textbtn" }, "Open its project page"), "click", function () { go("proj:" + cd.name); }));
-      startNote.appendChild(document.createTextNode(" and add a task to actually start it."));
-      li.appendChild(startNote);
-    }
     list.appendChild(li);
   });
   root.appendChild(list);
-  if (state.next) root.appendChild(on(el("button", { type: "button", "class": "small", style: "margin-top:12px" }, "Clear my choice"), "click", function () { unchooseNext(); changed(); }));
   root.appendChild(pagesSection());
 }
 function renderParkingLot(root) {
@@ -1734,7 +1837,7 @@ function renderParkingLot(root) {
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "small" }, "Make it a candidate"), "click", function () {
       state.parked = state.parked.filter(function (x) { return x.id !== p.id; });
-      state.candidates.push({ id: uid(), name: p.text, note: p.note, start: "", months: "" }); changed();
+      state.projects.push(makeProject(uid(), p.text, "candidate", { note: p.note })); changed();
     }));
     var rm = el("button", { type: "button", "class": "small danger" }, "Remove");
     on(rm, "click", function () { removeToArchive(p, "Idea"); });
@@ -1794,7 +1897,7 @@ var KIND_FILTERS = [["all", "All"], ["task", "Tasks"], ["project", "Projects"], 
 function archiveEntries() {
   var out = [];
   state.tasks.forEach(function (t) { if (t.arch) out.push({ kind: "task", list: "tasks", item: t, title: dispProject(t) + ": " + short(dispWhat(t), 90) }); });
-  state.candidates.forEach(function (c) { if (c.arch) out.push({ kind: "project", list: "candidates", item: c, title: c.name }); });
+  state.projects.forEach(function (p) { if (p.arch) out.push({ kind: "project", list: "projects", item: p, title: p.name }); });
   state.parked.forEach(function (p) { if (p.arch) out.push({ kind: "idea", list: "parked", item: p, title: p.text }); });
   state.decisions.forEach(function (d) { if (d.arch) out.push({ kind: "decision", list: "decisions", item: d, title: d.q }); });
   state.milestones.forEach(function (m) { if (m.arch) out.push({ kind: "milestone", list: "milestones", item: m, title: m.text + " (" + fmtY(parseISO(m.date)) + ")" }); });
@@ -1888,8 +1991,8 @@ function helpTopics() {
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline.",
       "The full-width burndown and the weekly counts are further down the page."]],
     ["Launch page: steps and decisions", [
-      "On any task, tap **Launch** beside a step to put that step on the **Launch** page. Ticking it there or in **Tasks** keeps both in sync.",
-      "Link a decision to a step. Answering the decision ticks the step, and clearing the answer unticks it.",
+      "On any task, tap **Launch** beside a step to put that step on that project's own **Launch** section. Ticking it there or in **Tasks** keeps both in sync.",
+      "A decision always links to a step. Answering the decision ticks the step, and clearing the answer unticks it.",
       "Use **Add item** to create a new step for the list, and **Add decision** to add a question to settle."]],
     ["Archive and undo", [
       "Completed tasks move to the **Archive** by default, and so does anything you remove. An **Undo** button appears for a few seconds.",
@@ -1923,7 +2026,7 @@ function renderHelp(root) {
 /* settings */
 function blankState() {
   var d = defaults();
-  d.tasks = []; d.decisions = []; d.candidates = []; d.parked = []; d.milestones = []; d.pins = []; d.pnotes = {}; d.pset = {}; d.pest = {}; d.next = null; d.lastSlip = null;
+  d.tasks = []; d.decisions = []; d.projects = []; d.parked = []; d.milestones = []; d.pins = []; d.lastSlip = null;
   d.start = iso(TODAY); d.mult = state.mult; d.days = state.days; d.settings = state.settings;
   return d;
 }
@@ -2136,7 +2239,6 @@ function renderView() {
   root.className = "content" + (ui.view === "timeline" ? " wide" : "");
   if (ui.view === "today") renderToday(root);
   else if (ui.view === "schedule") renderSchedule(root);
-  else if (ui.view === "kofi") renderKofi(root);
   else if (ui.view === "projects") renderProjects(root);
   else if (ui.view === "parking") renderParkingLot(root);
   else if (ui.view === "search") renderSearch(root);
