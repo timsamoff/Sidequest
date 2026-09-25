@@ -1240,7 +1240,7 @@ function updateSearchResults() {
     var ul = el("ul", { "class": "tlist", style: "margin-top:10px" });
     list.slice(0, CAP).forEach(function (r) {
       searchFlat.push(r);
-      var li = el("li"), b = el("button", { type: "button", "class": "item" });
+      var li = el("li"), b = el("button", { type: "button", "class": "item", title: "Open this result" });
       var l1 = el("div", { "class": "l1" }); l1.appendChild(document.createTextNode(r.sub)); if (r.arch) { l1.appendChild(document.createTextNode(" ")); l1.appendChild(el("span", { "class": "chip arch" }, "Archived")); }
       b.appendChild(l1);
       var l2 = el("div", { "class": "l2" }); l2.appendChild(highlight(r.title, res.terms)); b.appendChild(l2);
@@ -1306,7 +1306,7 @@ var modalReturn = null;
 function openModal(title, build) {
   modalReturn = document.activeElement;
   $("modalTitle").textContent = title;
-  $("modalClose").title = "Close: " + title;
+  $("modalClose").title = "Close this dialog";
   var body = $("modalBody"); body.innerHTML = "";
   build(body);
   $("overlay").hidden = false;
@@ -1358,7 +1358,7 @@ function formDialog(title, fields, submitLabel, onSubmit, intro) {
     });
     var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
-    var ok = el("button", { type: "button", "class": "primary" }, submitLabel), cancel = el("button", { type: "button" }, "Cancel");
+    var ok = el("button", { type: "button", "class": "primary", title: "Save and close" }, submitLabel), cancel = el("button", { type: "button", title: "Close without saving" }, "Cancel");
     function submit() {
       var vals = {}; Object.keys(inputs).forEach(function (k) { vals[k] = inputs[k].value.trim(); });
       var res = onSubmit(vals);
@@ -1469,7 +1469,7 @@ function slipDialog() {
     tw.appendChild(sel); body.appendChild(tw);
     var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
-    acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo" }, "Slip schedule"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push the dates later" }, "Slip schedule"), "click", function () {
       var n = parseInt(inp.value, 10), target = sel.value;
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
       // Snapshot every project's own start/mult (for undo) -- a project record
@@ -1488,7 +1488,7 @@ function slipDialog() {
       changed(); closeModal();
       notify((target === "" ? "Everything" : targetName) + " moved back " + n + (n === 1 ? " day" : " days") + ".");
     }));
-    if (state.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo" }, "Undo last slip (" + state.lastSlip.days + " days)"), "click", function () {
+    if (state.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo", title: "Reverse the last slip" }, "Undo last slip (" + state.lastSlip.days + " days)"), "click", function () {
       state.start = state.lastSlip.snap.start;
       Object.keys(state.lastSlip.snap.projects).forEach(function (pid) {
         var p = findProject(pid), snapped = state.lastSlip.snap.projects[pid];
@@ -1497,7 +1497,7 @@ function slipDialog() {
       state.lastSlip = null; changed(); closeModal();
       notify("Slip undone.");
     }));
-    acts.appendChild(on(el("button", { type: "button" }, "Cancel"), "click", closeModal));
+    acts.appendChild(on(el("button", { type: "button", title: "Close without slipping" }, "Cancel"), "click", closeModal));
     body.appendChild(acts);
   });
 }
@@ -1506,7 +1506,7 @@ function confirmDialog(title, text, label, onConfirm) {
   openModal(title, function (body) {
     body.appendChild(el("p", { "class": "first" }, text));
     var acts = el("div", { "class": "actions" });
-    var no = el("button", { type: "button" }, "Cancel"), yes = el("button", { type: "button", "class": "dangerfill", id: "confirmYes" }, label);
+    var no = el("button", { type: "button", title: "Cancel this action" }, "Cancel"), yes = el("button", { type: "button", "class": "dangerfill", id: "confirmYes", title: "Confirm this action" }, label);
     on(no, "click", closeModal); on(yes, "click", function () { closeModal(); onConfirm(); });
     acts.appendChild(no); acts.appendChild(yes); body.appendChild(acts);
   });
@@ -1529,14 +1529,14 @@ function nextUpPanel() {
     var nb = backlogTasks().length;
     box.appendChild(el("p", { "class": "ptitle" }, nb ? "Nothing is scheduled." : (counted().length ? "Every task is done." : "No tasks yet.")));
     box.appendChild(el("p", { "class": "pmeta" }, nb ? nb + (nb === 1 ? " item is" : " items are") + " waiting in the Backlog. Choose a " + wl() + " for one." : (counted().length ? "Add a task with the + button, or choose your next project." : "Add one with the + button.")));
-    if (nb) { var ba = el("div", { "class": "actions" }); ba.appendChild(on(el("button", { type: "button", "class": "primary" }, "Open the Backlog"), "click", function () { go("schedule"); })); box.appendChild(ba); }
+    if (nb) { var ba = el("div", { "class": "actions" }); ba.appendChild(on(el("button", { type: "button", "class": "primary", title: "Go to the Backlog on the Tasks page" }, "Open the Backlog"), "click", function () { go("schedule"); })); box.appendChild(ba); }
     return box;
   }
   box.appendChild(el("p", { "class": "ptitle" }, dispWhat(t)));
   var meta = el("p", { "class": "pmeta" });
   var pname = dispProject(t);
   if (!t.isNext && validPage("proj:" + t.projectId)) {
-    var pl = el("button", { type: "button", "class": "textbtn plink" }, pname);
+    var pl = el("button", { type: "button", "class": "textbtn plink", title: "Open this project's page" }, pname);
     on(pl, "click", function () { go("proj:" + t.projectId); });
     meta.appendChild(pl);
   } else meta.appendChild(el("b", null, pname));
@@ -1548,11 +1548,11 @@ function nextUpPanel() {
   if (open && t.steps.length) box.appendChild(el("p", { "class": "pline" }, "Next step: " + open.text));
   var acts = el("div", { "class": "actions" });
   if (t.isNext && !chosen()) {
-    acts.appendChild(on(el("button", { type: "button", "class": "primary" }, "Choose the next project"), "click", function () { go("projects"); }));
+    acts.appendChild(on(el("button", { type: "button", "class": "primary", title: "Go to Projects to choose a candidate" }, "Choose the next project"), "click", function () { go("projects"); }));
   } else {
-    if (t.status === "Not started") acts.appendChild(on(el("button", { type: "button", "class": "primary" }, "Start"), "click", function () { t.status = "In progress"; changed(); }));
+    if (t.status === "Not started") acts.appendChild(on(el("button", { type: "button", "class": "primary", title: "Mark in progress" }, "Start"), "click", function () { t.status = "In progress"; changed(); }));
   }
-  acts.appendChild(on(el("button", { type: "button" }, "Open task"), "click", function () { openTask(t.id); }));
+  acts.appendChild(on(el("button", { type: "button", title: "Open in Tasks" }, "Open task"), "click", function () { openTask(t.id); }));
   box.appendChild(acts);
   return box;
 }
@@ -1568,13 +1568,13 @@ function overduePanel() {
   box.appendChild(el("h2", null, late.length + (late.length === 1 ? " task is overdue" : " tasks are overdue")));
   var ul = el("ul", { "class": "tlist", style: "margin-top:8px" });
   late.forEach(function (t) {
-    var li = el("li"); var b = el("button", { type: "button", "class": "item" });
+    var li = el("li"); var b = el("button", { type: "button", "class": "item", title: "Open in Tasks" });
     b.appendChild(el("div", { "class": "l1" }, dispProject(t) + " · ended " + fmt(taskEnd(t))));
     b.appendChild(el("div", { "class": "l2" }, dispWhat(t)));
     on(b, "click", function () { openTask(t.id); }); li.appendChild(b); ul.appendChild(li);
   });
   box.appendChild(ul);
-  box.appendChild(on(el("button", { type: "button", "class": "textbtn", style: "margin-top:10px" }, "Running behind? Slip the schedule"), "click", function () { slipDialog(); }));
+  box.appendChild(on(el("button", { type: "button", "class": "textbtn", style: "margin-top:10px", title: "Push every date later to catch up" }, "Running behind? Slip the schedule"), "click", function () { slipDialog(); }));
   return box;
 }
 function currentCheckpointIndex() {
@@ -1618,8 +1618,8 @@ function completionDialog(p) {
     body.appendChild(el("p", { "class": "first" }, "“" + p.name + "” is marked complete. Archive it now, or leave it in Projects."));
     if (warn.length) body.appendChild(el("p", { "class": "hint" }, "Launch-critical linked " + (warn.length === 1 ? "project isn’t" : "projects aren’t") + " finished yet: " + warn.map(function (lp) { return lp.name; }).join(", ") + "."));
     var acts = el("div", { "class": "actions" });
-    var leave = el("button", { type: "button" }, "Leave in Projects");
-    var arch = el("button", { type: "button", "class": "dangerfill" }, "Archive now");
+    var leave = el("button", { type: "button", title: "Keep visible on Projects" }, "Leave in Projects");
+    var arch = el("button", { type: "button", "class": "dangerfill", title: "Archive right now" }, "Archive now");
     on(leave, "click", closeModal);
     on(arch, "click", function () { closeModal(); archiveProject(p); });
     acts.appendChild(leave); acts.appendChild(arch); body.appendChild(acts);
@@ -1649,8 +1649,8 @@ function welcomeBox() {
   box.appendChild(el("h2", { style: "margin-bottom:4px" }, "Welcome to Sidequest"));
   box.appendChild(el("p", { "class": "hint first" }, "The projects here are samples, so you can see how everything fits together. Look around, change things, and press / to search. When you are ready to start your own, open Settings and choose Start fresh."));
   var acts = el("div", { "class": "actions" });
-  acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings" }, "Open Settings"), "click", function () { go("settings"); }));
-  acts.appendChild(on(el("button", { type: "button", id: "welcomeDismiss" }, "Dismiss"), "click", function () { state.settings.hideWelcome = true; save(); renderView(); }));
+  acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Go to Settings to start fresh" }, "Open Settings"), "click", function () { go("settings"); }));
+  acts.appendChild(on(el("button", { type: "button", id: "welcomeDismiss", title: "Hide this welcome message" }, "Dismiss"), "click", function () { state.settings.hideWelcome = true; save(); renderView(); }));
   box.appendChild(acts);
   return box;
 }
@@ -1664,7 +1664,7 @@ function renderToday(root) {
 
 function taskRow(t) {
   var li = el("li");
-  var b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : "") });
+  var b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View task" });
   if (t.id === ui.sel) b.setAttribute("aria-current", "true");
   var l1 = el("div", { "class": "l1" }); l1.appendChild(el("b", null, dispProject(t)));
   l1.appendChild(document.createTextNode(" · " + (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)))));
@@ -1704,7 +1704,7 @@ function renderSchedule(root) {
 
 function buildDetail(t) {
   var box = el("div", { "class": "detail" });
-  box.appendChild(on(el("button", { type: "button", "class": "small only-mobile", style: "margin-bottom:10px" }, "All tasks"), "click", function () { ui.detail = false; renderView(); scrollTop(); }));
+  box.appendChild(on(el("button", { type: "button", "class": "small only-mobile", style: "margin-bottom:10px", title: "Back to the task list" }, "All tasks"), "click", function () { ui.detail = false; renderView(); scrollTop(); }));
   var top = el("div", { style: "display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap" });
   var lh = el("div");
   lh.appendChild(el("h2", { style: "margin:0" }, dispProject(t)));
@@ -1740,18 +1740,18 @@ function buildDetail(t) {
     lab.appendChild(cb); lab.appendChild(el("span", null, s.text)); sli.appendChild(lab);
     var ac = el("div", { "class": "li-actions" });
     var dc = decisionFor(s.id);
-    if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the linked decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { go("proj:" + t.projectId); }));
-    var kb = el("button", { type: "button", "class": "small" + (s.launch ? " on" : ""), "aria-pressed": s.launch ? "true" : "false", "aria-label": "Show on the launch checklist: " + s.text }, "Launch");
+    if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the linked decision", title: "Go to the linked decision on the project page" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { go("proj:" + t.projectId); }));
+    var kb = el("button", { type: "button", "class": "small" + (s.launch ? " on" : ""), "aria-pressed": s.launch ? "true" : "false", "aria-label": "Show on the launch checklist: " + s.text, title: (s.launch ? "Remove from" : "Add to") + " the launch checklist" }, "Launch");
     on(kb, "click", function () { s.launch = !s.launch; changed(); });
     ac.appendChild(kb);
-    var rm = el("button", { type: "button", "class": "small danger", "aria-label": "Remove step: " + s.text }, "Remove");
+    var rm = el("button", { type: "button", "class": "small danger", "aria-label": "Remove step: " + s.text, title: "Delete this step for good" }, "Remove");
     on(rm, "click", function () { t.steps = t.steps.filter(function (x) { return x.id !== s.id; }); syncFromSteps(t); changed(); });
     ac.appendChild(rm); sli.appendChild(ac); ul.appendChild(sli);
   });
   box.appendChild(ul);
   var add = el("div", { "class": "inline" });
   var inp = el("input", { type: "text", placeholder: "Add a step", "aria-label": "New step", "data-focus": "step-" + t.id, autocomplete: "off" });
-  var addBtn = el("button", { type: "button", "class": "small" }, "Add step");
+  var addBtn = el("button", { type: "button", "class": "small", title: "Add a step to this task" }, "Add step");
   function addStep() {
     var v = inp.value.trim(); if (!v) return;
     t.steps.push({ id: uid(), text: v.slice(0, 300), done: false });
@@ -1766,7 +1766,7 @@ function buildDetail(t) {
   box.appendChild(ta);
   if (!t.isNext) {
     var ar = el("div", { "class": "actions", style: "margin-top:14px" });
-    ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Remove"), "click", function () { ui.detail = false; removeNow(t, "tasks", "Task"); }));
+    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Remove this task (you can undo this)" }, "Remove"), "click", function () { ui.detail = false; removeNow(t, "tasks", "Task"); }));
     box.appendChild(ar);
   }
   return box;
@@ -1783,7 +1783,7 @@ function linksSection(root, p) {
   if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No linked projects."));
   links.forEach(function (lp) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
-    var nm = el("button", { type: "button", "class": "textbtn plink" }, lp.name);
+    var nm = el("button", { type: "button", "class": "textbtn plink", title: "Open this project's page" }, lp.name);
     on(nm, "click", function () { go("proj:" + lp.id); });
     row.appendChild(nm);
     if (lp.launchCritical) row.appendChild(el("span", { "class": "chip" }, "Launch critical"));
@@ -1792,10 +1792,10 @@ function linksSection(root, p) {
       // Launch Critical is a property of the linked project itself, not of
       // this one relationship -- toggling it here flips lp's own record,
       // visible the same way from either side of the (bidirectional) link.
-      var lc = el("button", { type: "button", "class": "small" + (lp.launchCritical ? " on" : ""), "aria-pressed": lp.launchCritical ? "true" : "false" }, lp.launchCritical ? "Unset launch critical" : "Mark launch critical");
+      var lc = el("button", { type: "button", "class": "small" + (lp.launchCritical ? " on" : ""), "aria-pressed": lp.launchCritical ? "true" : "false", title: (lp.launchCritical ? "Unmark as" : "Mark as") + " launch critical" }, lp.launchCritical ? "Unset launch critical" : "Mark launch critical");
       on(lc, "click", function () { lp.launchCritical = !lp.launchCritical; changed(); });
       acts.appendChild(lc);
-      var rm = el("button", { type: "button", "class": "small danger" }, "Unlink");
+      var rm = el("button", { type: "button", "class": "small danger", title: "Remove this link" }, "Unlink");
       on(rm, "click", function () { unlinkProjects(p.id, lp.id); changed(); });
       acts.appendChild(rm); row.appendChild(acts);
     }
@@ -1809,7 +1809,7 @@ function linksSection(root, p) {
     var sel = el("select", { id: "proj-link-pick", "class": "plain", "aria-label": "Project to link" });
     candidates.forEach(function (x) { sel.appendChild(el("option", { value: x.id }, x.name)); });
     addRow.appendChild(sel);
-    addRow.appendChild(on(el("button", { type: "button", "class": "small" }, "Link project"), "click", function () { linkProjects(p.id, sel.value); changed(); }));
+    addRow.appendChild(on(el("button", { type: "button", "class": "small", title: "Link the selected project" }, "Link project"), "click", function () { linkProjects(p.id, sel.value); changed(); }));
     root.appendChild(addRow);
   }
 }
@@ -1821,7 +1821,7 @@ function launchSection(root, p) {
   var readOnly = !!p.arch;
   var g = pgrid();
   var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h3", { id: "h-checks" }, "Before you launch"));
-  if (!readOnly) ha.appendChild(on(el("button", { type: "button", "class": "small" }, "Add item"), "click", function () { stepDialog(true, p.id); }));
+  if (!readOnly) ha.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a launch checklist item" }, "Add item"), "click", function () { stepDialog(true, p.id); }));
   g.put(ha, 1, 1);
   g.put(el("p", { "class": "hint" }, "These are steps from this project's tasks. Tick one here or in Tasks and it stays in sync."), 1, 2);
   var prog = el("p", { "class": "progress", role: "status", "aria-live": "polite" });
@@ -1841,7 +1841,7 @@ function launchSection(root, p) {
     label.appendChild(box); label.appendChild(el("span", null, x.s.text)); li.appendChild(label);
     var meta = el("div", { "class": "cnote" });
     if (x.t.arch) meta.appendChild(document.createTextNode(short(dispWhat(x.t), 48) + " (archived)"));
-    else meta.appendChild(on(el("button", { type: "button", "class": "textbtn" }, short(dispWhat(x.t), 48)), "click", function () { openTask(x.t.id); }));
+    else meta.appendChild(on(el("button", { type: "button", "class": "textbtn", title: "Open in Tasks" }, short(dispWhat(x.t), 48)), "click", function () { openTask(x.t.id); }));
     var dc = decisionFor(x.s.id);
     if (dc) meta.appendChild(document.createTextNode(" · Decision " + (dc.a ? "decided" : "open")));
     li.appendChild(meta);
@@ -1856,14 +1856,14 @@ function launchSection(root, p) {
     var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = done; box.disabled = true;
     label.appendChild(box); label.appendChild(el("span", null, lp.name + " (linked project)")); li.appendChild(label);
     var meta = el("div", { "class": "cnote" });
-    meta.appendChild(on(el("button", { type: "button", "class": "textbtn" }, "Launch critical · " + lp.status), "click", function () { go("proj:" + lp.id); }));
+    meta.appendChild(on(el("button", { type: "button", "class": "textbtn", title: "Open this project's page" }, "Launch critical · " + lp.status), "click", function () { go("proj:" + lp.id); }));
     li.appendChild(meta); ul.appendChild(li);
   });
   progress();
   var lb = el("div", { "class": "listbox" }); lb.appendChild(prog); lb.appendChild(ul); g.put(lb, 1, 3);
 
   var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", { id: "h-dec" }, "Decisions"));
-  if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add decision"), "click", function () { decisionDialog(p.id); }));
+  if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a decision" }, "Add decision"), "click", function () { decisionDialog(p.id); }));
   g.put(hd, 2, 1);
   g.put(el("p", { "class": "hint" }, "Write down the answer once you settle it. Answering a decision ticks its linked step, and clearing the answer unticks it."), 2, 2);
   var dl = el("ul", { "class": "list", "aria-labelledby": "h-dec" });
@@ -1894,7 +1894,7 @@ function launchSection(root, p) {
     stepOptions(p.id).forEach(function (o) { var op = el("option", { value: o.value }, o.label); if (o.value === d.step) op.selected = true; sel.appendChild(op); });
     on(sel, "change", function () { d.step = sel.value; save(); renderView(); });
     lf.appendChild(sel); li.appendChild(lf);
-    var rm = el("button", { type: "button", "class": "small danger", style: "margin-top:10px" }, "Remove");
+    var rm = el("button", { type: "button", "class": "small danger", style: "margin-top:10px", title: "Remove this decision (you can undo this)" }, "Remove");
     on(rm, "click", function () { removeNow(d, "decisions", "Decision"); });
     li.appendChild(rm); dl.appendChild(li);
   });
@@ -1903,7 +1903,7 @@ function launchSection(root, p) {
 
 function pinBar(key) {
   var bar = el("div", { "class": "pinbar" }), pinned = isPinned(key);
-  var b = el("button", { type: "button", "class": "small" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false" }, pinned ? "Unpin from sidebar" : "Pin to sidebar");
+  var b = el("button", { type: "button", "class": "small" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", title: pinned ? "Remove this page from the sidebar" : "Pin this page to the sidebar" }, pinned ? "Unpin from sidebar" : "Pin to sidebar");
   on(b, "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
   bar.appendChild(b); return bar;
 }
@@ -1919,8 +1919,8 @@ function pagesSection() {
     var nm = el("div", { style: "flex:1 1 200px" }); nm.appendChild(el("span", { style: "font-weight:600" }, r.name)); nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, r.meta));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" }), pinned = isPinned(r.key);
-    acts.appendChild(on(el("button", { type: "button", "class": "small" }, "Open"), "click", function () { go(r.key); }));
-    acts.appendChild(on(el("button", { type: "button", "class": "small" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + r.name }, pinned ? "Unpin" : "Pin to sidebar"), "click", function () { if (pinned) unpinPage(r.key); else pinPage(r.key); }));
+    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Open this project's page" }, "Open"), "click", function () { go(r.key); }));
+    acts.appendChild(on(el("button", { type: "button", "class": "small" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + r.name, title: (pinned ? "Remove from" : "Pin to") + " the sidebar" }, pinned ? "Unpin" : "Pin to sidebar"), "click", function () { if (pinned) unpinPage(r.key); else pinPage(r.key); }));
     row.appendChild(acts); li.appendChild(row); ul.appendChild(li);
   });
   sec.appendChild(ul); return sec;
@@ -1960,20 +1960,20 @@ function renderProjectPage(root, id) {
     });
     f3.appendChild(cf); f.appendChild(f3); cb.appendChild(f);
     var ca = el("div", { "class": "actions", style: "margin-top:10px" });
-    ca.appendChild(on(el("button", { type: "button", "class": "primary" }, "Choose as next project"), "click", function () { promoteToActive(p.id); }));
+    ca.appendChild(on(el("button", { type: "button", "class": "primary", title: "Make this the active project" }, "Choose as next project"), "click", function () { promoteToActive(p.id); }));
     cb.appendChild(ca); root.appendChild(cb);
     return;
   }
 
   var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h2", null, "Tasks"));
-  if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add task"), "click", function () { taskDialog(p.id); }));
+  if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a task" }, "Add task"), "click", function () { taskDialog(p.id); }));
   root.appendChild(hd);
   var ts = ordered().filter(function (t) { return !t.isNext && t.projectId === p.id; }).concat(backlogTasks().filter(function (t) { return t.projectId === p.id; }));
   if (!ts.length) root.appendChild(el("p", { "class": "hint" }, "No tasks yet."));
   else {
     var ul = el("ul", { "class": "tlist" });
     ts.forEach(function (t) {
-      var li = el("li"), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : "") });
+      var li = el("li"), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View task" });
       b.appendChild(el("div", { "class": "l1" }, t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
       b.appendChild(el("div", { "class": "l2" }, t.what));
       var l3 = el("div", { "class": "l3" });
@@ -2021,17 +2021,17 @@ function renderProjectPage(root, id) {
 
   var ar = el("div", { "class": "actions", style: "margin-top:14px" });
   if (readOnly) {
-    ar.appendChild(on(el("button", { type: "button", "class": "small primary" }, "Restore"), "click", function () { restoreEntry({ kind: "project", list: "projects", item: p }); }));
+    ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Bring back to Projects" }, "Restore"), "click", function () { restoreEntry({ kind: "project", list: "projects", item: p }); }));
   } else {
     if (p.status === "active") {
-      ar.appendChild(on(el("button", { type: "button", "class": "small" }, "Mark complete"), "click", function () {
+      ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Mark complete" }, "Mark complete"), "click", function () {
         // Manual path: available any time the project is Active, regardless of
         // task status -- equal in standing to the all-tasks-done auto-trigger,
         // not a fallback for it (confirmed 2026-09-24).
         p.status = "complete"; changed(); completionDialog(p);
       }));
     }
-    ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Archive"), "click", function () {
+    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Archive" }, "Archive"), "click", function () {
       var warn = incompleteLaunchCriticalLinks(p);
       if (warn.length) notify("Archiving even though " + (warn.length === 1 ? "a launch-critical linked project isn’t" : "launch-critical linked projects aren’t") + " finished: " + warn.map(function (lp) { return lp.name; }).join(", ") + ".");
       archiveProject(p);
@@ -2066,19 +2066,19 @@ function standingBlock(c) {
   if (!order.length) ul.appendChild(el("li", null, "No open tasks."));
   order.forEach(function (g) {
     var li = el("li"), top = el("div", { "class": "srow" });
-    var nm = el("button", { type: "button", "class": "textbtn plink" }, g.name);
+    var nm = el("button", { type: "button", "class": "textbtn plink", title: "Open this project's page" }, g.name);
     on(nm, "click", function () { go(validPage("proj:" + g.projectId) ? "proj:" + g.projectId : "projects"); });
     top.appendChild(nm); top.appendChild(el("span", { "class": "scount" }, g.open + " open " + (g.open === 1 ? "task" : "tasks")));
     li.appendChild(top);
     var nx = el("div", { "class": "snext" }); nx.appendChild(document.createTextNode("Next up: "));
-    var tl = el("button", { type: "button", "class": "textbtn" }, short(g.first.what, 90));
+    var tl = el("button", { type: "button", "class": "textbtn", title: "Open in Tasks" }, short(g.first.what, 90));
     on(tl, "click", function () { openTask(g.first.id); });
     nx.appendChild(tl); nx.appendChild(document.createTextNode(" · " + fmt(taskStart(g.first))));
     li.appendChild(nx); ul.appendChild(li);
   });
   var sl = el("li"), stEl = el("div", { "class": "srow" });
   stEl.appendChild(el("span", { "class": "slabel" }, "Next slot"));
-  if (c) { var cl = el("button", { type: "button", "class": "textbtn plink" }, c.name); on(cl, "click", function () { go("proj:" + c.id); }); stEl.appendChild(cl); }
+  if (c) { var cl = el("button", { type: "button", "class": "textbtn plink", title: "Open this project's page" }, c.name); on(cl, "click", function () { go("proj:" + c.id); }); stEl.appendChild(cl); }
   else stEl.appendChild(el("span", { "class": "scount" }, "Not chosen yet"));
   sl.appendChild(stEl); ul.appendChild(sl);
   box.appendChild(ul); wrap.appendChild(box);
@@ -2088,22 +2088,22 @@ function renderProjects(root) {
   var c = chosen();
   root.appendChild(standingBlock(c));
   var hd = el("div", { "class": "sechead", style: "margin-top:22px" }); hd.appendChild(el("h2", { "class": "first" }, "Candidates"));
-  hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add project"), "click", function () { projectDialog(); })); root.appendChild(hd);
+  hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a new candidate project" }, "Add project"), "click", function () { projectDialog(); })); root.appendChild(hd);
   root.appendChild(el("p", { "class": "hint" }, "Choose which project gets the next slot."));
   var list = el("ul", { "class": "list" });
   var cs = candidateProjects();
   if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a project."));
   cs.forEach(function (cd) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
-    var nm = el("button", { type: "button", "class": "textbtn plink" }, cd.name);
+    var nm = el("button", { type: "button", "class": "textbtn plink", title: "Open this project's page" }, cd.name);
     on(nm, "click", function () { go("proj:" + cd.id); });
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
-    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Park candidate: " + short(cd.name, 40) }, "Park it"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Move to the Parking lot" }, "Park it"), "click", function () {
       state.projects = state.projects.filter(function (x) { return x.id !== cd.id; });
       state.parked.push({ id: uid(), text: cd.name, note: cd.note }); changed();
     }));
-    var rm = el("button", { type: "button", "class": "small danger", title: "Archive project: " + short(cd.name, 40) }, "Archive");
+    var rm = el("button", { type: "button", "class": "small danger", title: "Archive" }, "Archive");
     on(rm, "click", function () { removeToArchive(cd, "Project"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row);
     if (cd.note) li.appendChild(el("p", { "class": "cnote" }, cd.note));
@@ -2125,11 +2125,11 @@ function renderParkingLot(root) {
     if (p.note) nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
-    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make candidate: " + short(p.text, 40) }, "Make it a candidate"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make this a candidate" }, "Make it a candidate"), "click", function () {
       state.parked = state.parked.filter(function (x) { return x.id !== p.id; });
       state.projects.push(makeProject(uid(), p.text, "candidate", { note: p.note })); changed();
     }));
-    var rm = el("button", { type: "button", "class": "small danger", title: "Archive idea: " + short(p.text, 40) }, "Archive");
+    var rm = el("button", { type: "button", "class": "small danger", title: "Archive" }, "Archive");
     on(rm, "click", function () { removeToArchive(p, "Idea"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row); pl.appendChild(li);
   });
@@ -2139,14 +2139,14 @@ function renderParkingLot(root) {
 function renderTimeline(root) {
   var r = rangeBlock(); root.appendChild(r.node);
   var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h2", null, "Milestones"));
-  hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add milestone"), "click", function () { milestoneDialog(); })); root.appendChild(hd);
+  hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a milestone to the timeline" }, "Add milestone"), "click", function () { milestoneDialog(); })); root.appendChild(hd);
   var mbox = el("div", { "class": "box", style: "margin-top:10px" });
   var ul = el("ul", { "class": "mslist" });
   if (!r.milestones.length) ul.appendChild(el("li", { "class": "hint" }, "No milestones yet. Add one to see it on the timeline."));
   r.milestones.slice().sort(function (a, b) { return a.date - b.date; }).forEach(function (m) {
     var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date))); li.appendChild(el("span", null, m.text));
     if (!m.auto) {
-      var rm = el("button", { type: "button", "class": "small danger" }, "Remove");
+      var rm = el("button", { type: "button", "class": "small danger", title: "Remove this milestone (you can undo this)" }, "Remove");
       on(rm, "click", function () { var orig = state.milestones.filter(function (x) { return x.id === m.id; })[0]; if (orig) removeNow(orig, "milestones", "Milestone"); });
       li.appendChild(rm);
     }

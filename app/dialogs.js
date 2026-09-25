@@ -13,7 +13,7 @@ export var modalReturn = null;
 export function openModal(title, build) {
   modalReturn = document.activeElement;
   $("modalTitle").textContent = title;
-  $("modalClose").title = "Close: " + title;
+  $("modalClose").title = "Close this dialog";
   var body = $("modalBody"); body.innerHTML = "";
   build(body);
   $("overlay").hidden = false;
@@ -65,7 +65,7 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro) {
     });
     var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
-    var ok = el("button", { type: "button", "class": "primary" }, submitLabel), cancel = el("button", { type: "button" }, "Cancel");
+    var ok = el("button", { type: "button", "class": "primary", title: "Save and close" }, submitLabel), cancel = el("button", { type: "button", title: "Close without saving" }, "Cancel");
     function submit() {
       var vals = {}; Object.keys(inputs).forEach(function (k) { vals[k] = inputs[k].value.trim(); });
       var res = onSubmit(vals);
@@ -176,7 +176,7 @@ export function slipDialog() {
     tw.appendChild(sel); body.appendChild(tw);
     var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
-    acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo" }, "Slip schedule"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push the dates later" }, "Slip schedule"), "click", function () {
       var n = parseInt(inp.value, 10), target = sel.value;
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
       // Snapshot every project's own start/mult (for undo) -- a project record
@@ -195,7 +195,7 @@ export function slipDialog() {
       changed(); closeModal();
       notify((target === "" ? "Everything" : targetName) + " moved back " + n + (n === 1 ? " day" : " days") + ".");
     }));
-    if (state.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo" }, "Undo last slip (" + state.lastSlip.days + " days)"), "click", function () {
+    if (state.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo", title: "Reverse the last slip" }, "Undo last slip (" + state.lastSlip.days + " days)"), "click", function () {
       state.start = state.lastSlip.snap.start;
       Object.keys(state.lastSlip.snap.projects).forEach(function (pid) {
         var p = findProject(pid), snapped = state.lastSlip.snap.projects[pid];
@@ -204,7 +204,7 @@ export function slipDialog() {
       state.lastSlip = null; changed(); closeModal();
       notify("Slip undone.");
     }));
-    acts.appendChild(on(el("button", { type: "button" }, "Cancel"), "click", closeModal));
+    acts.appendChild(on(el("button", { type: "button", title: "Close without slipping" }, "Cancel"), "click", closeModal));
     body.appendChild(acts);
   });
 }
@@ -213,7 +213,7 @@ export function confirmDialog(title, text, label, onConfirm) {
   openModal(title, function (body) {
     body.appendChild(el("p", { "class": "first" }, text));
     var acts = el("div", { "class": "actions" });
-    var no = el("button", { type: "button" }, "Cancel"), yes = el("button", { type: "button", "class": "dangerfill", id: "confirmYes" }, label);
+    var no = el("button", { type: "button", title: "Cancel this action" }, "Cancel"), yes = el("button", { type: "button", "class": "dangerfill", id: "confirmYes", title: "Confirm this action" }, label);
     on(no, "click", closeModal); on(yes, "click", function () { closeModal(); onConfirm(); });
     acts.appendChild(no); acts.appendChild(yes); body.appendChild(acts);
   });

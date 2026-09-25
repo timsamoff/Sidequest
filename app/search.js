@@ -82,7 +82,7 @@ export function updateSearchResults() {
     var ul = el("ul", { "class": "tlist", style: "margin-top:10px" });
     list.slice(0, CAP).forEach(function (r) {
       searchFlat.push(r);
-      var li = el("li"), b = el("button", { type: "button", "class": "item" });
+      var li = el("li"), b = el("button", { type: "button", "class": "item", title: "Open this result" });
       var l1 = el("div", { "class": "l1" }); l1.appendChild(document.createTextNode(r.sub)); if (r.arch) { l1.appendChild(document.createTextNode(" ")); l1.appendChild(el("span", { "class": "chip arch" }, "Archived")); }
       b.appendChild(l1);
       var l2 = el("div", { "class": "l2" }); l2.appendChild(highlight(r.title, res.terms)); b.appendChild(l2);
