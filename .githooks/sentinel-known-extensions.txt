@@ -1,4 +1,5 @@
 (no extension)
+.ai
 .css
 .html
 .js

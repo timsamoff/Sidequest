@@ -1,13 +1,62 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Sidequest">
-  <rect width="512" height="512" rx="112" fill="#B9CCE0"/>
-  <path d="M190 84 V 160" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M154 190 H 138 Q 100 190 100 228 V 322" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M226 190 H 262 Q 298 190 298 226 V 254" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M266 296 H 250 Q 224 296 224 322 V 384" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M330 296 H 350 Q 384 296 384 330 V 344" fill="none" stroke="#2F5D8A" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="190" cy="190" r="36" fill="#FFFFFF" stroke="#2F5D8A" stroke-width="16"/>
-  <circle cx="298" cy="296" r="32" fill="#FFFFFF" stroke="#2F5D8A" stroke-width="16"/>
-  <rect x="74.0" y="324.0" width="52" height="52" rx="8" fill="#2F5D8A"/>
-  <rect x="198.0" y="382.0" width="52" height="52" rx="8" fill="#2F5D8A"/>
-  <rect x="344.0" y="344.0" width="80" height="80" rx="9" transform="rotate(45 384 384)" fill="#C62F2F"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512">
+  <!-- Generator: Adobe Illustrator 30.8.1, SVG Export Plug-In . SVG Version: 2.1.4 Build 1)  -->
+  <defs>
+    <style>
+      .st0, .st1 {
+        fill: none;
+      }
+
+      .st2 {
+        fill: #2f5d8a;
+      }
+
+      .st1 {
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 28px;
+      }
+
+      .st1, .st3 {
+        stroke: #2f5d8a;
+      }
+
+      .st4 {
+        fill: #c62f2f;
+      }
+
+      .st5 {
+        fill: #b9cce0;
+      }
+
+      .st6 {
+        clip-path: url(#clippath);
+      }
+
+      .st3 {
+        fill: #fff;
+        stroke-width: 16px;
+      }
+    </style>
+    <clipPath id="clippath">
+      <rect id="Base2" data-name="Base" class="st0" width="512" height="512" rx="112" ry="112"/>
+    </clipPath>
+  </defs>
+  <g id="Base">
+    <rect id="Base1" data-name="Base" class="st5" width="512" height="512" rx="112" ry="112"/>
+  </g>
+  <g id="Clipping_Mask">
+    <g class="st6">
+      <path id="Top_Path" class="st1" d="M115.88-30.43l30.33,154.2"/>
+      <path id="Left_Path_1" class="st1" d="M102.47,177.65l-23.25,4.57c-36.81,7.24-51.6,29.27-44.36,66.08l28.7,145.94"/>
+      <path id="Right_Path_1" class="st1" d="M207.09,157.08l52.31-10.29c34.87-6.86,55.74,7.15,62.6,42.02l9.64,49.01"/>
+      <path id="Left_Path_2" class="st1" d="M295.51,299.68l-23.25,4.57c-25.19,4.95-35.3,20.02-30.35,45.21l19.38,98.53"/>
+      <path id="Right_Path_2" class="st1" d="M388.51,281.39l29.06-5.72c32.94-6.48,52.64,6.75,59.12,39.69l4,20.34"/>
+      <circle id="Node_1" class="st3" cx="154.78" cy="167.37" r="53.31"/>
+      <circle id="Node_2" class="st3" cx="342.01" cy="290.53" r="47.39"/>
+      <rect id="End_1" class="st2" x="31.22" y="387.08" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-80.82 21.45) rotate(-11.13)"/>
+      <rect id="End_2" class="st2" x="227.98" y="435.92" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-86.54 60.34) rotate(-11.13)"/>
+      <rect id="Milestone" class="st4" x="432.89" y="334.59" width="118.48" height="118.48" rx="9" ry="9" transform="translate(-109.15 582.92) rotate(-56.13)"/>
+    </g>
+  </g>
 </svg>

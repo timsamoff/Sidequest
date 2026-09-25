@@ -81,7 +81,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(html.includes('rel="icon" type="image/svg+xml" href="assets/sidequest-icon.svg"') && html.includes('rel="apple-touch-icon" href="assets/apple-touch-icon.png"') && html.includes('sizes="32x32" href="assets/favicon-32.png"'), "page links the favicon and home screen icons");
   ok(/<title>Sidequest<\/title>/.test(html), "page title is Sidequest");
   const png = b => b.slice(0, 8).toString("hex") === "89504e470d0a1a0a";
-  ok(png(fsx.readFileSync(pathx.join(root, "assets/apple-touch-icon.png"))) && fsx.readFileSync(pathx.join(root, "assets/sidequest-icon.svg"), "utf8").includes("#C62F2F"), "icons are valid: a real PNG, and the SVG uses the logo red");
+  ok(png(fsx.readFileSync(pathx.join(root, "assets/apple-touch-icon.png"))) && /#c62f2f/i.test(fsx.readFileSync(pathx.join(root, "assets/sidequest-icon.svg"), "utf8")), "icons are valid: a real PNG, and the SVG uses the logo red");
 }
 
 /* ---- first run ---- */
