@@ -54,4 +54,4 @@ Node 22 or newer is required.
 
 ## Credit
 
-Version 1.0.0. © [Tim Samoff](https://samoff.com)
+Version 1.0.0. © [Tim Samoff](https://samoff.com). Licensed under [GPLv3](LICENSE).
