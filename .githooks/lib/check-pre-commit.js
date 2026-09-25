@@ -610,6 +610,47 @@ function checkSocialMetaDrift() {
 }
 
 // ---------------------------------------------------------------------------
+// Gate: artifact-build-drift
+// ---------------------------------------------------------------------------
+// Claude-Sidequest/sidequest.html is a committed, generated file (npm run
+// build:artifact concatenates app/*.js + css/*.css -- see scripts/build-
+// artifact.js) so users can download it directly from GitHub without needing
+// Node/npm. If a commit changes one of the build's real inputs but doesn't
+// also stage the regenerated bundle, the committed artifact silently goes
+// stale. This is a presence/timing check (was the bundle touched at all in
+// the same commit), not a rebuild-and-diff -- consistent with this project's
+// other gates (checkClaudeMdTouched/checkReadmeTouched), and avoids running
+// the actual build script inside a git hook.
+
+const ARTIFACT_BUNDLE = "Claude-Sidequest/sidequest.html";
+const ARTIFACT_SOURCE_PATTERN = /^(app\/[\w-]+\.js|css\/[\w-]+\.css)$/;
+
+function checkArtifactBuildDrift() {
+  const violations = [];
+  const touchedInputs = common.stagedFiles()
+    .map((f) => f.path)
+    .filter((p) => ARTIFACT_SOURCE_PATTERN.test(p));
+  if (!touchedInputs.length) return violations;
+
+  const exception = common.findException("artifact-build-drift");
+  if (exception) return violations;
+
+  if (!common.isStaged(ARTIFACT_BUNDLE)) {
+    violations.push(
+      common.violation(
+        "artifact-build-drift",
+        ARTIFACT_BUNDLE,
+        null,
+        `This commit changes ${touchedInputs.join(", ")} (an input to the Claude Artifact build), but ` +
+        `${ARTIFACT_BUNDLE} was not regenerated and staged in the same commit. Run \`npm run build:artifact\` ` +
+        `and stage its output, or this commit leaves the downloadable artifact bundle stale.`
+      )
+    );
+  }
+  return violations;
+}
+
+// ---------------------------------------------------------------------------
 // npm test gate
 // ---------------------------------------------------------------------------
 // This runs the actual test suite. It is intentionally the LAST check run (see
@@ -651,6 +692,8 @@ module.exports = {
   checkHardcodedHex,
   checkDuplicatedIconMarkup,
   checkSocialMetaDrift,
+  checkArtifactBuildDrift,
+  ARTIFACT_BUNDLE,
   runNpmTest,
   README_KEYWORDS,
 };
