@@ -6,7 +6,7 @@ import {
   pset, blockStartFor, blockEndFor
 } from "./model.js";
 import { $, el, on, uid, notify } from "./dom.js";
-import { launchNote, closeMenus } from "./app.js";
+import { closeMenus } from "./app.js";
 
 /* modal */
 export var modalReturn = null;
@@ -166,7 +166,7 @@ export function milestoneDialog() {
 }
 export function slipDialog() {
   openModal("Slip the schedule", function (body) {
-    body.appendChild(el("p", { "class": "hint first" }, "This moves start dates later, so the dates that follow them move too." + launchNote("currently ")));
+    body.appendChild(el("p", { "class": "hint first" }, "This moves start dates later, so the dates that follow them move too."));
     var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": "slipDays" }, "Days to slip (1 to 90)"));
     var inp = el("input", { type: "number", id: "slipDays", min: "1", max: "90", step: "1" }); inp.value = "7"; w.appendChild(inp); body.appendChild(w);
     var tw = el("div", { "class": "field" }); tw.appendChild(el("label", { "for": "slipWhat" }, "What to slip"));
@@ -192,7 +192,7 @@ export function slipDialog() {
       }
       state.lastSlip = { days: n, snap: snap };
       changed(); closeModal();
-      notify((target === "" ? "Everything" : targetName) + " moved back " + n + (n === 1 ? " day" : " days") + "." + launchNote("now "));
+      notify((target === "" ? "Everything" : targetName) + " moved back " + n + (n === 1 ? " day" : " days") + ".");
     }));
     if (state.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo" }, "Undo last slip (" + state.lastSlip.days + " days)"), "click", function () {
       state.start = state.lastSlip.snap.start;
@@ -201,7 +201,7 @@ export function slipDialog() {
         if (p && snapped) { if (snapped.start) p.start = snapped.start; if (snapped.mult) p.mult = snapped.mult; }
       });
       state.lastSlip = null; changed(); closeModal();
-      notify("Slip undone." + launchNote(""));
+      notify("Slip undone.");
     }));
     acts.appendChild(on(el("button", { type: "button" }, "Cancel"), "click", closeModal));
     body.appendChild(acts);

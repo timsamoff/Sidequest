@@ -11,7 +11,7 @@ import {
 } from "./model.js";
 import { $, el, on, uid, setFocusKey, notify, scrollTop } from "./dom.js";
 import { drawChart, rangeBlock } from "./chart.js";
-import { openTask, go, renderView, renderAll, renderChrome, applyTheme, launchNote } from "./app.js";
+import { openTask, go, renderView, renderAll, renderChrome, applyTheme } from "./app.js";
 import { stepDialog, decisionDialog, projectDialog, ideaDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
 
 /* views */
@@ -862,11 +862,11 @@ export function renderSettings(root) {
   var grid = el("div", { "class": "setgrid" });
   function fieldOf(id, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); grid.appendChild(w); }
   var st = el("input", { type: "date", id: "set-start" }); st.value = state.start;
-  on(st, "change", function () { if (!isISO(st.value)) { st.value = state.start; msg.textContent = "Enter a valid start date."; return; } state.start = st.value; state.lastSlip = null; changed(); notify("Start date saved." + launchNote("now ")); });
+  on(st, "change", function () { if (!isISO(st.value)) { st.value = state.start; msg.textContent = "Enter a valid start date."; return; } state.start = st.value; state.lastSlip = null; changed(); notify("Start date saved."); });
   var mu = el("input", { type: "number", id: "set-mult", min: "0.25", max: "5", step: "0.25" }); mu.value = state.mult;
-  on(mu, "change", function () { var v = parseFloat(mu.value); if (isNaN(v) || v < 0.25 || v > 5) { mu.value = state.mult; msg.textContent = "The time multiplier must be from 0.25 to 5."; return; } state.mult = v; changed(); notify("Time multiplier saved." + launchNote("now ")); });
+  on(mu, "change", function () { var v = parseFloat(mu.value); if (isNaN(v) || v < 0.25 || v > 5) { mu.value = state.mult; msg.textContent = "The time multiplier must be from 0.25 to 5."; return; } state.mult = v; changed(); notify("Time multiplier saved."); });
   var da = el("input", { type: "number", id: "set-days", min: "1", max: "30", step: "1" }); da.value = state.days;
-  on(da, "change", function () { var v = parseInt(da.value, 10); if (isNaN(v) || v < 1 || v > 30) { da.value = state.days; msg.textContent = wd() + " length must be from 1 to 30 days."; return; } state.days = v; changed(); notify(wd() + " length saved." + launchNote("now ")); });
+  on(da, "change", function () { var v = parseInt(da.value, 10); if (isNaN(v) || v < 1 || v > 30) { da.value = state.days; msg.textContent = wd() + " length must be from 1 to 30 days."; return; } state.days = v; changed(); notify(wd() + " length saved."); });
   fieldOf("set-start", "Default start date", st); fieldOf("set-mult", "Default time multiplier", mu); fieldOf("set-days", wd() + " length in days (at 1.0x)", da);
   var bwSel = el("select", { id: "set-word", "class": "plain" });
   Object.keys(WORDS).forEach(function (k) { var op = el("option", { value: k }, k); if (k === wd()) op.selected = true; bwSel.appendChild(op); });

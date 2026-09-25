@@ -83,8 +83,6 @@ export function applyTheme() {
   var th = state.settings && state.settings.theme, r = document.documentElement;
   if (th === "light" || th === "dark") r.setAttribute("data-theme", th); else r.removeAttribute("data-theme");
 }
-export function launchNote() { return ""; }
-
 /* menus */
 export function closeMenus(returnFocus) {
   ["newMenu", "moreMenu"].forEach(function (id) {

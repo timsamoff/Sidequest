@@ -1334,7 +1334,7 @@ function milestoneDialog() {
 }
 function slipDialog() {
   openModal("Slip the schedule", function (body) {
-    body.appendChild(el("p", { "class": "hint first" }, "This moves start dates later, so the dates that follow them move too." + launchNote("currently ")));
+    body.appendChild(el("p", { "class": "hint first" }, "This moves start dates later, so the dates that follow them move too."));
     var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": "slipDays" }, "Days to slip (1 to 90)"));
     var inp = el("input", { type: "number", id: "slipDays", min: "1", max: "90", step: "1" }); inp.value = "7"; w.appendChild(inp); body.appendChild(w);
     var tw = el("div", { "class": "field" }); tw.appendChild(el("label", { "for": "slipWhat" }, "What to slip"));
@@ -1360,7 +1360,7 @@ function slipDialog() {
       }
       state.lastSlip = { days: n, snap: snap };
       changed(); closeModal();
-      notify((target === "" ? "Everything" : targetName) + " moved back " + n + (n === 1 ? " day" : " days") + "." + launchNote("now "));
+      notify((target === "" ? "Everything" : targetName) + " moved back " + n + (n === 1 ? " day" : " days") + ".");
     }));
     if (state.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo" }, "Undo last slip (" + state.lastSlip.days + " days)"), "click", function () {
       state.start = state.lastSlip.snap.start;
@@ -1369,7 +1369,7 @@ function slipDialog() {
         if (p && snapped) { if (snapped.start) p.start = snapped.start; if (snapped.mult) p.mult = snapped.mult; }
       });
       state.lastSlip = null; changed(); closeModal();
-      notify("Slip undone." + launchNote(""));
+      notify("Slip undone.");
     }));
     acts.appendChild(on(el("button", { type: "button" }, "Cancel"), "click", closeModal));
     body.appendChild(acts);
@@ -2243,11 +2243,11 @@ function renderSettings(root) {
   var grid = el("div", { "class": "setgrid" });
   function fieldOf(id, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); grid.appendChild(w); }
   var st = el("input", { type: "date", id: "set-start" }); st.value = state.start;
-  on(st, "change", function () { if (!isISO(st.value)) { st.value = state.start; msg.textContent = "Enter a valid start date."; return; } state.start = st.value; state.lastSlip = null; changed(); notify("Start date saved." + launchNote("now ")); });
+  on(st, "change", function () { if (!isISO(st.value)) { st.value = state.start; msg.textContent = "Enter a valid start date."; return; } state.start = st.value; state.lastSlip = null; changed(); notify("Start date saved."); });
   var mu = el("input", { type: "number", id: "set-mult", min: "0.25", max: "5", step: "0.25" }); mu.value = state.mult;
-  on(mu, "change", function () { var v = parseFloat(mu.value); if (isNaN(v) || v < 0.25 || v > 5) { mu.value = state.mult; msg.textContent = "The time multiplier must be from 0.25 to 5."; return; } state.mult = v; changed(); notify("Time multiplier saved." + launchNote("now ")); });
+  on(mu, "change", function () { var v = parseFloat(mu.value); if (isNaN(v) || v < 0.25 || v > 5) { mu.value = state.mult; msg.textContent = "The time multiplier must be from 0.25 to 5."; return; } state.mult = v; changed(); notify("Time multiplier saved."); });
   var da = el("input", { type: "number", id: "set-days", min: "1", max: "30", step: "1" }); da.value = state.days;
-  on(da, "change", function () { var v = parseInt(da.value, 10); if (isNaN(v) || v < 1 || v > 30) { da.value = state.days; msg.textContent = wd() + " length must be from 1 to 30 days."; return; } state.days = v; changed(); notify(wd() + " length saved." + launchNote("now ")); });
+  on(da, "change", function () { var v = parseInt(da.value, 10); if (isNaN(v) || v < 1 || v > 30) { da.value = state.days; msg.textContent = wd() + " length must be from 1 to 30 days."; return; } state.days = v; changed(); notify(wd() + " length saved."); });
   fieldOf("set-start", "Default start date", st); fieldOf("set-mult", "Default time multiplier", mu); fieldOf("set-days", wd() + " length in days (at 1.0x)", da);
   var bwSel = el("select", { id: "set-word", "class": "plain" });
   Object.keys(WORDS).forEach(function (k) { var op = el("option", { value: k }, k); if (k === wd()) op.selected = true; bwSel.appendChild(op); });
@@ -2430,8 +2430,6 @@ function applyTheme() {
   var th = state.settings && state.settings.theme, r = document.documentElement;
   if (th === "light" || th === "dark") r.setAttribute("data-theme", th); else r.removeAttribute("data-theme");
 }
-function launchNote() { return ""; }
-
 /* menus */
 function closeMenus(returnFocus) {
   ["newMenu", "moreMenu"].forEach(function (id) {
