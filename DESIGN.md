@@ -212,7 +212,21 @@ This is a v1 architecture fix (the current single-file app), independent of the 
 
 ## What's changing: gamification layer
 
+### Scope narrowed 2026-09-25: XP/HP shelved, splash screen + completion effect/SFX kept
+
+The full RPG-style layer described below (HP as flavor, XP/score mapping, leveling, the whole "Reference points" survey of Habitica/Do It Now/LifeRPG) is **shelved, not built**, per explicit user decision. The user's own reasoning: now that the Claude Artifact target is genuinely supported again (the `db`-backed storage adapter, real-world tested working — see "Claude Artifact parity version" above), the original motivation for a heavier gamification pivot has changed, and the user wants a much smaller footprint instead.
+
+**Kept, still wanted:**
+- The splash/loading screen (`splash-screen-artifact`/`splash-screen-web-setting` in `sentinel-notes/TODO.md`) — this was never gamification-specific to begin with, just styled with an eye toward that aesthetic; it stands on its own.
+- Some form of completion effect/SFX (visual and/or audio) when a task or project completes — this is `reward-trigger-prototype` below, narrowed to just this one piece rather than being one of several planned reward mechanics.
+
+**Explicitly shelved (not deleted from history, just not being built now):** HP/hitpoints as an emotional-flavor readout, XP/score mapping, leveling, and the RPG terminology-theming question. If gamification is revisited later, the "Decision: HP is pure emotional flavor" section and the reference-point research below remain as a starting point, not as a plan currently being executed.
+
+**Confirmed feasible 2026-09-25: a completion sound effect can port cleanly to the Claude Artifact target.** Both distribution targets share the same `app/*.js` source, and `scripts/build-artifact.js` just concatenates that source (plus `css/*.css`) into one file — a sound-playing feature written as ordinary JS carries over automatically on the next build, no different from any other feature. The one real consideration is the audio asset itself: a synthesized tone (Web Audio API oscillator, generated in code, no file) ports with zero extra work; a recorded audio file would need the same treatment the build script already gives the favicon SVG (inlined as a base64 data URI at build time), since a published artifact has no adjacent `assets/` folder for a relative file reference to resolve against.
+
 ### Decision: HP is pure emotional flavor, not a real stakes mechanic
+
+**Superseded 2026-09-25 — see "Scope narrowed" above. Recorded here for history, not as an active plan.**
 
 Hitpoints/health, inspired by Habitica's HP mechanic, will exist in Sidequest as a **prominent, emotionally resonant readout**, not a real loss condition. Explicitly decided (2026-09-21): no actual penalty, no data loss, no feature lockout tied to HP reaching zero. It should *feel* like it matters in the moment (visually, emotionally) without ever punishing the user in a way that damages their actual planning data or blocks their work. This is a deliberate divergence from Habitica's model, chosen because Sidequest's existing audience and tone (calm, low-pressure, side-project planning) doesn't fit a genuinely punishing mechanic.
 
