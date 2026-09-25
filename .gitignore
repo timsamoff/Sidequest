@@ -4,3 +4,5 @@ CLAUDE.md
 sentinel-notes/
 scratch/
 Sentinel-Prompts/
+/*.png
+/scratch_*
