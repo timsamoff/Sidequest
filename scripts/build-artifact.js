@@ -72,6 +72,7 @@ const MODULE_ORDER = [
   "search.js",
   "dialogs.js",
   "views.js",
+  "splash.js",
   "app.js",
 ];
 

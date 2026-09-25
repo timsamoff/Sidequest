@@ -890,7 +890,13 @@ export function renderSettings(root) {
     if (k === keep) op.selected = true; df.appendChild(op);
   });
   on(df, "change", function () { state.settings.dateFormat = df.value; changed(); });
-  fw.appendChild(df); ag.appendChild(fw); root.appendChild(ag);
+  fw.appendChild(df); ag.appendChild(fw);
+  var sw = el("div", { "class": "field" }); sw.appendChild(el("label", { "for": "set-splash" }, "Splash screen on open"));
+  var ss = el("select", { id: "set-splash", "class": "plain" });
+  [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.showSplash) op.selected = true; ss.appendChild(op); });
+  on(ss, "change", function () { state.settings.showSplash = ss.value === "on"; save(); });
+  sw.appendChild(ss); ag.appendChild(sw);
+  root.appendChild(ag);
   root.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device's own format. Nothing here uses a time of day yet."));
 
   root.appendChild(el("h2", null, "Archive"));

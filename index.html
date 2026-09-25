@@ -84,6 +84,37 @@
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<div class="splash backdropBlurred" id="splash" aria-hidden="true">
+  <div class="splashbackdrop"></div>
+  <div class="splashpanel">
+    <svg class="splashsvg" id="splashSvg" viewBox="0 0 512 512" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+      <rect width="512" height="512" fill="var(--est)"/>
+      <g class="splashart" id="splashArt">
+        <g id="splashLines" fill="none" stroke="var(--planned)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"></g>
+        <g id="splashNodes"></g>
+      </g>
+    </svg>
+    <p class="splashtext" id="splashText"></p>
+  </div>
+</div>
+<script>
+  // Synchronous, inline, blocking: runs the instant the parser reaches this
+  // point, before app.js (a deferred module) or any layout/paint of what
+  // follows -- the one way to hide the splash before first paint if the
+  // user turned it off, since app/splash.js's own JS runs too late for that
+  // (confirmed 2026-09-25: the splash otherwise ships visible in plain HTML
+  // specifically so its backdrop blur is in effect before ANY JS runs at
+  // all, which is correct when the setting is on but would flash the splash
+  // once before hiding it if a user has it disabled).
+  try {
+    var raw = window.localStorage.getItem("sidequest-template-v1");
+    var saved = raw ? JSON.parse(raw) : null;
+    if (saved && saved.settings && saved.settings.showSplash === false) {
+      document.getElementById("splash").hidden = true;
+    }
+  } catch (e) { /* storage unavailable/unreadable: default to showing the splash */ }
+</script>
+
 <script type="module" src="app/app.js"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@ html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 72px); }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 1.5; }
 h1, h2, h3 { font-family: var(--font-serif); font-weight: 600; line-height: 1.2; margin: 0; }
 h1 { font-size: 1.5rem; }
-h2 { font-size: 1.3rem; margin-bottom: var(--space-6); }
+h2 { font-size: 1.3rem; margin-top: var(--space-22); margin-bottom: var(--space-6); }
 h3 { font-size: 1.05rem; margin-top: var(--space-22); }
 p { margin: 0; }
 [hidden] { display: none !important; }
@@ -11,7 +11,7 @@ p { margin: 0; }
 .note { margin-top: var(--space-12); color: var(--muted); font-size: .9rem; }
 .msg { margin-top: var(--space-10); color: var(--muted); font-size: .9rem; min-height: 1.4em; }
 
-input, select, button, textarea { font: inherit; color: var(--ink); }
+input, select, button, textarea { font: inherit; color: var(--ink); margin: 0; }
 input[type="text"], input[type="date"], input[type="number"], textarea {
   background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: var(--space-7) var(--space-10); min-height: 40px; max-width: 100%; width: 100%;
 }
@@ -245,6 +245,44 @@ tbody tr:last-child td { border-bottom: 0; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); background: var(--ink); color: var(--bg); padding: var(--space-10) var(--space-16); border-radius: 10px; z-index: 60; font-size: .92rem; }
 .toast:empty { display: none; }
 
+/* splash screen: a real overlay atop the already-rendered (and blurred) app,
+   not the whole screen -- see DESIGN.md's splash-screen section. Sizing is
+   viewport-relative (min() of vw/vh) so the same ~75%-of-screen panel works
+   in both landscape and portrait without a separate breakpoint. */
+.splash { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity .5s ease; }
+.splash.fading { opacity: 0; }
+/* No transition on this property: backdropBlurred is present from the very
+   first HTML paint (see index.html), so the blur must never visibly ramp up
+   -- a transitioning blur over sharp text/UI edges can look like the
+   background is shaking as it resamples through each intermediate radius,
+   and it would also reopen the exact "readable for a moment" gap this class
+   exists to close. Only .splash.fading (a real, later, intentional state
+   change) transitions anything here, via its own opacity transition on
+   .splash itself. */
+.splashbackdrop { position: absolute; inset: 0; backdrop-filter: blur(0px); }
+.splash.backdropBlurred .splashbackdrop { backdrop-filter: blur(10px); }
+.splashpanel { position: relative; isolation: isolate; width: min(75vw, 75vh, 560px); aspect-ratio: 1 / 1; border-radius: 28px; overflow: hidden; background: var(--est); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; }
+.splashsvg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.splashart { transition: filter .6s ease; }
+.splash.artBlurred .splashart { filter: blur(5px); }
+.splashtext { position: relative; z-index: 1; margin: 0; padding: var(--space-12) var(--space-20); max-width: 82%; text-align: center; color: var(--surface); background: var(--planned); border-radius: 14px; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; line-height: 1.4; opacity: 0; transition: opacity .5s ease; }
+.splash.textIn .splashtext { opacity: 1; }
+/* stroke-dasharray/dashoffset's initial (undrawn) values come from the
+   element's own SVG attributes, set synchronously at creation time in
+   app/splash.js -- never a CSS var() fallback, which previously left a real
+   window where the wrong dash pattern (the fallback, not the path's real
+   length) rendered before JS set the correct value. CSS only owns the
+   transition TO 0 (fully drawn). */
+#splashLines path { transition: stroke-dashoffset .65s ease; }
+#splashLines path.drawn { stroke-dashoffset: 0; }
+/* Fade in place -- no scale/size change, so a rect's own rotate() attribute
+   (the icon's exact tilt) is never fought by a competing CSS transform. */
+#splashNodes circle, #splashNodes rect { opacity: 0; transition: opacity .3s ease; }
+#splashNodes circle.shown, #splashNodes rect.shown { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .splash, .splashbackdrop, .splashsvg, .splashtext, #splashLines path, #splashNodes circle, #splashNodes rect { transition-duration: .01ms !important; }
+}
+
 @media (max-width: 899px) {
   .app { display: block; }
   .side { position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: auto; z-index: 20; padding: var(--space-4) var(--space-4) calc(4px + env(safe-area-inset-bottom, 0px)); border-right: 0; border-top: 1px solid var(--line); flex-direction: row; }
@@ -269,5 +307,10 @@ tbody tr:last-child td { border-bottom: 0; }
   .overlay { align-items: flex-end; padding: 0; }
   .modal { max-width: none; border-radius: 16px 16px 0 0; max-height: 92vh; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
   .menu { min-width: 220px; }
+  /* 75% of a narrow phone's own width/height is small in absolute terms --
+     widen the floor here so the panel stays legible on a small screen,
+     portrait or landscape. */
+  .splashpanel { width: min(85vw, 85vh, 420px); }
+  .splashtext { font-size: 1rem; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }

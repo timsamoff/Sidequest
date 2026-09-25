@@ -10,6 +10,7 @@ import { renderSearch, openSearch, closeSearch, wireSearchInput, focusSearch } f
 import {
   taskDialog, projectDialog, ideaDialog, decisionDialog, milestoneDialog, slipDialog, stepDialog
 } from "./dialogs.js";
+import { playSplash } from "./splash.js";
 
 /* navigation */
 export function leaveSearch() { if (ui.view === "search") { ui.query = ""; var b = $("searchBox"); if (b) b.value = ""; } }
@@ -124,6 +125,11 @@ Promise.resolve().then(function () {
   applyTheme();
   autoArchive(); save();
   renderAll();
+
+  // Purely decorative, on every load, gated by the Settings toggle -- the app
+  // has already rendered above regardless, so this never delays real content.
+  // See app/splash.js and DESIGN.md's splash-screen section.
+  playSplash(state.settings.showSplash);
 
   // If this view is running as a published Claude artifact with the db
   // capability granted, its saved state lives there, not in this browser's

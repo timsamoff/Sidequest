@@ -79,7 +79,7 @@ html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 72px); }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 1.5; }
 h1, h2, h3 { font-family: var(--font-serif); font-weight: 600; line-height: 1.2; margin: 0; }
 h1 { font-size: 1.5rem; }
-h2 { font-size: 1.3rem; margin-bottom: var(--space-6); }
+h2 { font-size: 1.3rem; margin-top: var(--space-22); margin-bottom: var(--space-6); }
 h3 { font-size: 1.05rem; margin-top: var(--space-22); }
 p { margin: 0; }
 [hidden] { display: none !important; }
@@ -87,7 +87,7 @@ p { margin: 0; }
 .note { margin-top: var(--space-12); color: var(--muted); font-size: .9rem; }
 .msg { margin-top: var(--space-10); color: var(--muted); font-size: .9rem; min-height: 1.4em; }
 
-input, select, button, textarea { font: inherit; color: var(--ink); }
+input, select, button, textarea { font: inherit; color: var(--ink); margin: 0; }
 input[type="text"], input[type="date"], input[type="number"], textarea {
   background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: var(--space-7) var(--space-10); min-height: 40px; max-width: 100%; width: 100%;
 }
@@ -321,6 +321,44 @@ tbody tr:last-child td { border-bottom: 0; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); background: var(--ink); color: var(--bg); padding: var(--space-10) var(--space-16); border-radius: 10px; z-index: 60; font-size: .92rem; }
 .toast:empty { display: none; }
 
+/* splash screen: a real overlay atop the already-rendered (and blurred) app,
+   not the whole screen -- see DESIGN.md's splash-screen section. Sizing is
+   viewport-relative (min() of vw/vh) so the same ~75%-of-screen panel works
+   in both landscape and portrait without a separate breakpoint. */
+.splash { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity .5s ease; }
+.splash.fading { opacity: 0; }
+/* No transition on this property: backdropBlurred is present from the very
+   first HTML paint (see index.html), so the blur must never visibly ramp up
+   -- a transitioning blur over sharp text/UI edges can look like the
+   background is shaking as it resamples through each intermediate radius,
+   and it would also reopen the exact "readable for a moment" gap this class
+   exists to close. Only .splash.fading (a real, later, intentional state
+   change) transitions anything here, via its own opacity transition on
+   .splash itself. */
+.splashbackdrop { position: absolute; inset: 0; backdrop-filter: blur(0px); }
+.splash.backdropBlurred .splashbackdrop { backdrop-filter: blur(10px); }
+.splashpanel { position: relative; isolation: isolate; width: min(75vw, 75vh, 560px); aspect-ratio: 1 / 1; border-radius: 28px; overflow: hidden; background: var(--est); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; }
+.splashsvg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.splashart { transition: filter .6s ease; }
+.splash.artBlurred .splashart { filter: blur(5px); }
+.splashtext { position: relative; z-index: 1; margin: 0; padding: var(--space-12) var(--space-20); max-width: 82%; text-align: center; color: var(--surface); background: var(--planned); border-radius: 14px; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; line-height: 1.4; opacity: 0; transition: opacity .5s ease; }
+.splash.textIn .splashtext { opacity: 1; }
+/* stroke-dasharray/dashoffset's initial (undrawn) values come from the
+   element's own SVG attributes, set synchronously at creation time in
+   app/splash.js -- never a CSS var() fallback, which previously left a real
+   window where the wrong dash pattern (the fallback, not the path's real
+   length) rendered before JS set the correct value. CSS only owns the
+   transition TO 0 (fully drawn). */
+#splashLines path { transition: stroke-dashoffset .65s ease; }
+#splashLines path.drawn { stroke-dashoffset: 0; }
+/* Fade in place -- no scale/size change, so a rect's own rotate() attribute
+   (the icon's exact tilt) is never fought by a competing CSS transform. */
+#splashNodes circle, #splashNodes rect { opacity: 0; transition: opacity .3s ease; }
+#splashNodes circle.shown, #splashNodes rect.shown { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .splash, .splashbackdrop, .splashsvg, .splashtext, #splashLines path, #splashNodes circle, #splashNodes rect { transition-duration: .01ms !important; }
+}
+
 @media (max-width: 899px) {
   .app { display: block; }
   .side { position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: auto; z-index: 20; padding: var(--space-4) var(--space-4) calc(4px + env(safe-area-inset-bottom, 0px)); border-right: 0; border-top: 1px solid var(--line); flex-direction: row; }
@@ -345,6 +383,11 @@ tbody tr:last-child td { border-bottom: 0; }
   .overlay { align-items: flex-end; padding: 0; }
   .modal { max-width: none; border-radius: 16px 16px 0 0; max-height: 92vh; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
   .menu { min-width: 220px; }
+  /* 75% of a narrow phone's own width/height is small in absolute terms --
+     widen the floor here so the panel stays legible on a small screen,
+     portrait or landscape. */
+  .splashpanel { width: min(85vw, 85vh, 420px); }
+  .splashtext { font-size: 1rem; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
 
@@ -417,6 +460,37 @@ tbody tr:last-child td { border-bottom: 0; }
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="splash backdropBlurred" id="splash" aria-hidden="true">
+  <div class="splashbackdrop"></div>
+  <div class="splashpanel">
+    <svg class="splashsvg" id="splashSvg" viewBox="0 0 512 512" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+      <rect width="512" height="512" fill="var(--est)"/>
+      <g class="splashart" id="splashArt">
+        <g id="splashLines" fill="none" stroke="var(--planned)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"></g>
+        <g id="splashNodes"></g>
+      </g>
+    </svg>
+    <p class="splashtext" id="splashText"></p>
+  </div>
+</div>
+<script>
+  // Synchronous, inline, blocking: runs the instant the parser reaches this
+  // point, before app.js (a deferred module) or any layout/paint of what
+  // follows -- the one way to hide the splash before first paint if the
+  // user turned it off, since app/splash.js's own JS runs too late for that
+  // (confirmed 2026-09-25: the splash otherwise ships visible in plain HTML
+  // specifically so its backdrop blur is in effect before ANY JS runs at
+  // all, which is correct when the setting is on but would flash the splash
+  // once before hiding it if a user has it disabled).
+  try {
+    var raw = window.localStorage.getItem("sidequest-template-v1");
+    var saved = raw ? JSON.parse(raw) : null;
+    if (saved && saved.settings && saved.settings.showSplash === false) {
+      document.getElementById("splash").hidden = true;
+    }
+  } catch (e) { /* storage unavailable/unreadable: default to showing the splash */ }
+</script>
 
 <script>
 (function () {
@@ -759,7 +833,7 @@ function defaults() {
     tasks: d.tasks, actual: [34, 31, 25, null, null, null, null],
     decisions: d.decisions, projects: d.projects, parked: d.parked,
     milestones: d.milestones, lastSlip: null, pins: ["proj:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true }
   };
 }
 
@@ -859,6 +933,7 @@ function normalize(s) {
     if (["us", "intl", "mdy", "dmy", "iso"].indexOf(s.settings.dateFormat) >= 0) d.settings.dateFormat = s.settings.dateFormat;
     if (["Block", "Sprint", "Iteration", "Phase", "Week"].indexOf(s.settings.blockWord) >= 0) d.settings.blockWord = s.settings.blockWord;
     if (typeof s.settings.hideWelcome === "boolean") d.settings.hideWelcome = s.settings.hideWelcome;
+    if (typeof s.settings.showSplash === "boolean") d.settings.showSplash = s.settings.showSplash;
   }
   if (Array.isArray(s.pins)) d.pins = s.pins.filter(function (k) { return typeof k === "string" && k.length < 130; }).slice(0, 30);
   if (s.lastSlip && s.lastSlip.snap && isISO(s.lastSlip.snap.start)) d.lastSlip = { days: Math.round(+s.lastSlip.days) || 0, snap: { start: s.lastSlip.snap.start, projects: cleanProjectSnap(s.lastSlip.snap.projects) } };
@@ -2310,7 +2385,13 @@ function renderSettings(root) {
     if (k === keep) op.selected = true; df.appendChild(op);
   });
   on(df, "change", function () { state.settings.dateFormat = df.value; changed(); });
-  fw.appendChild(df); ag.appendChild(fw); root.appendChild(ag);
+  fw.appendChild(df); ag.appendChild(fw);
+  var sw = el("div", { "class": "field" }); sw.appendChild(el("label", { "for": "set-splash" }, "Splash screen on open"));
+  var ss = el("select", { id: "set-splash", "class": "plain" });
+  [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.showSplash) op.selected = true; ss.appendChild(op); });
+  on(ss, "change", function () { state.settings.showSplash = ss.value === "on"; save(); });
+  sw.appendChild(ss); ag.appendChild(sw);
+  root.appendChild(ag);
   root.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device's own format. Nothing here uses a time of day yet."));
 
   root.appendChild(el("h2", null, "Archive"));
@@ -2389,7 +2470,272 @@ function backupPanel(root) {
 }
 
 
+// ---- splash.js ----
+// Splash screen: a real overlay atop the already-rendered app (see app.js's
+// boot sequence -- the app renders immediately either way; this is purely
+// decorative, on every load, gated by state.settings.showSplash). Branching-
+// path artwork echoes the app icon's visual language (rounded elbow joints,
+// small square task-endpoints, one accent-colored milestone diamond), always
+// anchored at the top-left corner and identical every load (confirmed
+// 2026-09-25 -- a fixed, hand-composed layout, not procedural/randomized,
+// since a random generator's layout quality was inconsistent and the user
+// wants the same animation every time anyway). Exactly the icon's own 5
+// branches. Sequence: backdrop blurs immediately -> branches draw in ->
+// artwork blurs -> affirmation text fades in -> whole overlay fades out to
+// reveal the app. See DESIGN.md's splash-screen section.
+
+var SVG_NS = "http://www.w3.org/2000/svg";
+
+// Short, plain, low-pressure phrases -- matches this app's existing voice
+// (see CLAUDE.md's writing-style guidance), not corporate-motivational or
+// cutesy. User plans to add more; keep this list easy to extend.
+var AFFIRMATIONS = [
+  "Small steps still count.",
+  "Progress, not perfection.",
+  "One task at a time.",
+  "Done is better than perfect.",
+  "Keep the momentum.",
+  "A little today adds up.",
+  "You don't have to finish, just start.",
+  "Forward is forward.",
+  "Action over overthinking.",
+  "Start now, figure it out later.",
+  "Execute without delay.",
+  "Motion creates motivation.",
+  "Just do the next small step.",
+  "Built to finish things.",
+  "Less talking, more doing.",
+  "Distractions lose, you win.",
+  "Eyes on the prize.",
+  "Your focus is unbreakable.",
+  "Own this hour.",
+  "Laser precision, zero excuses.",
+  "Deep work mode activated.",
+  "Build momentum every minute.",
+  "Consistency is your superpower.",
+  "Tick it off the list.",
+  "You are a finishing machine.",
+  "Sustained effort yields results.",
+  "Every small win counts.",
+  "Choose productivity today.",
+  "Discipline beats motivation.",
+  "You are in total control.",
+  "Obstacles are just detours.",
+  "You have everything you need.",
+  "Thrive under pressure.",
+  "Decide to make it happen.",
+  "Do it now.",
+  "Break the friction.",
+  "Execution over excuses.",
+  "Inertia ends today.",
+  "Step up.",
+  "Make the move.",
+  "Show up for the work.",
+  "Run the day.",
+  "Fueled by pure drive.",
+  "Dominate the checklist.",
+  "Nothing holds you back.",
+  "Unstoppable work ethic.",
+  "Set the pace.",
+  "Claim the win early.",
+  "Massive action, minimal noise.",
+  "Produce results, not excuses.",
+  "Efficiency is the standard.",
+  "Deliver on time.",
+  "Output beats hesitation.",
+  "Crush the tasks.",
+  "Streamline and succeed.",
+  "Lock in.",
+  "Silent work, loud results.",
+  "No room for doubt.",
+  "Push through it.",
+  "The path is clear.",
+  "Finish what you started.",
+  "Stay with it."
+];
+
+function svgEl(tag, attrs) {
+  var e = document.createElementNS(SVG_NS, tag);
+  if (attrs) Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+  return e;
+}
+
+// The real icon's own path/shape data, VERBATIM (assets/sidequest-icon.svg /
+// index.html's #sqLogo) -- confirmed 2026-09-25: exactly the icon's 5
+// branches, no invented extra branch, every node/end-square/milestone at the
+// exact coordinates and rotation the icon itself uses, so a line's endpoint
+// and its node/marker always coincide exactly. The root line intentionally
+// starts off-canvas (negative y), matching the icon's own confirmed-
+// intentional top crop.
+//
+// Each path's real endpoint (in absolute SVG user-space coordinates) is
+// given explicitly alongside its `d`, since the icon's own path data uses
+// relative commands (l/c) and computing the true endpoint by hand from those
+// is exactly the kind of arithmetic that produced the earlier
+// endpoint-doesn't-match-the-node bug -- these values were taken directly
+// from the icon's own absolute-coordinate node/rect positions, not
+// recomputed.
+function buildTree() {
+  // Each path embeds the one node/marker it actually terminates at, so
+  // "this line finished drawing" and "show this node" are never coupled by
+  // fragile parallel-array position (confirmed 2026-09-25: an earlier
+  // index-based pairing showed the wrong node at the wrong line's finish).
+  // `parent` is the index of the path whose node this line grows out of
+  // (null for the root), so each line starts only once that node is showing.
+  // `len` values are Chromium's getTotalLength() of the icon's own paths.
+  return {
+    paths: [
+      // Top_Path -> Node_1 (circle)
+      { d: "M115.88,-30.43 l30.33,154.2", len: 157.2, parent: null, node: { kind: "circle", x: 154.78, y: 167.37, r: 53.31 } },
+      // Left_Path_1 -> End_1 (rotated square), grows from Node_1
+      { d: "M102.47,177.65 l-23.25,4.57 c-36.81,7.24 -51.6,29.27 -44.36,66.08 l28.7,145.94", len: 263.8, parent: 0, node: { kind: "square", x: 63.56, y: 394.24, size: 77.01, rotate: -11.13 } },
+      // Right_Path_1 -> Node_2 (circle), grows from Node_1
+      { d: "M207.09,157.08 l52.31,-10.29 c34.87,-6.86 55.74,7.15 62.6,42.02 l9.64,49.01", len: 189.8, parent: 0, node: { kind: "circle", x: 342.01, y: 290.53, r: 47.39 } },
+      // Left_Path_2 -> End_2 (rotated square), grows from Node_2
+      { d: "M295.51,299.68 l-23.25,4.57 c-25.19,4.95 -35.3,20.02 -30.35,45.21 l19.38,98.53", len: 186.6, parent: 2, node: { kind: "square", x: 261.29, y: 448.0, size: 77.01, rotate: -11.13 } },
+      // Right_Path_2 -> Milestone (rotated diamond), grows from Node_2. Center
+      // is the icon's real one (its rect's transform applied), not the line's
+      // endpoint: the diamond sits further along the line's own axis so its
+      // top corner meets the line, which ends hidden just inside it.
+      { d: "M388.51,281.39 l29.06,-5.72 c32.94,-6.48 52.64,6.75 59.12,39.69 l4,20.34", len: 132.1, parent: 2, node: { kind: "diamond", x: 492.12, y: 393.79, size: 118.48, rotate: -56.13 } }
+    ]
+  };
+}
+
+// Same shapes/colors as the real icon: circles white-fill with a dark-blue
+// ring (Node_1/Node_2), solid dark-blue rounded squares (End_1/End_2), one
+// solid red rounded square rotated into a diamond (Milestone) -- each
+// rotated exactly the icon's own amount so a corner sits flush against its
+// line's real angle, same as the source artwork.
+function buildNodeShape(n) {
+  if (n.kind === "circle") {
+    return svgEl("circle", { cx: n.x, cy: n.y, r: n.r, fill: "var(--surface)", stroke: "var(--planned)", "stroke-width": "16" });
+  }
+  var half = n.size / 2;
+  var color = n.kind === "diamond" ? "var(--burn)" : "var(--planned)";
+  return svgEl("rect", { x: n.x - half, y: n.y - half, width: n.size, height: n.size, rx: n.kind === "diamond" ? 9 : 8, fill: color, transform: "rotate(" + n.rotate + " " + n.x + " " + n.y + ")" });
+}
+
+// Renders each path and its own terminal node as a matched pair, returning
+// the pairs in draw order -- playSplash uses this directly, so "line i's
+// timer" and "node i's timer" are always the same i, never a separate lookup
+// that can drift out of sync.
+function renderTree(root, tree) {
+  var linesGroup = root.querySelector("#splashLines");
+  var nodesGroup = root.querySelector("#splashNodes");
+  linesGroup.innerHTML = "";
+  nodesGroup.innerHTML = "";
+
+  return tree.paths.map(function (p) {
+    // stroke-dasharray/stroke-dashoffset are set as real attributes in this
+    // SAME element-creation call, using the pre-measured p.len -- never left
+    // to a CSS custom-property fallback for even one synchronous step.
+    // Confirmed 2026-09-25: a path previously existed in the live DOM for a
+    // brief window with no --len set yet (getTotalLength() itself forces a
+    // layout, and the following line that set --len ran after), during which
+    // CSS's own var(--len, 400) fallback governed the dash pattern -- for a
+    // path whose real length isn't ~400, that rendered as a fragmented,
+    // disconnected line, briefly visible before snapping to the correct
+    // undrawn state once --len was actually set.
+    var len = p.len.toFixed(1);
+    var path = svgEl("path", { d: p.d, "stroke-dasharray": len, "stroke-dashoffset": len });
+    linesGroup.appendChild(path);
+
+    var node = buildNodeShape(p.node);
+    nodesGroup.appendChild(node);
+    return { path: path, node: node, len: p.len, parent: p.parent };
+  });
+}
+
+// The tree grows outward node by node: each line starts once its parent node
+// has faded in, and every line draws at the same speed, so of two siblings
+// the shorter one finishes (and shows its node) first -- Node_2 before End_1,
+// Milestone before End_2. Blur/text/fade-out are measured from the moment
+// the last line finishes, so changing DRAW_SPEED can't desync them.
+var DRAW_SPEED = 0.4;  // SVG user units per ms
+var NODE_PAUSE = 150;  // ms from a node starting to fade in until its child lines start
+var TIMING = {
+  drawStart: 20,
+  blurDelay: 20,    // after the last line finishes
+  textDelay: 500,   // after blur starts
+  holdDur: 2150,    // text fully visible before fade-out starts
+  fadeOutDur: 500
+};
+
+// Per-pair start/end times (ms from play), resolved parent-first. Paths are
+// listed parent-before-child in buildTree, so one forward pass suffices.
+function schedule(pairs) {
+  var drawEnd = 0;
+  pairs.forEach(function (pair) {
+    pair.start = pair.parent === null ? TIMING.drawStart : pairs[pair.parent].end + NODE_PAUSE;
+    pair.dur = Math.round(pair.len / DRAW_SPEED);
+    pair.end = pair.start + pair.dur;
+    drawEnd = Math.max(drawEnd, pair.end);
+  });
+  return drawEnd;
+}
+
+// Plays the splash sequence, then removes/hides the overlay and calls done()
+// (if given) once the fade-out finishes. No-op (calls done() immediately) if
+// showSplash is off or the element isn't present.
+function playSplash(showSplash, done) {
+  var root = $("splash");
+  // The splash markup ships visible-with-backdrop-already-blurred in plain
+  // HTML (no `hidden` attribute, `backdropBlurred` class present from the
+  // first paint) specifically so the blur is in effect before ANY JS runs --
+  // confirmed 2026-09-25: an earlier version relied on this function to
+  // reveal/blur it, which left a real, visible window (app rendered sharp,
+  // THEN the splash appeared moments later) since this runs after the app's
+  // own renderAll(). If the setting is off, this is the one path that must
+  // hide it immediately, before it can paint at all.
+  if (!root || !showSplash) { if (root) root.hidden = true; if (done) done(); return; }
+
+  var tree = buildTree();
+  var pairs = renderTree(root, tree); // [{path, node}], in draw order -- each node is its own path's real terminus
+
+  var textEl = $("splashText");
+  textEl.textContent = AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)];
+
+  // Force a real layout/paint of the freshly-inserted paths' initial (full-
+  // length, undrawn) stroke-dashoffset state before any "drawn" class is
+  // added, so the browser has committed a genuine "before" frame for the
+  // transition to animate from -- without this, the browser can batch the
+  // insert and the first class-add into one frame, which can render as a
+  // flash of the wrong state before snapping to the real animated sequence.
+  // eslint-disable-next-line no-unused-expressions
+  root.offsetHeight;
+
+  var drawEnd = schedule(pairs);
+  var artBlurAt = drawEnd + TIMING.blurDelay;
+  var textAt = artBlurAt + TIMING.textDelay;
+  var fadeOutAt = textAt + TIMING.holdDur;
+
+  var timers = [];
+  pairs.forEach(function (pair) {
+    pair.path.style.transitionDuration = pair.dur + "ms";
+    timers.push(setTimeout(function () { pair.path.classList.add("drawn"); }, pair.start));
+    // This node is THIS path's own terminus -- it only appears once this
+    // exact line has actually finished drawing (confirmed 2026-09-25).
+    timers.push(setTimeout(function () { pair.node.classList.add("shown"); }, pair.end));
+  });
+  timers.push(setTimeout(function () { root.classList.add("artBlurred"); }, artBlurAt));
+  timers.push(setTimeout(function () { root.classList.add("textIn"); }, textAt));
+  timers.push(setTimeout(function () {
+    root.classList.add("fading");
+    setTimeout(function () {
+      root.hidden = true;
+      root.classList.remove("backdropBlurred", "artBlurred", "textIn", "fading");
+      pairs.forEach(function (pair) { pair.path.classList.remove("drawn"); pair.path.style.transitionDuration = ""; pair.node.classList.remove("shown"); });
+      if (done) done();
+    }, TIMING.fadeOutDur);
+  }, fadeOutAt));
+
+  return function cancel() { timers.forEach(clearTimeout); root.hidden = true; };
+}
+
+
 // ---- app.js ----
+
 
 
 
@@ -2510,6 +2856,11 @@ Promise.resolve().then(function () {
   applyTheme();
   autoArchive(); save();
   renderAll();
+
+  // Purely decorative, on every load, gated by the Settings toggle -- the app
+  // has already rendered above regardless, so this never delays real content.
+  // See app/splash.js and DESIGN.md's splash-screen section.
+  playSplash(state.settings.showSplash);
 
   // If this view is running as a published Claude artifact with the db
   // capability granted, its saved state lives there, not in this browser's
