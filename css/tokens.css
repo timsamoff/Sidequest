@@ -4,6 +4,29 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
   --font-serif: "Spectral", Georgia, "Times New Roman", serif;
   --font-sans: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Spacing scale (margin/padding/gap only -- not font-size, border-width/
+     radius, icon dimensions, or stroke-width, which are sized independently).
+     Named by their own pixel value, matching the literal values already in
+     use throughout styles.css -- this formalizes the existing consistency,
+     it doesn't introduce a new rhythm. */
+  --space-1: 1px;
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-5: 5px;
+  --space-6: 6px;
+  --space-7: 7px;
+  --space-8: 8px;
+  --space-9: 9px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-14: 14px;
+  --space-16: 16px;
+  --space-18: 18px;
+  --space-20: 20px;
+  --space-22: 22px;
+  --space-24: 24px;
+  --space-26: 26px;
+  --space-30: 30px;
   --bg: #F2F4F1;
   --surface: #FFFFFF;
   --ink: #1A2733;
