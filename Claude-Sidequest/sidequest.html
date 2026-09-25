@@ -470,6 +470,23 @@ function activeProjects() { return liveProjects().filter(function (p) { return p
 function candidateProjects() { return liveProjects().filter(function (p) { return p.status === "candidate"; }); }
 function findProject(id) { var p = liveProjects(); for (var i = 0; i < p.length; i++) if (p[i].id === id) return p[i]; return null; }
 function findAnyProject(id) { for (var i = 0; i < state.projects.length; i++) if (state.projects[i].id === id) return state.projects[i]; return null; }
+// Direct links only, one hop -- a linked project may itself have further
+// links, but this never walks past the first one (see DESIGN.md: this is
+// what makes an arbitrary-depth/cyclic link graph safe to render).
+function linkedProjects(p) { return (p.linkedProjectIds || []).map(findProject).filter(Boolean); }
+// A link is bidirectional -- one fact shared by both records, so linking
+// writes the id to both sides' arrays, and unlinking removes it from both.
+function linkProjects(aId, bId) {
+  var a = findAnyProject(aId), b = findAnyProject(bId);
+  if (!a || !b || a === b) return;
+  if (a.linkedProjectIds.indexOf(bId) < 0) a.linkedProjectIds.push(bId);
+  if (b.linkedProjectIds.indexOf(aId) < 0) b.linkedProjectIds.push(aId);
+}
+function unlinkProjects(aId, bId) {
+  var a = findAnyProject(aId), b = findAnyProject(bId);
+  if (a) a.linkedProjectIds = a.linkedProjectIds.filter(function (id) { return id !== bId; });
+  if (b) b.linkedProjectIds = b.linkedProjectIds.filter(function (id) { return id !== aId; });
+}
 function pset(projectId) { var p = findProject(projectId); return { start: (p && p.start) || state.start, mult: (p && p.mult) || state.mult }; }
 function offsetFor(projectId, n) { return Math.floor(n * state.days * pset(projectId).mult + 1e-9); }
 function blockStartFor(projectId, b) { return addDays(parseISO(pset(projectId).start), offsetFor(projectId, b - 1)); }
@@ -617,7 +634,7 @@ function task(id, block, projectId, what, done, steps, extra) {
 // record and id carry through Candidate -> Active -> Archived, never a second
 // record. See DESIGN.md's "making Project a first-class entity" section.
 function project(id, name, status, extra) {
-  var p = { id: id, name: name, note: "", status: status, start: "", mult: 1, months: "", notes: "", arch: null };
+  var p = { id: id, name: name, note: "", status: status, start: "", mult: 1, months: "", notes: "", arch: null, linkedProjectIds: [] };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -629,8 +646,12 @@ function sampleData() {
   var yest = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 1)).toISOString().slice(0, 10);
   var lastWeek = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 7)).toISOString().slice(0, 10);
   var projects = [
-    project("pApp", "Sample App", "active", { notes: "A simple habit tracker. Keep the first version small and add features after the beta." }),
-    project("pSite", "Sample Website", "active", { start: day(14), mult: 1 }),
+    // pApp <-> pSite demonstrates a bidirectional project link (see
+    // DESIGN.md's "linking related projects" section): the app and its
+    // marketing site are related efforts, linked without nesting one's tasks
+    // inside the other.
+    project("pApp", "Sample App", "active", { notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
+    project("pSite", "Sample Website", "active", { start: day(14), mult: 1, linkedProjectIds: ["pApp"] }),
     project("pGame", "Sample Game", "active", { start: day(21), mult: 2, months: 4 }),
     project("pExt", "Sample Browser Extension", "candidate", { note: "A small tool that could ship in a month" }),
     project("pCli", "Sample Command-Line Tool", "candidate", { note: "Would save time on your own projects" })
@@ -712,11 +733,19 @@ function normalize(s) {
         status: (x.status === "active" || x.status === "candidate") ? x.status : "candidate",
         start: isISO(x.start) ? x.start : "", mult: (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? x.mult : 1,
         months: (typeof x.months === "number" && x.months >= 1 && x.months <= 36) ? Math.round(x.months) : "",
-        notes: S(x.notes, 5000), arch: validArch(x.arch)
+        notes: S(x.notes, 5000), arch: validArch(x.arch),
+        // Validated below, once every project's real id is known -- a link
+        // can only point at another project that actually exists in the
+        // final set. Arbitrary depth/cycles are fine (see DESIGN.md); each
+        // side of a link is just an id in this array, no traversal happens here.
+        linkedProjectIds: Array.isArray(x.linkedProjectIds) ? x.linkedProjectIds.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : []
       };
     });
   }
   var projectIds = {}; d.projects.forEach(function (p) { projectIds[p.id] = true; });
+  d.projects.forEach(function (p) {
+    p.linkedProjectIds = p.linkedProjectIds.filter(function (id) { return id !== p.id && projectIds[id]; });
+  });
   if (Array.isArray(s.tasks)) {
     var ts = [];
     s.tasks.forEach(function (t) {
@@ -1559,6 +1588,35 @@ function buildDetail(t) {
   return box;
 }
 
+// Bidirectional link between two independent projects -- NOT a subtask
+// hierarchy (see DESIGN.md: "linking related projects, not nesting them").
+// Rendering is capped at one hop even though the data model allows arbitrary
+// depth/cycles: this section only ever lists p's own direct links.
+function linksSection(root, p) {
+  var links = linkedProjects(p);
+  var ul = el("ul", { "class": "list" });
+  if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No linked projects."));
+  links.forEach(function (lp) {
+    var li = el("li"), row = el("div", { "class": "crow" });
+    var nm = el("button", { type: "button", "class": "textbtn plink" }, lp.name);
+    on(nm, "click", function () { go("proj:" + lp.id); });
+    row.appendChild(nm);
+    var rm = el("button", { type: "button", "class": "small danger" }, "Unlink");
+    on(rm, "click", function () { unlinkProjects(p.id, lp.id); changed(); });
+    row.appendChild(rm); li.appendChild(row); ul.appendChild(li);
+  });
+  root.appendChild(ul);
+  var candidates = liveProjects().filter(function (x) { return x.id !== p.id && p.linkedProjectIds.indexOf(x.id) < 0; });
+  if (candidates.length) {
+    var addRow = el("div", { "class": "inline", style: "margin-top:10px" });
+    var sel = el("select", { id: "proj-link-pick", "class": "plain" });
+    candidates.forEach(function (x) { sel.appendChild(el("option", { value: x.id }, x.name)); });
+    addRow.appendChild(sel);
+    addRow.appendChild(on(el("button", { type: "button", "class": "small" }, "Link project"), "click", function () { linkProjects(p.id, sel.value); changed(); }));
+    root.appendChild(addRow);
+  }
+}
+
 // Launch-critical items and Decisions render as sections on a project's own
 // page, scoped to that project's tasks -- no separate standalone Launch page
 // exists anymore (see DESIGN.md: only Projects are pinnable).
@@ -1726,6 +1784,9 @@ function renderProjectPage(root, id) {
   var ta = el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" }); ta.value = p.notes;
   on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(); });
   root.appendChild(ta);
+
+  root.appendChild(el("h3", null, "Linked projects"));
+  linksSection(root, p);
 
   root.appendChild(el("h3", null, "Launch"));
   launchSection(root, p);

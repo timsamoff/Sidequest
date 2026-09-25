@@ -257,6 +257,31 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("f-project").value === "pSite", "with a task open in Schedule, defaults the filter to that task's project");
 }
 
+/* ---- linked projects: bidirectional, one-hop rendering ---- */
+{
+  const k = kit(await mk());
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  ok([...k.d.querySelectorAll("#view h3")].some(h => h.textContent === "Linked projects"), "project page has a Linked projects section");
+  ok(k.$("view").textContent.includes("Sample Website"), "Sample App already links to Sample Website (sample data)");
+  // bidirectional: the other side shows the link back
+  k.click(k.btn(k.$("view"), "Sample Website"));
+  ok(k.$("viewTitle").textContent === "Sample Website" && k.$("view").textContent.includes("Sample App"), "the link is bidirectional -- Sample Website shows Sample App back");
+  // link Sample Website to Sample Game using the picker, confirm it appears and is bidirectional
+  const sel = k.$("proj-link-pick");
+  sel.value = [...sel.options].find(o => o.textContent === "Sample Game").value;
+  k.fire(sel); k.click(k.btn(k.$("view"), "Link project"));
+  ok(k.$("view").textContent.includes("Sample Game"), "linking Sample Game from Sample Website's own picker shows it in the list");
+  k.click(k.btn(k.$("view"), "Sample Game"));
+  ok(k.$("viewTitle").textContent === "Sample Game" && k.$("view").textContent.includes("Sample Website"), "the new link is bidirectional too -- Sample Game shows Sample Website back");
+  // unlink and confirm it's gone from the current page -- check the picker's
+  // own <select> options too (Sample Website legitimately reappears THERE
+  // once unlinked, since it's available to re-link; that's not the same as
+  // still showing as a linked project).
+  const unlinkBtn = [...k.d.querySelectorAll("#view button")].find(b => b.textContent.trim() === "Unlink");
+  k.click(unlinkBtn);
+  ok(k.$("view").textContent.includes("No linked projects"), "unlinking removes the linked-project row (Sample Website may still appear in the re-link picker, which is correct)");
+}
+
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);
 

@@ -3,7 +3,7 @@ import { DAY, iso, parseISO, TODAY, fmt, fmtY } from "./dates.js";
 import {
   WORDS, wd, wl, pset, blockStartFor, blockEndFor, projKey, taskStart, taskEnd,
   checkpoints, live, counted, liveProjects, activeProjects, candidateProjects,
-  findProject, findAnyProject, chosen, dispProject, dispWhat,
+  findProject, findAnyProject, linkedProjects, linkProjects, unlinkProjects, chosen, dispProject, dispWhat,
   totalUnits, remainingUnits, planned, ordered, backlogTasks,
   isLate, lateTasks, setStatus, syncFromSteps, nextTask,
   validPage, isPinned, pinPage, unpinPage, projectMeta,
@@ -224,6 +224,35 @@ export function buildDetail(t) {
   return box;
 }
 
+// Bidirectional link between two independent projects -- NOT a subtask
+// hierarchy (see DESIGN.md: "linking related projects, not nesting them").
+// Rendering is capped at one hop even though the data model allows arbitrary
+// depth/cycles: this section only ever lists p's own direct links.
+export function linksSection(root, p) {
+  var links = linkedProjects(p);
+  var ul = el("ul", { "class": "list" });
+  if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No linked projects."));
+  links.forEach(function (lp) {
+    var li = el("li"), row = el("div", { "class": "crow" });
+    var nm = el("button", { type: "button", "class": "textbtn plink" }, lp.name);
+    on(nm, "click", function () { go("proj:" + lp.id); });
+    row.appendChild(nm);
+    var rm = el("button", { type: "button", "class": "small danger" }, "Unlink");
+    on(rm, "click", function () { unlinkProjects(p.id, lp.id); changed(); });
+    row.appendChild(rm); li.appendChild(row); ul.appendChild(li);
+  });
+  root.appendChild(ul);
+  var candidates = liveProjects().filter(function (x) { return x.id !== p.id && p.linkedProjectIds.indexOf(x.id) < 0; });
+  if (candidates.length) {
+    var addRow = el("div", { "class": "inline", style: "margin-top:10px" });
+    var sel = el("select", { id: "proj-link-pick", "class": "plain" });
+    candidates.forEach(function (x) { sel.appendChild(el("option", { value: x.id }, x.name)); });
+    addRow.appendChild(sel);
+    addRow.appendChild(on(el("button", { type: "button", "class": "small" }, "Link project"), "click", function () { linkProjects(p.id, sel.value); changed(); }));
+    root.appendChild(addRow);
+  }
+}
+
 // Launch-critical items and Decisions render as sections on a project's own
 // page, scoped to that project's tasks -- no separate standalone Launch page
 // exists anymore (see DESIGN.md: only Projects are pinnable).
@@ -391,6 +420,9 @@ export function renderProjectPage(root, id) {
   var ta = el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" }); ta.value = p.notes;
   on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(); });
   root.appendChild(ta);
+
+  root.appendChild(el("h3", null, "Linked projects"));
+  linksSection(root, p);
 
   root.appendChild(el("h3", null, "Launch"));
   launchSection(root, p);

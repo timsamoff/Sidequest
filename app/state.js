@@ -22,7 +22,7 @@ export function task(id, block, projectId, what, done, steps, extra) {
 // record and id carry through Candidate -> Active -> Archived, never a second
 // record. See DESIGN.md's "making Project a first-class entity" section.
 export function project(id, name, status, extra) {
-  var p = { id: id, name: name, note: "", status: status, start: "", mult: 1, months: "", notes: "", arch: null };
+  var p = { id: id, name: name, note: "", status: status, start: "", mult: 1, months: "", notes: "", arch: null, linkedProjectIds: [] };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -34,8 +34,12 @@ export function sampleData() {
   var yest = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 1)).toISOString().slice(0, 10);
   var lastWeek = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 7)).toISOString().slice(0, 10);
   var projects = [
-    project("pApp", "Sample App", "active", { notes: "A simple habit tracker. Keep the first version small and add features after the beta." }),
-    project("pSite", "Sample Website", "active", { start: day(14), mult: 1 }),
+    // pApp <-> pSite demonstrates a bidirectional project link (see
+    // DESIGN.md's "linking related projects" section): the app and its
+    // marketing site are related efforts, linked without nesting one's tasks
+    // inside the other.
+    project("pApp", "Sample App", "active", { notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
+    project("pSite", "Sample Website", "active", { start: day(14), mult: 1, linkedProjectIds: ["pApp"] }),
     project("pGame", "Sample Game", "active", { start: day(21), mult: 2, months: 4 }),
     project("pExt", "Sample Browser Extension", "candidate", { note: "A small tool that could ship in a month" }),
     project("pCli", "Sample Command-Line Tool", "candidate", { note: "Would save time on your own projects" })
@@ -117,11 +121,19 @@ export function normalize(s) {
         status: (x.status === "active" || x.status === "candidate") ? x.status : "candidate",
         start: isISO(x.start) ? x.start : "", mult: (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? x.mult : 1,
         months: (typeof x.months === "number" && x.months >= 1 && x.months <= 36) ? Math.round(x.months) : "",
-        notes: S(x.notes, 5000), arch: validArch(x.arch)
+        notes: S(x.notes, 5000), arch: validArch(x.arch),
+        // Validated below, once every project's real id is known -- a link
+        // can only point at another project that actually exists in the
+        // final set. Arbitrary depth/cycles are fine (see DESIGN.md); each
+        // side of a link is just an id in this array, no traversal happens here.
+        linkedProjectIds: Array.isArray(x.linkedProjectIds) ? x.linkedProjectIds.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : []
       };
     });
   }
   var projectIds = {}; d.projects.forEach(function (p) { projectIds[p.id] = true; });
+  d.projects.forEach(function (p) {
+    p.linkedProjectIds = p.linkedProjectIds.filter(function (id) { return id !== p.id && projectIds[id]; });
+  });
   if (Array.isArray(s.tasks)) {
     var ts = [];
     s.tasks.forEach(function (t) {

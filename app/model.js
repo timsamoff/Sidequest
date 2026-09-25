@@ -19,6 +19,23 @@ export function activeProjects() { return liveProjects().filter(function (p) { r
 export function candidateProjects() { return liveProjects().filter(function (p) { return p.status === "candidate"; }); }
 export function findProject(id) { var p = liveProjects(); for (var i = 0; i < p.length; i++) if (p[i].id === id) return p[i]; return null; }
 export function findAnyProject(id) { for (var i = 0; i < state.projects.length; i++) if (state.projects[i].id === id) return state.projects[i]; return null; }
+// Direct links only, one hop -- a linked project may itself have further
+// links, but this never walks past the first one (see DESIGN.md: this is
+// what makes an arbitrary-depth/cyclic link graph safe to render).
+export function linkedProjects(p) { return (p.linkedProjectIds || []).map(findProject).filter(Boolean); }
+// A link is bidirectional -- one fact shared by both records, so linking
+// writes the id to both sides' arrays, and unlinking removes it from both.
+export function linkProjects(aId, bId) {
+  var a = findAnyProject(aId), b = findAnyProject(bId);
+  if (!a || !b || a === b) return;
+  if (a.linkedProjectIds.indexOf(bId) < 0) a.linkedProjectIds.push(bId);
+  if (b.linkedProjectIds.indexOf(aId) < 0) b.linkedProjectIds.push(aId);
+}
+export function unlinkProjects(aId, bId) {
+  var a = findAnyProject(aId), b = findAnyProject(bId);
+  if (a) a.linkedProjectIds = a.linkedProjectIds.filter(function (id) { return id !== bId; });
+  if (b) b.linkedProjectIds = b.linkedProjectIds.filter(function (id) { return id !== aId; });
+}
 export function pset(projectId) { var p = findProject(projectId); return { start: (p && p.start) || state.start, mult: (p && p.mult) || state.mult }; }
 export function offsetFor(projectId, n) { return Math.floor(n * state.days * pset(projectId).mult + 1e-9); }
 export function blockStartFor(projectId, b) { return addDays(parseISO(pset(projectId).start), offsetFor(projectId, b - 1)); }
