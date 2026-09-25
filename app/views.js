@@ -2,10 +2,10 @@ import { state, ui, save, changed, autoArchive, STATUSES, APP_NAME, APP_VERSION,
 import { DAY, iso, parseISO, TODAY, fmt, fmtY } from "./dates.js";
 import {
   WORDS, wd, wl, pset, blockStartFor, blockEndFor, projKey, taskStart, taskEnd,
-  checkpoints, live, counted, liveProjects, activeProjects, candidateProjects,
+  checkpoints, live, counted, liveProjects, activeProjects, candidateProjects, completeProjects,
   findProject, findAnyProject, linkedProjects, linkProjects, unlinkProjects, chosen, dispProject, dispWhat,
   totalUnits, remainingUnits, planned, ordered, backlogTasks,
-  isLate, lateTasks, setStatus, syncFromSteps, nextTask,
+  isLate, lateTasks, setStatus, syncFromSteps, nextTask, projectTasksAllDone,
   validPage, isPinned, pinPage, unpinPage, projectMeta,
   findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask
 } from "./model.js";
@@ -77,6 +77,48 @@ export function currentCheckpointIndex() {
   return idx;
 }
 export function recordCurrentWeek() { state.actual[currentCheckpointIndex()] = remainingUnits(); }
+// Runs on every changed() call (same choke point as recordCurrentWeek), so
+// any task-status edit anywhere in the app is caught without patching each
+// call site individually. Only the auto-trigger lives here -- the manual
+// "Mark complete" button (renderProjectPage) sets status directly and calls
+// completionDialog itself, since it isn't gated on task state at all (see
+// DESIGN.md: both paths are equal, neither is secondary).
+export function sweepProjectCompletion() {
+  activeProjects().forEach(function (p) {
+    if (projectTasksAllDone(p)) { p.status = "complete"; completionDialog(p); }
+  });
+}
+// A project is Launch Critical to whoever links to it (a property of the
+// project itself, not of one specific link -- confirmed 2026-09-24). "Not yet
+// done" reads from the linked project's own status: complete/archived count
+// as done, anything else (active/candidate) does not.
+export function incompleteLaunchCriticalLinks(p) {
+  return linkedProjects(p).filter(function (lp) { return lp.launchCritical && lp.status !== "complete" && lp.status !== "archived" && !lp.arch; });
+}
+// Shared by the manual "Mark complete" button and the auto-trigger sweep, and
+// itself shares the same task-archive cascade as the plain Archive button.
+export function archiveProject(p) {
+  removeToArchive(p, "Project", function () {
+    state.tasks.forEach(function (t) { if (t.projectId === p.id && !t.arch) t.arch = { at: iso(TODAY), why: "removed" }; });
+  });
+}
+// Fires the moment a project becomes Complete, however it got there (manual
+// button or all-tasks-done auto-trigger) -- offers archiving now or leaving
+// it in Projects. Soft-gate only: an incomplete Launch-critical link shows a
+// warning line but never removes either choice (confirmed 2026-09-24).
+export function completionDialog(p) {
+  var warn = incompleteLaunchCriticalLinks(p);
+  openModal("Project complete", function (body) {
+    body.appendChild(el("p", { "class": "first" }, "“" + p.name + "” is marked complete. Archive it now, or leave it in Projects."));
+    if (warn.length) body.appendChild(el("p", { "class": "hint" }, "Launch-critical linked " + (warn.length === 1 ? "project isn’t" : "projects aren’t") + " finished yet: " + warn.map(function (lp) { return lp.name; }).join(", ") + "."));
+    var acts = el("div", { "class": "actions" });
+    var leave = el("button", { type: "button" }, "Leave in Projects");
+    var arch = el("button", { type: "button", "class": "dangerfill" }, "Archive now");
+    on(leave, "click", closeModal);
+    on(arch, "click", function () { closeModal(); archiveProject(p); });
+    acts.appendChild(leave); acts.appendChild(arch); body.appendChild(acts);
+  });
+}
 export function burnParts(o) {
   o = o || {};
   var h = el(o.level || "h2", null, "Burndown");
@@ -229,6 +271,7 @@ export function buildDetail(t) {
 // Rendering is capped at one hop even though the data model allows arbitrary
 // depth/cycles: this section only ever lists p's own direct links.
 export function linksSection(root, p) {
+  var readOnly = !!p.arch;
   var links = linkedProjects(p);
   var ul = el("ul", { "class": "list" });
   if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No linked projects."));
@@ -237,11 +280,23 @@ export function linksSection(root, p) {
     var nm = el("button", { type: "button", "class": "textbtn plink" }, lp.name);
     on(nm, "click", function () { go("proj:" + lp.id); });
     row.appendChild(nm);
-    var rm = el("button", { type: "button", "class": "small danger" }, "Unlink");
-    on(rm, "click", function () { unlinkProjects(p.id, lp.id); changed(); });
-    row.appendChild(rm); li.appendChild(row); ul.appendChild(li);
+    if (lp.launchCritical) row.appendChild(el("span", { "class": "chip" }, "Launch critical"));
+    if (!readOnly) {
+      var acts = el("div", { "class": "li-actions" });
+      // Launch Critical is a property of the linked project itself, not of
+      // this one relationship -- toggling it here flips lp's own record,
+      // visible the same way from either side of the (bidirectional) link.
+      var lc = el("button", { type: "button", "class": "small" + (lp.launchCritical ? " on" : ""), "aria-pressed": lp.launchCritical ? "true" : "false" }, lp.launchCritical ? "Unset launch critical" : "Mark launch critical");
+      on(lc, "click", function () { lp.launchCritical = !lp.launchCritical; changed(); });
+      acts.appendChild(lc);
+      var rm = el("button", { type: "button", "class": "small danger" }, "Unlink");
+      on(rm, "click", function () { unlinkProjects(p.id, lp.id); changed(); });
+      acts.appendChild(rm); row.appendChild(acts);
+    }
+    li.appendChild(row); ul.appendChild(li);
   });
   root.appendChild(ul);
+  if (readOnly) return;
   var candidates = liveProjects().filter(function (x) { return x.id !== p.id && p.linkedProjectIds.indexOf(x.id) < 0; });
   if (candidates.length) {
     var addRow = el("div", { "class": "inline", style: "margin-top:10px" });
@@ -257,19 +312,25 @@ export function linksSection(root, p) {
 // page, scoped to that project's tasks -- no separate standalone Launch page
 // exists anymore (see DESIGN.md: only Projects are pinnable).
 export function launchSection(root, p) {
+  var readOnly = !!p.arch;
   var g = pgrid();
   var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h3", { id: "h-checks" }, "Before you launch"));
-  ha.appendChild(on(el("button", { type: "button", "class": "small" }, "Add item"), "click", function () { stepDialog(true, p.id); }));
+  if (!readOnly) ha.appendChild(on(el("button", { type: "button", "class": "small" }, "Add item"), "click", function () { stepDialog(true, p.id); }));
   g.put(ha, 1, 1);
   g.put(el("p", { "class": "hint" }, "These are steps from this project's tasks. Tick one here or in Tasks and it stays in sync."), 1, 2);
   var prog = el("p", { "class": "progress", role: "status", "aria-live": "polite" });
   var items = launchItems(p.id), rows = {};
-  function progress() { var n = items.filter(function (x) { return x.s.done; }).length; prog.textContent = items.length ? n + " of " + items.length + " done" : ""; }
+  var lcLinks = linkedProjects(p).filter(function (lp) { return lp.launchCritical; });
+  function progress() {
+    var n = items.filter(function (x) { return x.s.done; }).length + lcLinks.filter(function (lp) { return lp.status === "complete" || lp.status === "archived"; }).length;
+    var total = items.length + lcLinks.length;
+    prog.textContent = total ? n + " of " + total + " done" : "";
+  }
   var ul = el("ul", { "class": "list check", "aria-labelledby": "h-checks" });
-  if (!items.length) ul.appendChild(el("li", { "class": "hint" }, "No steps are marked for the launch checklist. Use Launch on a step in Tasks, or add an item."));
+  if (!items.length && !lcLinks.length) ul.appendChild(el("li", { "class": "hint" }, "No steps are marked for the launch checklist. Use Launch on a step in Tasks, or add an item."));
   items.forEach(function (x) {
     var li = el("li", { "class": x.s.done ? "done" : "" });
-    var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = x.s.done;
+    var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = x.s.done; box.disabled = readOnly;
     on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); autoArchive(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); });
     label.appendChild(box); label.appendChild(el("span", null, x.s.text)); li.appendChild(label);
     var meta = el("div", { "class": "cnote" });
@@ -280,11 +341,23 @@ export function launchSection(root, p) {
     li.appendChild(meta);
     rows[x.s.id] = { li: li, box: box }; ul.appendChild(li);
   });
+  // Launch-critical linked projects: a read-only line, done-state derived
+  // from the linked project's own status -- never a manual checkbox (see
+  // DESIGN.md: "auto-derived, never a manual checkbox").
+  lcLinks.forEach(function (lp) {
+    var done = lp.status === "complete" || lp.status === "archived";
+    var li = el("li", { "class": done ? "done" : "" });
+    var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = done; box.disabled = true;
+    label.appendChild(box); label.appendChild(el("span", null, lp.name + " (linked project)")); li.appendChild(label);
+    var meta = el("div", { "class": "cnote" });
+    meta.appendChild(on(el("button", { type: "button", "class": "textbtn" }, "Launch critical · " + lp.status), "click", function () { go("proj:" + lp.id); }));
+    li.appendChild(meta); ul.appendChild(li);
+  });
   progress();
   var lb = el("div", { "class": "listbox" }); lb.appendChild(prog); lb.appendChild(ul); g.put(lb, 1, 3);
 
   var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", { id: "h-dec" }, "Decisions"));
-  hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add decision"), "click", function () { decisionDialog(p.id); }));
+  if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add decision"), "click", function () { decisionDialog(p.id); }));
   g.put(hd, 2, 1);
   g.put(el("p", { "class": "hint" }, "Write down the answer once you settle it. Answering a decision ticks its linked step, and clearing the answer unticks it."), 2, 2);
   var dl = el("ul", { "class": "list", "aria-labelledby": "h-dec" });
@@ -294,6 +367,10 @@ export function launchSection(root, p) {
     var li = el("li", { "class": "decision" });
     var q = el("div"); q.appendChild(el("span", { "class": "dq" }, d.q));
     var stt = el("span", { "class": "dstate" + (d.a ? " ok" : "") }, d.a ? "Decided" : "Open"); q.appendChild(stt); li.appendChild(q);
+    if (readOnly) {
+      li.appendChild(el("p", { "class": "hint" }, d.a || "No answer yet."));
+      dl.appendChild(li); return;
+    }
     var inp = el("input", { type: "text", placeholder: "Your answer", "aria-label": "Answer: " + d.q, autocomplete: "off" }); inp.value = d.a;
     on(inp, "input", function () {
       d.a = inp.value.slice(0, 1000); stt.textContent = d.a ? "Decided" : "Open"; stt.className = "dstate" + (d.a ? " ok" : "");
@@ -350,9 +427,10 @@ export function pagesSection() {
 export function renderProjectPage(root, id) {
   var p = findProject(id);
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
-  var key = "proj:" + p.id;
+  var key = "proj:" + p.id, readOnly = !!p.arch;
   root.appendChild(pinBar(key));
   root.appendChild(el("p", { "class": "hint first" }, projectMeta(p)));
+  if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
   if (p.note) root.appendChild(el("p", { "class": "hint" }, p.note));
 
   if (p.status === "candidate") {
@@ -382,7 +460,7 @@ export function renderProjectPage(root, id) {
   }
 
   var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", null, "Tasks"));
-  hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add task"), "click", function () { taskDialog(p.id); }));
+  if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add task"), "click", function () { taskDialog(p.id); }));
   root.appendChild(hd);
   var ts = ordered().filter(function (t) { return !t.isNext && t.projectId === p.id; }).concat(backlogTasks().filter(function (t) { return t.projectId === p.id; }));
   if (!ts.length) root.appendChild(el("p", { "class": "hint" }, "No tasks yet."));
@@ -402,24 +480,32 @@ export function renderProjectPage(root, id) {
   }
   root.appendChild(el("h3", null, "Schedule"));
   var eff = pset(p.id);
-  root.appendChild(el("p", { "class": "hint" }, "Set this project's own start date and pace."));
-  var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
-  function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
-  var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
-  var pm = el("input", { type: "number", id: "proj-mult", min: "0.25", max: "5", step: "0.25" }); pm.value = eff.mult;
-  function applyOwn() {
-    var sv = ps.value, mv = parseFloat(pm.value);
-    if (!isISO(sv)) { ps.value = eff.start; smsg.textContent = "Enter a valid start date."; return; }
-    if (isNaN(mv) || mv < 0.25 || mv > 5) { pm.value = eff.mult; smsg.textContent = "The time multiplier must be from 0.25 to 5."; return; }
-    p.start = sv; p.mult = mv; changed(); notify(p.name + " schedule saved.");
+  if (readOnly) {
+    root.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + ", time multiplier " + eff.mult + "."));
+  } else {
+    root.appendChild(el("p", { "class": "hint" }, "Set this project's own start date and pace."));
+    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
+    function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
+    var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
+    var pm = el("input", { type: "number", id: "proj-mult", min: "0.25", max: "5", step: "0.25" }); pm.value = eff.mult;
+    function applyOwn() {
+      var sv = ps.value, mv = parseFloat(pm.value);
+      if (!isISO(sv)) { ps.value = eff.start; smsg.textContent = "Enter a valid start date."; return; }
+      if (isNaN(mv) || mv < 0.25 || mv > 5) { pm.value = eff.mult; smsg.textContent = "The time multiplier must be from 0.25 to 5."; return; }
+      p.start = sv; p.mult = mv; changed(); notify(p.name + " schedule saved.");
+    }
+    on(ps, "change", applyOwn); on(pm, "change", applyOwn);
+    sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm);
+    root.appendChild(sg); root.appendChild(smsg);
   }
-  on(ps, "change", applyOwn); on(pm, "change", applyOwn);
-  sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm);
-  root.appendChild(sg); root.appendChild(smsg);
   root.appendChild(el("h3", null, "Notes"));
-  var ta = el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" }); ta.value = p.notes;
-  on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(); });
-  root.appendChild(ta);
+  if (readOnly) {
+    root.appendChild(el("p", { "class": "hint" }, p.notes || "No notes."));
+  } else {
+    var ta = el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" }); ta.value = p.notes;
+    on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(); });
+    root.appendChild(ta);
+  }
 
   root.appendChild(el("h3", null, "Linked projects"));
   linksSection(root, p);
@@ -428,15 +514,23 @@ export function renderProjectPage(root, id) {
   launchSection(root, p);
 
   var ar = el("div", { "class": "actions", style: "margin-top:14px" });
-  ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Archive"), "click", function () {
-    // Archiving a project cascades to its still-open tasks -- otherwise they'd
-    // dangle under a project no longer in the live list (dispProject only
-    // resolves live projects), showing a blank project name in Schedule/Today.
-    // A project archived-with-history should be a clean, complete snapshot.
-    removeToArchive(p, "Project", function () {
-      state.tasks.forEach(function (t) { if (t.projectId === p.id && !t.arch) t.arch = { at: iso(TODAY), why: "removed" }; });
-    });
-  }));
+  if (readOnly) {
+    ar.appendChild(on(el("button", { type: "button", "class": "small primary" }, "Restore"), "click", function () { restoreEntry({ kind: "project", list: "projects", item: p }); }));
+  } else {
+    if (p.status === "active") {
+      ar.appendChild(on(el("button", { type: "button", "class": "small" }, "Mark complete"), "click", function () {
+        // Manual path: available any time the project is Active, regardless of
+        // task status -- equal in standing to the all-tasks-done auto-trigger,
+        // not a fallback for it (confirmed 2026-09-24).
+        p.status = "complete"; changed(); completionDialog(p);
+      }));
+    }
+    ar.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Archive"), "click", function () {
+      var warn = incompleteLaunchCriticalLinks(p);
+      if (warn.length) notify("Archiving even though " + (warn.length === 1 ? "a launch-critical linked project isn’t" : "launch-critical linked projects aren’t") + " finished: " + warn.map(function (lp) { return lp.name; }).join(", ") + ".");
+      archiveProject(p);
+    }));
+  }
   root.appendChild(ar);
 }
 
@@ -644,6 +738,10 @@ export function renderArchive(root) {
     info.appendChild(el("p", { "class": "hint", style: "margin-top:4px" }, (e.item.arch.why === "done" ? "Completed " : "Removed ") + fmtY(parseISO(e.item.arch.at))));
     row.appendChild(info);
     var acts = el("div", { "class": "li-actions" });
+    // An archived project's own page is a real, reachable, read-only view
+    // (confirmed 2026-09-24) -- Ideas have no page of their own, so this link
+    // is project-only.
+    if (e.kind === "project") acts.appendChild(on(el("button", { type: "button", "class": "small" }, "View"), "click", function () { go("proj:" + e.item.id); }));
     acts.appendChild(on(el("button", { type: "button", "class": "small primary" }, "Restore"), "click", function () { restoreEntry(e); }));
     acts.appendChild(on(el("button", { type: "button", "class": "small danger" }, "Delete forever"), "click", function () { deleteForever(e); }));
     row.appendChild(acts); li.appendChild(row); ul.appendChild(li);

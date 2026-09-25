@@ -1,7 +1,7 @@
 import { DAY, iso, parseISO, TODAY } from "./dates.js";
 import { findAnyTask } from "./model.js";
 import { notify } from "./dom.js";
-import { recordCurrentWeek } from "./views.js";
+import { recordCurrentWeek, sweepProjectCompletion } from "./views.js";
 import { renderAll } from "./app.js";
 
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
@@ -22,7 +22,7 @@ export function task(id, block, projectId, what, done, steps, extra) {
 // record and id carry through Candidate -> Active -> Archived, never a second
 // record. See DESIGN.md's "making Project a first-class entity" section.
 export function project(id, name, status, extra) {
-  var p = { id: id, name: name, note: "", status: status, start: "", mult: 1, months: "", notes: "", arch: null, linkedProjectIds: [] };
+  var p = { id: id, name: name, note: "", status: status, start: "", mult: 1, months: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -39,7 +39,9 @@ export function sampleData() {
     // marketing site are related efforts, linked without nesting one's tasks
     // inside the other.
     project("pApp", "Sample App", "active", { notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
-    project("pSite", "Sample Website", "active", { start: day(14), mult: 1, linkedProjectIds: ["pApp"] }),
+    // launchCritical: the app's launch checklist shows the site as a line item,
+    // done-state derived from the site's own status (see DESIGN.md).
+    project("pSite", "Sample Website", "active", { start: day(14), mult: 1, linkedProjectIds: ["pApp"], launchCritical: true }),
     project("pGame", "Sample Game", "active", { start: day(21), mult: 2, months: 4 }),
     project("pExt", "Sample Browser Extension", "candidate", { note: "A small tool that could ship in a month" }),
     project("pCli", "Sample Command-Line Tool", "candidate", { note: "Would save time on your own projects" })
@@ -118,10 +120,10 @@ export function normalize(s) {
     d.projects = s.projects.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) {
       return {
         id: S(x.id, 40), name: S(x.name, 120), note: S(x.note, 300),
-        status: (x.status === "active" || x.status === "candidate") ? x.status : "candidate",
+        status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
         start: isISO(x.start) ? x.start : "", mult: (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? x.mult : 1,
         months: (typeof x.months === "number" && x.months >= 1 && x.months <= 36) ? Math.round(x.months) : "",
-        notes: S(x.notes, 5000), arch: validArch(x.arch),
+        notes: S(x.notes, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true,
         // Validated below, once every project's real id is known -- a link
         // can only point at another project that actually exists in the
         // final set. Arbitrary depth/cycles are fine (see DESIGN.md); each
@@ -292,6 +294,6 @@ export function autoArchive() {
   });
 }
 export function changed() {
-  autoArchive(); recordCurrentWeek(); save(); renderAll();
+  autoArchive(); sweepProjectCompletion(); recordCurrentWeek(); save(); renderAll();
 }
 

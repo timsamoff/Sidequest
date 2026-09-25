@@ -137,7 +137,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk()); k.tab("today"); k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   ok(k.$("viewTitle").textContent === "Sample App" && k.$("view").textContent.includes("Before you launch") && k.$("view").textContent.includes("Launch"), "project page has a Launch section, scoped to this project");
   const lb = k.d.querySelector("#view .listbox");
-  ok(/^\d+ of \d+ done$/.test(lb.querySelector(".progress").textContent) && lb.querySelectorAll("ul.list.check li").length === 5, "Sample App's checklist is built from its own 5 launch-flagged steps (" + lb.querySelectorAll("ul.list.check li").length + ")");
+  ok(/^\d+ of \d+ done$/.test(lb.querySelector(".progress").textContent) && lb.querySelectorAll("ul.list.check li").length === 6, "Sample App's checklist is its own 5 launch-flagged steps plus 1 launch-critical linked project (" + lb.querySelectorAll("ul.list.check li").length + ")");
+  ok(lb.textContent.includes("Sample Website (linked project)") && lb.textContent.includes("Launch critical"), "the launch-critical linked project appears as a read-only checklist line");
   const decs = [...k.d.querySelectorAll("#view .decision")];
   ok(decs.length === 1 && decs[0].querySelector("input").value.startsWith("Start with one store"), "Sample App's own decision shows here, not the Game's");
   ok(k.d.querySelector("#view .list.check li.done") && k.d.querySelector("#view .list.check").textContent.includes("Choose the first app store"), "answered decision's step is already ticked");
@@ -280,6 +281,82 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const unlinkBtn = [...k.d.querySelectorAll("#view button")].find(b => b.textContent.trim() === "Unlink");
   k.click(unlinkBtn);
   ok(k.$("view").textContent.includes("No linked projects"), "unlinking removes the linked-project row (Sample Website may still appear in the re-link picker, which is correct)");
+}
+
+/* ---- project Complete status, Launch-critical links, archived viewing ---- */
+{
+  const k = kit(await mk());
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  // manual Complete, independent of task status -- Sample App has open tasks
+  ok(!!k.btn(k.$("view"), "Mark complete"), "Active project offers Mark complete regardless of task status");
+  k.click(k.btn(k.$("view"), "Mark complete"));
+  ok(k.$("modalTitle").textContent === "Project complete" && k.$("modalBody").textContent.includes("leave it in Projects"), "marking complete with open tasks left triggers the completion dialog, no block");
+  k.click(k.btn(k.$("modalBody"), "Leave in Projects"));
+  ok(k.$("overlay").hidden, "Leave in Projects closes the dialog");
+  ok(k.$("view").textContent.includes("Restore") === false && !k.btn(k.$("view"), "Mark complete") && !k.btn(k.$("view"), "Archive") === false, "project stays Complete, not archived, after Leave in Projects");
+  ok(k.saved().projects.find(p => p.id === "pApp").status === "complete", "status persisted as complete");
+  // sticky: reopening a task does not revert Complete
+  k.tab("schedule");
+  k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Sketch the main screens")));
+  const statusSel = k.d.querySelector(".detailpane .status"); statusSel.value = "In progress"; k.fire(statusSel);
+  ok(k.saved().projects.find(p => p.id === "pApp").status === "complete", "reopening a task does not auto-revert a Complete project");
+}
+{
+  // auto-trigger: complete every counted task on a project with no open tasks left
+  const k = kit(await mk());
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  k.tab("schedule");
+  // Open each of Sample App's tasks in turn (including its one Backlog item)
+  // and mark it Completed via its status select -- every counted task has to
+  // reach Completed, not just the scheduled ones, for the all-done guard to pass.
+  const names = ["Sketch the main screens", "Build the sign-in flow", "Build the home screen", "Run a beta with five friends", "Submit to the app store", "Add a dark mode"];
+  for (const nm of names) {
+    const row = [...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes(nm));
+    if (!row) continue;
+    k.click(row);
+    const sel = k.d.querySelector(".detailpane .status");
+    if (sel.value !== "Completed") { sel.value = "Completed"; k.fire(sel); }
+  }
+  ok(k.$("modalTitle").textContent === "Project complete", "all-tasks-Completed auto-triggers the completion dialog");
+  k.click(k.btn(k.$("modalBody"), "Archive now"));
+  ok(k.saved().projects.find(p => p.id === "pApp").arch, "Archive now from the dialog archives the project");
+}
+{
+  // empty-task-set guard: a candidate with zero tasks must never auto-complete
+  const k = kit(await mk());
+  k.tab("projects");
+  k.click(k.btn(k.$("view"), "Sample Browser Extension"));
+  k.click(k.btn(k.$("view"), "Choose as next project"));
+  ok(k.saved().projects.find(p => p.id === "pExt").status === "active" && k.$("overlay").hidden, "promoting a task-less project to Active does not trigger completion");
+}
+{
+  // Launch-critical: badge, checklist derivation, soft-gate warning (not a block)
+  const k = kit(await mk());
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  ok([...k.d.querySelectorAll("#view .list li")].some(li => li.textContent.includes("Sample Website") && li.textContent.includes("Launch critical")), "Linked Projects shows a Launch critical badge for Sample Website");
+  ok(!!k.btn(k.$("view"), "Unset launch critical"), "the toggle button reflects Sample Website's launch-critical state from Sample App's own page");
+  // archiving Sample App warns (soft gate) since Sample Website (launch-critical) is not complete/archived, but does not block
+  k.click(k.btn(k.$("view"), "Archive"));
+  ok(k.saved().projects.find(p => p.id === "pApp").arch, "archiving proceeds even with an incomplete launch-critical link (soft gate only, never a hard block)");
+}
+{
+  // archived project pages are genuinely viewable, read-only, until restored
+  const k = kit(await mk());
+  k.tab("projects");
+  const gameRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Game"));
+  k.click(k.btn(gameRow, "Open"));
+  ok(k.$("viewTitle").textContent === "Sample Game", "navigated to Sample Game via Pages and projects");
+  k.click(k.btn(k.$("view"), "Archive"));
+  ok(k.$("viewTitle").textContent !== "Sample Game" || k.$("view").textContent.includes("Archived"), "archiving navigates away or shows an archived notice");
+  k.tab("archive");
+  const gameArchRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Game"));
+  k.click(k.btn(gameArchRow, "View"));
+  ok(k.$("viewTitle").textContent === "Sample Game", "an archived project's own page is now reachable (previously invisible)");
+  ok(k.$("view").textContent.includes("Archived. Restore it to make changes."), "archived project page states it's read-only");
+  ok(!k.btn(k.$("view"), "Add task") && !k.d.querySelector("#proj-start") && !k.d.querySelector("#view textarea"), "no mutating controls (Add task, schedule inputs, notes textarea) on an archived project page");
+  ok(!!k.btn(k.$("view"), "Restore"), "archived project page offers Restore instead of Archive/Mark complete");
+  k.click(k.btn(k.$("view"), "Restore"));
+  ok(!k.saved().projects.find(p => p.id === "pGame").arch, "Restore un-archives the project");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

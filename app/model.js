@@ -17,8 +17,23 @@ export function live(a) { return a.filter(function (x) { return !x.arch; }); }
 export function liveProjects() { return live(state.projects); }
 export function activeProjects() { return liveProjects().filter(function (p) { return p.status === "active"; }); }
 export function candidateProjects() { return liveProjects().filter(function (p) { return p.status === "candidate"; }); }
-export function findProject(id) { var p = liveProjects(); for (var i = 0; i < p.length; i++) if (p[i].id === id) return p[i]; return null; }
-export function findAnyProject(id) { for (var i = 0; i < state.projects.length; i++) if (state.projects[i].id === id) return state.projects[i]; return null; }
+export function completeProjects() { return liveProjects().filter(function (p) { return p.status === "complete"; }); }
+// Searches every project, archived or not -- an archived project's own page
+// must stay reachable (read-only) until restored (see DESIGN.md's "New idea
+// raised 2026-09-24"). Safe to widen past liveProjects() here because every
+// caller either wants an archived match now, or already filters to live
+// projects a level up (liveProjects()/activeProjects()/candidateProjects()/
+// completeProjects()/chosen() all call live() first, so this never leaks an
+// archived project into one of those lists).
+export function findProject(id) { for (var i = 0; i < state.projects.length; i++) if (state.projects[i].id === id) return state.projects[i]; return null; }
+export function findAnyProject(id) { return findProject(id); }
+// True only when the project has at least one counted task and every one of
+// them is Completed -- the empty-task-set case must never read as "done"
+// (confirmed 2026-09-24).
+export function projectTasksAllDone(p) {
+  var ts = counted().filter(function (t) { return !t.isNext && t.projectId === p.id; });
+  return ts.length > 0 && ts.every(function (t) { return t.status === "Completed"; });
+}
 // Direct links only, one hop -- a linked project may itself have further
 // links, but this never walks past the first one (see DESIGN.md: this is
 // what makes an arbitrary-depth/cyclic link graph safe to render).
