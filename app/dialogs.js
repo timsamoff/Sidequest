@@ -13,6 +13,7 @@ export var modalReturn = null;
 export function openModal(title, build) {
   modalReturn = document.activeElement;
   $("modalTitle").textContent = title;
+  $("modalClose").title = "Close: " + title;
   var body = $("modalBody"); body.innerHTML = "";
   build(body);
   $("overlay").hidden = false;

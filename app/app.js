@@ -64,7 +64,7 @@ export function renderChrome() {
 export function renderView() {
   var root = $("view"); root.innerHTML = "";
   if (ui.view.indexOf("proj:") === 0 && !validPage(ui.view)) ui.view = "projects";
-  root.className = "content" + (ui.view === "timeline" ? " wide" : "");
+  root.className = "content";
   if (ui.view === "today") renderToday(root);
   else if (ui.view === "schedule") renderSchedule(root);
   else if (ui.view === "projects") renderProjects(root);

@@ -116,7 +116,6 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .nav { display: flex; flex-direction: column; gap: var(--space-2); overflow-y: auto; }
 .navlabel { padding: var(--space-14) var(--space-12) var(--space-4); font-size: .8rem; color: var(--muted); }
 .tab > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.content.wide { max-width: none; }
 .pinbar { display: flex; justify-content: flex-end; margin-bottom: var(--space-10); }
 .helpitem { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); margin-top: var(--space-10); }
 .helpitem > summary { padding: var(--space-12) var(--space-14); font-weight: 600; cursor: pointer; color: var(--ink); font-size: 1rem; }
@@ -171,7 +170,11 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .menu { max-height: 75vh; overflow-y: auto; }
 .menulabel { padding: var(--space-10) var(--space-12) var(--space-2); font-size: .8rem; color: var(--muted); }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: var(--space-4) 0; width: 100%; }
-.content { padding: var(--space-22) var(--space-24) 72px; max-width: 1040px; }
+/* Confirmed 2026-09-26: content spans the full browser width on every page
+   (padding only, no max-width cap) -- previously capped at 1040px with a
+   .content.wide escape hatch used only by Timeline; the cap is removed
+   everywhere now, not widened selectively per page. */
+.content { padding: var(--space-22) var(--space-24) 72px; }
 
 .twocol { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--space-22); align-items: start; }
 .cols2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-22); align-items: start; }
@@ -263,6 +266,14 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
 .list.check li.done span { color: var(--muted); text-decoration: line-through; }
 .progress { color: var(--muted); margin-top: var(--space-10); }
 .crow { display: flex; flex-wrap: wrap; gap: var(--space-6) var(--space-14); align-items: flex-start; }
+/* Single-line rows (a project name/link plus badges and buttons, all the
+   same height) look wrong top-aligned -- a short chip like "Launch critical"
+   sits pinned to the top of a taller sibling button instead of centering
+   against it. Rows with a genuine multi-line text block (name + note/meta on
+   a second line) keep .crow's default flex-start, since centering THOSE
+   would misalign the buttons against the block's midpoint instead of its
+   first line. */
+.crow.oneline { align-items: center; }
 .crow label { display: flex; gap: var(--space-10); align-items: flex-start; font-weight: 600; cursor: pointer; flex: 1 1 200px; }
 .cnote { color: var(--muted); font-size: .92rem; margin: var(--space-2) 0 0 var(--space-30); }
 .cfields { display: flex; flex-wrap: wrap; gap: var(--space-12); margin: var(--space-6) 0 0 var(--space-30); }
@@ -341,7 +352,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .splashsvg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .splashart { transition: filter .6s ease; }
 .splash.artBlurred .splashart { filter: blur(5px); }
-.splashtext { position: relative; z-index: 1; margin: 0; padding: var(--space-12) var(--space-20); max-width: 82%; text-align: center; color: var(--surface); background: var(--planned); border-radius: 14px; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; line-height: 1.4; opacity: 0; transition: opacity .5s ease; }
+.splashtext { position: relative; z-index: 1; margin: 0; padding: var(--space-12) var(--space-20); max-width: 82%; text-align: center; color: var(--surface); background: var(--planned); border: 2px solid var(--surface); border-radius: 14px; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; line-height: 1.4; opacity: 0; transition: opacity .5s ease; }
 .splash.textIn .splashtext { opacity: 1; }
 /* stroke-dasharray/dashoffset's initial (undrawn) values come from the
    element's own SVG attributes, set synchronously at creation time in
@@ -1295,6 +1306,7 @@ var modalReturn = null;
 function openModal(title, build) {
   modalReturn = document.activeElement;
   $("modalTitle").textContent = title;
+  $("modalClose").title = "Close: " + title;
   var body = $("modalBody"); body.innerHTML = "";
   build(body);
   $("overlay").hidden = false;
@@ -1770,7 +1782,7 @@ function linksSection(root, p) {
   var ul = el("ul", { "class": "list" });
   if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No linked projects."));
   links.forEach(function (lp) {
-    var li = el("li"), row = el("div", { "class": "crow" });
+    var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nm = el("button", { type: "button", "class": "textbtn plink" }, lp.name);
     on(nm, "click", function () { go("proj:" + lp.id); });
     row.appendChild(nm);
@@ -2082,16 +2094,16 @@ function renderProjects(root) {
   var cs = candidateProjects();
   if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a project."));
   cs.forEach(function (cd) {
-    var li = el("li"), row = el("div", { "class": "crow" });
+    var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nm = el("button", { type: "button", "class": "textbtn plink" }, cd.name);
     on(nm, "click", function () { go("proj:" + cd.id); });
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
-    acts.appendChild(on(el("button", { type: "button", "class": "small" }, "Park it"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Park candidate: " + short(cd.name, 40) }, "Park it"), "click", function () {
       state.projects = state.projects.filter(function (x) { return x.id !== cd.id; });
       state.parked.push({ id: uid(), text: cd.name, note: cd.note }); changed();
     }));
-    var rm = el("button", { type: "button", "class": "small danger" }, "Remove");
+    var rm = el("button", { type: "button", "class": "small danger", title: "Archive project: " + short(cd.name, 40) }, "Archive");
     on(rm, "click", function () { removeToArchive(cd, "Project"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row);
     if (cd.note) li.appendChild(el("p", { "class": "cnote" }, cd.note));
@@ -2103,7 +2115,7 @@ function renderProjects(root) {
 function renderParkingLot(root) {
   root.appendChild(el("p", { "class": "hint first" }, "Ideas and waiting items that are not competing for the next slot."));
   var hd = el("div", { "class": "sechead" });
-  hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add idea"), "click", function () { ideaDialog(); })); root.appendChild(hd);
+  hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add new idea" }, "Add idea"), "click", function () { ideaDialog(); })); root.appendChild(hd);
   var pl = el("ul", { "class": "list", style: "margin-top:12px" });
   var ps = live(state.parked);
   if (!ps.length) pl.appendChild(el("li", { "class": "hint" }, "Nothing parked."));
@@ -2113,11 +2125,11 @@ function renderParkingLot(root) {
     if (p.note) nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
-    acts.appendChild(on(el("button", { type: "button", "class": "small" }, "Make it a candidate"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make candidate: " + short(p.text, 40) }, "Make it a candidate"), "click", function () {
       state.parked = state.parked.filter(function (x) { return x.id !== p.id; });
       state.projects.push(makeProject(uid(), p.text, "candidate", { note: p.note })); changed();
     }));
-    var rm = el("button", { type: "button", "class": "small danger" }, "Remove");
+    var rm = el("button", { type: "button", "class": "small danger", title: "Archive idea: " + short(p.text, 40) }, "Archive");
     on(rm, "click", function () { removeToArchive(p, "Idea"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row); pl.appendChild(li);
   });
@@ -2225,7 +2237,7 @@ function renderArchive(root) {
   if (!shown.length) { root.appendChild(el("p", { "class": "hint" }, all.length ? "Nothing of that kind in the Archive." : "The Archive is empty. Completed tasks and removed items appear here.")); return; }
   var ul = el("ul", { "class": "list" });
   shown.forEach(function (e) {
-    var li = el("li"), row = el("div", { "class": "crow" });
+    var li = el("li"), row = el("div", { "class": "crow", style: "align-items:center" });
     var info = el("div", { style: "flex:1 1 220px" });
     info.appendChild(el("span", { "class": "chip" }, KIND_LABEL[e.kind]));
     info.appendChild(el("span", { style: "margin-left:8px;font-weight:600" }, e.title));
@@ -2795,7 +2807,7 @@ function renderChrome() {
 function renderView() {
   var root = $("view"); root.innerHTML = "";
   if (ui.view.indexOf("proj:") === 0 && !validPage(ui.view)) ui.view = "projects";
-  root.className = "content" + (ui.view === "timeline" ? " wide" : "");
+  root.className = "content";
   if (ui.view === "today") renderToday(root);
   else if (ui.view === "schedule") renderSchedule(root);
   else if (ui.view === "projects") renderProjects(root);

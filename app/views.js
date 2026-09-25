@@ -275,7 +275,7 @@ export function linksSection(root, p) {
   var ul = el("ul", { "class": "list" });
   if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No linked projects."));
   links.forEach(function (lp) {
-    var li = el("li"), row = el("div", { "class": "crow" });
+    var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nm = el("button", { type: "button", "class": "textbtn plink" }, lp.name);
     on(nm, "click", function () { go("proj:" + lp.id); });
     row.appendChild(nm);
@@ -587,16 +587,16 @@ export function renderProjects(root) {
   var cs = candidateProjects();
   if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a project."));
   cs.forEach(function (cd) {
-    var li = el("li"), row = el("div", { "class": "crow" });
+    var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nm = el("button", { type: "button", "class": "textbtn plink" }, cd.name);
     on(nm, "click", function () { go("proj:" + cd.id); });
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
-    acts.appendChild(on(el("button", { type: "button", "class": "small" }, "Park it"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Park candidate: " + short(cd.name, 40) }, "Park it"), "click", function () {
       state.projects = state.projects.filter(function (x) { return x.id !== cd.id; });
       state.parked.push({ id: uid(), text: cd.name, note: cd.note }); changed();
     }));
-    var rm = el("button", { type: "button", "class": "small danger" }, "Remove");
+    var rm = el("button", { type: "button", "class": "small danger", title: "Archive project: " + short(cd.name, 40) }, "Archive");
     on(rm, "click", function () { removeToArchive(cd, "Project"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row);
     if (cd.note) li.appendChild(el("p", { "class": "cnote" }, cd.note));
@@ -608,7 +608,7 @@ export function renderProjects(root) {
 export function renderParkingLot(root) {
   root.appendChild(el("p", { "class": "hint first" }, "Ideas and waiting items that are not competing for the next slot."));
   var hd = el("div", { "class": "sechead" });
-  hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add idea"), "click", function () { ideaDialog(); })); root.appendChild(hd);
+  hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add new idea" }, "Add idea"), "click", function () { ideaDialog(); })); root.appendChild(hd);
   var pl = el("ul", { "class": "list", style: "margin-top:12px" });
   var ps = live(state.parked);
   if (!ps.length) pl.appendChild(el("li", { "class": "hint" }, "Nothing parked."));
@@ -618,11 +618,11 @@ export function renderParkingLot(root) {
     if (p.note) nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
-    acts.appendChild(on(el("button", { type: "button", "class": "small" }, "Make it a candidate"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make candidate: " + short(p.text, 40) }, "Make it a candidate"), "click", function () {
       state.parked = state.parked.filter(function (x) { return x.id !== p.id; });
       state.projects.push(makeProject(uid(), p.text, "candidate", { note: p.note })); changed();
     }));
-    var rm = el("button", { type: "button", "class": "small danger" }, "Remove");
+    var rm = el("button", { type: "button", "class": "small danger", title: "Archive idea: " + short(p.text, 40) }, "Archive");
     on(rm, "click", function () { removeToArchive(p, "Idea"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row); pl.appendChild(li);
   });
@@ -730,7 +730,7 @@ export function renderArchive(root) {
   if (!shown.length) { root.appendChild(el("p", { "class": "hint" }, all.length ? "Nothing of that kind in the Archive." : "The Archive is empty. Completed tasks and removed items appear here.")); return; }
   var ul = el("ul", { "class": "list" });
   shown.forEach(function (e) {
-    var li = el("li"), row = el("div", { "class": "crow" });
+    var li = el("li"), row = el("div", { "class": "crow", style: "align-items:center" });
     var info = el("div", { style: "flex:1 1 220px" });
     info.appendChild(el("span", { "class": "chip" }, KIND_LABEL[e.kind]));
     info.appendChild(el("span", { style: "margin-left:8px;font-weight:600" }, e.title));

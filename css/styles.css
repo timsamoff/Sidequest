@@ -40,7 +40,6 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .nav { display: flex; flex-direction: column; gap: var(--space-2); overflow-y: auto; }
 .navlabel { padding: var(--space-14) var(--space-12) var(--space-4); font-size: .8rem; color: var(--muted); }
 .tab > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.content.wide { max-width: none; }
 .pinbar { display: flex; justify-content: flex-end; margin-bottom: var(--space-10); }
 .helpitem { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); margin-top: var(--space-10); }
 .helpitem > summary { padding: var(--space-12) var(--space-14); font-weight: 600; cursor: pointer; color: var(--ink); font-size: 1rem; }
@@ -95,7 +94,11 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .menu { max-height: 75vh; overflow-y: auto; }
 .menulabel { padding: var(--space-10) var(--space-12) var(--space-2); font-size: .8rem; color: var(--muted); }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: var(--space-4) 0; width: 100%; }
-.content { padding: var(--space-22) var(--space-24) 72px; max-width: 1040px; }
+/* Confirmed 2026-09-26: content spans the full browser width on every page
+   (padding only, no max-width cap) -- previously capped at 1040px with a
+   .content.wide escape hatch used only by Timeline; the cap is removed
+   everywhere now, not widened selectively per page. */
+.content { padding: var(--space-22) var(--space-24) 72px; }
 
 .twocol { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--space-22); align-items: start; }
 .cols2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-22); align-items: start; }
@@ -187,6 +190,14 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
 .list.check li.done span { color: var(--muted); text-decoration: line-through; }
 .progress { color: var(--muted); margin-top: var(--space-10); }
 .crow { display: flex; flex-wrap: wrap; gap: var(--space-6) var(--space-14); align-items: flex-start; }
+/* Single-line rows (a project name/link plus badges and buttons, all the
+   same height) look wrong top-aligned -- a short chip like "Launch critical"
+   sits pinned to the top of a taller sibling button instead of centering
+   against it. Rows with a genuine multi-line text block (name + note/meta on
+   a second line) keep .crow's default flex-start, since centering THOSE
+   would misalign the buttons against the block's midpoint instead of its
+   first line. */
+.crow.oneline { align-items: center; }
 .crow label { display: flex; gap: var(--space-10); align-items: flex-start; font-weight: 600; cursor: pointer; flex: 1 1 200px; }
 .cnote { color: var(--muted); font-size: .92rem; margin: var(--space-2) 0 0 var(--space-30); }
 .cfields { display: flex; flex-wrap: wrap; gap: var(--space-12); margin: var(--space-6) 0 0 var(--space-30); }
@@ -265,7 +276,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .splashsvg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .splashart { transition: filter .6s ease; }
 .splash.artBlurred .splashart { filter: blur(5px); }
-.splashtext { position: relative; z-index: 1; margin: 0; padding: var(--space-12) var(--space-20); max-width: 82%; text-align: center; color: var(--surface); background: var(--planned); border-radius: 14px; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; line-height: 1.4; opacity: 0; transition: opacity .5s ease; }
+.splashtext { position: relative; z-index: 1; margin: 0; padding: var(--space-12) var(--space-20); max-width: 82%; text-align: center; color: var(--surface); background: var(--planned); border: 2px solid var(--surface); border-radius: 14px; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; line-height: 1.4; opacity: 0; transition: opacity .5s ease; }
 .splash.textIn .splashtext { opacity: 1; }
 /* stroke-dasharray/dashoffset's initial (undrawn) values come from the
    element's own SVG attributes, set synchronously at creation time in
