@@ -44,7 +44,6 @@ export function nextUpPanel() {
     acts.appendChild(on(el("button", { type: "button", "class": "primary" }, "Choose the next project"), "click", function () { go("projects"); }));
   } else {
     if (t.status === "Not started") acts.appendChild(on(el("button", { type: "button", "class": "primary" }, "Start"), "click", function () { t.status = "In progress"; changed(); }));
-    acts.appendChild(on(el("button", { type: "button", "class": t.status === "Not started" ? "" : "primary" }, "Mark completed"), "click", function () { setStatus(t, "Completed"); changed(); }));
   }
   acts.appendChild(on(el("button", { type: "button" }, "Open task"), "click", function () { openTask(t.id); }));
   box.appendChild(acts);

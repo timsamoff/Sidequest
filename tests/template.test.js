@@ -225,7 +225,9 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.d.querySelector("#view .about").textContent.includes("© Tim Samoff"), "About keeps the credit");
   // completing a sample task marks it Completed but keeps it visible (no archiving)
   k.tab("today"); const nextTaskTitle = k.d.querySelector("#view .panel .ptitle").textContent;
-  k.click(k.btn(k.$("view"), "Mark completed"));
+  ok(!k.btn(k.$("view"), "Mark completed"), "Today's Next up card has no one-click Mark completed shortcut");
+  k.click(k.btn(k.$("view"), "Open task"));
+  const statusSel = k.d.querySelector(".detailpane .status"); statusSel.value = "Completed"; k.fire(statusSel);
   k.tab("schedule");
   const completedRow = [...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes(nextTaskTitle));
   ok(completedRow && completedRow.classList.contains("done"), "the task shows as completed in Tasks, not moved anywhere");
