@@ -46,6 +46,13 @@ npm test
 
 Node 22 or newer is required.
 
+There is also a real-browser accessibility check, which needs a real Chromium install first:
+
+```
+npx playwright install chromium
+npm run test:a11y
+```
+
 ## Files
 
 - `index.html`: the whole app.

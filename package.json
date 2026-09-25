@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "test": "node tests/run.js",
+    "test:a11y": "node tests/a11y.test.js",
     "sentinel:check": "node .githooks/sentinel-check.js",
     "sentinel:check:full": "node .githooks/sentinel-check.js --full",
     "build:artifact": "node scripts/build-artifact.js"
@@ -13,6 +14,7 @@
     "node": ">=22"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "jsdom": "^30.1.0",
     "playwright": "^1.63.0"
   }

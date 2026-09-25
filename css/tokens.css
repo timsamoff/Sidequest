@@ -2,6 +2,8 @@
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  --font-serif: "Spectral", Georgia, "Times New Roman", serif;
+  --font-sans: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --bg: #F2F4F1;
   --surface: #FFFFFF;
   --ink: #1A2733;

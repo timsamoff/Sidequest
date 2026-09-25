@@ -264,7 +264,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  ok([...k.d.querySelectorAll("#view h3")].some(h => h.textContent === "Linked projects"), "project page has a Linked projects section");
+  ok([...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Linked projects"), "project page has a Linked projects section");
   ok(k.$("view").textContent.includes("Sample Website"), "Sample App already links to Sample Website (sample data)");
   // bidirectional: the other side shows the link back
   k.click(k.btn(k.$("view"), "Sample Website"));

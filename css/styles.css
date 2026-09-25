@@ -1,7 +1,7 @@
 html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 72px); }
 *, *::before, *::after { box-sizing: inherit; }
-body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.5; }
-h1, h2, h3 { font-family: "Spectral", Georgia, "Times New Roman", serif; font-weight: 600; line-height: 1.2; margin: 0; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 1.5; }
+h1, h2, h3 { font-family: var(--font-serif); font-weight: 600; line-height: 1.2; margin: 0; }
 h1 { font-size: 1.5rem; }
 h2 { font-size: 1.3rem; margin-bottom: 6px; }
 h3 { font-size: 1.05rem; margin-top: 22px; }
@@ -36,7 +36,7 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .brandrow { display: flex; align-items: center; gap: 10px; padding: 0 6px 16px; }
 .logo { width: 38px; height: 38px; flex: none; display: block; }
 .mlogo { display: none; width: 44px; height: 44px; }
-.brand { font-family: "Spectral", Georgia, serif; font-weight: 600; font-size: 1.25rem; line-height: 1.1; }
+.brand { font-family: var(--font-serif); font-weight: 600; font-size: 1.25rem; line-height: 1.1; }
 .nav { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
 .navlabel { padding: 14px 12px 4px; font-size: .8rem; color: var(--muted); }
 .tab > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -114,7 +114,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 
 .panel { padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--planned); border-radius: 10px; }
 .box { padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
-.ptitle { font-family: "Spectral", Georgia, serif; font-size: 1.3rem; font-weight: 600; line-height: 1.3; }
+.ptitle { font-family: var(--font-serif); font-size: 1.3rem; font-weight: 600; line-height: 1.3; }
 .pmeta { margin-top: 6px; color: var(--muted); }
 .pmeta b { color: var(--ink); font-weight: 600; }
 .pline { margin-top: 8px; }
@@ -140,7 +140,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .split .tlist { margin-top: 0; }
 .detailpane { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); }
 .detail { padding: 18px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
-.detail .what { font-family: "Spectral", Georgia, serif; font-size: 1.25rem; font-weight: 600; line-height: 1.3; margin-top: 8px; }
+.detail .what { font-family: var(--font-serif); font-size: 1.25rem; font-weight: 600; line-height: 1.3; margin-top: 8px; }
 .detail .dmeta { color: var(--muted); margin-top: 4px; }
 select.status { border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
 select.status[data-v="In progress"] { background: var(--chip-work); }
@@ -197,7 +197,7 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
 .chartbox { margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 12px 12px 4px; }
 svg.chart { display: block; width: 100%; height: auto; }
 .chart .grid { stroke: var(--line); stroke-width: 1; }
-.chart .axis { fill: var(--muted); font-size: 12px; font-family: "Public Sans", system-ui, sans-serif; }
+.chart .axis { fill: var(--muted); font-size: 12px; font-family: var(--font-sans); }
 .chart .planned { fill: none; stroke: var(--planned); stroke-width: 2.5; stroke-dasharray: 7 5; }
 .chart .actual { fill: none; stroke: var(--burn); stroke-width: 3; }
 .chart .dot { fill: var(--burn); stroke: var(--surface); stroke-width: 2; }

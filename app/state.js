@@ -279,7 +279,7 @@ export function loadFromDbIfAvailable() {
 }
 
 export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchArchive: true };
-/* The app always opens on Today, on every device. */
+// Always opens on Today -- no-op.
 export function saveUI() { /* nothing to save */ }
 
 // Stamps a task's completion date the moment its status becomes Done, and

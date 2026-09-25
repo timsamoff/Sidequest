@@ -185,7 +185,7 @@ export function renderSchedule(root) {
   if (o.length) ul.appendChild(el("li", { "class": "plain" }, "Next: start " + (c ? c.name : "the next project") + "."));
   lp.appendChild(ul);
   if (bl.length) {
-    lp.appendChild(el("h3", null, "Backlog (" + bl.length + ")"));
+    lp.appendChild(el("h2", null, "Backlog (" + bl.length + ")"));
     lp.appendChild(el("p", { "class": "hint" }, "Not scheduled yet. Open an item and choose a " + wl() + " to schedule it."));
     var bul = el("ul", { "class": "tlist", style: "margin-top:10px" });
     bl.forEach(function (t) { bul.appendChild(taskRow(t)); });
@@ -299,7 +299,7 @@ export function linksSection(root, p) {
   var candidates = liveProjects().filter(function (x) { return x.id !== p.id && p.linkedProjectIds.indexOf(x.id) < 0; });
   if (candidates.length) {
     var addRow = el("div", { "class": "inline", style: "margin-top:10px" });
-    var sel = el("select", { id: "proj-link-pick", "class": "plain" });
+    var sel = el("select", { id: "proj-link-pick", "class": "plain", "aria-label": "Project to link" });
     candidates.forEach(function (x) { sel.appendChild(el("option", { value: x.id }, x.name)); });
     addRow.appendChild(sel);
     addRow.appendChild(on(el("button", { type: "button", "class": "small" }, "Link project"), "click", function () { linkProjects(p.id, sel.value); changed(); }));
@@ -402,7 +402,7 @@ export function pinBar(key) {
 }
 export function pagesSection() {
   var sec = el("div");
-  sec.appendChild(el("h3", { style: "margin-top:28px" }, "Pages and projects"));
+  sec.appendChild(el("h2", { style: "margin-top:28px" }, "Pages and projects"));
   sec.appendChild(el("p", { "class": "hint" }, "Pin a project to the sidebar for quick access. Removing it from the sidebar only hides it there. It stays listed here."));
   var ul = el("ul", { "class": "list" });
   var rows = liveProjects().map(function (p) { return { key: "proj:" + p.id, name: p.name, meta: projectMeta(p) }; });
@@ -458,7 +458,7 @@ export function renderProjectPage(root, id) {
     return;
   }
 
-  var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", null, "Tasks"));
+  var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h2", null, "Tasks"));
   if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add task"), "click", function () { taskDialog(p.id); }));
   root.appendChild(hd);
   var ts = ordered().filter(function (t) { return !t.isNext && t.projectId === p.id; }).concat(backlogTasks().filter(function (t) { return t.projectId === p.id; }));
@@ -477,7 +477,7 @@ export function renderProjectPage(root, id) {
     });
     root.appendChild(ul);
   }
-  root.appendChild(el("h3", null, "Schedule"));
+  root.appendChild(el("h2", null, "Schedule"));
   var eff = pset(p.id);
   if (readOnly) {
     root.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + ", time multiplier " + eff.mult + "."));
@@ -497,7 +497,7 @@ export function renderProjectPage(root, id) {
     sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm);
     root.appendChild(sg); root.appendChild(smsg);
   }
-  root.appendChild(el("h3", null, "Notes"));
+  root.appendChild(el("h2", null, "Notes"));
   if (readOnly) {
     root.appendChild(el("p", { "class": "hint" }, p.notes || "No notes."));
   } else {
@@ -506,10 +506,10 @@ export function renderProjectPage(root, id) {
     root.appendChild(ta);
   }
 
-  root.appendChild(el("h3", null, "Linked projects"));
+  root.appendChild(el("h2", null, "Linked projects"));
   linksSection(root, p);
 
-  root.appendChild(el("h3", null, "Launch"));
+  root.appendChild(el("h2", null, "Launch"));
   launchSection(root, p);
 
   var ar = el("div", { "class": "actions", style: "margin-top:14px" });
@@ -545,7 +545,7 @@ export function promoteToActive(id) {
 }
 export function standingBlock(c) {
   var wrap = el("div");
-  wrap.appendChild(el("h3", { "class": "first" }, "Where things stand"));
+  wrap.appendChild(el("h2", { "class": "first" }, "Where things stand"));
   wrap.appendChild(el("p", { "class": "hint" }, "Built from your open tasks, ordered by when each project's next task starts."));
   var box = el("div", { "class": "box", style: "margin-top:10px" });
   var groups = {}, order = [];
@@ -580,7 +580,7 @@ export function standingBlock(c) {
 export function renderProjects(root) {
   var c = chosen();
   root.appendChild(standingBlock(c));
-  var hd = el("div", { "class": "sechead", style: "margin-top:22px" }); hd.appendChild(el("h3", { "class": "first" }, "Candidates"));
+  var hd = el("div", { "class": "sechead", style: "margin-top:22px" }); hd.appendChild(el("h2", { "class": "first" }, "Candidates"));
   hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add project"), "click", function () { projectDialog(); })); root.appendChild(hd);
   root.appendChild(el("p", { "class": "hint" }, "Choose which project gets the next slot."));
   var list = el("ul", { "class": "list" });
@@ -607,7 +607,7 @@ export function renderProjects(root) {
 }
 export function renderParkingLot(root) {
   root.appendChild(el("p", { "class": "hint first" }, "Ideas and waiting items that are not competing for the next slot."));
-  var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", null, "Parking lot"));
+  var hd = el("div", { "class": "sechead" });
   hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add idea"), "click", function () { ideaDialog(); })); root.appendChild(hd);
   var pl = el("ul", { "class": "list", style: "margin-top:12px" });
   var ps = live(state.parked);
@@ -631,7 +631,7 @@ export function renderParkingLot(root) {
 
 export function renderTimeline(root) {
   var r = rangeBlock(); root.appendChild(r.node);
-  var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", null, "Milestones"));
+  var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h2", null, "Milestones"));
   hd.appendChild(on(el("button", { type: "button", "class": "small" }, "Add milestone"), "click", function () { milestoneDialog(); })); root.appendChild(hd);
   var mbox = el("div", { "class": "box", style: "margin-top:10px" });
   var ul = el("ul", { "class": "mslist" });
@@ -646,8 +646,8 @@ export function renderTimeline(root) {
     ul.appendChild(li);
   });
   mbox.appendChild(ul); root.appendChild(mbox);
-  root.appendChild(burnPanel({ wide: true, level: "h3" }));
-  root.appendChild(el("h3", null, "Weekly counts"));
+  root.appendChild(burnPanel({ wide: true, level: "h2" }));
+  root.appendChild(el("h2", null, "Weekly counts"));
   root.appendChild(el("p", { "class": "hint" }, "Enter the number of items left each week to draw your actual line on the burndown."));
   var wrap = el("div", { "class": "tablewrap weekly" }); var table = el("table");
   var thead = el("thead"); var hr = el("tr"); ["Week starting", "Planned remaining", "Actual remaining"].forEach(function (h) { hr.appendChild(el("th", null, h)); }); thead.appendChild(hr); table.appendChild(thead);
@@ -857,7 +857,7 @@ export function startFreshDialog() {
 export function renderSettings(root) {
   dlWaiters.length = 0;
   var msg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
-  root.appendChild(el("h3", { "class": "first" }, "Schedule defaults"));
+  root.appendChild(el("h2", { "class": "first" }, "Schedule defaults"));
   root.appendChild(el("p", { "class": "hint" }, "Each project can set its own start date and pace on its page. These are used by any project that has not. At 1.5x each " + wl() + " runs about 50% longer. Lengths are rounded down to whole days."));
   var grid = el("div", { "class": "setgrid" });
   function fieldOf(id, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); grid.appendChild(w); }
@@ -874,7 +874,7 @@ export function renderSettings(root) {
   fieldOf("set-word", "Call each stretch of work a", bwSel);
   root.appendChild(grid); root.appendChild(msg);
 
-  root.appendChild(el("h3", null, "Appearance and formats"));
+  root.appendChild(el("h2", null, "Appearance and formats"));
   var ag = el("div", { "class": "setgrid" });
   var tw = el("div", { "class": "field" }); tw.appendChild(el("label", { "for": "set-theme" }, "Theme"));
   var th = el("select", { id: "set-theme", "class": "plain" });
@@ -893,21 +893,21 @@ export function renderSettings(root) {
   fw.appendChild(df); ag.appendChild(fw); root.appendChild(ag);
   root.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device's own format. Nothing here uses a time of day yet."));
 
-  root.appendChild(el("h3", null, "Archive"));
+  root.appendChild(el("h2", null, "Archive"));
   root.appendChild(el("p", { "class": "hint" }, "Removing a project or an idea sends it to the Archive. A completed task just stays visible in its project."));
   var n = archiveEntries().length;
   root.appendChild(on(el("button", { type: "button", "class": "small", style: "margin-top:12px" }, "Open the Archive (" + n + (n === 1 ? " item" : " items") + ")"), "click", function () { go("archive"); }));
 
-  root.appendChild(el("h3", null, "Backup and restore"));
+  root.appendChild(el("h2", null, "Backup and restore"));
   backupPanel(root);
 
-  root.appendChild(el("h3", null, "Start fresh"));
+  root.appendChild(el("h2", null, "Start fresh"));
   var box = el("div", { "class": "dangerbox" });
   box.appendChild(el("p", { "class": "first" }, "Erase everything in this browser and begin again. You will see a warning and a chance to save a backup first."));
   box.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:12px", id: "startFresh" }, "Start fresh…"), "click", startFreshDialog));
   root.appendChild(box);
 
-  root.appendChild(el("h3", null, "About"));
+  root.appendChild(el("h2", null, "About"));
   var ab = el("div", { "class": "box about" });
   ab.appendChild(el("p", { style: "font-weight:600", "class": "first" }, APP_NAME));
   ab.appendChild(el("p", { "class": "hint" }, "Version " + APP_VERSION));

@@ -3,7 +3,10 @@ const { spawnSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 let pass = 0, fail = 0;
-for (const f of fs.readdirSync(__dirname).filter(f => f.endsWith(".test.js")).sort()) {
+// a11y.test.js needs a live server + a real browser (axe-core via Playwright)
+// and is deliberately excluded from this fast, jsdom-only loop -- run it via
+// `npm run test:a11y` instead.
+for (const f of fs.readdirSync(__dirname).filter(f => f.endsWith(".test.js") && f !== "a11y.test.js").sort()) {
   const r = spawnSync(process.execPath, [path.join(__dirname, f)], { encoding: "utf8" });
   const lines = (r.stdout || "").split("\n");
   const p = lines.filter(l => l.startsWith("PASS ")).length, x = lines.filter(l => l.startsWith("FAIL ")).length;
