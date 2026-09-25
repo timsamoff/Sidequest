@@ -25,7 +25,7 @@ export var ICON_CANCEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentCo
 export function buildMoreMenu(pinned) {
   var m = $("moreMenu"); m.innerHTML = "";
   function item(key, label) {
-    var b = el("button", { type: "button", role: "menuitem", "data-view": key }, label);
+    var b = el("button", { type: "button", role: "menuitem", "data-view": key, title: "Go to " + label }, label);
     if (key === ui.view) b.setAttribute("aria-current", "page");
     m.appendChild(b);
   }
@@ -34,7 +34,7 @@ export function buildMoreMenu(pinned) {
   m.appendChild(el("hr"));
   BOTTOM.forEach(function (c) { item(c[0], c[1]); });
   m.appendChild(el("hr"));
-  m.appendChild(el("button", { type: "button", role: "menuitem", "data-act": "slip" }, "Slip the schedule"));
+  m.appendChild(el("button", { type: "button", role: "menuitem", "data-act": "slip", title: "Push every date later to catch up" }, "Slip the schedule"));
 }
 export function renderChrome() {
   var nav = $("nav"); nav.innerHTML = ""; var nb = $("navBottom"); nb.innerHTML = "";

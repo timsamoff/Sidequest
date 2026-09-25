@@ -22,6 +22,8 @@ button { background: var(--surface); border: 1px solid var(--line); border-radiu
 button:hover { border-color: var(--muted); }
 button.primary { background: var(--planned); border-color: var(--planned); color: var(--on-planned); font-weight: 600; }
 button.small { min-height: 34px; padding: var(--space-4) var(--space-10); font-size: .9rem; }
+/* Fixed width so the button doesn't resize when its label swaps Pin/Unpin. */
+button.pintoggle { min-width: 152px; }
 button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: var(--late); }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-10); margin-top: var(--space-14); align-items: center; }
 .field { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-10); }
