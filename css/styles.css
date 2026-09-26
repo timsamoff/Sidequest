@@ -264,8 +264,11 @@ tbody tr:last-child td { border-bottom: 0; }
 .bar.open { background: linear-gradient(to right, var(--est), transparent); border-left: 3px solid var(--planned); border-radius: 4px 0 0 4px; }
 /* A project's page: info on the left, its own Timeline and Burndown on the right. */
 .projsplit { display: block; }
-.projleft, .projright { min-width: 0; }
-.projright { margin-top: var(--space-22); }
+.projtop, .projrest, .projsched, .projcharts { min-width: 0; }
+/* The Schedule's error line takes no room until it has something to say, so it does
+   not stretch the top row (and push Tasks and Timeline down) for nothing. */
+.projsched .msg { min-height: 0; margin-top: 0; }
+.projsched .msg:not(:empty) { margin-top: var(--space-10); }
 .projexpand { display: none; }
 .modal.full { max-width: none; width: 100%; height: 100%; max-height: none; }
 .chart .mark { fill: var(--burn); }
@@ -273,9 +276,14 @@ tbody tr:last-child td { border-bottom: 0; }
 .chart .pdot:hover { fill: var(--planned); opacity: .35; }
 .bar.done { background: var(--chip-done); }
 @media (min-width: 900px) {
-  .projsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: var(--space-22); align-items: start; }
-  /* The charts column grows to its full height and scrolls with the page: no inner scrollbar. */
-  .projright { margin-top: 0; }
+  /* Two rows so each column's first heading (Tasks, Timeline) starts in the same row. */
+  .projsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: "top sched" "rest charts"; column-gap: var(--space-22); row-gap: 0; align-items: start; }
+  .projtop { grid-area: top; }
+  .projrest { grid-area: rest; }
+  .projsched { grid-area: sched; }
+  /* Level with the Pin button opposite: same top, same 34px band, heading centered in it. */
+  .projsched > h2:first-child { margin-top: 0; min-height: 34px; display: flex; align-items: center; }
+  .projcharts { grid-area: charts; }
   .projexpand { display: inline-block; }
   /* The Launch section is two columns on a wide page; in the narrower left column it stacks. */
   .projsplit .pgrid { display: block; }

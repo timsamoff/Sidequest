@@ -340,8 +340,11 @@ tbody tr:last-child td { border-bottom: 0; }
 .bar.open { background: linear-gradient(to right, var(--est), transparent); border-left: 3px solid var(--planned); border-radius: 4px 0 0 4px; }
 /* A project's page: info on the left, its own Timeline and Burndown on the right. */
 .projsplit { display: block; }
-.projleft, .projright { min-width: 0; }
-.projright { margin-top: var(--space-22); }
+.projtop, .projrest, .projsched, .projcharts { min-width: 0; }
+/* The Schedule's error line takes no room until it has something to say, so it does
+   not stretch the top row (and push Tasks and Timeline down) for nothing. */
+.projsched .msg { min-height: 0; margin-top: 0; }
+.projsched .msg:not(:empty) { margin-top: var(--space-10); }
 .projexpand { display: none; }
 .modal.full { max-width: none; width: 100%; height: 100%; max-height: none; }
 .chart .mark { fill: var(--burn); }
@@ -349,9 +352,14 @@ tbody tr:last-child td { border-bottom: 0; }
 .chart .pdot:hover { fill: var(--planned); opacity: .35; }
 .bar.done { background: var(--chip-done); }
 @media (min-width: 900px) {
-  .projsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: var(--space-22); align-items: start; }
-  /* The charts column grows to its full height and scrolls with the page: no inner scrollbar. */
-  .projright { margin-top: 0; }
+  /* Two rows so each column's first heading (Tasks, Timeline) starts in the same row. */
+  .projsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: "top sched" "rest charts"; column-gap: var(--space-22); row-gap: 0; align-items: start; }
+  .projtop { grid-area: top; }
+  .projrest { grid-area: rest; }
+  .projsched { grid-area: sched; }
+  /* Level with the Pin button opposite: same top, same 34px band, heading centered in it. */
+  .projsched > h2:first-child { margin-top: 0; min-height: 34px; display: flex; align-items: center; }
+  .projcharts { grid-area: charts; }
   .projexpand { display: inline-block; }
   /* The Launch section is two columns on a wide page; in the narrower left column it stacks. */
   .projsplit .pgrid { display: block; }
@@ -2162,7 +2170,7 @@ function renderProjectPage(root, id) {
   var page = root, split = null;
   if (!readOnly && (p.status === "active" || p.status === "complete")) {
     split = el("div", { "class": "projsplit" });
-    root = el("div", { "class": "projleft" });
+    root = el("div", { "class": "projtop" });
     split.appendChild(root); page.appendChild(split);
   }
   root.appendChild(pinBar(key));
@@ -2185,6 +2193,9 @@ function renderProjectPage(root, id) {
   metaLine.appendChild(document.createTextNode(projectMeta(p)));
   root.appendChild(metaLine);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
+  // The rest of the left column (Tasks and below) is its own grid item, so its first
+  // heading sits in the same row as the Timeline heading opposite it, by structure.
+  if (split) { root = el("div", { "class": "projrest" }); split.appendChild(root); }
 
   if (p.status === "candidate" && readOnly) {
     root.appendChild(el("h2", null, "Notes"));
@@ -2282,7 +2293,11 @@ function renderProjectPage(root, id) {
     }));
   }
   root.appendChild(ar);
-  if (split) split.appendChild(projectChartsPanel(p));
+  if (split) {
+    var sched = el("div", { "class": "projsched" });
+    scheduleSection(sched, p, false);
+    split.appendChild(sched); split.appendChild(projectChartsPanel(p));
+  }
 }
 
 // A project's Schedule (start date and pace). In the two-column layout it sits at the
@@ -2313,10 +2328,9 @@ function scheduleSection(host, p, readOnly) {
 // The right-hand column of a project's page: its own Timeline and Burndown, with an
 // Expand button (desktop only; hidden by CSS on a phone) that opens them large.
 function projectChartsPanel(p) {
-  var side = el("aside", { "class": "projright", "aria-label": "Timeline and burndown" });
+  var side = el("aside", { "class": "projcharts", "aria-label": "Timeline and burndown" });
   var ex = el("button", { type: "button", "class": "small projexpand", title: "Expand the timeline and burndown" }, "Expand");
   on(ex, "click", function () { openModal("Timeline and burndown for " + p.name, function (body) { body.appendChild(projectCharts(p, true, null, true)); }, { full: true }); });
-  scheduleSection(side, p, false);
   side.appendChild(projectCharts(p, false, ex, false));
   return side;
 }

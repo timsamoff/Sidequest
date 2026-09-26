@@ -522,11 +522,13 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   const split = k.d.querySelector("#view .projsplit");
-  ok(!!split && !!split.querySelector(".projleft") && !!split.querySelector(".projright"), "an active project's page has an info column and a charts column");
-  ok(!!split.querySelector(".projleft #proj-name") && [...split.querySelectorAll(".projleft h2")].some(h => h.textContent === "Tasks"), "the project info is in the left column");
-  const side = split.querySelector(".projright");
-  ok([...side.querySelectorAll("h2")].map(h => h.textContent).join() === "Schedule,Timeline,Burndown", "the right column has the Schedule, then the Timeline and Burndown");
-  ok(!!side.querySelector("#proj-start") && !!side.querySelector("#proj-mult") && !split.querySelector(".projleft #proj-start") && ![...split.querySelectorAll(".projleft h2")].some(h => h.textContent === "Schedule"), "the Schedule heading and fields are in the right column, not the left");
+  ok(!!split && !!split.querySelector(".projtop") && !!split.querySelector(".projrest") && !!split.querySelector(".projsched") && !!split.querySelector(".projcharts"), "an active project's page has an info column and a Schedule-and-charts column");
+  ok(!!split.querySelector(".projtop #proj-name") && [...split.querySelectorAll(".projrest h2")].some(h => h.textContent === "Tasks"), "the project info is in the left column");
+  const side = split.querySelector(".projcharts");
+  const sched = split.querySelector(".projsched");
+  ok([...sched.querySelectorAll("h2")].map(h => h.textContent).join() === "Schedule" && [...side.querySelectorAll("h2")].map(h => h.textContent).join() === "Timeline,Burndown", "the right column has the Schedule, then the Timeline and Burndown");
+  ok([...split.children].map(c => c.className).join() === "projtop,projrest,projsched,projcharts", "the page is ordered info, rest, Schedule, charts, which is also the reading and phone order");
+  ok(!!sched.querySelector("#proj-start") && !!sched.querySelector("#proj-mult") && !split.querySelector(".projtop #proj-start, .projrest #proj-start") && ![...split.querySelectorAll(".projtop h2, .projrest h2")].some(h => h.textContent === "Schedule"), "the Schedule heading and fields are in the right column, not the left");
   ok(!!k.btn(side, "Expand"), "the right column has an Expand button");
   ok(side.querySelectorAll(".lane").length === 6, "one timeline lane per scheduled task, plus the milestones lane (" + side.querySelectorAll(".lane").length + ")");
   ok(side.textContent.includes("1 backlog item is not shown until scheduled"), "an unscheduled Backlog task is counted, not drawn");
@@ -573,7 +575,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // an active project with nothing scheduled still has the panel, and says so
   const k = kit(await mk({ projects: [{ id: "pX", name: "Empty", status: "active" }], tasks: [] }));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Empty"));
-  const side = k.d.querySelector("#view .projright");
+  const side = k.d.querySelector("#view .projcharts");
   ok(!!side && side.textContent.includes("Nothing is scheduled yet") && ![...side.querySelectorAll("h2")].some(h => h.textContent === "Burndown"), "a project with no scheduled tasks says so and draws no burndown");
 }
 {
