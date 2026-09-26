@@ -8,8 +8,16 @@
 // genuine internal error.
 
 "use strict";
+const fs = require("fs");
 const path = require("path");
 const common = require("./sentinel-common");
+
+// Every module under app/, read from disk. The checks below used to keep their own
+// hand-written file lists, and app/splash.js and app/dates.js quietly fell out of
+// them when they were added. Deriving the list means a new module cannot.
+function appModules() {
+  return fs.readdirSync(common.repoPath("app")).filter((f) => f.endsWith(".js")).sort().map((f) => "app/" + f);
+}
 
 // ---------------------------------------------------------------------------
 // Gate 1: CLAUDE.md-touched (highest priority)
@@ -26,17 +34,7 @@ const common = require("./sentinel-common");
 // markup-level registries there (e.g. new static nav markup), and dropping it
 // would silently stop checking it.
 
-const SOURCE_FILES = [
-  "index.html",
-  "app/app.js",
-  "app/state.js",
-  "app/model.js",
-  "app/dom.js",
-  "app/views.js",
-  "app/dialogs.js",
-  "app/search.js",
-  "app/chart.js",
-];
+const SOURCE_FILES = ["index.html"].concat(appModules());
 
 const TRIGGER_PATTERNS = [
   { name: "CORE array (new view/page)", re: /^\+.*\bCORE\s*=/m },
@@ -425,7 +423,7 @@ function isInsideTokenBlock(fullText, matchIndex) {
 // could. Checked here too, though CLAUDE.md/state.js's own findings show no such
 // literal exists yet -- this is a forward-looking check, not a fix for an
 // existing violation.
-const HEX_SCAN_FILES = ["css/tokens.css", "css/styles.css", "app/app.js", "app/state.js", "app/model.js", "app/dom.js", "app/views.js", "app/dialogs.js", "app/search.js", "app/chart.js"];
+const HEX_SCAN_FILES = ["css/tokens.css", "css/styles.css"].concat(appModules());
 
 function checkHardcodedHex() {
   const violations = [];
@@ -682,6 +680,8 @@ module.exports = {
   classifyIndexHtmlDiff,
   classifySourceDiffs,
   SOURCE_FILES,
+  HEX_SCAN_FILES,
+  appModules,
   checkClaudeMdTouched,
   checkReadmeTouched,
   checkTodoSync,

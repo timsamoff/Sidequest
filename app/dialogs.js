@@ -41,7 +41,9 @@ document.addEventListener("keydown", function (e) {
   }
 });
 
-export function formDialog(title, fields, submitLabel, onSubmit, intro) {
+// `extra` is an optional {label, title, onClick} for one more destructive button
+// (Remove) shown after Cancel. It closes the dialog first, then runs onClick.
+export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
   openModal(title, function (body) {
     if (intro) body.appendChild(el("p", { "class": "hint first" }, intro));
     var inputs = {};
@@ -76,7 +78,13 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro) {
     }
     on(ok, "click", submit); on(cancel, "click", closeModal);
     on(body, "keydown", function (e) { if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); submit(); } });
-    acts.appendChild(ok); acts.appendChild(cancel); body.appendChild(acts);
+    acts.appendChild(ok); acts.appendChild(cancel);
+    if (extra) {
+      var xb = el("button", { type: "button", "class": "danger", style: "margin-left:auto", title: extra.title }, extra.label);
+      on(xb, "click", function () { closeModal(); extra.onClick(); });
+      acts.appendChild(xb);
+    }
+    body.appendChild(acts);
   });
 }
 
@@ -172,18 +180,23 @@ export function stepDialog(launchItem, prefillProjectId) {
     });
   }
 }
-export function milestoneDialog() {
+// With a milestone passed in, edits it in place and offers Remove (onRemove is
+// supplied by the caller, since removal lives in views.js); with none, adds one.
+export function milestoneDialog(m, onRemove) {
   var projOpts = activeProjects().map(function (p) { return { value: p.id, label: p.name }; });
+  // A milestone can belong to a project that is no longer Active (Complete, say).
+  if (m) { var cur = findProject(m.projectId); if (cur && !projOpts.some(function (o) { return o.value === cur.id; })) projOpts.unshift({ value: cur.id, label: cur.name }); }
   if (!projOpts.length) { notify("Add an active project first."); return; }
-  formDialog("New milestone", [
-    { key: "project", label: "Project", type: "select", options: projOpts, value: projOpts[0].value },
-    { key: "text", label: "Milestone" },
-    { key: "date", label: "Date", type: "date" }
-  ], "Add milestone", function (v) {
+  formDialog(m ? "Edit milestone" : "New milestone", [
+    { key: "project", label: "Project", type: "select", options: projOpts, value: m ? m.projectId : projOpts[0].value },
+    { key: "text", label: "Milestone", value: m ? m.text : undefined },
+    { key: "date", label: "Date", type: "date", value: m ? m.date : undefined }
+  ], m ? "Save milestone" : "Add milestone", function (v) {
     if (!v.project || !v.text || !isISO(v.date)) return "Choose a project, and enter a milestone and a date.";
+    if (m) { m.projectId = v.project; m.text = v.text.slice(0, 200); m.date = v.date; changed(); return { msg: "Milestone saved." }; }
     state.milestones.push({ id: uid(), text: v.text.slice(0, 200), date: v.date, projectId: v.project }); changed();
     return { msg: "Milestone added to the Timeline." };
-  });
+  }, undefined, m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
 }
 export function slipDialog() {
   openModal("Slip the schedule", function (body) {

@@ -94,7 +94,9 @@ export function rangeBlock() {
   });
   var ml = el("div", { "class": "lane" }); ml.appendChild(el("div", { "class": "lname" }, "Milestones"));
   var mt = el("div", { "class": "track" });
-  mss.forEach(function (m) { mt.appendChild(el("span", { "class": "ms", style: "left:" + pct(m.date) + "%", title: m.text + ", " + fmtY(m.date) })); });
+  // Each diamond is a real control. renderTimeline() (views.js) attaches the
+  // edit handler by data-ms-id, so this module needs no dialog import.
+  mss.forEach(function (m) { mt.appendChild(el("span", { "class": "ms", "data-ms-id": m.id, role: "button", tabindex: "0", "aria-label": "Edit milestone: " + m.text + ", " + fmtY(m.date), style: "left:" + pct(m.date) + "%", title: m.text + ", " + fmtY(m.date) })); });
   ml.appendChild(mt); area.appendChild(ml);
   if (TODAY >= rs && TODAY <= re) area.appendChild(el("div", { "class": "today", style: "left:" + pct(TODAY) + "%", title: "Today" }));
   wrap.appendChild(area);

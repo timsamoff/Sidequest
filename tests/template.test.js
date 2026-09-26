@@ -484,6 +484,39 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!k.saved().pins.includes("proj:pSite"), "Unpin in Where things stand removes the pin");
 }
 
+{
+  // milestones are editable from the Timeline diamonds and from the list
+  const k = kit(await mk());
+  k.tab("timeline");
+  const diamonds = () => [...k.d.querySelectorAll("#view .ms")];
+  ok(diamonds().length === 2 && diamonds().every(d => d.getAttribute("role") === "button" && d.getAttribute("tabindex") === "0" && /^Edit milestone: /.test(d.getAttribute("aria-label"))), "each milestone diamond is a keyboard-reachable control with a label");
+  k.click(diamonds()[0]);
+  ok(k.$("modalTitle").textContent === "Edit milestone", "clicking a diamond opens the edit dialog");
+  const first = k.saved().milestones.find(m => m.id === "m1");
+  ok(k.$("f-text").value === first.text && k.$("f-date").value === first.date && k.$("f-project").value === first.projectId, "the dialog is pre-filled with the milestone");
+  k.setField("text", "Beta opens (moved)"); k.setField("date", "2026-11-20");
+  k.click(k.btn(k.$("modalBody"), "Save milestone"));
+  const after = k.saved().milestones.find(m => m.id === "m1");
+  ok(after.text === "Beta opens (moved)" && after.date === "2026-11-20" && k.saved().milestones.length === 2, "Save updates the same milestone in place");
+  ok(k.$("view").textContent.includes("Beta opens (moved)"), "the Timeline shows the edited milestone");
+  k.click(diamonds()[0]); k.setField("date", ""); k.click(k.btn(k.$("modalBody"), "Save milestone"));
+  ok(!k.$("overlay").hidden && k.saved().milestones.find(m => m.id === "m1").date === "2026-11-20", "an empty date is rejected and nothing changes");
+  k.click(k.btn(k.$("modalBody"), "Cancel"));
+  diamonds()[0].dispatchEvent(new k.w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  ok(k.$("modalTitle").textContent === "Edit milestone", "Enter on a focused diamond opens the dialog");
+  k.click(k.$("modalClose"));
+  const row = () => [...k.d.querySelectorAll("#view .mslist li")].find(li => li.textContent.includes("Sample Game demo day"));
+  k.click(k.btn(row(), "Sample Game: Sample Game demo day"));
+  ok(k.$("modalTitle").textContent === "Edit milestone", "a milestone's text in the list opens the dialog");
+  k.click(k.btn(k.$("modalBody"), "Remove"));
+  ok(k.$("overlay").hidden && !k.saved().milestones.find(m => m.id === "m2"), "Remove in the dialog deletes the milestone");
+  ok(!!k.btn(k.d.body, "Undo"), "and offers Undo");
+  k.click(k.btn(k.d.body, "Undo"));
+  ok(!!k.saved().milestones.find(m => m.id === "m2"), "Undo brings the milestone back");
+  k.menuAct("newBtn", "newMilestone");
+  ok(k.$("modalTitle").textContent === "New milestone" && !k.btn(k.$("modalBody"), "Remove"), "a new-milestone dialog has no Remove button");
+}
+
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);
 

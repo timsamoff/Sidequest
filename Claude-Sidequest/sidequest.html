@@ -338,7 +338,10 @@ tbody tr:last-child td { border-bottom: 0; }
 .bar { position: absolute; top: 2px; bottom: 2px; min-width: 6px; background: var(--planned); border-radius: 4px; }
 .bar.est { background: var(--est); border: 1px dashed var(--planned); }
 .bar.open { background: linear-gradient(to right, var(--est), transparent); border-left: 3px solid var(--planned); border-radius: 4px 0 0 4px; }
-.ms { position: absolute; top: 4px; width: 14px; height: 14px; background: var(--burn); transform: translateX(-7px) rotate(45deg); border-radius: 2px; }
+.ms { position: absolute; top: 4px; width: 14px; height: 14px; background: var(--burn); transform: translateX(-7px) rotate(45deg); border-radius: 2px; cursor: pointer; }
+/* The diamond is only 14px, so an invisible larger area makes it easy to hit. */
+.ms::after { content: ""; position: absolute; inset: -6px; }
+.ms:hover, .ms:focus-visible { box-shadow: 0 0 0 3px var(--planned); }
 .today { position: absolute; top: 22px; bottom: 0; width: 0; border-left: 2px solid var(--burn); opacity: .7; pointer-events: none; }
 .mslist { list-style: none; margin: var(--space-12) 0 0; padding: 0; }
 .box > .mslist { margin: calc(var(--space-14) * -1) calc(var(--space-16) * -1) calc(var(--space-14) * -1); }
@@ -1173,7 +1176,9 @@ function rangeBlock() {
   });
   var ml = el("div", { "class": "lane" }); ml.appendChild(el("div", { "class": "lname" }, "Milestones"));
   var mt = el("div", { "class": "track" });
-  mss.forEach(function (m) { mt.appendChild(el("span", { "class": "ms", style: "left:" + pct(m.date) + "%", title: m.text + ", " + fmtY(m.date) })); });
+  // Each diamond is a real control. renderTimeline() (views.js) attaches the
+  // edit handler by data-ms-id, so this module needs no dialog import.
+  mss.forEach(function (m) { mt.appendChild(el("span", { "class": "ms", "data-ms-id": m.id, role: "button", tabindex: "0", "aria-label": "Edit milestone: " + m.text + ", " + fmtY(m.date), style: "left:" + pct(m.date) + "%", title: m.text + ", " + fmtY(m.date) })); });
   ml.appendChild(mt); area.appendChild(ml);
   if (TODAY >= rs && TODAY <= re) area.appendChild(el("div", { "class": "today", style: "left:" + pct(TODAY) + "%", title: "Today" }));
   wrap.appendChild(area);
@@ -1360,7 +1365,9 @@ document.addEventListener("keydown", function (e) {
   }
 });
 
-function formDialog(title, fields, submitLabel, onSubmit, intro) {
+// `extra` is an optional {label, title, onClick} for one more destructive button
+// (Remove) shown after Cancel. It closes the dialog first, then runs onClick.
+function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
   openModal(title, function (body) {
     if (intro) body.appendChild(el("p", { "class": "hint first" }, intro));
     var inputs = {};
@@ -1395,7 +1402,13 @@ function formDialog(title, fields, submitLabel, onSubmit, intro) {
     }
     on(ok, "click", submit); on(cancel, "click", closeModal);
     on(body, "keydown", function (e) { if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); submit(); } });
-    acts.appendChild(ok); acts.appendChild(cancel); body.appendChild(acts);
+    acts.appendChild(ok); acts.appendChild(cancel);
+    if (extra) {
+      var xb = el("button", { type: "button", "class": "danger", style: "margin-left:auto", title: extra.title }, extra.label);
+      on(xb, "click", function () { closeModal(); extra.onClick(); });
+      acts.appendChild(xb);
+    }
+    body.appendChild(acts);
   });
 }
 
@@ -1491,18 +1504,23 @@ function stepDialog(launchItem, prefillProjectId) {
     });
   }
 }
-function milestoneDialog() {
+// With a milestone passed in, edits it in place and offers Remove (onRemove is
+// supplied by the caller, since removal lives in views.js); with none, adds one.
+function milestoneDialog(m, onRemove) {
   var projOpts = activeProjects().map(function (p) { return { value: p.id, label: p.name }; });
+  // A milestone can belong to a project that is no longer Active (Complete, say).
+  if (m) { var cur = findProject(m.projectId); if (cur && !projOpts.some(function (o) { return o.value === cur.id; })) projOpts.unshift({ value: cur.id, label: cur.name }); }
   if (!projOpts.length) { notify("Add an active project first."); return; }
-  formDialog("New milestone", [
-    { key: "project", label: "Project", type: "select", options: projOpts, value: projOpts[0].value },
-    { key: "text", label: "Milestone" },
-    { key: "date", label: "Date", type: "date" }
-  ], "Add milestone", function (v) {
+  formDialog(m ? "Edit milestone" : "New milestone", [
+    { key: "project", label: "Project", type: "select", options: projOpts, value: m ? m.projectId : projOpts[0].value },
+    { key: "text", label: "Milestone", value: m ? m.text : undefined },
+    { key: "date", label: "Date", type: "date", value: m ? m.date : undefined }
+  ], m ? "Save milestone" : "Add milestone", function (v) {
     if (!v.project || !v.text || !isISO(v.date)) return "Choose a project, and enter a milestone and a date.";
+    if (m) { m.projectId = v.project; m.text = v.text.slice(0, 200); m.date = v.date; changed(); return { msg: "Milestone saved." }; }
     state.milestones.push({ id: uid(), text: v.text.slice(0, 200), date: v.date, projectId: v.project }); changed();
     return { msg: "Milestone added to the Timeline." };
-  });
+  }, undefined, m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
 }
 function slipDialog() {
   openModal("Slip the schedule", function (body) {
@@ -2232,13 +2250,27 @@ function renderParkingLot(root) {
 
 function renderTimeline(root) {
   var r = rangeBlock(); root.appendChild(r.node);
+  // Opens the edit dialog for a real milestone (state.milestones entry) by id.
+  function editMilestone(id) {
+    var orig = state.milestones.filter(function (x) { return x.id === id; })[0];
+    if (orig) milestoneDialog(orig, function () { removeNow(orig, "milestones", "Milestone"); });
+  }
+  Array.prototype.forEach.call(r.node.querySelectorAll(".ms[data-ms-id]"), function (d) {
+    var id = d.getAttribute("data-ms-id");
+    on(d, "click", function () { editMilestone(id); });
+    on(d, "keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editMilestone(id); } });
+  });
   var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h2", null, "Milestones"));
   hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a milestone to the timeline" }, "Add milestone"), "click", function () { milestoneDialog(); })); root.appendChild(hd);
   var mbox = el("div", { "class": "box", style: "margin-top:10px" });
   var ul = el("ul", { "class": "mslist" });
   if (!r.milestones.length) ul.appendChild(el("li", { "class": "hint" }, "No milestones yet. Add one to see it on the timeline."));
   r.milestones.slice().sort(function (a, b) { return a.date - b.date; }).forEach(function (m) {
-    var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date))); li.appendChild(el("span", { style: "flex:1 1 auto" }, m.text));
+    var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date)));
+    var mtext = el("span", { style: "flex:1 1 auto" });
+    if (m.auto) mtext.appendChild(document.createTextNode(m.text));
+    else { var ml = el("button", { type: "button", "class": "textbtn plink", title: "Open this milestone" }, m.text); on(ml, "click", function () { editMilestone(m.id); }); mtext.appendChild(ml); }
+    li.appendChild(mtext);
     if (!m.auto) {
       var rm = el("button", { type: "button", "class": "small danger", title: "Remove this milestone (can be undone)" }, "Remove");
       on(rm, "click", function () { var orig = state.milestones.filter(function (x) { return x.id === m.id; })[0]; if (orig) removeNow(orig, "milestones", "Milestone"); });
@@ -2416,7 +2448,7 @@ function helpTopics() {
       "**Make candidate** turns an idea into a project candidate, and its note becomes the project's **Notes**. **Park it** on a candidate sends the notes back. **Archive** sends an idea to the Archive."]],
     ["Read the Timeline", [
       "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
-      "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline.",
+      "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline. Select a diamond, or a milestone's text in the list, to change its project, text, or date, or to remove it.",
       "The full-width burndown and the weekly counts are further down the page. This week's actual count fills in by itself. You can correct or fill in earlier weeks by hand."]],
     ["Launch checklist and decisions", [
       "On any task, tap **Add to Launch** beside a step to put that step on that project's own **Launch** section. **Cut from Launch** takes it off. Ticking it there or in **Tasks** keeps both in sync.",

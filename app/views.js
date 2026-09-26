@@ -679,13 +679,27 @@ export function renderParkingLot(root) {
 
 export function renderTimeline(root) {
   var r = rangeBlock(); root.appendChild(r.node);
+  // Opens the edit dialog for a real milestone (state.milestones entry) by id.
+  function editMilestone(id) {
+    var orig = state.milestones.filter(function (x) { return x.id === id; })[0];
+    if (orig) milestoneDialog(orig, function () { removeNow(orig, "milestones", "Milestone"); });
+  }
+  Array.prototype.forEach.call(r.node.querySelectorAll(".ms[data-ms-id]"), function (d) {
+    var id = d.getAttribute("data-ms-id");
+    on(d, "click", function () { editMilestone(id); });
+    on(d, "keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editMilestone(id); } });
+  });
   var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h2", null, "Milestones"));
   hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a milestone to the timeline" }, "Add milestone"), "click", function () { milestoneDialog(); })); root.appendChild(hd);
   var mbox = el("div", { "class": "box", style: "margin-top:10px" });
   var ul = el("ul", { "class": "mslist" });
   if (!r.milestones.length) ul.appendChild(el("li", { "class": "hint" }, "No milestones yet. Add one to see it on the timeline."));
   r.milestones.slice().sort(function (a, b) { return a.date - b.date; }).forEach(function (m) {
-    var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date))); li.appendChild(el("span", { style: "flex:1 1 auto" }, m.text));
+    var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date)));
+    var mtext = el("span", { style: "flex:1 1 auto" });
+    if (m.auto) mtext.appendChild(document.createTextNode(m.text));
+    else { var ml = el("button", { type: "button", "class": "textbtn plink", title: "Open this milestone" }, m.text); on(ml, "click", function () { editMilestone(m.id); }); mtext.appendChild(ml); }
+    li.appendChild(mtext);
     if (!m.auto) {
       var rm = el("button", { type: "button", "class": "small danger", title: "Remove this milestone (can be undone)" }, "Remove");
       on(rm, "click", function () { var orig = state.milestones.filter(function (x) { return x.id === m.id; })[0]; if (orig) removeNow(orig, "milestones", "Milestone"); });
@@ -863,7 +877,7 @@ export function helpTopics() {
       "**Make candidate** turns an idea into a project candidate, and its note becomes the project's **Notes**. **Park it** on a candidate sends the notes back. **Archive** sends an idea to the Archive."]],
     ["Read the Timeline", [
       "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
-      "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline.",
+      "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline. Select a diamond, or a milestone's text in the list, to change its project, text, or date, or to remove it.",
       "The full-width burndown and the weekly counts are further down the page. This week's actual count fills in by itself. You can correct or fill in earlier weeks by hand."]],
     ["Launch checklist and decisions", [
       "On any task, tap **Add to Launch** beside a step to put that step on that project's own **Launch** section. **Cut from Launch** takes it off. Ticking it there or in **Tasks** keeps both in sync.",
