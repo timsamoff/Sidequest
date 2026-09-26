@@ -100,6 +100,6 @@ export function rangeBlock() {
   ml.appendChild(mt); area.appendChild(ml);
   if (TODAY >= rs && TODAY <= re) area.appendChild(el("div", { "class": "today", style: "left:" + pct(TODAY) + "%", title: "Today" }));
   wrap.appendChild(area);
-  wrap.appendChild(el("p", { "class": "hint", style: "margin-top:10px" }, "The orange line marks today." + (openEnded ? " The chosen project has no length set, so its bar runs open-ended." : "")));
+  wrap.appendChild(el("p", { "class": "hint", style: "margin-top:10px" }, "The red line marks today." + (openEnded ? " The chosen project has no length set, so its bar runs open-ended." : "")));
   return { node: wrap, milestones: mss };
 }
