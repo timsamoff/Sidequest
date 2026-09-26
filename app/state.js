@@ -22,7 +22,7 @@ export function task(id, block, projectId, what, done, steps, extra) {
 // record and id carry through Candidate -> Active -> Archived, never a second
 // record. See DESIGN.md's "making Project a first-class entity" section.
 export function project(id, name, status, extra) {
-  var p = { id: id, name: name, note: "", status: status, start: "", mult: 1, months: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false };
+  var p = { id: id, name: name, status: status, start: "", mult: 1, months: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -43,8 +43,8 @@ export function sampleData() {
     // done-state derived from the site's own status (see DESIGN.md).
     project("pSite", "Sample Website", "active", { start: day(14), mult: 1, linkedProjectIds: ["pApp"], launchCritical: true }),
     project("pGame", "Sample Game", "active", { start: day(21), mult: 2, months: 4 }),
-    project("pExt", "Sample Browser Extension", "candidate", { note: "A small tool that could ship in a month" }),
-    project("pCli", "Sample Command-Line Tool", "candidate", { note: "Would save time on your own projects" })
+    project("pExt", "Sample Browser Extension", "candidate", { notes: "A small tool that could ship in a month" }),
+    project("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own projects" })
   ];
   var tasks = [
     task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Completed", doneAt: lastWeek }),
@@ -118,12 +118,16 @@ export function normalize(s) {
   if (typeof s.days === "number" && s.days >= 1 && s.days <= 30) d.days = Math.round(s.days);
   if (Array.isArray(s.projects)) {
     d.projects = s.projects.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) {
+      // A project used to have a separate short description (`note`) as well
+      // as `notes`. They are one field now: fold a saved `note` into the front
+      // of `notes` so nothing is lost. Once saved, `note` no longer exists.
+      var oldNote = S(x.note, 5000), body = S(x.notes, 5000);
       return {
-        id: S(x.id, 40), name: S(x.name, 120), note: S(x.note, 2000),
+        id: S(x.id, 40), name: S(x.name, 120),
         status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
         start: isISO(x.start) ? x.start : "", mult: (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? x.mult : 1,
         months: (typeof x.months === "number" && x.months >= 1 && x.months <= 36) ? Math.round(x.months) : "",
-        notes: S(x.notes, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true,
+        notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true,
         // Validated below, once every project's real id is known -- a link
         // can only point at another project that actually exists in the
         // final set. Arbitrary depth/cycles are fine (see DESIGN.md); each
@@ -180,7 +184,7 @@ export function normalize(s) {
       return x && typeof x.id === "string" && typeof x.step === "string" && liveStepIds[x.step];
     }).map(function (x) { return { id: S(x.id, 40), q: S(x.q, 300), a: S(x.a, 1000), step: S(x.step, 40) }; });
   }
-  if (Array.isArray(s.parked)) d.parked = s.parked.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 2000), arch: validArch(x.arch) }; });
+  if (Array.isArray(s.parked)) d.parked = s.parked.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 5000), arch: validArch(x.arch) }; });
   // Milestones require a direct project link (no task/step chain to derive it
   // from) -- one pointing at a project that no longer exists is dropped.
   if (Array.isArray(s.milestones)) {

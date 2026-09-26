@@ -292,6 +292,10 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
 .crow.oneline { align-items: center; }
 .crow label { display: flex; gap: var(--space-10); align-items: flex-start; font-weight: 600; cursor: pointer; flex: 1 1 200px; }
 .notetext { white-space: pre-line; }
+/* List rows show at most two lines of a note, ending in an ellipsis. The full
+   note is one click away (an idea's title opens its dialog, a project's title
+   opens its page). */
+.noteclamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .cnote { color: var(--muted); font-size: .92rem; margin: var(--space-2) 0 0 var(--space-30); }
 .cfields { display: flex; flex-wrap: wrap; gap: var(--space-12); margin: var(--space-6) 0 0 var(--space-30); }
 .cfields .field { margin-top: var(--space-4); }
@@ -791,7 +795,7 @@ function task(id, block, projectId, what, done, steps, extra) {
 // record and id carry through Candidate -> Active -> Archived, never a second
 // record. See DESIGN.md's "making Project a first-class entity" section.
 function project(id, name, status, extra) {
-  var p = { id: id, name: name, note: "", status: status, start: "", mult: 1, months: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false };
+  var p = { id: id, name: name, status: status, start: "", mult: 1, months: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -812,8 +816,8 @@ function sampleData() {
     // done-state derived from the site's own status (see DESIGN.md).
     project("pSite", "Sample Website", "active", { start: day(14), mult: 1, linkedProjectIds: ["pApp"], launchCritical: true }),
     project("pGame", "Sample Game", "active", { start: day(21), mult: 2, months: 4 }),
-    project("pExt", "Sample Browser Extension", "candidate", { note: "A small tool that could ship in a month" }),
-    project("pCli", "Sample Command-Line Tool", "candidate", { note: "Would save time on your own projects" })
+    project("pExt", "Sample Browser Extension", "candidate", { notes: "A small tool that could ship in a month" }),
+    project("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own projects" })
   ];
   var tasks = [
     task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Completed", doneAt: lastWeek }),
@@ -887,12 +891,16 @@ function normalize(s) {
   if (typeof s.days === "number" && s.days >= 1 && s.days <= 30) d.days = Math.round(s.days);
   if (Array.isArray(s.projects)) {
     d.projects = s.projects.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) {
+      // A project used to have a separate short description (`note`) as well
+      // as `notes`. They are one field now: fold a saved `note` into the front
+      // of `notes` so nothing is lost. Once saved, `note` no longer exists.
+      var oldNote = S(x.note, 5000), body = S(x.notes, 5000);
       return {
-        id: S(x.id, 40), name: S(x.name, 120), note: S(x.note, 2000),
+        id: S(x.id, 40), name: S(x.name, 120),
         status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
         start: isISO(x.start) ? x.start : "", mult: (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? x.mult : 1,
         months: (typeof x.months === "number" && x.months >= 1 && x.months <= 36) ? Math.round(x.months) : "",
-        notes: S(x.notes, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true,
+        notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true,
         // Validated below, once every project's real id is known -- a link
         // can only point at another project that actually exists in the
         // final set. Arbitrary depth/cycles are fine (see DESIGN.md); each
@@ -949,7 +957,7 @@ function normalize(s) {
       return x && typeof x.id === "string" && typeof x.step === "string" && liveStepIds[x.step];
     }).map(function (x) { return { id: S(x.id, 40), q: S(x.q, 300), a: S(x.a, 1000), step: S(x.step, 40) }; });
   }
-  if (Array.isArray(s.parked)) d.parked = s.parked.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 2000), arch: validArch(x.arch) }; });
+  if (Array.isArray(s.parked)) d.parked = s.parked.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 5000), arch: validArch(x.arch) }; });
   // Milestones require a direct project link (no task/step chain to derive it
   // from) -- one pointing at a project that no longer exists is dropped.
   if (Array.isArray(s.milestones)) {
@@ -1224,9 +1232,9 @@ function searchAll(q, includeArchive) {
     });
   });
   liveProjects().forEach(function (p) {
-    consider("project", p.name, [p.notes, p.note], projectMeta(p), function () { go(validPage("proj:" + p.id) ? "proj:" + p.id : "projects"); }, false, ["Notes", "Note"]);
+    consider("project", p.name, [p.notes], projectMeta(p), function () { go(validPage("proj:" + p.id) ? "proj:" + p.id : "projects"); }, false, ["Notes"]);
   });
-  state.projects.forEach(function (p) { if (p.arch) consider("project", p.name, [p.note], "Archived project", function () { go("archive"); }, true, ["Note"]); });
+  state.projects.forEach(function (p) { if (p.arch) consider("project", p.name, [p.notes], "Archived project", function () { go("archive"); }, true, ["Notes"]); });
   state.parked.forEach(function (p) { consider("idea", p.text, [p.note], "Parking lot", function () { go(p.arch ? "archive" : "parking"); }, !!p.arch, ["Note"]); });
   // Decisions always link to a step (see DESIGN.md), so their project comes
   // from following Decision -> Step -> Task -> Project, same as everywhere else.
@@ -1411,9 +1419,9 @@ function taskDialog(prefillProjectId, backlog) {
   }, wpC() + " set the dates. " + wd() + " 1 starts on the project's start date. Leave it empty to put the task in the Backlog.");
 }
 function projectDialog() {
-  formDialog("New project", [{ key: "name", label: "Project name" }, { key: "note", label: "Short note (optional)" }], "Add project", function (v) {
+  formDialog("New project", [{ key: "name", label: "Project name" }, { key: "notes", label: "Notes (optional)", type: "textarea", rows: 5 }], "Add project", function (v) {
     if (!v.name) return "Enter a project name.";
-    state.projects.push(makeProject(uid(), v.name.slice(0, 120), "candidate", { note: v.note.slice(0, 300) })); changed();
+    state.projects.push(makeProject(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000) })); changed();
     return { msg: v.name + " added as a candidate for the next slot." };
   }, "It joins the candidates for the next slot. You can park it later.");
 }
@@ -1425,8 +1433,8 @@ function ideaDialog(idea) {
     { key: "note", label: "Note (optional)", type: "textarea", rows: 5, value: idea ? idea.note : undefined }
   ], idea ? "Save idea" : "Add to parking lot", function (v) {
     if (!v.text) return "Enter the idea.";
-    if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 2000); changed(); return { msg: "Idea saved." }; }
-    state.parked.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 2000) }); changed();
+    if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 5000); changed(); return { msg: "Idea saved." }; }
+    state.parked.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000) }); changed();
     return { msg: "Added to the parking lot." };
   });
 }
@@ -1964,16 +1972,39 @@ function renderProjectPage(root, id) {
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
   var key = "proj:" + p.id, readOnly = !!p.arch;
   root.appendChild(pinBar(key));
-  var metaLine = el("p", { "class": "hint first" });
+  if (!readOnly) {
+    // Renaming is safe: tasks, pins, links, and milestones all point at the
+    // project's id, never its name. Saves on change (blur/Enter) so the title
+    // and sidebar update once, not on every keystroke.
+    var nameField = el("div", { "class": "field", style: "margin-top:0" });
+    nameField.appendChild(el("label", { "for": "proj-name" }, "Project name"));
+    var nameInput = el("input", { type: "text", id: "proj-name", autocomplete: "off", maxlength: "120" }); nameInput.value = p.name;
+    on(nameInput, "change", function () {
+      var v = nameInput.value.trim();
+      if (!v) { nameInput.value = p.name; notify("A project needs a name."); return; }
+      if (v !== p.name) { p.name = v.slice(0, 120); changed(); }
+    });
+    nameField.appendChild(nameInput); root.appendChild(nameField);
+  }
+  var metaLine = el("p", { "class": "hint" });
   if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip projcomplete", style: "margin-right:8px" }, "Complete"));
   metaLine.appendChild(document.createTextNode(projectMeta(p)));
   root.appendChild(metaLine);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
-  if (p.note) root.appendChild(el("p", { "class": "hint notetext" }, p.note));
 
+  if (p.status === "candidate" && readOnly) {
+    root.appendChild(el("h2", null, "Notes"));
+    root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
+    return;
+  }
   if (p.status === "candidate") {
     var cb = el("div", { "class": "box", style: "margin-top:16px" });
-    var f = el("div", { "class": "cfields", style: "margin:0" });
+    var nf = el("div", { "class": "field", style: "margin-top:0" });
+    nf.appendChild(el("label", { "for": "cn-" + p.id }, "Notes"));
+    var nt = el("textarea", { id: "cn-" + p.id, rows: 6 }); nt.value = p.notes;
+    on(nt, "input", function () { p.notes = nt.value.slice(0, 5000); save(); });
+    nf.appendChild(nt); cb.appendChild(nf);
+    var f = el("div", { "class": "cfields", style: "margin:14px 0 0" });
     var f1 = el("div", { "class": "field" }); f1.appendChild(el("label", { "for": "cs-" + p.id }, "Start date (optional)"));
     var sd = el("input", { type: "date", id: "cs-" + p.id }); sd.value = p.start;
     on(sd, "change", function () { p.start = isISO(sd.value) ? sd.value : ""; cf.disabled = !p.start; if (!p.start) cf.value = ""; save(); notify("Start date saved. See it on the Timeline."); });
@@ -2038,7 +2069,7 @@ function renderProjectPage(root, id) {
   }
   root.appendChild(el("h2", null, "Notes"));
   if (readOnly) {
-    root.appendChild(el("p", { "class": "hint" }, p.notes || "No notes."));
+    root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
   } else {
     var ta = el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" }); ta.value = p.notes;
     on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(); });
@@ -2138,12 +2169,12 @@ function candidatesSection() {
     var nm = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, cd.name);
     on(nm, "click", function () { go("proj:" + cd.id); });
     nmWrap.appendChild(nm);
-    if (cd.note) nmWrap.appendChild(el("p", { "class": "cnote notetext", style: "margin-left:0" }, cd.note));
+    if (cd.notes) nmWrap.appendChild(el("p", { "class": "cnote notetext noteclamp", style: "margin-left:0" }, cd.notes));
     row.appendChild(nmWrap);
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Move to the Parking lot" }, "Park it"), "click", function () {
       state.projects = state.projects.filter(function (x) { return x.id !== cd.id; });
-      state.parked.push({ id: uid(), text: cd.name, note: cd.note }); changed();
+      state.parked.push({ id: uid(), text: cd.name, note: cd.notes }); changed();
     }));
     var rm = el("button", { type: "button", "class": "small danger", title: "Archive this project" }, "Archive");
     on(rm, "click", function () { removeToArchive(cd, "Project"); });
@@ -2173,12 +2204,12 @@ function renderParkingLot(root) {
     var link = el("button", { type: "button", "class": "textbtn plink", style: "font-weight:600", title: "Open this idea" }, p.text);
     on(link, "click", function () { ideaDialog(p); });
     nm.appendChild(link);
-    if (p.note) nm.appendChild(el("p", { "class": "hint notetext", style: "margin-top:2px" }, p.note));
+    if (p.note) nm.appendChild(el("p", { "class": "hint notetext noteclamp", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make this a candidate project" }, "Make candidate"), "click", function () {
       state.parked = state.parked.filter(function (x) { return x.id !== p.id; });
-      state.projects.push(makeProject(uid(), p.text, "candidate", { note: p.note })); changed();
+      state.projects.push(makeProject(uid(), p.text, "candidate", { notes: p.note })); changed();
     }));
     var rm = el("button", { type: "button", "class": "small danger", title: "Archive this idea" }, "Archive");
     on(rm, "click", function () { removeToArchive(p, "Idea"); });
@@ -2358,7 +2389,7 @@ function helpTopics() {
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
       "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burndown until you do."]],
     ["Manage projects", [
-      "Each project has its own page. Open **Projects** and select the project's name. Set its start date, pace, and notes.",
+      "Each project has its own page. Open **Projects** and select the project's name. There you can rename it and edit its notes, and set its start date and pace.",
       "**Candidates** are projects that could take the next slot. Open one and choose **Choose as next project** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
       "**Where things stand** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there."]],
     ["Finish or archive a project", [
@@ -2370,7 +2401,7 @@ function helpTopics() {
       "**Mark launch critical** flags a linked project that has to finish first. It shows on the other project's Launch checklist, and counts as done once it is complete or archived. Completing or archiving a project with an unfinished launch-critical link only warns you."]],
     ["Use the Parking lot", [
       "Ideas that are not ready yet live on the **Parking lot**. Add one with **Add idea**. Select an idea's title to open it and change its text or note.",
-      "**Make candidate** turns an idea into a project candidate. **Archive** sends it to the Archive."]],
+      "**Make candidate** turns an idea into a project candidate, and its note becomes the project's **Notes**. **Park it** on a candidate sends the notes back. **Archive** sends an idea to the Archive."]],
     ["Read the Timeline", [
       "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline.",

@@ -48,9 +48,9 @@ export function searchAll(q, includeArchive) {
     });
   });
   liveProjects().forEach(function (p) {
-    consider("project", p.name, [p.notes, p.note], projectMeta(p), function () { go(validPage("proj:" + p.id) ? "proj:" + p.id : "projects"); }, false, ["Notes", "Note"]);
+    consider("project", p.name, [p.notes], projectMeta(p), function () { go(validPage("proj:" + p.id) ? "proj:" + p.id : "projects"); }, false, ["Notes"]);
   });
-  state.projects.forEach(function (p) { if (p.arch) consider("project", p.name, [p.note], "Archived project", function () { go("archive"); }, true, ["Note"]); });
+  state.projects.forEach(function (p) { if (p.arch) consider("project", p.name, [p.notes], "Archived project", function () { go("archive"); }, true, ["Notes"]); });
   state.parked.forEach(function (p) { consider("idea", p.text, [p.note], "Parking lot", function () { go(p.arch ? "archive" : "parking"); }, !!p.arch, ["Note"]); });
   // Decisions always link to a step (see DESIGN.md), so their project comes
   // from following Decision -> Step -> Task -> Project, same as everywhere else.

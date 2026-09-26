@@ -407,6 +407,64 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.saved().parked.find(p => p.text === "Long note idea").note.length === 1500, "a note longer than the old 300-character cap is kept");
 }
 
+{
+  // a project has one Notes field, and saved data with the old separate short note still loads
+  const saved = { projects: [
+    { id: "pOld", name: "Old shape", status: "candidate", note: "short", notes: "long" },
+    { id: "pOnly", name: "Only short", status: "candidate", note: "just this", notes: "" }
+  ], tasks: [] };
+  const k = kit(await mk(saved));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Old shape"));
+  ok(!!k.$("cn-pOld") && k.$("cn-pOld").value === "short\n\nlong", "an old short note is folded into the front of Notes when both exist");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Only short"));
+  ok(!!k.$("cn-pOnly") && k.$("cn-pOnly").value === "just this", "an old short note alone becomes the project's Notes");
+}
+{
+  // editable name and Notes on the project page
+  const k = kit(await mk());
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Browser Extension"));
+  ok(k.$("cn-pExt").value === "A small tool that could ship in a month", "a candidate's page shows its Notes in an editable box");
+  const nt = k.$("cn-pExt"); nt.value = "Edited notes"; k.fire(nt, "input");
+  ok(k.saved().projects.find(p => p.id === "pExt").notes === "Edited notes", "editing a candidate's Notes saves");
+  const nm = k.$("proj-name"); nm.value = "Renamed Extension"; k.fire(nm);
+  ok(k.saved().projects.find(p => p.id === "pExt").name === "Renamed Extension" && k.$("viewTitle").textContent === "Renamed Extension", "renaming saves and updates the page title");
+  const nm2 = k.$("proj-name"); nm2.value = "   "; k.fire(nm2);
+  ok(k.saved().projects.find(p => p.id === "pExt").name === "Renamed Extension" && k.$("proj-name").value === "Renamed Extension", "a blank name is rejected and the old name is kept");
+}
+{
+  const k = kit(await mk());
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  const nm = k.$("proj-name"); nm.value = "Habit App"; k.fire(nm);
+  ok(!!k.btn(k.d.querySelector("#nav"), "Habit App") && !k.btn(k.d.querySelector("#nav"), "Sample App"), "renaming a pinned project updates its name in the sidebar");
+  ok(!!k.$("proj-name") && k.d.querySelector("#view textarea"), "an active project keeps its editable name and Notes");
+}
+{
+  // notes travel between ideas and candidates, and list rows clamp them
+  const k = kit(await mk());
+  k.tab("projects");
+  const candRow = () => [...k.d.querySelectorAll("#view .list li")].find(li => li.querySelector('button[title="Move to the Parking lot"]'));
+  ok(!!candRow().querySelector(".noteclamp"), "a candidate's note in the list is clamped to two lines");
+  k.click(k.btn(candRow(), "Park it"));
+  const idea = k.saved().parked.find(p => p.text === "Sample Browser Extension");
+  ok(idea && idea.note === "A small tool that could ship in a month", "Park it carries the project's Notes back to the idea's note");
+  k.tab("parking");
+  const irow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Browser Extension"));
+  ok(!!irow.querySelector(".noteclamp"), "a parked idea's note is clamped to two lines");
+  k.click(k.btn(irow, "Make candidate"));
+  const proj = k.saved().projects.find(p => p.name === "Sample Browser Extension" && p.status === "candidate");
+  ok(proj && proj.notes === "A small tool that could ship in a month" && !("note" in proj), "Make candidate puts the idea's note in the project's Notes, with no separate note field");
+}
+{
+  // an archived candidate's page is read-only like any archived project's
+  const k = kit(await mk());
+  k.tab("projects");
+  const candRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.querySelector('button[title="Move to the Parking lot"]'));
+  k.click(k.btn(candRow, "Archive"));
+  k.tab("archive");
+  k.click(k.btn(k.$("view"), "Sample Browser Extension"));
+  ok(!k.btn(k.$("view"), "Choose as next project") && !k.$("proj-name") && !k.d.querySelector("#view textarea"), "an archived candidate's page has no editable fields or promote button");
+}
+
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);
 

@@ -431,16 +431,39 @@ export function renderProjectPage(root, id) {
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
   var key = "proj:" + p.id, readOnly = !!p.arch;
   root.appendChild(pinBar(key));
-  var metaLine = el("p", { "class": "hint first" });
+  if (!readOnly) {
+    // Renaming is safe: tasks, pins, links, and milestones all point at the
+    // project's id, never its name. Saves on change (blur/Enter) so the title
+    // and sidebar update once, not on every keystroke.
+    var nameField = el("div", { "class": "field", style: "margin-top:0" });
+    nameField.appendChild(el("label", { "for": "proj-name" }, "Project name"));
+    var nameInput = el("input", { type: "text", id: "proj-name", autocomplete: "off", maxlength: "120" }); nameInput.value = p.name;
+    on(nameInput, "change", function () {
+      var v = nameInput.value.trim();
+      if (!v) { nameInput.value = p.name; notify("A project needs a name."); return; }
+      if (v !== p.name) { p.name = v.slice(0, 120); changed(); }
+    });
+    nameField.appendChild(nameInput); root.appendChild(nameField);
+  }
+  var metaLine = el("p", { "class": "hint" });
   if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip projcomplete", style: "margin-right:8px" }, "Complete"));
   metaLine.appendChild(document.createTextNode(projectMeta(p)));
   root.appendChild(metaLine);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
-  if (p.note) root.appendChild(el("p", { "class": "hint notetext" }, p.note));
 
+  if (p.status === "candidate" && readOnly) {
+    root.appendChild(el("h2", null, "Notes"));
+    root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
+    return;
+  }
   if (p.status === "candidate") {
     var cb = el("div", { "class": "box", style: "margin-top:16px" });
-    var f = el("div", { "class": "cfields", style: "margin:0" });
+    var nf = el("div", { "class": "field", style: "margin-top:0" });
+    nf.appendChild(el("label", { "for": "cn-" + p.id }, "Notes"));
+    var nt = el("textarea", { id: "cn-" + p.id, rows: 6 }); nt.value = p.notes;
+    on(nt, "input", function () { p.notes = nt.value.slice(0, 5000); save(); });
+    nf.appendChild(nt); cb.appendChild(nf);
+    var f = el("div", { "class": "cfields", style: "margin:14px 0 0" });
     var f1 = el("div", { "class": "field" }); f1.appendChild(el("label", { "for": "cs-" + p.id }, "Start date (optional)"));
     var sd = el("input", { type: "date", id: "cs-" + p.id }); sd.value = p.start;
     on(sd, "change", function () { p.start = isISO(sd.value) ? sd.value : ""; cf.disabled = !p.start; if (!p.start) cf.value = ""; save(); notify("Start date saved. See it on the Timeline."); });
@@ -505,7 +528,7 @@ export function renderProjectPage(root, id) {
   }
   root.appendChild(el("h2", null, "Notes"));
   if (readOnly) {
-    root.appendChild(el("p", { "class": "hint" }, p.notes || "No notes."));
+    root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
   } else {
     var ta = el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" }); ta.value = p.notes;
     on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(); });
@@ -605,12 +628,12 @@ export function candidatesSection() {
     var nm = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, cd.name);
     on(nm, "click", function () { go("proj:" + cd.id); });
     nmWrap.appendChild(nm);
-    if (cd.note) nmWrap.appendChild(el("p", { "class": "cnote notetext", style: "margin-left:0" }, cd.note));
+    if (cd.notes) nmWrap.appendChild(el("p", { "class": "cnote notetext noteclamp", style: "margin-left:0" }, cd.notes));
     row.appendChild(nmWrap);
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Move to the Parking lot" }, "Park it"), "click", function () {
       state.projects = state.projects.filter(function (x) { return x.id !== cd.id; });
-      state.parked.push({ id: uid(), text: cd.name, note: cd.note }); changed();
+      state.parked.push({ id: uid(), text: cd.name, note: cd.notes }); changed();
     }));
     var rm = el("button", { type: "button", "class": "small danger", title: "Archive this project" }, "Archive");
     on(rm, "click", function () { removeToArchive(cd, "Project"); });
@@ -640,12 +663,12 @@ export function renderParkingLot(root) {
     var link = el("button", { type: "button", "class": "textbtn plink", style: "font-weight:600", title: "Open this idea" }, p.text);
     on(link, "click", function () { ideaDialog(p); });
     nm.appendChild(link);
-    if (p.note) nm.appendChild(el("p", { "class": "hint notetext", style: "margin-top:2px" }, p.note));
+    if (p.note) nm.appendChild(el("p", { "class": "hint notetext noteclamp", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make this a candidate project" }, "Make candidate"), "click", function () {
       state.parked = state.parked.filter(function (x) { return x.id !== p.id; });
-      state.projects.push(makeProject(uid(), p.text, "candidate", { note: p.note })); changed();
+      state.projects.push(makeProject(uid(), p.text, "candidate", { notes: p.note })); changed();
     }));
     var rm = el("button", { type: "button", "class": "small danger", title: "Archive this idea" }, "Archive");
     on(rm, "click", function () { removeToArchive(p, "Idea"); });
@@ -825,7 +848,7 @@ export function helpTopics() {
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
       "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burndown until you do."]],
     ["Manage projects", [
-      "Each project has its own page. Open **Projects** and select the project's name. Set its start date, pace, and notes.",
+      "Each project has its own page. Open **Projects** and select the project's name. There you can rename it and edit its notes, and set its start date and pace.",
       "**Candidates** are projects that could take the next slot. Open one and choose **Choose as next project** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
       "**Where things stand** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there."]],
     ["Finish or archive a project", [
@@ -837,7 +860,7 @@ export function helpTopics() {
       "**Mark launch critical** flags a linked project that has to finish first. It shows on the other project's Launch checklist, and counts as done once it is complete or archived. Completing or archiving a project with an unfinished launch-critical link only warns you."]],
     ["Use the Parking lot", [
       "Ideas that are not ready yet live on the **Parking lot**. Add one with **Add idea**. Select an idea's title to open it and change its text or note.",
-      "**Make candidate** turns an idea into a project candidate. **Archive** sends it to the Archive."]],
+      "**Make candidate** turns an idea into a project candidate, and its note becomes the project's **Notes**. **Park it** on a candidate sends the notes back. **Archive** sends an idea to the Archive."]],
     ["Read the Timeline", [
       "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline.",

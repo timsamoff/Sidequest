@@ -100,9 +100,9 @@ export function taskDialog(prefillProjectId, backlog) {
   }, wpC() + " set the dates. " + wd() + " 1 starts on the project's start date. Leave it empty to put the task in the Backlog.");
 }
 export function projectDialog() {
-  formDialog("New project", [{ key: "name", label: "Project name" }, { key: "note", label: "Short note (optional)" }], "Add project", function (v) {
+  formDialog("New project", [{ key: "name", label: "Project name" }, { key: "notes", label: "Notes (optional)", type: "textarea", rows: 5 }], "Add project", function (v) {
     if (!v.name) return "Enter a project name.";
-    state.projects.push(makeProject(uid(), v.name.slice(0, 120), "candidate", { note: v.note.slice(0, 300) })); changed();
+    state.projects.push(makeProject(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000) })); changed();
     return { msg: v.name + " added as a candidate for the next slot." };
   }, "It joins the candidates for the next slot. You can park it later.");
 }
@@ -114,8 +114,8 @@ export function ideaDialog(idea) {
     { key: "note", label: "Note (optional)", type: "textarea", rows: 5, value: idea ? idea.note : undefined }
   ], idea ? "Save idea" : "Add to parking lot", function (v) {
     if (!v.text) return "Enter the idea.";
-    if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 2000); changed(); return { msg: "Idea saved." }; }
-    state.parked.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 2000) }); changed();
+    if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 5000); changed(); return { msg: "Idea saved." }; }
+    state.parked.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000) }); changed();
     return { msg: "Added to the parking lot." };
   });
 }
