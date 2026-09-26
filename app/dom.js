@@ -8,6 +8,41 @@ export function el(tag, attrs, text) {
   return e;
 }
 export function on(node, ev, fn) { node.addEventListener(ev, fn); return node; }
+// A pencil icon button: the app's one affordance for "change this text".
+var PENCIL = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
+export function pencilButton(label, title, onClick) {
+  var b = el("button", { type: "button", "class": "pencil", "aria-label": label, title: title });
+  b.innerHTML = PENCIL;
+  if (onClick) on(b, "click", onClick);
+  return b;
+}
+// Turns the text in `display` into an input in place. Enter or clicking away saves,
+// Esc cancels. opts: { label, max, value(), onSave(v), onEmpty(), onDone() }. onDone
+// runs first (so callers can restore their pencil), then onSave.
+export function editInline(display, opts) {
+  var input = el("input", { type: "text", "class": "inlineedit", "aria-label": opts.label, maxlength: String(opts.max || 200), autocomplete: "off" });
+  input.value = opts.value();
+  input.style.font = window.getComputedStyle(display).font;
+  var finished = false;
+  function finish(save) {
+    if (finished) return; finished = true;
+    var v = input.value.trim();
+    if (input.parentNode) input.parentNode.removeChild(input);
+    display.style.display = "";
+    if (opts.onDone) opts.onDone();
+    if (!save) return;
+    if (!v) { if (opts.onEmpty) opts.onEmpty(); return; }
+    if (v !== opts.value()) opts.onSave(v);
+  }
+  on(input, "keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); finish(true); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finish(false); }
+  });
+  on(input, "blur", function () { finish(true); });
+  display.style.display = "none";
+  display.parentNode.insertBefore(input, display.nextSibling);
+  input.focus(); input.select();
+}
 export function arm(btn, label, armedLabel, action) {
   var timer = null;
   btn.addEventListener("click", function () {

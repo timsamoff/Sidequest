@@ -1,6 +1,6 @@
-import { state, ui, save, saveUI, autoArchive, APP_NAME, loadFromDbIfAvailable } from "./state.js";
-import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask } from "./model.js";
-import { $, el, on, focusKey, setFocusKey, scrollTop, notify } from "./dom.js";
+import { state, ui, save, saveUI, changed, autoArchive, APP_NAME, loadFromDbIfAvailable } from "./state.js";
+import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findProject } from "./model.js";
+import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline } from "./dom.js";
 import { lateTasks } from "./model.js";
 import {
   renderToday, renderSchedule, renderProjects, renderParkingLot,
@@ -58,8 +58,25 @@ export function renderChrome() {
   buildMoreMenu(pinned);
   var title = pageTitle(ui.view) || "Today";
   $("viewTitle").textContent = title;
+  // The pencil next to the title renames the project (not shown for an archived one).
+  var cur = ui.view.indexOf("proj:") === 0 ? findProject(ui.view.slice(5)) : null;
+  $("renameBtn").hidden = !(cur && !cur.arch);
   document.title = title + " · " + APP_NAME;
 }
+// Names are edited in place: safe to change because tasks, pins, links, and
+// milestones all point at the project id, never its name.
+function renameCurrentProject() {
+  var p = ui.view.indexOf("proj:") === 0 ? findProject(ui.view.slice(5)) : null;
+  if (!p || p.arch) return;
+  $("renameBtn").hidden = true;
+  editInline($("viewTitle"), {
+    label: "Project name", max: 120, value: function () { return p.name; },
+    onSave: function (v) { p.name = v.slice(0, 120); changed(); },
+    onEmpty: function () { notify("A project needs a name."); },
+    onDone: function () { $("renameBtn").hidden = false; }
+  });
+}
+on($("renameBtn"), "click", renameCurrentProject);
 
 export function renderView() {
   var root = $("view"); root.innerHTML = "";

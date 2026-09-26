@@ -56,7 +56,7 @@ export function searchAll(q, includeArchive) {
   // from following Decision -> Step -> Task -> Project, same as everywhere else.
   state.decisions.forEach(function (d) {
     var ls = findStep(d.step);
-    consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { go(d.arch ? "archive" : (ls ? "proj:" + ls.t.projectId : "projects")); }, !!d.arch, ["Answer"]);
+    consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { if (d.arch) go("archive"); else if (ls) openTask(ls.t.id); else go("projects"); }, !!d.arch, ["Answer"]);
   });
   state.milestones.forEach(function (m) { consider("milestone", m.text, [fmtY(parseISO(m.date)), m.date], fmtY(parseISO(m.date)), function () { go(m.arch ? "archive" : ("proj:" + m.projectId)); }, !!m.arch); });
   SEARCH_ORDER.forEach(function (k) { groups[k].sort(function (a, b) { return b.score - a.score || a.idx - b.idx; }); });

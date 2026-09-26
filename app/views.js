@@ -9,10 +9,10 @@ import {
   validPage, isPinned, pinPage, unpinPage, projectMeta,
   findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask
 } from "./model.js";
-import { $, el, on, uid, setFocusKey, notify, scrollTop } from "./dom.js";
+import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline } from "./dom.js";
 import { drawChart, drawProjectChart, rangeBlock, projectRangeBlock } from "./chart.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme } from "./app.js";
-import { stepDialog, decisionDialog, linkProjectDialog, ideaDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
+import { stepDialog, stepEditDialog, decisionDialog, decisionEditDialog, linkProjectDialog, ideaDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
 
 /* views */
 export function nextUpPanel() {
@@ -219,7 +219,22 @@ export function buildDetail(t) {
   sel.setAttribute("data-v", t.status);
   on(sel, "change", function () { setStatus(t, sel.value); changed(); });
   top.appendChild(sel); box.appendChild(top);
-  box.appendChild(el("p", { "class": "what" }, dispWhat(t)));
+  var whatRow = el("div", { "class": "editrow" });
+  var whatP = el("p", { "class": "what", style: "flex:0 1 auto;min-width:0" }, dispWhat(t)); whatRow.appendChild(whatP);
+  if (!t.isNext) {
+    var whatPen = pencilButton("Rename this task", "Rename this task");
+    on(whatPen, "click", function () {
+      whatPen.hidden = true;
+      editInline(whatP, {
+        label: "Task name", max: 400, value: function () { return t.what; },
+        onSave: function (val) { t.what = val.slice(0, 400); changed(); },
+        onEmpty: function () { notify("A task needs a name."); },
+        onDone: function () { whatPen.hidden = false; }
+      });
+    });
+    whatRow.appendChild(whatPen);
+  }
+  box.appendChild(whatRow);
   if (!(t.isNext && chosen())) box.appendChild(el("p", { "class": "dmeta" }, "Done when: " + t.done));
   if (!t.isNext) {
     var bw = el("div", { "class": "field", style: "max-width:24rem" }); bw.appendChild(el("label", { "for": "task-block" }, wd()));
@@ -234,7 +249,7 @@ export function buildDetail(t) {
   var nDone = t.steps.filter(function (s) { return s.done; }).length;
   box.appendChild(el("h3", null, t.steps.length ? "Steps (" + nDone + " of " + t.steps.length + " done)" : "Steps"));
   if (!t.steps.length) box.appendChild(el("p", { "class": "hint" }, "No steps yet. This task counts as one item in the burndown. Add steps to break it up."));
-  if (t.steps.length) box.appendChild(el("p", { "class": "hint" }, "Add to Launch puts a step on the Launch checklist. It stays one step, so nothing is counted twice."));
+  if (t.steps.length) box.appendChild(el("p", { "class": "hint" }, "Use a step's pencil to rename it, put it on the Launch checklist (it stays one step, so nothing is counted twice), or remove it."));
   var ul = el("ul", { "class": "steps" });
   t.steps.forEach(function (s) {
     var sli = el("li", { "class": s.done ? "done" : "" });
@@ -242,14 +257,12 @@ export function buildDetail(t) {
     on(cb, "change", function () { s.done = cb.checked; syncFromSteps(t); changed(); });
     lab.appendChild(cb); lab.appendChild(el("span", null, s.text)); sli.appendChild(lab);
     var ac = el("div", { "class": "li-actions" });
+    if (s.launch) ac.appendChild(el("span", { "class": "chip", title: "On the launch checklist" }, "Launch"));
     var dc = decisionFor(s.id);
-    if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the linked decision", title: "Go to the linked decision on the project page" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { go("proj:" + t.projectId); }));
-    var kb = el("button", { type: "button", "class": "small" + (s.launch ? " on" : ""), "aria-pressed": s.launch ? "true" : "false", "aria-label": "Show on the launch checklist: " + s.text, title: (s.launch ? "Remove from" : "Add to") + " the launch checklist" }, s.launch ? "Cut from Launch" : "Add to Launch");
-    on(kb, "click", function () { s.launch = !s.launch; changed(); });
-    ac.appendChild(kb);
-    var rm = el("button", { type: "button", "class": "small danger", "aria-label": "Remove step: " + s.text, title: "Remove this step" }, "Remove");
-    on(rm, "click", function () { t.steps = t.steps.filter(function (x) { return x.id !== s.id; }); syncFromSteps(t); changed(); });
-    ac.appendChild(rm); sli.appendChild(ac); ul.appendChild(sli);
+    if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the decision for this step", title: "Open this decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { decisionEditDialog(dc, function () { removeNow(dc, "decisions", "Decision"); }); }));
+    else ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Add a decision to this step: " + s.text, title: "Add a decision to this step" }, "Add decision"), "click", function () { decisionDialog({ step: s.id }); }));
+    ac.appendChild(pencilButton("Edit step: " + s.text, "Edit this step", function () { stepEditDialog(t, s); }));
+    sli.appendChild(ac); ul.appendChild(sli);
   });
   box.appendChild(ul);
   var add = el("div", { "class": "inline" });
@@ -319,13 +332,12 @@ export function linksSection(root, p) {
 // exists anymore (see DESIGN.md: only Projects are pinnable).
 export function launchSection(root, p) {
   var readOnly = !!p.arch;
-  var g = pgrid();
   var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h3", { id: "h-checks" }, "Before you launch"));
   if (!readOnly) ha.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a launch checklist item" }, "Add item"), "click", function () { stepDialog(true, p.id); }));
-  g.put(ha, 1, 1);
-  g.put(el("p", { "class": "hint" }, "These are steps from this project's tasks. Tick one here or in Tasks and it stays in sync."), 1, 2);
+  root.appendChild(ha);
+  root.appendChild(el("p", { "class": "hint" }, "These are steps from this project's tasks. Tick one here or in Tasks and it stays in sync."));
   var prog = el("p", { "class": "progress", role: "status", "aria-live": "polite" });
-  var items = launchItems(p.id), rows = {};
+  var items = launchItems(p.id);
   var lcLinks = linkedProjects(p).filter(function (lp) { return lp.launchCritical; });
   function progress() {
     var n = items.filter(function (x) { return x.s.done; }).length + lcLinks.filter(function (lp) { return lp.status === "complete" || lp.status === "archived"; }).length;
@@ -333,7 +345,7 @@ export function launchSection(root, p) {
     prog.textContent = total ? n + " of " + total + " done" : "";
   }
   var ul = el("ul", { "class": "list check", "aria-labelledby": "h-checks" });
-  if (!items.length && !lcLinks.length) ul.appendChild(el("li", { "class": "hint" }, "No steps are marked for the launch checklist. Use Launch on a step in Tasks, or add an item."));
+  if (!items.length && !lcLinks.length) ul.appendChild(el("li", { "class": "hint" }, "No steps are on the launch checklist. Edit a step in Tasks to put it here, or add an item."));
   items.forEach(function (x) {
     var li = el("li", { "class": x.s.done ? "done" : "" });
     var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = x.s.done; box.disabled = readOnly;
@@ -345,7 +357,7 @@ export function launchSection(root, p) {
     var dc = decisionFor(x.s.id);
     if (dc) meta.appendChild(document.createTextNode(" · Decision " + (dc.a ? "decided" : "open")));
     li.appendChild(meta);
-    rows[x.s.id] = { li: li, box: box }; ul.appendChild(li);
+    ul.appendChild(li);
   });
   // Launch-critical linked projects: a read-only line, done-state derived
   // from the linked project's own status -- never a manual checkbox (see
@@ -360,45 +372,8 @@ export function launchSection(root, p) {
     li.appendChild(meta); ul.appendChild(li);
   });
   progress();
-  var lb = el("div", { "class": "listbox" }); lb.appendChild(prog); lb.appendChild(ul); g.put(lb, 1, 3);
+  var lb = el("div", { "class": "listbox" }); lb.appendChild(prog); lb.appendChild(ul); root.appendChild(lb);
 
-  var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h3", { id: "h-dec" }, "Decisions"));
-  if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a decision" }, "Add decision"), "click", function () { decisionDialog(p.id); }));
-  g.put(hd, 2, 1);
-  g.put(el("p", { "class": "hint" }, "Write down the answer once you settle it. Answering a decision ticks its linked step, and clearing the answer unticks it."), 2, 2);
-  var dl = el("ul", { "class": "list", "aria-labelledby": "h-dec" });
-  var ds = live(state.decisions).filter(function (d) { var ls = findStep(d.step); return ls && ls.t.projectId === p.id; });
-  if (!ds.length) dl.appendChild(el("li", { "class": "hint" }, "No open decisions."));
-  ds.forEach(function (d) {
-    var li = el("li", { "class": "decision" });
-    var q = el("div"); q.appendChild(el("span", { "class": "dq" }, d.q));
-    var stt = el("span", { "class": "dstate" + (d.a ? " ok" : "") }, d.a ? "Decided" : "Open"); q.appendChild(stt); li.appendChild(q);
-    if (readOnly) {
-      li.appendChild(el("p", { "class": "hint" }, d.a || "No answer yet."));
-      dl.appendChild(li); return;
-    }
-    var inp = el("input", { type: "text", placeholder: "Your answer", "aria-label": "Answer: " + d.q, autocomplete: "off" }); inp.value = d.a;
-    on(inp, "input", function () {
-      d.a = inp.value.slice(0, 1000); stt.textContent = d.a ? "Decided" : "Open"; stt.className = "dstate" + (d.a ? " ok" : "");
-      var ls = findStep(d.step);
-      if (ls) {
-        ls.s.done = d.a !== ""; syncFromSteps(ls.t);
-        var r = rows[ls.s.id]; if (r) { r.box.checked = ls.s.done; r.li.className = ls.s.done ? "done" : ""; progress(); }
-        renderChrome();
-      }
-      autoArchive(); save();
-    });
-    li.appendChild(inp);
-    var lf = el("div", { "class": "field" }); lf.appendChild(el("label", { "for": "ds-" + d.id }, "Linked step"));
-    var sel = el("select", { id: "ds-" + d.id, "class": "plain" });
-    stepOptions(p.id).forEach(function (o) { var op = el("option", { value: o.value }, o.label); if (o.value === d.step) op.selected = true; sel.appendChild(op); });
-    on(sel, "change", function () { d.step = sel.value; save(); renderView(); });
-    lf.appendChild(sel); li.appendChild(lf);
-    var rm = el("button", { type: "button", "class": "small danger", style: "margin-top:10px", title: "Remove this decision (can be undone)" }, "Remove");
-    on(rm, "click", function () { removeNow(d, "decisions", "Decision"); });
-    li.appendChild(rm); dl.appendChild(li);
-  });
-  g.put(dl, 2, 3); root.appendChild(g);
 }
 
 export function pinBar(key) {
@@ -452,20 +427,6 @@ export function renderProjectPage(root, id) {
     split.appendChild(root); page.appendChild(split);
   }
   root.appendChild(pinBar(key));
-  if (!readOnly) {
-    // Renaming is safe: tasks, pins, links, and milestones all point at the
-    // project's id, never its name. Saves on change (blur/Enter) so the title
-    // and sidebar update once, not on every keystroke.
-    var nameField = el("div", { "class": "field", style: "margin-top:0" });
-    nameField.appendChild(el("label", { "for": "proj-name" }, "Project name"));
-    var nameInput = el("input", { type: "text", id: "proj-name", autocomplete: "off", maxlength: "120" }); nameInput.value = p.name;
-    on(nameInput, "change", function () {
-      var v = nameInput.value.trim();
-      if (!v) { nameInput.value = p.name; notify("A project needs a name."); return; }
-      if (v !== p.name) { p.name = v.slice(0, 120); changed(); }
-    });
-    nameField.appendChild(nameInput); root.appendChild(nameField);
-  }
   var metaLine = el("p", { "class": "hint" });
   if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip projcomplete", style: "margin-right:8px" }, "Complete"));
   metaLine.appendChild(document.createTextNode(projectMeta(p)));
@@ -916,13 +877,13 @@ export function helpTopics() {
     ["Add and schedule tasks", [
       "Tap **+**, then **New task**. Enter the project, what you do, and when it is done.",
       "The " + W + " number sets the dates. " + W + " 1 starts on the project's start date. Leave it empty to put the task in the Backlog.",
-      "Open a task in **Tasks** to change its status, add steps and notes, or move it to another " + w + ".",
+      "Open a task in **Tasks** to change its status, add steps and notes, or move it to another " + w + ". Use the pencil beside its name to rename it.",
       "Finishing every step marks the task done."]],
     ["Use the Backlog", [
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
       "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burndown until you do."]],
     ["Manage projects", [
-      "Each project has its own page. Open **Projects** and select the project's name. There you can rename it and edit its notes. Beside that (below it on a phone) are its Schedule, where you set its start date and pace, and its own Timeline and Burndown, which redraw as you change the schedule. On a wide screen, **Expand** shows them large.",
+      "Each project has its own page. Open **Projects** and select the project's name. Use the pencil beside its title to rename it, and edit its notes there. Beside that (below it on a phone) are its Schedule, where you set its start date and pace, and its own Timeline and Burndown, which redraw as you change the schedule. On a wide screen, **Expand** shows them large.",
       "**Candidates** are projects that could take the next slot. Open one and choose **Choose as next project** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
       "**Where things stand** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there."]],
     ["Finish or archive a project", [
@@ -940,9 +901,9 @@ export function helpTopics() {
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline. Select a diamond, or a milestone's text in the list, to change its project, text, or date, or to remove it.",
       "A project's own page has a Timeline with a lane for each scheduled task, and its own Burndown. Point at a spot on the burndown to see which tasks finish or were completed that week. The full-width burndown and the weekly counts are further down this page. This week's actual count fills in by itself. You can correct or fill in earlier weeks by hand."]],
     ["Launch checklist and decisions", [
-      "On any task, tap **Add to Launch** beside a step to put that step on that project's own **Launch** section. **Cut from Launch** takes it off. Ticking it there or in **Tasks** keeps both in sync.",
-      "A decision always links to a step. Answering the decision ticks the step, and clearing the answer unticks it.",
-      "Use **Add item** to create a new step for the list, and **Add decision** to add a question to settle."]],
+      "On any task, use the pencil beside a step to rename it, put it on that project's own **Launch** section, or remove it. A step on the checklist shows a **Launch** tag. Ticking it there or in **Tasks** keeps both in sync.",
+      "A decision belongs to one step. Select **Add decision** beside a step to write down what you need to settle. Select the decision tag to answer it, change it, or remove it. Answering it ticks the step, and clearing the answer unticks it.",
+      "Use **Add item** on a project's Launch section to create a new step for the list."]],
     ["Archive and undo", [
       "Only **Projects** and **Ideas** go to the **Archive**, using their **Archive** button. A completed task just stays visible in its project, marked done.",
       "**Delete** on a task, or **Remove** on a decision or milestone, deletes it right away, with a short **Undo** in case you didn't mean to.",

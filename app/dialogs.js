@@ -2,7 +2,7 @@ import { state, ui, changed, isISO, task, project as makeProject } from "./state
 import { iso, addDays, parseISO, fmt } from "./dates.js";
 import {
   wd, wpC, counted, activeProjects, liveProjects, findProject, dispProject, nextTask, findTask,
-  orderedAll, taskOptions, stepOptions, syncFromSteps, ordered,
+  orderedAll, taskOptions, stepOptions, syncFromSteps, ordered, findStep, decisionFor,
   pset, blockStartFor, blockEndFor, linkProjects
 } from "./model.js";
 import { $, el, on, uid, notify } from "./dom.js";
@@ -52,6 +52,10 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
     var inputs = {};
     fields.forEach(function (f) {
       var w = el("div", { "class": "field" }); var id = "f-" + f.key;
+      if (f.type === "checkbox") {
+        var crow = el("label", { "class": "radiorow" }), cbx = el("input", { type: "checkbox", id: id }); cbx.checked = !!f.value;
+        crow.appendChild(cbx); crow.appendChild(el("span", null, f.label)); w.appendChild(crow); body.appendChild(w); inputs[f.key] = cbx; return;
+      }
       w.appendChild(el("label", { "for": id }, f.label));
       var inp;
       if (f.type === "select") {
@@ -74,7 +78,7 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
     var ok = el("button", { type: "button", "class": "primary", title: "Save and close" }, submitLabel), cancel = el("button", { type: "button", title: "Close without saving" }, "Cancel");
     function submit() {
-      var vals = {}; Object.keys(inputs).forEach(function (k) { vals[k] = inputs[k].value.trim(); });
+      var vals = {}; Object.keys(inputs).forEach(function (k) { vals[k] = inputs[k].type === "checkbox" ? (inputs[k].checked ? "1" : "") : inputs[k].value.trim(); });
       var res = onSubmit(vals);
       if (typeof res === "string") { err.textContent = res; return; }
       closeModal(); if (res && res.msg) notify(res.msg);
@@ -142,20 +146,62 @@ export function ideaDialog(idea) {
     return { msg: "Added to the parking lot." };
   });
 }
-export function decisionDialog(prefillProjectId) {
-  // A decision must link to a real step (Project -> Task -> Step -> Decision,
-  // see DESIGN.md) -- no "None"/unlinked option anymore.
-  var opts = stepOptions(prefillProjectId);
-  if (!opts.length) { notify("Add a step first (open a task and add one), then add the decision."); return; }
-  formDialog("New decision", [
-    { key: "q", label: "Decision" },
-    { key: "step", label: "Linked step", type: "select", options: opts, value: opts[0].value }
-  ], "Add decision", function (v) {
+// prefill is a project id (offer only that project's steps) or { step } (the step is
+// already chosen, as when adding from a step's row). A decision must belong to a
+// step (Project -> Task -> Step -> Decision, see DESIGN.md), and a step has at most one.
+export function decisionDialog(prefill) {
+  var stepId = prefill && typeof prefill === "object" ? prefill.step : null;
+  var projectId = typeof prefill === "string" ? prefill : undefined;
+  var opts = stepOptions(projectId).filter(function (o) { return !decisionFor(o.value); });
+  if (stepId) { var fixed = findStep(stepId); opts = fixed ? [{ value: stepId, label: fixed.s.text }] : []; }
+  if (!opts.length) { notify(stepId ? "That step is gone." : "Every step already has a decision. Add a step first (open a task and add one), then add the decision."); return; }
+  var fields = [{ key: "q", label: "Decision" }];
+  if (!stepId) fields.push({ key: "step", label: "Linked step", type: "select", options: opts, value: opts[0].value });
+  formDialog("New decision", fields, "Add decision", function (v) {
+    var step = stepId || v.step;
     if (!v.q) return "Enter the decision.";
-    if (!v.step) return "Choose a step.";
-    state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: v.step }); changed();
+    if (!step) return "Choose a step.";
+    if (decisionFor(step)) return "That step already has a decision.";
+    state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: step }); changed();
     return { msg: "Decision added." };
-  }, "A decision is something you need to figure out before you can move forward. Linking it to a step means answering it automatically checks that step off.");
+  }, (stepId ? "For the step: " + opts[0].label + ". " : "") + "A decision is something you need to figure out before you can move forward. Answering it automatically checks that step off.");
+}
+// Edits a decision in place: its question and its answer. Removal is supplied by the
+// caller (it lives in views.js). Answering ticks the linked step and clearing the
+// answer unticks it, but only when the answer itself changed, so fixing a typo in
+// the question never flips a step the user set by hand.
+export function decisionEditDialog(dec, onRemove) {
+  var ls = findStep(dec.step);
+  formDialog("Decision", [
+    { key: "q", label: "Decision", value: dec.q },
+    { key: "a", label: "Answer", type: "textarea", rows: 3, value: dec.a }
+  ], "Save decision", function (v) {
+    if (!v.q) return "Enter the decision.";
+    var was = dec.a;
+    dec.q = v.q.slice(0, 300); dec.a = v.a.slice(0, 1000);
+    if (dec.a !== was && ls) { ls.s.done = dec.a !== ""; syncFromSteps(ls.t); }
+    changed();
+    return { msg: "Decision saved." };
+  }, ls ? "For the step: " + ls.s.text + ". Answering it checks that step off, and clearing the answer unchecks it." : undefined,
+  onRemove ? { label: "Remove", title: "Remove this decision (can be undone)", onClick: onRemove } : undefined);
+}
+// Edits one step in place: its text and whether it is on the Launch checklist. Remove
+// also removes its decision, since a decision must belong to a step.
+export function stepEditDialog(t, s) {
+  var hasDecision = !!decisionFor(s.id);
+  formDialog("Edit step", [
+    { key: "text", label: "Step", value: s.text },
+    { key: "launch", label: "On the launch checklist", type: "checkbox", value: s.launch }
+  ], "Save step", function (v) {
+    if (!v.text) return "Enter the step.";
+    s.text = v.text.slice(0, 300); s.launch = v.launch === "1"; changed();
+    return { msg: "Step saved." };
+  }, hasDecision ? "Removing this step also removes its decision." : undefined,
+  { label: "Remove", title: "Remove this step", onClick: function () {
+    t.steps = t.steps.filter(function (x) { return x.id !== s.id; });
+    state.decisions = state.decisions.filter(function (x) { return x.step !== s.id; });
+    syncFromSteps(t); changed();
+  } });
 }
 export function stepDialog(launchItem, prefillProjectId) {
   if (!orderedAll().length) { notify("Add a task first."); return; }

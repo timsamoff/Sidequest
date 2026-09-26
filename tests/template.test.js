@@ -47,6 +47,13 @@ async function mk(saved) {
   return dom;
 }
 let fails = 0;
+function editTitle(k, value, key) {
+  k.click(k.$("renameBtn"));
+  const i = k.d.querySelector(".inlineedit");
+  i.value = value;
+  i.dispatchEvent(new k.w.KeyboardEvent("keydown", { key: key || "Enter", bubbles: true }));
+  return i;
+}
 const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) fails++; };
 function kit(dom) {
   const w = dom.window, d = w.document, $ = id => d.getElementById(id);
@@ -139,8 +146,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const lb = k.d.querySelector("#view .listbox");
   ok(/^\d+ of \d+ done$/.test(lb.querySelector(".progress").textContent) && lb.querySelectorAll("ul.list.check li").length === 6, "Sample App's checklist is its own 5 launch-flagged steps plus 1 launch-critical linked project (" + lb.querySelectorAll("ul.list.check li").length + ")");
   ok(lb.textContent.includes("Sample Website (linked project)") && lb.textContent.includes("Launch critical"), "the launch-critical linked project appears as a read-only checklist line");
-  const decs = [...k.d.querySelectorAll("#view .decision")];
-  ok(decs.length === 1 && decs[0].querySelector("input").value.startsWith("Start with one store"), "Sample App's own decision shows here, not the Game's");
+  ok(!k.d.querySelector("#view .decision") && ![...k.d.querySelectorAll("#view h3")].some(h => h.textContent === "Decisions") && !k.btn(k.$("view"), "Add decision"), "the project page no longer has a Decisions section (decisions live on steps in Tasks)");
   ok(k.d.querySelector("#view .list.check li.done") && k.d.querySelector("#view .list.check").textContent.includes("Choose the first app store"), "answered decision's step is already ticked");
   // sync
   const before = k.d.querySelector("#view .progress").textContent;
@@ -148,17 +154,87 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.d.querySelector("#view .progress").textContent !== before, "ticking updates progress");
   // step toggle wording
   k.tab("schedule"); k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Submit to the app store")));
-  ok(k.btn(k.d.querySelector(".detailpane"), "Cut from Launch") && k.d.querySelector(".detailpane").textContent.includes("Add to Launch puts a step on the Launch checklist"), "step toggle says Cut from Launch when already on the checklist");
+  ok(!k.btn(k.d.querySelector(".detailpane"), "Cut from Launch") && !k.btn(k.d.querySelector(".detailpane"), "Add to Launch") && [...k.d.querySelectorAll(".detailpane .steps .chip")].some(c => c.textContent === "Launch"), "a step's Launch state is now a chip on its row, and the toggle lives in the step dialog");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App")); k.click(k.btn(k.$("view"), "Add item")); ok(k.$("modalTitle").textContent === "New launch item", "Add item dialog uses launch wording"); k.click(k.$("modalClose"));
 }
 
-/* ---- decision requires a step ---- */
+/* ---- decisions live on steps, in Tasks ---- */
 {
-  const k = kit(await mk()); k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  k.click(k.btn(k.$("view"), "Add decision"));
-  ok(k.$("modalTitle").textContent === "New decision", "decision dialog opens");
-  ok(!k.d.querySelector('#modalBody option[value=""]'), "no unlinked/None option -- a step link is required");
+  const k = kit(await mk());
+  k.tab("schedule");
+  k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Submit to the app store")));
+  const pane = () => k.d.querySelector(".detailpane");
+  const row = (text) => [...pane().querySelectorAll(".steps li")].find(li => li.textContent.includes(text));
+  ok(!!k.btn(row("Choose the first app store"), "Decision: decided") && !k.btn(row("Choose the first app store"), "Add decision"), "a step with a decision shows it as a chip, not an Add button");
+  ok(!!k.btn(row("Write the store description"), "Add decision"), "a step without a decision offers Add decision");
+  ok(!k.btn(row("Choose the first app store"), "Remove") && !!row("Choose the first app store").querySelector("button.pencil"), "a step row has just the decision control and one edit pencil");
+  k.click(k.btn(row("Write the store description"), "Add decision"));
+  ok(k.$("modalTitle").textContent === "New decision" && !k.$("f-step") && k.$("modalBody").textContent.includes("For the step: Write the store description"), "Add decision opens with that step already chosen");
+  k.setField("q", "Which tone should the store text use?");
+  k.click(k.btn(k.$("modalBody"), "Add decision"));
+  const added = k.saved().decisions.find(d => d.q === "Which tone should the store text use?");
+  ok(!!added && added.step === "a5a", "the new decision is linked to that step");
+  ok(!!k.btn(row("Write the store description"), "Decision: open"), "and the step now shows it as open");
+  k.click(k.btn(row("Write the store description"), "Decision: open"));
+  ok(k.$("modalTitle").textContent === "Decision" && k.$("f-q").value === "Which tone should the store text use?", "the chip opens the decision");
+  k.setField("a", "Friendly and short");
+  k.click(k.btn(k.$("modalBody"), "Save decision"));
+  const step = () => k.saved().tasks.find(t => t.id === "a5").steps.find(s => s.id === "a5a");
+  ok(k.saved().decisions.find(d => d.id === added.id).a === "Friendly and short" && step().done === true, "answering saves the answer and checks the step off");
+  ok(!!k.btn(row("Write the store description"), "Decision: decided"), "the chip now says decided");
+  k.click(k.btn(row("Write the store description"), "Decision: decided")); k.setField("q", "Which tone for the store text?"); k.click(k.btn(k.$("modalBody"), "Save decision"));
+  ok(step().done === true, "editing only the question leaves the step as it was");
+  k.click(k.btn(row("Write the store description"), "Decision: decided")); k.setField("a", ""); k.click(k.btn(k.$("modalBody"), "Save decision"));
+  ok(step().done === false, "clearing the answer unchecks the step");
+  k.click(k.btn(row("Write the store description"), "Decision: open")); k.click(k.btn(k.$("modalBody"), "Remove"));
+  ok(!k.saved().decisions.find(d => d.id === added.id) && !!k.btn(k.d.body, "Undo") && !!k.btn(row("Write the store description"), "Add decision"), "Remove deletes the decision with Undo, and the step offers Add decision again");
+  k.menuAct("newBtn", "newDecision");
+  const offered = [...k.$("modalBody").querySelectorAll("#f-step option")].map(o => o.textContent);
+  ok(k.$("modalTitle").textContent === "New decision" && !offered.some(t => t.includes("Choose the first app store")) && offered.some(t => t.includes("Write the store description")), "the New decision menu only offers steps that do not already have a decision");
   k.click(k.$("modalClose"));
+}
+{
+  // editing a step: text, Launch flag, and Remove (which takes its decision with it)
+  const k = kit(await mk());
+  k.tab("schedule");
+  k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Submit to the app store")));
+  const row = (text) => [...k.d.querySelectorAll(".detailpane .steps li")].find(li => li.textContent.includes(text));
+  const st = (id) => k.saved().tasks.find(t => t.id === "a5").steps.find(s => s.id === id);
+  ok(!!row("Prepare screenshots").querySelector(".chip"), "a launch step shows a Launch chip");
+  k.click(row("Prepare screenshots").querySelector("button.pencil"));
+  ok(k.$("modalTitle").textContent === "Edit step" && k.$("f-text").value === "Prepare screenshots" && k.$("f-launch").checked === true, "the pencil opens the step dialog, pre-filled with its text and Launch flag");
+  k.setField("text", "Prepare four screenshots"); k.$("f-launch").checked = false;
+  k.click(k.btn(k.$("modalBody"), "Save step"));
+  ok(st("a5b").text === "Prepare four screenshots" && st("a5b").launch === false, "Save updates the same step's text and Launch flag");
+  ok(!row("Prepare four screenshots").querySelector(".chip"), "the Launch chip goes away");
+  k.click(row("Prepare four screenshots").querySelector("button.pencil")); k.setField("text", ""); k.click(k.btn(k.$("modalBody"), "Save step"));
+  ok(!k.$("overlay").hidden && st("a5b").text === "Prepare four screenshots", "an empty step is rejected");
+  k.click(k.btn(k.$("modalBody"), "Cancel"));
+  k.click(row("Choose the first app store").querySelector("button.pencil"));
+  ok(k.$("modalBody").textContent.includes("Removing this step also removes its decision"), "the dialog warns that Remove takes the step's decision");
+  k.click(k.btn(k.$("modalBody"), "Remove"));
+  ok(!st("a5z") && !k.saved().decisions.find(d => d.step === "a5z"), "Remove deletes the step and its decision");
+}
+{
+  // a task's name is editable
+  const k = kit(await mk());
+  k.tab("schedule");
+  k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Build the home screen")));
+  ok(!!k.d.querySelector(".detailpane .editrow button.pencil"), "a task's detail has a pencil next to its name");
+  k.click(k.d.querySelector(".detailpane .editrow button.pencil"));
+  const i = k.d.querySelector(".detailpane .inlineedit"); i.value = "Build the main screen";
+  i.dispatchEvent(new k.w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  ok(k.saved().tasks.find(t => t.id === "a3").what === "Build the main screen", "renaming a task saves it");
+  ok([...k.d.querySelectorAll(".listpane .item")].some(b => b.textContent.includes("Build the main screen")) && ![...k.d.querySelectorAll(".listpane .item")].some(b => b.textContent.includes("Build the home screen")), "and the task list shows the new name");
+}
+{
+  // a decision found by search opens its task
+  const k = kit(await mk());
+  k.type("page builder");
+  const hit = [...k.d.querySelectorAll("#view .sgroup")].find(g => g.getAttribute("data-kind") === "decision");
+  ok(!!hit, "search finds a decision by its question");
+  k.click(hit.querySelector("button.item"));
+  ok(k.$("viewTitle").textContent === "Tasks" && !!k.d.querySelector(".detailpane"), "opening a decision result goes to its task in Tasks");
 }
 
 /* ---- Help in the template ---- */
@@ -166,9 +242,9 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
   ok(titles.length === 13 && titles.includes("Launch checklist and decisions"), "template Help has the Launch checklist topic (" + titles.length + " topics)");
-  ok(k.$("view").textContent.includes("tap Add to Launch beside a step"), "and the topic explains the Launch button");
+  ok(k.$("view").textContent.includes("use the pencil beside a step") && k.$("view").textContent.includes("Add decision"), "and the topic explains the step pencil and adding a decision from a step");
   const helpText = k.$("view").textContent;
-  ok(!helpText.includes("Mark done") && !helpText.includes("archive completed tasks") && !helpText.includes("beside its name") && !helpText.includes("with its circle"), "Help no longer describes buttons and settings that were removed");
+  ok(!helpText.includes("Mark done") && !helpText.includes("archive completed tasks") && !helpText.includes("View beside its name") && !helpText.includes("with its circle"), "Help no longer describes buttons and settings that were removed");
   ok(["Finish or archive a project", "Link projects", "Use the Parking lot"].every(t => titles.includes(t)) && helpText.includes("Reopen") && helpText.includes("splash screen"), "Help covers Complete/Reopen, linking, the Parking lot, and the splash setting");
   ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Parking lot,Archive,Help,Settings", "Help sits between Archive and Settings");
 }
@@ -430,17 +506,25 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("cn-pExt").value === "A small tool that could ship in a month", "a candidate's page shows its Notes in an editable box");
   const nt = k.$("cn-pExt"); nt.value = "Edited notes"; k.fire(nt, "input");
   ok(k.saved().projects.find(p => p.id === "pExt").notes === "Edited notes", "editing a candidate's Notes saves");
-  const nm = k.$("proj-name"); nm.value = "Renamed Extension"; k.fire(nm);
-  ok(k.saved().projects.find(p => p.id === "pExt").name === "Renamed Extension" && k.$("viewTitle").textContent === "Renamed Extension", "renaming saves and updates the page title");
-  const nm2 = k.$("proj-name"); nm2.value = "   "; k.fire(nm2);
-  ok(k.saved().projects.find(p => p.id === "pExt").name === "Renamed Extension" && k.$("proj-name").value === "Renamed Extension", "a blank name is rejected and the old name is kept");
+  ok(!k.$("proj-name"), "there is no separate Project name field; the name is edited from the heading");
+  ok(!k.$("renameBtn").hidden, "a candidate's page shows the pencil next to its title");
+  editTitle(k, "Renamed Extension");
+  ok(k.saved().projects.find(p => p.id === "pExt").name === "Renamed Extension" && k.$("viewTitle").textContent === "Renamed Extension" && !k.d.querySelector(".inlineedit"), "the pencil edits in place: Enter saves and updates the page title");
+  editTitle(k, "   ");
+  ok(k.saved().projects.find(p => p.id === "pExt").name === "Renamed Extension" && k.$("viewTitle").textContent === "Renamed Extension" && !k.d.querySelector(".inlineedit"), "a blank name is rejected and the old name is kept");
+  editTitle(k, "Never saved", "Escape");
+  ok(k.saved().projects.find(p => p.id === "pExt").name === "Renamed Extension" && !k.d.querySelector(".inlineedit") && !k.$("renameBtn").hidden, "Esc cancels the edit and puts the pencil back");
+  k.click(k.$("renameBtn")); const bi = k.d.querySelector(".inlineedit"); bi.value = "Saved on blur"; bi.dispatchEvent(new k.w.FocusEvent("blur"));
+  ok(k.saved().projects.find(p => p.id === "pExt").name === "Saved on blur", "clicking away saves the edit");
 }
 {
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  const nm = k.$("proj-name"); nm.value = "Habit App"; k.fire(nm);
+  editTitle(k, "Habit App");
   ok(!!k.btn(k.d.querySelector("#nav"), "Habit App") && !k.btn(k.d.querySelector("#nav"), "Sample App"), "renaming a pinned project updates its name in the sidebar");
-  ok(!!k.$("proj-name") && k.d.querySelector("#view textarea"), "an active project keeps its editable name and Notes");
+  ok(!k.$("renameBtn").hidden && !!k.d.querySelector("#view textarea"), "an active project keeps its pencil and its editable Notes");
+  k.tab("today");
+  ok(k.$("renameBtn").hidden, "the pencil is only on project pages");
 }
 {
   // notes travel between ideas and candidates, and list rows clamp them
@@ -466,7 +550,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(candRow, "Archive"));
   k.tab("archive");
   k.click(k.btn(k.$("view"), "Sample Browser Extension"));
-  ok(!k.btn(k.$("view"), "Choose as next project") && !k.$("proj-name") && !k.d.querySelector("#view textarea"), "an archived candidate's page has no editable fields or promote button");
+  ok(!k.btn(k.$("view"), "Choose as next project") && k.$("renameBtn").hidden && !k.d.querySelector("#view textarea"), "an archived candidate's page has no pencil, editable fields, or promote button");
 }
 
 {
@@ -523,7 +607,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   const split = k.d.querySelector("#view .projsplit");
   ok(!!split && !!split.querySelector(".projtop") && !!split.querySelector(".projrest") && !!split.querySelector(".projsched") && !!split.querySelector(".projcharts"), "an active project's page has an info column and a Schedule-and-charts column");
-  ok(!!split.querySelector(".projtop #proj-name") && [...split.querySelectorAll(".projrest h2")].some(h => h.textContent === "Tasks"), "the project info is in the left column");
+  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".projrest h2")].some(h => h.textContent === "Tasks"), "the project info is in the left column");
   const side = split.querySelector(".projcharts");
   const sched = split.querySelector(".projsched");
   ok([...sched.querySelectorAll("h2")].map(h => h.textContent).join() === "Schedule" && [...side.querySelectorAll("h2")].map(h => h.textContent).join() === "Timeline,Burndown", "the right column has the Schedule, then the Timeline and Burndown");

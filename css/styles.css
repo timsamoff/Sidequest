@@ -22,6 +22,12 @@ input[type="file"]::file-selector-button {
 }
 input[type="file"]::file-selector-button:hover { border-color: var(--muted); }
 textarea { min-height: 84px; resize: vertical; }
+/* The pencil: the app's one "change this text" control, and the input it opens. */
+button.pencil { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 34px; min-height: 34px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--muted); }
+button.pencil:hover { border: 0; background: var(--chip-idle); color: var(--planned); }
+button.pencil[hidden] { display: none; }
+.inlineedit { flex: 1 1 auto; min-width: 0; width: 100%; }
+.editrow { display: flex; align-items: flex-start; gap: var(--space-8); }
 /* Thin, theme-aware scrollbars everywhere. The -webkit rules only matter for
    older browsers without the standard properties. */
 :root { scrollbar-color: var(--muted) transparent; }
@@ -174,7 +180,7 @@ select.status[data-v="Completed"] { background: var(--chip-done); }
 .steps { list-style: none; margin: var(--space-8) 0 0; padding: 0; }
 .steps li { display: flex; gap: var(--space-10); align-items: flex-start; padding: var(--space-5) 0; }
 .steps li label { display: flex; gap: var(--space-10); align-items: flex-start; flex: 1 1 auto; cursor: pointer; }
-.steps li.done span { color: var(--muted); text-decoration: line-through; }
+.steps li.done label span { color: var(--muted); text-decoration: line-through; }
 input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin: var(--space-2) 0 0; flex: none; accent-color: var(--planned); }
 .inline { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-10); }
 .inline input[type="text"] { flex: 1 1 180px; width: auto; }
@@ -224,7 +230,7 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
 .cfields { display: flex; flex-wrap: wrap; gap: var(--space-12); margin: var(--space-6) 0 0 var(--space-30); }
 .cfields .field { margin-top: var(--space-4); }
 .cfields input { width: 10rem; }
-.li-actions { display: flex; gap: var(--space-8); }
+.li-actions { display: flex; gap: var(--space-8); align-items: center; }
 .dq { font-weight: 500; }
 .dstate { font-size: .85rem; color: var(--muted); margin-left: var(--space-8); }
 .dstate.ok { color: var(--planned); }
@@ -285,11 +291,6 @@ tbody tr:last-child td { border-bottom: 0; }
   .projsched > h2:first-child { margin-top: 0; min-height: 34px; display: flex; align-items: center; }
   .projcharts { grid-area: charts; }
   .projexpand { display: inline-block; }
-  /* The Launch section is two columns on a wide page; in the narrower left column it stacks. */
-  .projsplit .pgrid { display: block; }
-  .projsplit .pgrid > .cl, .projsplit .pgrid > .cr { margin-top: var(--space-12); }
-  .projsplit .pgrid > .cl.r1 { margin-top: 0; }
-  .projsplit .pgrid > .cr.r1 { margin-top: var(--space-26); }
 }
 .ms { position: absolute; top: 4px; width: 14px; height: 14px; background: var(--burn); transform: translateX(-7px) rotate(45deg); border-radius: 2px; cursor: pointer; }
 /* The diamond is only 14px, so an invisible larger area makes it easy to hit. */
