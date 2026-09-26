@@ -67,7 +67,7 @@ kbd { font: inherit; font-size: .9em; border: 1px solid var(--line); border-bott
 .standing li { padding: var(--space-12) 0; border-bottom: 1px solid var(--line); }
 .standing li:first-child { padding-top: 0; }
 .standing li:last-child { border-bottom: 0; padding-bottom: 0; }
-.srow { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4) var(--space-12); flex-wrap: wrap; }
+.srow { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4) var(--space-12); flex-wrap: wrap; }
 .srow .plink, .srow .slabel { font-weight: 600; font-size: 1rem; }
 .plink { text-decoration: none; }
 .plink:hover, .plink:focus-visible { text-decoration: underline; }

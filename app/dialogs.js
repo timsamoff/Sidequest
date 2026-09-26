@@ -3,7 +3,7 @@ import { iso, addDays, parseISO, fmt } from "./dates.js";
 import {
   wd, wpC, counted, activeProjects, liveProjects, findProject, dispProject, nextTask, findTask,
   orderedAll, taskOptions, stepOptions, syncFromSteps, ordered,
-  pset, blockStartFor, blockEndFor
+  pset, blockStartFor, blockEndFor, linkProjects
 } from "./model.js";
 import { $, el, on, uid, notify } from "./dom.js";
 import { closeMenus } from "./app.js";
@@ -108,6 +108,18 @@ export function projectDialog() {
 }
 // With an idea passed in, edits it in place (same record, same id); with none,
 // adds a new one.
+// Links are bidirectional (see linkProjects()), so the chosen project shows
+// this one too. Only projects not already linked are offered.
+export function linkProjectDialog(p) {
+  var opts = liveProjects().filter(function (x) { return x.id !== p.id && p.linkedProjectIds.indexOf(x.id) < 0; }).map(function (x) { return { value: x.id, label: x.name }; });
+  if (!opts.length) { notify("Every other project is already linked."); return; }
+  formDialog("Link project", [{ key: "project", label: "Project to link", type: "select", options: opts, value: opts[0].value }], "Link project", function (v) {
+    var other = findProject(v.project);
+    if (!other) return "Choose a project to link.";
+    linkProjects(p.id, other.id); changed();
+    return { msg: "Linked to " + other.name + "." };
+  }, "The link goes both ways: that project will show this one too.");
+}
 export function ideaDialog(idea) {
   formDialog(idea ? "Edit idea" : "New idea", [
     { key: "text", label: "Idea", value: idea ? idea.text : undefined },

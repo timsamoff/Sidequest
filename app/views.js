@@ -3,7 +3,7 @@ import { DAY, iso, parseISO, TODAY, fmt, fmtY } from "./dates.js";
 import {
   WORDS, wd, wl, pset, blockStartFor, blockEndFor, projKey, taskStart, taskEnd,
   checkpoints, live, counted, liveProjects, activeProjects, candidateProjects, completeProjects,
-  findProject, findAnyProject, linkedProjects, linkProjects, unlinkProjects, chosen, dispProject, dispWhat,
+  findProject, findAnyProject, linkedProjects, unlinkProjects, chosen, dispProject, dispWhat,
   totalUnits, remainingUnits, planned, ordered, backlogTasks,
   isLate, lateTasks, setStatus, syncFromSteps, nextTask, projectTasksAllDone,
   validPage, isPinned, pinPage, unpinPage, projectMeta,
@@ -12,7 +12,7 @@ import {
 import { $, el, on, uid, setFocusKey, notify, scrollTop } from "./dom.js";
 import { drawChart, rangeBlock } from "./chart.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme } from "./app.js";
-import { stepDialog, decisionDialog, ideaDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
+import { stepDialog, decisionDialog, linkProjectDialog, ideaDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
 
 /* views */
 export function nextUpPanel() {
@@ -298,11 +298,8 @@ export function linksSection(root, p) {
   if (readOnly) return;
   var candidates = liveProjects().filter(function (x) { return x.id !== p.id && p.linkedProjectIds.indexOf(x.id) < 0; });
   if (candidates.length) {
-    var addRow = el("div", { "class": "inline", style: "margin-top:10px" });
-    var sel = el("select", { id: "proj-link-pick", "class": "plain", "aria-label": "Project to link" });
-    candidates.forEach(function (x) { sel.appendChild(el("option", { value: x.id }, x.name)); });
-    addRow.appendChild(sel);
-    addRow.appendChild(on(el("button", { type: "button", "class": "small", title: "Link the selected project" }, "Link project"), "click", function () { linkProjects(p.id, sel.value); changed(); }));
+    var addRow = el("div", { "class": "actions", style: "margin-top:10px" });
+    addRow.appendChild(on(el("button", { type: "button", "class": "small", title: "Link this project to another" }, "Link project"), "click", function () { linkProjectDialog(p); }));
     root.appendChild(addRow);
   }
 }
@@ -400,11 +397,16 @@ export function pinBar(key) {
   on(b, "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
   bar.appendChild(b); return bar;
 }
-export function pagesSection(excludeIds) {
+// Pin/Unpin for a project, shared by Where things stand and the Projects list.
+function projectPinButton(key, name) {
+  var pinned = isPinned(key);
+  return on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + name, title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
+}
+export function pagesSection() {
   var sec = el("div");
   sec.appendChild(el("p", { "class": "hint", style: "margin-top:28px" }, "Pin a project to the sidebar for quick access. Removing it from the sidebar only hides it there. It stays listed here."));
   var ul = el("ul", { "class": "list" });
-  var rows = liveProjects().filter(function (p) { return !excludeIds || excludeIds.indexOf(p.id) < 0; }).map(function (p) { return { key: "proj:" + p.id, name: p.name, meta: projectMeta(p), complete: p.status === "complete" }; });
+  var rows = liveProjects().map(function (p) { return { key: "proj:" + p.id, name: p.name, meta: projectMeta(p), complete: p.status === "complete" }; });
   if (!rows.length) sec.appendChild(el("p", { "class": "hint" }, "No projects yet."));
   rows.forEach(function (r) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
@@ -415,8 +417,8 @@ export function pagesSection(excludeIds) {
     if (r.complete) nm.appendChild(el("span", { "class": "chip projcomplete", style: "margin-left:8px" }, "Complete"));
     nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, r.meta));
     row.appendChild(nm);
-    var acts = el("div", { "class": "li-actions" }), pinned = isPinned(r.key);
-    acts.appendChild(on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + r.name, title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(r.key); else pinPage(r.key); }));
+    var acts = el("div", { "class": "li-actions" });
+    acts.appendChild(projectPinButton(r.key, r.name));
     row.appendChild(acts); li.appendChild(row); ul.appendChild(li);
   });
   sec.appendChild(ul); return sec;
@@ -583,7 +585,7 @@ export function standingBlock(c) {
   wrap.appendChild(el("h2", { "class": "first" }, "Where things stand"));
   wrap.appendChild(el("p", { "class": "hint" }, "Built from your open tasks, ordered by when each project's next task starts."));
   var box = el("div", { "class": "box", style: "margin-top:10px" });
-  var groups = {}, order = [], listedIds = [];
+  var groups = {}, order = [];
   ordered().forEach(function (t) {
     if (t.isNext || t.status === "Completed") return;
     var proj = findProject(t.projectId);
@@ -595,16 +597,15 @@ export function standingBlock(c) {
   var ul = el("ul", { "class": "standing" });
   if (!order.length) ul.appendChild(el("li", null, "No open tasks."));
   order.forEach(function (g) {
-    listedIds.push(g.projectId);
     var li = el("li"), top = el("div", { "class": "srow" });
     var nm = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, g.name);
     on(nm, "click", function () { go(validPage("proj:" + g.projectId) ? "proj:" + g.projectId : "projects"); });
-    top.appendChild(nm); top.appendChild(el("span", { "class": "scount" }, g.open + " open " + (g.open === 1 ? "task" : "tasks")));
+    top.appendChild(nm); top.appendChild(projectPinButton("proj:" + g.projectId, g.name));
     li.appendChild(top);
     var nx = el("div", { "class": "snext" }); nx.appendChild(document.createTextNode("Next up: "));
     var tl = el("button", { type: "button", "class": "textbtn", title: "View this task" }, short(g.first.what, 90));
     on(tl, "click", function () { openTask(g.first.id); });
-    nx.appendChild(tl); nx.appendChild(document.createTextNode(" · " + fmt(taskStart(g.first))));
+    nx.appendChild(tl); nx.appendChild(document.createTextNode(" · " + fmt(taskStart(g.first)) + " · " + g.open + " open " + (g.open === 1 ? "task" : "tasks")));
     li.appendChild(nx); ul.appendChild(li);
   });
   var sl = el("li"), stEl = el("div", { "class": "srow" });
@@ -613,7 +614,7 @@ export function standingBlock(c) {
   else stEl.appendChild(el("span", { "class": "scount" }, "Not chosen yet"));
   sl.appendChild(stEl); ul.appendChild(sl);
   box.appendChild(ul); wrap.appendChild(box);
-  return { node: wrap, projectIds: listedIds };
+  return wrap;
 }
 export function candidatesSection() {
   var sec = el("div");
@@ -645,9 +646,8 @@ export function candidatesSection() {
 }
 export function renderProjects(root) {
   var c = chosen();
-  var standing = standingBlock(c);
-  root.appendChild(standing.node);
-  root.appendChild(pagesSection(standing.projectIds));
+  root.appendChild(standingBlock(c));
+  root.appendChild(pagesSection());
   root.appendChild(candidatesSection());
 }
 export function renderParkingLot(root) {
@@ -856,7 +856,7 @@ export function helpTopics() {
       "A completed project shows a **Complete** badge and drops out of Where things stand. **Reopen** makes it active again.",
       "**Archive** puts a project and its open tasks in the Archive. **Restore** brings all of it back."]],
     ["Link projects", [
-      "**Linked projects**, on a project's page, connects it to related projects. A link goes both ways.",
+      "**Linked projects**, on a project's page, connects it to related projects. Choose **Link project** and pick one. A link goes both ways.",
       "**Mark launch critical** flags a linked project that has to finish first. It shows on the other project's Launch checklist, and counts as done once it is complete or archived. Completing or archiving a project with an unfinished launch-critical link only warns you."]],
     ["Use the Parking lot", [
       "Ideas that are not ready yet live on the **Parking lot**. Add one with **Add idea**. Select an idea's title to open it and change its text or note.",

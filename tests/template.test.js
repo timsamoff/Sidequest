@@ -108,7 +108,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk()); k.tab("projects");
   ok(k.stand().join() === "Sample Website,Sample App,Sample Game,Next slot", "Where things stand lists the three sample projects (" + k.stand().join() + ")");
   const pagesList = [...k.d.querySelectorAll("#view .list")][0].textContent;
-  ok(!pagesList.includes("Sample App") && !pagesList.includes("Sample Website") && !pagesList.includes("Sample Game"), "the Projects section excludes projects already shown in Where things stand");
+  ok(pagesList.includes("Sample App") && pagesList.includes("Sample Website") && pagesList.includes("Sample Game"), "the Projects list also includes the projects shown in Where things stand");
   ok(k.$("view").textContent.includes("Sample Browser Extension") && k.$("view").textContent.includes("Sample Command-Line Tool"), "two sample candidates listed");
   k.tab("parking");
   ok(k.$("view").textContent.includes("Try a new game engine") && k.$("view").textContent.includes("Write up lessons learned") && !k.$("view").textContent.includes("Redesign the logo"), "parking lot samples (removed one is in the Archive)");
@@ -273,10 +273,14 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(k.$("view"), "Sample Website"));
   ok(k.$("viewTitle").textContent === "Sample Website" && k.$("view").textContent.includes("Sample App"), "the link is bidirectional -- Sample Website shows Sample App back");
   // link Sample Website to Sample Game using the picker, confirm it appears and is bidirectional
-  const sel = k.$("proj-link-pick");
+  ok(!k.$("proj-link-pick"), "the old inline link dropdown is gone from the page");
+  k.click(k.btn(k.$("view"), "Link project"));
+  ok(k.$("modalTitle").textContent === "Link project", "Link project opens a dialog");
+  const sel = k.$("f-project");
+  ok(![...sel.options].some(o => o.textContent === "Sample Website" || o.textContent === "Sample App"), "the dialog only offers projects that are not already linked, and not this one");
   sel.value = [...sel.options].find(o => o.textContent === "Sample Game").value;
-  k.fire(sel); k.click(k.btn(k.$("view"), "Link project"));
-  ok(k.$("view").textContent.includes("Sample Game"), "linking Sample Game from Sample Website's own picker shows it in the list");
+  k.click(k.btn(k.$("modalBody"), "Link project"));
+  ok(k.$("overlay").hidden && k.$("view").textContent.includes("Sample Game"), "linking Sample Game from the dialog closes it and shows the link in the list");
   k.click(k.btn(k.$("view"), "Sample Game"));
   ok(k.$("viewTitle").textContent === "Sample Game" && k.$("view").textContent.includes("Sample Website"), "the new link is bidirectional too -- Sample Game shows Sample Website back");
   // unlink and confirm it's gone from the current page -- check the picker's
@@ -463,6 +467,21 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.tab("archive");
   k.click(k.btn(k.$("view"), "Sample Browser Extension"));
   ok(!k.btn(k.$("view"), "Choose as next project") && !k.$("proj-name") && !k.d.querySelector("#view textarea"), "an archived candidate's page has no editable fields or promote button");
+}
+
+{
+  // Where things stand rows have Pin/Unpin, and the open-task count sits on the Next up line
+  const k = kit(await mk());
+  k.tab("projects");
+  const rows = () => [...k.d.querySelectorAll("#view .standing li")];
+  const webRow = () => rows().find(li => li.textContent.includes("Sample Website"));
+  ok(!!k.btn(webRow(), "Pin") && !webRow().querySelector(".scount"), "a Where things stand row has a Pin button and no separate open-task count");
+  ok(/Next up: .* · Sep [0-9]+ · 3 open tasks/.test(webRow().querySelector(".snext").textContent), "the open-task count is on the Next up line (" + webRow().querySelector(".snext").textContent + ")");
+  k.click(k.btn(webRow(), "Pin"));
+  ok(k.saved().pins.includes("proj:pSite") && !!k.btn(webRow(), "Unpin"), "Pin in Where things stand pins the project and the button flips to Unpin");
+  ok(!!k.btn(k.d.querySelector("#nav"), "Sample Website"), "the pinned project appears in the sidebar");
+  k.click(k.btn(webRow(), "Unpin"));
+  ok(!k.saved().pins.includes("proj:pSite"), "Unpin in Where things stand removes the pin");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
