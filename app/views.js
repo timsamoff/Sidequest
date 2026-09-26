@@ -613,7 +613,7 @@ export function renderParkingLot(root) {
   var ps = live(state.parked);
   if (!ps.length) pl.appendChild(el("li", { "class": "hint" }, "Nothing parked."));
   ps.forEach(function (p) {
-    var li = el("li"), row = el("div", { "class": "crow" + (p.note ? "" : " oneline") });
+    var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nm = el("div", { style: "flex:1 1 200px" }); nm.appendChild(el("span", { style: "font-weight:600" }, p.text));
     if (p.note) nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
