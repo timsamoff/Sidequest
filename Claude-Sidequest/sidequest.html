@@ -338,6 +338,26 @@ tbody tr:last-child td { border-bottom: 0; }
 .bar { position: absolute; top: 2px; bottom: 2px; min-width: 6px; background: var(--planned); border-radius: 4px; }
 .bar.est { background: var(--est); border: 1px dashed var(--planned); }
 .bar.open { background: linear-gradient(to right, var(--est), transparent); border-left: 3px solid var(--planned); border-radius: 4px 0 0 4px; }
+/* A project's page: info on the left, its own Timeline and Burndown on the right. */
+.projsplit { display: block; }
+.projleft, .projright { min-width: 0; }
+.projright { margin-top: var(--space-22); }
+.projexpand { display: none; }
+.modal.full { max-width: none; width: 100%; height: 100%; max-height: none; }
+.chart .mark { fill: var(--burn); }
+.chart .pdot { fill: transparent; }
+.chart .pdot:hover { fill: var(--planned); opacity: .35; }
+.bar.done { background: var(--chip-done); }
+@media (min-width: 900px) {
+  .projsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: var(--space-22); align-items: start; }
+  .projright { margin-top: 0; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); max-height: calc(100vh - 110px); overflow-y: auto; }
+  .projexpand { display: inline-block; }
+  /* The Launch section is two columns on a wide page; in the narrower left column it stacks. */
+  .projsplit .pgrid { display: block; }
+  .projsplit .pgrid > .cl, .projsplit .pgrid > .cr { margin-top: var(--space-12); }
+  .projsplit .pgrid > .cl.r1 { margin-top: 0; }
+  .projsplit .pgrid > .cr.r1 { margin-top: var(--space-26); }
+}
 .ms { position: absolute; top: 4px; width: 14px; height: 14px; background: var(--burn); transform: translateX(-7px) rotate(45deg); border-radius: 2px; cursor: pointer; }
 /* The diamond is only 14px, so an invisible larger area makes it easy to hit. */
 .ms::after { content: ""; position: absolute; inset: -6px; }
@@ -538,6 +558,9 @@ var DAY = 86400000;
 function parseISO(s) { var p = s.split("-"); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
 function iso(ms) { return new Date(ms).toISOString().slice(0, 10); }
 function addDays(ms, n) { return ms + n * DAY; }
+// The Monday (UTC) on or before ms. Per-project burndown snapshots are keyed by
+// this, so they stay valid when a project's own start date moves.
+function weekStart(ms) { return addDays(ms, -((new Date(ms).getUTCDay() + 6) % 7)); }
 function addMonths(ms, n) { var d = new Date(ms); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, d.getUTCDate()); }
 var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function pad2(n) { return (n < 10 ? "0" : "") + n; }
@@ -701,6 +724,37 @@ function ordered() { return sortTasks(live(state.tasks).filter(function (t) { re
 function orderedAll() { return sortTasks(live(state.tasks)); }
 function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0; })); }
 function burnTasks() { return counted().filter(function (t) { return t.block > 0; }); }
+// --- One project's own burndown (DESIGN.md, 2026-09-26) ---
+function projectBurnTasks(p) { return burnTasks().filter(function (t) { return t.projectId === p.id; }); }
+function projectTotalUnits(p) { return projectBurnTasks(p).reduce(function (a, t) { return a + weight(t); }, 0); }
+function projectRemainingUnits(p) { return projectBurnTasks(p).reduce(function (a, t) { return a + weight(t) - doneUnits(t); }, 0); }
+// Points are Mondays from the week of the project's first task to the week after
+// its last (stretched to include this week if it has overrun). Planned is exact,
+// like the global chart's. Actual comes from the project's stored weekly
+// snapshots, except THIS week's point, which is always computed live from the
+// tasks so it never depends on a write. Returns null if nothing is scheduled.
+function projectBurn(p) {
+  var ts = projectBurnTasks(p);
+  if (!ts.length) return null;
+  var total = projectTotalUnits(p), first = Infinity, last = -Infinity;
+  ts.forEach(function (t) { first = Math.min(first, taskStart(t)); last = Math.max(last, taskEnd(t)); });
+  var cur = weekStart(TODAY), startWk = weekStart(first), endWk = addDays(weekStart(last), 7);
+  if (cur > endWk) endWk = cur;
+  var weeks = Math.round((endWk - startWk) / (7 * DAY)), step = Math.max(1, Math.ceil(weeks / 52));
+  var cps = [];
+  for (var m = startWk; m < endWk; m = addDays(m, 7 * step)) cps.push(m);
+  cps.push(endWk);
+  var planned = cps.map(function (ms) { var d = 0; ts.forEach(function (t) { if (taskEnd(t) <= ms) d += weight(t); }); return total - d; });
+  var live = projectRemainingUnits(p);
+  var actual = cps.map(function (ms, i) {
+    var next = i < cps.length - 1 ? cps[i + 1] : Infinity;
+    if (ms <= cur && cur < next) return live;
+    if (ms > cur) return null;
+    var v = p.actual[iso(ms)];
+    return v !== undefined ? v : (i === 0 ? total : null);
+  });
+  return { cps: cps, planned: planned, actual: actual, total: total, tasks: ts, step: step };
+}
 function orderedCounted() { return sortTasks(counted()); }
 function isLate(t) { return t.block > 0 && t.status !== "Completed" && taskEnd(t) < TODAY; }
 function lateTasks() { return ordered().filter(isLate); }
@@ -798,7 +852,7 @@ function task(id, block, projectId, what, done, steps, extra) {
 // record and id carry through Candidate -> Active -> Archived, never a second
 // record. See DESIGN.md's "making Project a first-class entity" section.
 function project(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", mult: 1, months: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false };
+  var p = { id: id, name: name, status: status, start: "", mult: 1, months: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, actual: {} };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -809,12 +863,14 @@ function sampleData() {
   function day(k) { return new Date(m0 + k * D).toISOString().slice(0, 10); }
   var yest = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 1)).toISOString().slice(0, 10);
   var lastWeek = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 7)).toISOString().slice(0, 10);
+  // Sample App has 16 steps of scheduled work; it started two Mondays ago.
+  var appHistory = {}; appHistory[day(0)] = 16; appHistory[day(7)] = 13;
   var projects = [
     // pApp <-> pSite demonstrates a bidirectional project link (see
     // DESIGN.md's "linking related projects" section): the app and its
     // marketing site are related efforts, linked without nesting one's tasks
     // inside the other.
-    project("pApp", "Sample App", "active", { notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
+    project("pApp", "Sample App", "active", { actual: appHistory, notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
     // launchCritical: the app's launch checklist shows the site as a line item,
     // done-state derived from the site's own status (see DESIGN.md).
     project("pSite", "Sample Website", "active", { start: day(14), mult: 1, linkedProjectIds: ["pApp"], launchCritical: true }),
@@ -898,12 +954,15 @@ function normalize(s) {
       // as `notes`. They are one field now: fold a saved `note` into the front
       // of `notes` so nothing is lost. Once saved, `note` no longer exists.
       var oldNote = S(x.note, 5000), body = S(x.notes, 5000);
+      // Per-project burndown snapshots: { "<Monday ISO>": steps remaining }.
+      var snaps = {};
+      if (x.actual && typeof x.actual === "object" && !Array.isArray(x.actual)) Object.keys(x.actual).slice(0, 300).forEach(function (k) { var v = x.actual[k]; if (isISO(k) && typeof v === "number" && v >= 0 && v <= 100000) snaps[k] = Math.round(v); });
       return {
         id: S(x.id, 40), name: S(x.name, 120),
         status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
         start: isISO(x.start) ? x.start : "", mult: (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? x.mult : 1,
         months: (typeof x.months === "number" && x.months >= 1 && x.months <= 36) ? Math.round(x.months) : "",
-        notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true,
+        notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true, actual: snaps,
         // Validated below, once every project's real id is known -- a link
         // can only point at another project that actually exists in the
         // final set. Arbitrary depth/cycles are fine (see DESIGN.md); each
@@ -1075,7 +1134,7 @@ function autoArchive() {
   });
 }
 function changed() {
-  autoArchive(); sweepProjectCompletion(); recordCurrentWeek(); save(); renderAll();
+  autoArchive(); sweepProjectCompletion(); recordCurrentWeek(); recordProjectWeeks(); save(); renderAll();
 }
 
 
@@ -1090,65 +1149,93 @@ function svgEl(tag, attrs, text) {
   Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
   if (text !== undefined) e.textContent = text; return e;
 }
-function drawChart(host, wide) {
+// Draws a burndown. cfg: { cps, planned[], actual[] (null = no point), total, label,
+// marks[] ({ms, text}) for milestone diamonds on the axis, tipPlanned(i), tipActual(i) }.
+// Shared by the global chart and each project's own chart.
+function renderBurn(host, wide, cfg) {
   host.innerHTML = "";
-  var total = totalUnits(), cps = checkpoints(), n = cps.length;
-  var acts = state.actual.map(function (a, i) { return (a === null && i === 0) ? total : a; });
-  var ymax = Math.max(total, 1); acts.forEach(function (a) { if (a !== null && a > ymax) ymax = a; });
+  var cps = cfg.cps, n = cps.length, pl = cfg.planned, acts = cfg.actual;
+  var ymax = Math.max(cfg.total, 1); acts.forEach(function (a) { if (a !== null && a > ymax) ymax = a; });
   var tick = Math.max(1, Math.ceil(ymax / 8));
   var W = wide ? 960 : 640, H = wide ? 320 : 300, L = 40, R = 18, T = 16, B = 44;
   var svg = svgEl("svg", { "class": "chart", viewBox: "0 0 " + W + " " + H, role: "img" });
-  var pl = cps.map(planned);
-  svg.setAttribute("aria-label", "Burndown chart. Planned items remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".");
+  svg.setAttribute("aria-label", cfg.label);
   function x(i) { return L + (W - L - R) * i / (n - 1); }
   function y(v) { return T + (H - T - B) * (1 - v / ymax); }
   for (var v = 0; v <= ymax; v += tick) {
     svg.appendChild(svgEl("line", { "class": "grid", x1: L, x2: W - R, y1: y(v), y2: y(v) }));
     svg.appendChild(svgEl("text", { "class": "axis", x: L - 10, y: y(v) + 4, "text-anchor": "end" }, String(v)));
   }
-  cps.forEach(function (ms, i) { svg.appendChild(svgEl("text", { "class": "axis", x: x(i), y: H - 16, "text-anchor": "middle" }, fmt(ms))); });
+  // Thin the date labels on a long axis so they never run together.
+  var every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 70))));
+  cps.forEach(function (ms, i) { if (i % every === 0 || i === n - 1) svg.appendChild(svgEl("text", { "class": "axis", x: x(i), y: H - 16, "text-anchor": "middle" }, fmt(ms))); });
   svg.appendChild(svgEl("polyline", { "class": "planned", points: pl.map(function (p, i) { return x(i) + "," + y(p); }).join(" ") }));
   var seg = [];
   function flush() { if (seg.length > 1) svg.appendChild(svgEl("polyline", { "class": "actual", points: seg.join(" ") })); seg = []; }
   acts.forEach(function (a, i) { if (a === null) { flush(); return; } seg.push(x(i) + "," + y(a)); });
   flush();
+  if (cfg.tipPlanned) pl.forEach(function (p, i) {
+    var hit = svgEl("circle", { "class": "pdot", cx: x(i), cy: y(p), r: 7 });
+    hit.appendChild(svgEl("title", null, cfg.tipPlanned(i)));
+    svg.appendChild(hit);
+  });
+  (cfg.marks || []).forEach(function (m) {
+    if (m.ms < cps[0] || m.ms > cps[n - 1]) return;
+    var cx = L + (W - L - R) * (m.ms - cps[0]) / (cps[n - 1] - cps[0]), cy = y(0), r = 6;
+    var d = svgEl("polygon", { "class": "mark", points: cx + "," + (cy - r) + " " + (cx + r) + "," + cy + " " + cx + "," + (cy + r) + " " + (cx - r) + "," + cy });
+    d.appendChild(svgEl("title", null, m.text + ", " + fmtY(m.ms)));
+    svg.appendChild(d);
+  });
   acts.forEach(function (a, i) {
     if (a === null) return;
     var dot = svgEl("circle", { "class": "dot", cx: x(i), cy: y(a), r: 5.5 });
-    dot.appendChild(svgEl("title", null, fmtY(cps[i]) + ": " + a + (a === 1 ? " item" : " items") + " remaining"));
+    dot.appendChild(svgEl("title", null, cfg.tipActual ? cfg.tipActual(i) : fmtY(cps[i]) + ": " + a + (a === 1 ? " item" : " items") + " remaining"));
     svg.appendChild(dot);
   });
   host.appendChild(svg);
 }
 
-function rangeBlock() {
+function drawChart(host, wide) {
+  var total = totalUnits(), cps = checkpoints(), n = cps.length;
+  var acts = state.actual.map(function (a, i) { return (a === null && i === 0) ? total : a; });
+  var pl = cps.map(planned);
+  renderBurn(host, wide, {
+    cps: cps, planned: pl, actual: acts, total: total,
+    label: "Burndown chart. Planned items remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + "."
+  });
+}
+
+function nameList(ts) {
+  var names = ts.slice(0, 6).map(function (t) { return t.what; });
+  return names.join(", ") + (ts.length > 6 ? ", and " + (ts.length - 6) + " more" : "");
+}
+// One project's own burndown. The planned line is exact, so a hover on it can name
+// the tasks that finish. The actual line is a weekly snapshot and steps carry no
+// timestamps, so its hover can only say which tasks were completed that week.
+function drawProjectChart(host, p, wide) {
+  var bd = projectBurn(p);
+  if (!bd) { host.innerHTML = ""; return false; }
+  var cps = bd.cps, n = cps.length, pl = bd.planned, span = 7 * bd.step * 86400000;
+  var marks = live(state.milestones).filter(function (m) { return m.projectId === p.id; }).map(function (m) { return { ms: parseISO(m.date), text: m.text }; });
+  renderBurn(host, wide, {
+    cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks,
+    label: "Burndown chart for " + p.name + ". Planned steps remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
+    tipPlanned: function (i) {
+      var fin = bd.tasks.filter(function (t) { var e = taskEnd(t); return e <= cps[i] && (i === 0 || e > cps[i - 1]); });
+      return "Week of " + fmtY(cps[i]) + ": " + pl[i] + " planned to remain" + (fin.length ? ". Finishing: " + nameList(fin) : "");
+    },
+    tipActual: function (i) {
+      var a = bd.actual[i], done = bd.tasks.filter(function (t) { if (!t.doneAt) return false; var d = parseISO(t.doneAt); return d >= cps[i] && d < cps[i] + span; });
+      return "Week of " + fmtY(cps[i]) + ": " + a + (a === 1 ? " item" : " items") + " remaining" + (done.length ? ". Completed this week: " + nameList(done) : "");
+    }
+  });
+  return true;
+}
+
+// Draws a timeline: the month header, one lane per entry, the milestones lane,
+// and the today line. Shared by the all-projects Timeline and a project's own.
+function timelineNode(lanes, mss, rs, maxEnd, hint) {
   var wrap = el("div", { "class": "range" });
-  var s0 = chartStart(), d0 = new Date(s0);
-  var rs = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), 1);
-  var lanes = [], groups = {}, order = [];
-  counted().forEach(function (t) {
-    if (t.isNext || t.block === 0) return;
-    var g = groups[t.projectId], a = taskStart(t), b = taskEnd(t);
-    if (!g) { g = groups[t.projectId] = { projectId: t.projectId, name: dispProject(t), a: a, b: b }; order.push(t.projectId); }
-    if (a < g.a) g.a = a;
-    if (b > g.b) g.b = b;
-  });
-  var maxEnd = addDays(s0, 400);
-  order.forEach(function (pid) {
-    var g = groups[pid], p = findProject(pid), bars = [{ a: g.a, b: g.b, cls: "" }], dates = fmt(g.a) + " to " + fmt(g.b), est = p && p.months;
-    if (est) { var ea = addDays(g.b, 1), eb = addMonths(ea, est); bars.push({ a: ea, b: eb, cls: "est" }); dates += ", estimate to " + fmtY(eb); if (eb > maxEnd) maxEnd = eb; }
-    lanes.push({ name: g.name, bars: bars, dates: dates });
-  });
-  var c = chosen(), openEnded = false;
-  if (c && c.start) {
-    var ca = parseISO(c.start), cb;
-    if (c.months) { cb = addMonths(ca, c.months); lanes.push({ name: c.name, bars: [{ a: ca, b: cb, cls: "" }], dates: fmt(ca) + " to " + fmtY(cb) }); if (cb > maxEnd) maxEnd = cb; }
-    else { openEnded = true; lanes.push({ name: c.name, bars: [{ a: ca, b: null, cls: "open" }], dates: "from " + fmtY(ca) }); }
-  }
-  // Milestones require a direct project link (see DESIGN.md) -- labeled by
-  // project name here since the Timeline shows every project's milestones together.
-  var mss = [];
-  live(state.milestones).forEach(function (m) { var p = findProject(m.projectId); mss.push({ id: m.id, text: (p ? p.name + ": " : "") + m.text, date: parseISO(m.date) }); });
   mss.forEach(function (m) { if (m.date > maxEnd) maxEnd = m.date; });
   var capEnd = addMonths(rs, 25); if (maxEnd > capEnd) maxEnd = capEnd;
   var e0 = new Date(maxEnd);
@@ -1182,8 +1269,60 @@ function rangeBlock() {
   ml.appendChild(mt); area.appendChild(ml);
   if (TODAY >= rs && TODAY <= re) area.appendChild(el("div", { "class": "today", style: "left:" + pct(TODAY) + "%", title: "Today" }));
   wrap.appendChild(area);
-  wrap.appendChild(el("p", { "class": "hint", style: "margin-top:10px" }, "The red line marks today." + (openEnded ? " The chosen project has no length set, so its bar runs open-ended." : "")));
+  wrap.appendChild(el("p", { "class": "hint", style: "margin-top:10px" }, hint));
+  return wrap;
+}
+
+function rangeBlock() {
+  var s0 = chartStart(), d0 = new Date(s0);
+  var rs = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), 1);
+  var lanes = [], groups = {}, order = [];
+  counted().forEach(function (t) {
+    if (t.isNext || t.block === 0) return;
+    var g = groups[t.projectId], a = taskStart(t), b = taskEnd(t);
+    if (!g) { g = groups[t.projectId] = { projectId: t.projectId, name: dispProject(t), a: a, b: b }; order.push(t.projectId); }
+    if (a < g.a) g.a = a;
+    if (b > g.b) g.b = b;
+  });
+  var maxEnd = addDays(s0, 400);
+  order.forEach(function (pid) {
+    var g = groups[pid], p = findProject(pid), bars = [{ a: g.a, b: g.b, cls: "" }], dates = fmt(g.a) + " to " + fmt(g.b), est = p && p.months;
+    if (est) { var ea = addDays(g.b, 1), eb = addMonths(ea, est); bars.push({ a: ea, b: eb, cls: "est" }); dates += ", estimate to " + fmtY(eb); if (eb > maxEnd) maxEnd = eb; }
+    lanes.push({ name: g.name, bars: bars, dates: dates });
+  });
+  var c = chosen(), openEnded = false;
+  if (c && c.start) {
+    var ca = parseISO(c.start), cb;
+    if (c.months) { cb = addMonths(ca, c.months); lanes.push({ name: c.name, bars: [{ a: ca, b: cb, cls: "" }], dates: fmt(ca) + " to " + fmtY(cb) }); if (cb > maxEnd) maxEnd = cb; }
+    else { openEnded = true; lanes.push({ name: c.name, bars: [{ a: ca, b: null, cls: "open" }], dates: "from " + fmtY(ca) }); }
+  }
+  // Milestones require a direct project link (see DESIGN.md) -- labeled by
+  // project name here since the Timeline shows every project's milestones together.
+  var mss = [];
+  live(state.milestones).forEach(function (m) { var p = findProject(m.projectId); mss.push({ id: m.id, text: (p ? p.name + ": " : "") + m.text, date: parseISO(m.date) }); });
+  var wrap = timelineNode(lanes, mss, rs, maxEnd, "The red line marks today." + (openEnded ? " The chosen project has no length set, so its bar runs open-ended." : ""));
   return { node: wrap, milestones: mss };
+}
+
+// A project's own timeline: a lane per scheduled task plus that project's
+// milestones. Backlog tasks have no dates, so they are counted, not drawn.
+function projectRangeBlock(p) {
+  var ts = projectBurnTasks(p).slice().sort(function (x, y) { return taskStart(x) - taskStart(y); });
+  var mss = [];
+  live(state.milestones).forEach(function (m) { if (m.projectId === p.id) mss.push({ id: m.id, text: m.text, date: parseISO(m.date) }); });
+  var nb = counted().filter(function (t) { return t.projectId === p.id && !t.isNext && t.block === 0; }).length;
+  var backlog = nb ? " " + nb + (nb === 1 ? " backlog item is" : " backlog items are") + " not shown until scheduled." : "";
+  if (!ts.length) return { node: el("p", { "class": "hint" }, "Nothing is scheduled yet. Give a task a date to see it here." + backlog), milestones: mss, empty: true };
+  var first = Infinity, maxEnd = -Infinity;
+  var lanes = ts.map(function (t) {
+    var a = taskStart(t), b = taskEnd(t);
+    if (a < first) first = a;
+    if (b > maxEnd) maxEnd = b;
+    return { name: short(t.what, 60), bars: [{ a: a, b: b, cls: t.status === "Completed" ? "done" : "" }], dates: fmt(a) + " to " + fmt(b) };
+  });
+  mss.forEach(function (m) { if (m.date < first) first = m.date; });
+  var f0 = new Date(first), rs = Date.UTC(f0.getUTCFullYear(), f0.getUTCMonth(), 1);
+  return { node: timelineNode(lanes, mss, rs, maxEnd, "The red line marks today." + backlog), milestones: mss, empty: false };
 }
 
 
@@ -1334,8 +1473,10 @@ function renderSearch(root) {
 
 /* modal */
 var modalReturn = null;
-function openModal(title, build) {
+// opts.full makes the dialog fill the screen (less a small margin), for a big chart.
+function openModal(title, build, opts) {
   modalReturn = document.activeElement;
+  document.querySelector("#overlay .modal").classList.toggle("full", !!(opts && opts.full));
   $("modalTitle").textContent = title;
   $("modalClose").title = "Close";
   var body = $("modalBody"); body.innerHTML = "";
@@ -1346,6 +1487,7 @@ function openModal(title, build) {
 }
 function closeModal() {
   $("overlay").hidden = true; $("modalBody").innerHTML = "";
+  document.querySelector("#overlay .modal").classList.remove("full");
   if (modalReturn && document.body.contains(modalReturn) && modalReturn.focus) modalReturn.focus();
   modalReturn = null;
 }
@@ -1647,6 +1789,14 @@ function currentCheckpointIndex() {
   return idx;
 }
 function recordCurrentWeek() { state.actual[currentCheckpointIndex()] = remainingUnits(); }
+// Each active or complete project keeps its own weekly steps-remaining snapshot,
+// keyed by the week's Monday, so a project's burndown keeps a real actual line.
+function recordProjectWeeks() {
+  var key = iso(weekStart(TODAY));
+  liveProjects().forEach(function (p) {
+    if ((p.status === "active" || p.status === "complete") && projectTotalUnits(p) > 0) p.actual[key] = projectRemainingUnits(p);
+  });
+}
 // Runs on every changed() call (same choke point as recordCurrentWeek), so
 // any task-status edit anywhere in the app is caught without patching each
 // call site individually. Only the auto-trigger lives here -- the manual
@@ -1691,15 +1841,17 @@ function completionDialog(p) {
 }
 function burnParts(o) {
   o = o || {};
+  var proj = o.project;
   var h = el(o.level || "h2", null, "Burndown");
   var cb = el("div", { "class": "chartbox" }); var host = el("div"); cb.appendChild(host);
   var lg = el("div", { "class": "legend" });
   var l1 = el("span"); l1.appendChild(el("i", { "class": "p" })); l1.appendChild(document.createTextNode("Planned"));
   var l2 = el("span"); l2.appendChild(el("i")); l2.appendChild(document.createTextNode("Actual"));
   lg.appendChild(l1); lg.appendChild(l2); cb.appendChild(lg);
-  drawChart(host, o.wide);
-  var rn = remainingUnits(), rb = el("div", { "class": "box" }), nbk = backlogTasks().length;
-  rb.appendChild(el("p", { "class": "hint first remaining" }, rn + (rn === 1 ? " item" : " items") + " remaining, out of " + totalUnits() + (nbk ? ". " + nbk + (nbk === 1 ? " backlog item is" : " backlog items are") + " not counted until scheduled." : "")));
+  if (proj) drawProjectChart(host, proj, o.wide); else drawChart(host, o.wide);
+  var rn = proj ? projectRemainingUnits(proj) : remainingUnits(), tot = proj ? projectTotalUnits(proj) : totalUnits(), rb = el("div", { "class": "box" });
+  var nbk = proj ? counted().filter(function (t) { return t.projectId === proj.id && !t.isNext && t.block === 0; }).length : backlogTasks().length;
+  rb.appendChild(el("p", { "class": "hint first remaining" }, rn + (rn === 1 ? " item" : " items") + " remaining, out of " + tot + (nbk ? ". " + nbk + (nbk === 1 ? " backlog item is" : " backlog items are") + " not counted until scheduled." : "")));
   return { h: h, chart: cb, count: rb };
 }
 function burnPanel(o) {
@@ -2003,6 +2155,15 @@ function renderProjectPage(root, id) {
   var p = findProject(id);
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
   var key = "proj:" + p.id, readOnly = !!p.arch;
+  // An active or complete project's page is two columns on a wide screen: its info on
+  // the left and its own Timeline and Burndown on the right (stacked on a phone). A
+  // candidate has nothing scheduled to chart, and an archived project's tasks are archived.
+  var page = root, split = null;
+  if (!readOnly && (p.status === "active" || p.status === "complete")) {
+    split = el("div", { "class": "projsplit" });
+    root = el("div", { "class": "projleft" });
+    split.appendChild(root); page.appendChild(split);
+  }
   root.appendChild(pinBar(key));
   if (!readOnly) {
     // Renaming is safe: tasks, pins, links, and milestones all point at the
@@ -2139,6 +2300,30 @@ function renderProjectPage(root, id) {
     }));
   }
   root.appendChild(ar);
+  if (split) split.appendChild(projectChartsPanel(p));
+}
+
+// The right-hand column of a project's page: its own Timeline and Burndown, with an
+// Expand button (desktop only; hidden by CSS on a phone) that opens them large.
+function projectChartsPanel(p) {
+  var side = el("aside", { "class": "projright", "aria-label": "Timeline and burndown" });
+  var ex = el("button", { type: "button", "class": "small projexpand", title: "Expand the timeline and burndown" }, "Expand");
+  on(ex, "click", function () { openModal("Timeline and burndown for " + p.name, function (body) { body.appendChild(projectCharts(p, true, null)); }, { full: true }); });
+  side.appendChild(projectCharts(p, false, ex));
+  return side;
+}
+function projectCharts(p, wide, expandBtn) {
+  var out = el("div");
+  var th = el("div", { "class": "sechead" }); th.appendChild(el("h2", { "class": "first" }, "Timeline"));
+  if (expandBtn) th.appendChild(expandBtn);
+  out.appendChild(th);
+  var tl = projectRangeBlock(p); out.appendChild(tl.node); wireMilestoneDiamonds(tl.node);
+  if (!tl.empty) {
+    var b = burnParts({ project: p, wide: wide, level: "h2" });
+    b.count.style.marginTop = "12px";
+    out.appendChild(b.h); out.appendChild(b.chart); out.appendChild(b.count);
+  }
+  return out;
 }
 
 // Promotes a candidate to active in place -- same record, same id, only its
@@ -2248,18 +2433,22 @@ function renderParkingLot(root) {
   root.appendChild(pl);
 }
 
-function renderTimeline(root) {
-  var r = rangeBlock(); root.appendChild(r.node);
-  // Opens the edit dialog for a real milestone (state.milestones entry) by id.
-  function editMilestone(id) {
-    var orig = state.milestones.filter(function (x) { return x.id === id; })[0];
-    if (orig) milestoneDialog(orig, function () { removeNow(orig, "milestones", "Milestone"); });
-  }
-  Array.prototype.forEach.call(r.node.querySelectorAll(".ms[data-ms-id]"), function (d) {
+// Opens the edit dialog for a real milestone (state.milestones entry) by id.
+function editMilestone(id) {
+  var orig = state.milestones.filter(function (x) { return x.id === id; })[0];
+  if (orig) milestoneDialog(orig, function () { removeNow(orig, "milestones", "Milestone"); });
+}
+// Makes each milestone diamond inside a chart open its edit dialog (click, Enter, Space).
+function wireMilestoneDiamonds(node) {
+  Array.prototype.forEach.call(node.querySelectorAll(".ms[data-ms-id]"), function (d) {
     var id = d.getAttribute("data-ms-id");
     on(d, "click", function () { editMilestone(id); });
     on(d, "keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editMilestone(id); } });
   });
+}
+function renderTimeline(root) {
+  var r = rangeBlock(); root.appendChild(r.node);
+  wireMilestoneDiamonds(r.node);
   var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h2", null, "Milestones"));
   hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a milestone to the timeline" }, "Add milestone"), "click", function () { milestoneDialog(); })); root.appendChild(hd);
   var mbox = el("div", { "class": "box", style: "margin-top:10px" });
@@ -2433,7 +2622,7 @@ function helpTopics() {
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
       "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burndown until you do."]],
     ["Manage projects", [
-      "Each project has its own page. Open **Projects** and select the project's name. There you can rename it and edit its notes, and set its start date and pace.",
+      "Each project has its own page. Open **Projects** and select the project's name. There you can rename it and edit its notes, and set its start date and pace. Beside that (below it on a phone) are the project's own Timeline and Burndown. On a wide screen, **Expand** shows them large.",
       "**Candidates** are projects that could take the next slot. Open one and choose **Choose as next project** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
       "**Where things stand** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there."]],
     ["Finish or archive a project", [
@@ -2449,7 +2638,7 @@ function helpTopics() {
     ["Read the Timeline", [
       "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline. Select a diamond, or a milestone's text in the list, to change its project, text, or date, or to remove it.",
-      "The full-width burndown and the weekly counts are further down the page. This week's actual count fills in by itself. You can correct or fill in earlier weeks by hand."]],
+      "A project's own page has a Timeline with a lane for each scheduled task, and its own Burndown. Point at a spot on the burndown to see which tasks finish or were completed that week. The full-width burndown and the weekly counts are further down this page. This week's actual count fills in by itself. You can correct or fill in earlier weeks by hand."]],
     ["Launch checklist and decisions", [
       "On any task, tap **Add to Launch** beside a step to put that step on that project's own **Launch** section. **Cut from Launch** takes it off. Ticking it there or in **Tasks** keeps both in sync.",
       "A decision always links to a step. Answering the decision ticks the step, and clearing the answer unticks it.",

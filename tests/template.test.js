@@ -517,6 +517,74 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("modalTitle").textContent === "New milestone" && !k.btn(k.$("modalBody"), "Remove"), "a new-milestone dialog has no Remove button");
 }
 
+{
+  // a project's page: its info on the left, its own Timeline and Burndown on the right
+  const k = kit(await mk());
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  const split = k.d.querySelector("#view .projsplit");
+  ok(!!split && !!split.querySelector(".projleft") && !!split.querySelector(".projright"), "an active project's page has an info column and a charts column");
+  ok(!!split.querySelector(".projleft #proj-name") && [...split.querySelectorAll(".projleft h2")].some(h => h.textContent === "Tasks"), "the project info is in the left column");
+  const side = split.querySelector(".projright");
+  ok([...side.querySelectorAll("h2")].map(h => h.textContent).join() === "Timeline,Burndown", "the right column has a Timeline and a Burndown");
+  ok(!!k.btn(side, "Expand"), "the right column has an Expand button");
+  ok(side.querySelectorAll(".lane").length === 6, "one timeline lane per scheduled task, plus the milestones lane (" + side.querySelectorAll(".lane").length + ")");
+  ok(side.textContent.includes("1 backlog item is not shown until scheduled"), "an unscheduled Backlog task is counted, not drawn");
+  ok(side.querySelectorAll(".ms").length === 1 && /Sample App beta opens/.test(side.querySelector(".ms").getAttribute("aria-label")), "the timeline shows only this project's milestone");
+  const svg = side.querySelector("svg.chart");
+  ok(/^Burndown chart for Sample App\./.test(svg.getAttribute("aria-label")), "the burndown is this project's own");
+  ok(svg.querySelectorAll(".dot").length === 3, "the actual line has its recorded weeks plus this week (" + svg.querySelectorAll(".dot").length + ")");
+  ok(svg.querySelectorAll(".mark").length === 1 && svg.querySelectorAll(".pdot").length >= 3, "a milestone marker and hoverable planned points are drawn");
+  ok([...svg.querySelectorAll(".pdot title")].some(t => /Finishing: /.test(t.textContent)), "a planned point names the tasks that finish that week");
+  ok(/8 items remaining, out of 16/.test(side.textContent), "the count line is this project's own steps");
+  // Expand opens both charts in a full-size dialog, and closing restores normal dialogs
+  k.click(k.btn(side, "Expand"));
+  const modal = k.d.querySelector("#overlay .modal");
+  ok(!k.$("overlay").hidden && modal.classList.contains("full") && k.$("modalTitle").textContent === "Timeline and burndown for Sample App", "Expand opens the charts in a full-size dialog");
+  ok(!!k.$("modalBody").querySelector(".range") && !!k.$("modalBody").querySelector("svg.chart"), "the dialog holds both charts");
+  k.click(k.$("modalClose"));
+  ok(k.$("overlay").hidden && !modal.classList.contains("full"), "closing it drops the full size");
+  k.menuAct("newBtn", "newIdea");
+  ok(!modal.classList.contains("full"), "the next dialog is the normal size");
+  k.click(k.$("modalClose"));
+}
+{
+  // a project's own snapshots are recorded as it changes, and its chart reads them
+  const k = kit(await mk());
+  const d = new Date(), n = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  const wk = new Date(n - ((new Date(n).getUTCDay() + 6) % 7) * 86400000).toISOString().slice(0, 10);
+  k.tab("schedule");
+  k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Build the home screen")));
+  const sel = k.d.querySelector(".detailpane .status"); sel.value = "Completed"; k.fire(sel);
+  const app = k.saved().projects.find(p => p.id === "pApp");
+  ok(typeof app.actual[wk] === "number" && app.actual[wk] < 8, "finishing a task records this week's steps remaining for its project (" + app.actual[wk] + ")");
+  ok(Object.keys(app.actual).length >= 3, "the earlier weeks are kept");
+}
+{
+  // saved snapshots are validated on load
+  const saved = { projects: [{ id: "pV", name: "Snap", status: "active", actual: { "2026-09-14": 12, "bad": 3, "2026-09-21": -1, "2026-09-28": "x" } }], tasks: [] };
+  const k = kit(await mk(saved));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Pin"));
+  const a = k.saved().projects[0].actual;
+  ok(Object.keys(a).join() === "2026-09-14" && a["2026-09-14"] === 12, "only well-formed weekly snapshots are kept");
+}
+{
+  // an active project with nothing scheduled still has the panel, and says so
+  const k = kit(await mk({ projects: [{ id: "pX", name: "Empty", status: "active" }], tasks: [] }));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Empty"));
+  const side = k.d.querySelector("#view .projright");
+  ok(!!side && side.textContent.includes("Nothing is scheduled yet") && ![...side.querySelectorAll("h2")].some(h => h.textContent === "Burndown"), "a project with no scheduled tasks says so and draws no burndown");
+}
+{
+  // candidates and archived projects stay single-column
+  const k = kit(await mk());
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Browser Extension"));
+  ok(!k.d.querySelector("#view .projsplit"), "a candidate's page has no charts column");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Game"));
+  k.click(k.btn(k.$("view"), "Archive"));
+  k.tab("archive"); k.click(k.btn(k.$("view"), "Sample Game"));
+  ok(!k.d.querySelector("#view .projsplit"), "an archived project's page has no charts column");
+}
+
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);
 

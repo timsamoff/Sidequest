@@ -10,8 +10,10 @@ import { closeMenus } from "./app.js";
 
 /* modal */
 export var modalReturn = null;
-export function openModal(title, build) {
+// opts.full makes the dialog fill the screen (less a small margin), for a big chart.
+export function openModal(title, build, opts) {
   modalReturn = document.activeElement;
+  document.querySelector("#overlay .modal").classList.toggle("full", !!(opts && opts.full));
   $("modalTitle").textContent = title;
   $("modalClose").title = "Close";
   var body = $("modalBody"); body.innerHTML = "";
@@ -22,6 +24,7 @@ export function openModal(title, build) {
 }
 export function closeModal() {
   $("overlay").hidden = true; $("modalBody").innerHTML = "";
+  document.querySelector("#overlay .modal").classList.remove("full");
   if (modalReturn && document.body.contains(modalReturn) && modalReturn.focus) modalReturn.focus();
   modalReturn = null;
 }

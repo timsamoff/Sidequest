@@ -1,7 +1,7 @@
 import { DAY, iso, parseISO, TODAY } from "./dates.js";
 import { findAnyTask } from "./model.js";
 import { notify } from "./dom.js";
-import { recordCurrentWeek, sweepProjectCompletion } from "./views.js";
+import { recordCurrentWeek, recordProjectWeeks, sweepProjectCompletion } from "./views.js";
 import { renderAll } from "./app.js";
 
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
@@ -22,7 +22,7 @@ export function task(id, block, projectId, what, done, steps, extra) {
 // record and id carry through Candidate -> Active -> Archived, never a second
 // record. See DESIGN.md's "making Project a first-class entity" section.
 export function project(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", mult: 1, months: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false };
+  var p = { id: id, name: name, status: status, start: "", mult: 1, months: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, actual: {} };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -33,12 +33,14 @@ export function sampleData() {
   function day(k) { return new Date(m0 + k * D).toISOString().slice(0, 10); }
   var yest = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 1)).toISOString().slice(0, 10);
   var lastWeek = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 7)).toISOString().slice(0, 10);
+  // Sample App has 16 steps of scheduled work; it started two Mondays ago.
+  var appHistory = {}; appHistory[day(0)] = 16; appHistory[day(7)] = 13;
   var projects = [
     // pApp <-> pSite demonstrates a bidirectional project link (see
     // DESIGN.md's "linking related projects" section): the app and its
     // marketing site are related efforts, linked without nesting one's tasks
     // inside the other.
-    project("pApp", "Sample App", "active", { notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
+    project("pApp", "Sample App", "active", { actual: appHistory, notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
     // launchCritical: the app's launch checklist shows the site as a line item,
     // done-state derived from the site's own status (see DESIGN.md).
     project("pSite", "Sample Website", "active", { start: day(14), mult: 1, linkedProjectIds: ["pApp"], launchCritical: true }),
@@ -122,12 +124,15 @@ export function normalize(s) {
       // as `notes`. They are one field now: fold a saved `note` into the front
       // of `notes` so nothing is lost. Once saved, `note` no longer exists.
       var oldNote = S(x.note, 5000), body = S(x.notes, 5000);
+      // Per-project burndown snapshots: { "<Monday ISO>": steps remaining }.
+      var snaps = {};
+      if (x.actual && typeof x.actual === "object" && !Array.isArray(x.actual)) Object.keys(x.actual).slice(0, 300).forEach(function (k) { var v = x.actual[k]; if (isISO(k) && typeof v === "number" && v >= 0 && v <= 100000) snaps[k] = Math.round(v); });
       return {
         id: S(x.id, 40), name: S(x.name, 120),
         status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
         start: isISO(x.start) ? x.start : "", mult: (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? x.mult : 1,
         months: (typeof x.months === "number" && x.months >= 1 && x.months <= 36) ? Math.round(x.months) : "",
-        notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true,
+        notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true, actual: snaps,
         // Validated below, once every project's real id is known -- a link
         // can only point at another project that actually exists in the
         // final set. Arbitrary depth/cycles are fine (see DESIGN.md); each
@@ -299,6 +304,6 @@ export function autoArchive() {
   });
 }
 export function changed() {
-  autoArchive(); sweepProjectCompletion(); recordCurrentWeek(); save(); renderAll();
+  autoArchive(); sweepProjectCompletion(); recordCurrentWeek(); recordProjectWeeks(); save(); renderAll();
 }
 

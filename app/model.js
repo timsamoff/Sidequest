@@ -1,6 +1,6 @@
 import { state, changed, CHECKPOINTS } from "./state.js";
 import { notify } from "./dom.js";
-import { addDays, parseISO, TODAY } from "./dates.js";
+import { DAY, iso, addDays, parseISO, TODAY, weekStart } from "./dates.js";
 
 export var CORE = [["today", "Today"], ["projects", "Projects"], ["schedule", "Tasks"], ["timeline", "Timeline"]];
 export var BOTTOM = [["parking", "Parking lot"], ["archive", "Archive"], ["help", "Help"], ["settings", "Settings"]];
@@ -101,6 +101,37 @@ export function ordered() { return sortTasks(live(state.tasks).filter(function (
 export function orderedAll() { return sortTasks(live(state.tasks)); }
 export function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0; })); }
 export function burnTasks() { return counted().filter(function (t) { return t.block > 0; }); }
+// --- One project's own burndown (DESIGN.md, 2026-09-26) ---
+export function projectBurnTasks(p) { return burnTasks().filter(function (t) { return t.projectId === p.id; }); }
+export function projectTotalUnits(p) { return projectBurnTasks(p).reduce(function (a, t) { return a + weight(t); }, 0); }
+export function projectRemainingUnits(p) { return projectBurnTasks(p).reduce(function (a, t) { return a + weight(t) - doneUnits(t); }, 0); }
+// Points are Mondays from the week of the project's first task to the week after
+// its last (stretched to include this week if it has overrun). Planned is exact,
+// like the global chart's. Actual comes from the project's stored weekly
+// snapshots, except THIS week's point, which is always computed live from the
+// tasks so it never depends on a write. Returns null if nothing is scheduled.
+export function projectBurn(p) {
+  var ts = projectBurnTasks(p);
+  if (!ts.length) return null;
+  var total = projectTotalUnits(p), first = Infinity, last = -Infinity;
+  ts.forEach(function (t) { first = Math.min(first, taskStart(t)); last = Math.max(last, taskEnd(t)); });
+  var cur = weekStart(TODAY), startWk = weekStart(first), endWk = addDays(weekStart(last), 7);
+  if (cur > endWk) endWk = cur;
+  var weeks = Math.round((endWk - startWk) / (7 * DAY)), step = Math.max(1, Math.ceil(weeks / 52));
+  var cps = [];
+  for (var m = startWk; m < endWk; m = addDays(m, 7 * step)) cps.push(m);
+  cps.push(endWk);
+  var planned = cps.map(function (ms) { var d = 0; ts.forEach(function (t) { if (taskEnd(t) <= ms) d += weight(t); }); return total - d; });
+  var live = projectRemainingUnits(p);
+  var actual = cps.map(function (ms, i) {
+    var next = i < cps.length - 1 ? cps[i + 1] : Infinity;
+    if (ms <= cur && cur < next) return live;
+    if (ms > cur) return null;
+    var v = p.actual[iso(ms)];
+    return v !== undefined ? v : (i === 0 ? total : null);
+  });
+  return { cps: cps, planned: planned, actual: actual, total: total, tasks: ts, step: step };
+}
 export function orderedCounted() { return sortTasks(counted()); }
 export function isLate(t) { return t.block > 0 && t.status !== "Completed" && taskEnd(t) < TODAY; }
 export function lateTasks() { return ordered().filter(isLate); }

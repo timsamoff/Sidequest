@@ -5,6 +5,9 @@ export var DAY = 86400000;
 export function parseISO(s) { var p = s.split("-"); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
 export function iso(ms) { return new Date(ms).toISOString().slice(0, 10); }
 export function addDays(ms, n) { return ms + n * DAY; }
+// The Monday (UTC) on or before ms. Per-project burndown snapshots are keyed by
+// this, so they stay valid when a project's own start date moves.
+export function weekStart(ms) { return addDays(ms, -((new Date(ms).getUTCDay() + 6) % 7)); }
 export function addMonths(ms, n) { var d = new Date(ms); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, d.getUTCDate()); }
 export var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export function pad2(n) { return (n < 10 ? "0" : "") + n; }

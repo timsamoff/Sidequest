@@ -1,16 +1,16 @@
 import { state, ui, save, changed, autoArchive, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, project as makeProject } from "./state.js";
-import { DAY, iso, parseISO, TODAY, fmt, fmtY } from "./dates.js";
+import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart } from "./dates.js";
 import {
   WORDS, wd, wl, pset, blockStartFor, blockEndFor, projKey, taskStart, taskEnd,
   checkpoints, live, counted, liveProjects, activeProjects, candidateProjects, completeProjects,
   findProject, findAnyProject, linkedProjects, unlinkProjects, chosen, dispProject, dispWhat,
   totalUnits, remainingUnits, planned, ordered, backlogTasks,
-  isLate, lateTasks, setStatus, syncFromSteps, nextTask, projectTasksAllDone,
+  isLate, lateTasks, setStatus, syncFromSteps, nextTask, projectTasksAllDone, projectTotalUnits, projectRemainingUnits,
   validPage, isPinned, pinPage, unpinPage, projectMeta,
   findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask
 } from "./model.js";
 import { $, el, on, uid, setFocusKey, notify, scrollTop } from "./dom.js";
-import { drawChart, rangeBlock } from "./chart.js";
+import { drawChart, drawProjectChart, rangeBlock, projectRangeBlock } from "./chart.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme } from "./app.js";
 import { stepDialog, decisionDialog, linkProjectDialog, ideaDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
 
@@ -76,6 +76,14 @@ export function currentCheckpointIndex() {
   return idx;
 }
 export function recordCurrentWeek() { state.actual[currentCheckpointIndex()] = remainingUnits(); }
+// Each active or complete project keeps its own weekly steps-remaining snapshot,
+// keyed by the week's Monday, so a project's burndown keeps a real actual line.
+export function recordProjectWeeks() {
+  var key = iso(weekStart(TODAY));
+  liveProjects().forEach(function (p) {
+    if ((p.status === "active" || p.status === "complete") && projectTotalUnits(p) > 0) p.actual[key] = projectRemainingUnits(p);
+  });
+}
 // Runs on every changed() call (same choke point as recordCurrentWeek), so
 // any task-status edit anywhere in the app is caught without patching each
 // call site individually. Only the auto-trigger lives here -- the manual
@@ -120,15 +128,17 @@ export function completionDialog(p) {
 }
 export function burnParts(o) {
   o = o || {};
+  var proj = o.project;
   var h = el(o.level || "h2", null, "Burndown");
   var cb = el("div", { "class": "chartbox" }); var host = el("div"); cb.appendChild(host);
   var lg = el("div", { "class": "legend" });
   var l1 = el("span"); l1.appendChild(el("i", { "class": "p" })); l1.appendChild(document.createTextNode("Planned"));
   var l2 = el("span"); l2.appendChild(el("i")); l2.appendChild(document.createTextNode("Actual"));
   lg.appendChild(l1); lg.appendChild(l2); cb.appendChild(lg);
-  drawChart(host, o.wide);
-  var rn = remainingUnits(), rb = el("div", { "class": "box" }), nbk = backlogTasks().length;
-  rb.appendChild(el("p", { "class": "hint first remaining" }, rn + (rn === 1 ? " item" : " items") + " remaining, out of " + totalUnits() + (nbk ? ". " + nbk + (nbk === 1 ? " backlog item is" : " backlog items are") + " not counted until scheduled." : "")));
+  if (proj) drawProjectChart(host, proj, o.wide); else drawChart(host, o.wide);
+  var rn = proj ? projectRemainingUnits(proj) : remainingUnits(), tot = proj ? projectTotalUnits(proj) : totalUnits(), rb = el("div", { "class": "box" });
+  var nbk = proj ? counted().filter(function (t) { return t.projectId === proj.id && !t.isNext && t.block === 0; }).length : backlogTasks().length;
+  rb.appendChild(el("p", { "class": "hint first remaining" }, rn + (rn === 1 ? " item" : " items") + " remaining, out of " + tot + (nbk ? ". " + nbk + (nbk === 1 ? " backlog item is" : " backlog items are") + " not counted until scheduled." : "")));
   return { h: h, chart: cb, count: rb };
 }
 export function burnPanel(o) {
@@ -432,6 +442,15 @@ export function renderProjectPage(root, id) {
   var p = findProject(id);
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
   var key = "proj:" + p.id, readOnly = !!p.arch;
+  // An active or complete project's page is two columns on a wide screen: its info on
+  // the left and its own Timeline and Burndown on the right (stacked on a phone). A
+  // candidate has nothing scheduled to chart, and an archived project's tasks are archived.
+  var page = root, split = null;
+  if (!readOnly && (p.status === "active" || p.status === "complete")) {
+    split = el("div", { "class": "projsplit" });
+    root = el("div", { "class": "projleft" });
+    split.appendChild(root); page.appendChild(split);
+  }
   root.appendChild(pinBar(key));
   if (!readOnly) {
     // Renaming is safe: tasks, pins, links, and milestones all point at the
@@ -568,6 +587,30 @@ export function renderProjectPage(root, id) {
     }));
   }
   root.appendChild(ar);
+  if (split) split.appendChild(projectChartsPanel(p));
+}
+
+// The right-hand column of a project's page: its own Timeline and Burndown, with an
+// Expand button (desktop only; hidden by CSS on a phone) that opens them large.
+function projectChartsPanel(p) {
+  var side = el("aside", { "class": "projright", "aria-label": "Timeline and burndown" });
+  var ex = el("button", { type: "button", "class": "small projexpand", title: "Expand the timeline and burndown" }, "Expand");
+  on(ex, "click", function () { openModal("Timeline and burndown for " + p.name, function (body) { body.appendChild(projectCharts(p, true, null)); }, { full: true }); });
+  side.appendChild(projectCharts(p, false, ex));
+  return side;
+}
+function projectCharts(p, wide, expandBtn) {
+  var out = el("div");
+  var th = el("div", { "class": "sechead" }); th.appendChild(el("h2", { "class": "first" }, "Timeline"));
+  if (expandBtn) th.appendChild(expandBtn);
+  out.appendChild(th);
+  var tl = projectRangeBlock(p); out.appendChild(tl.node); wireMilestoneDiamonds(tl.node);
+  if (!tl.empty) {
+    var b = burnParts({ project: p, wide: wide, level: "h2" });
+    b.count.style.marginTop = "12px";
+    out.appendChild(b.h); out.appendChild(b.chart); out.appendChild(b.count);
+  }
+  return out;
 }
 
 // Promotes a candidate to active in place -- same record, same id, only its
@@ -677,18 +720,22 @@ export function renderParkingLot(root) {
   root.appendChild(pl);
 }
 
-export function renderTimeline(root) {
-  var r = rangeBlock(); root.appendChild(r.node);
-  // Opens the edit dialog for a real milestone (state.milestones entry) by id.
-  function editMilestone(id) {
-    var orig = state.milestones.filter(function (x) { return x.id === id; })[0];
-    if (orig) milestoneDialog(orig, function () { removeNow(orig, "milestones", "Milestone"); });
-  }
-  Array.prototype.forEach.call(r.node.querySelectorAll(".ms[data-ms-id]"), function (d) {
+// Opens the edit dialog for a real milestone (state.milestones entry) by id.
+function editMilestone(id) {
+  var orig = state.milestones.filter(function (x) { return x.id === id; })[0];
+  if (orig) milestoneDialog(orig, function () { removeNow(orig, "milestones", "Milestone"); });
+}
+// Makes each milestone diamond inside a chart open its edit dialog (click, Enter, Space).
+function wireMilestoneDiamonds(node) {
+  Array.prototype.forEach.call(node.querySelectorAll(".ms[data-ms-id]"), function (d) {
     var id = d.getAttribute("data-ms-id");
     on(d, "click", function () { editMilestone(id); });
     on(d, "keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editMilestone(id); } });
   });
+}
+export function renderTimeline(root) {
+  var r = rangeBlock(); root.appendChild(r.node);
+  wireMilestoneDiamonds(r.node);
   var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h2", null, "Milestones"));
   hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a milestone to the timeline" }, "Add milestone"), "click", function () { milestoneDialog(); })); root.appendChild(hd);
   var mbox = el("div", { "class": "box", style: "margin-top:10px" });
@@ -862,7 +909,7 @@ export function helpTopics() {
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
       "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burndown until you do."]],
     ["Manage projects", [
-      "Each project has its own page. Open **Projects** and select the project's name. There you can rename it and edit its notes, and set its start date and pace.",
+      "Each project has its own page. Open **Projects** and select the project's name. There you can rename it and edit its notes, and set its start date and pace. Beside that (below it on a phone) are the project's own Timeline and Burndown. On a wide screen, **Expand** shows them large.",
       "**Candidates** are projects that could take the next slot. Open one and choose **Choose as next project** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
       "**Where things stand** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there."]],
     ["Finish or archive a project", [
@@ -878,7 +925,7 @@ export function helpTopics() {
     ["Read the Timeline", [
       "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline. Select a diamond, or a milestone's text in the list, to change its project, text, or date, or to remove it.",
-      "The full-width burndown and the weekly counts are further down the page. This week's actual count fills in by itself. You can correct or fill in earlier weeks by hand."]],
+      "A project's own page has a Timeline with a lane for each scheduled task, and its own Burndown. Point at a spot on the burndown to see which tasks finish or were completed that week. The full-width burndown and the weekly counts are further down this page. This week's actual count fills in by itself. You can correct or fill in earlier weeks by hand."]],
     ["Launch checklist and decisions", [
       "On any task, tap **Add to Launch** beside a step to put that step on that project's own **Launch** section. **Cut from Launch** takes it off. Ticking it there or in **Tasks** keeps both in sync.",
       "A decision always links to a step. Answering the decision ticks the step, and clearing the answer unticks it.",
