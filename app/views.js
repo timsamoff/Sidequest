@@ -527,26 +527,7 @@ export function renderProjectPage(root, id) {
     });
     root.appendChild(ul);
   }
-  root.appendChild(el("h2", null, "Schedule"));
-  var eff = pset(p.id);
-  if (readOnly) {
-    root.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + ", time multiplier " + eff.mult + "."));
-  } else {
-    root.appendChild(el("p", { "class": "hint" }, "Set this project's own start date and pace."));
-    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
-    function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
-    var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
-    var pm = el("input", { type: "number", id: "proj-mult", min: "0.25", max: "5", step: "0.25" }); pm.value = eff.mult;
-    function applyOwn() {
-      var sv = ps.value, mv = parseFloat(pm.value);
-      if (!isISO(sv)) { ps.value = eff.start; smsg.textContent = "Enter a valid start date."; return; }
-      if (isNaN(mv) || mv < 0.25 || mv > 5) { pm.value = eff.mult; smsg.textContent = "The time multiplier must be from 0.25 to 5."; return; }
-      p.start = sv; p.mult = mv; changed(); notify(p.name + " schedule saved.");
-    }
-    on(ps, "change", applyOwn); on(pm, "change", applyOwn);
-    sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm);
-    root.appendChild(sg); root.appendChild(smsg);
-  }
+  if (!split) scheduleSection(root, p, readOnly);
   root.appendChild(el("h2", null, "Notes"));
   if (readOnly) {
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
@@ -590,18 +571,44 @@ export function renderProjectPage(root, id) {
   if (split) split.appendChild(projectChartsPanel(p));
 }
 
+// A project's Schedule (start date and pace). In the two-column layout it sits at the
+// top of the right column, above the charts it changes; otherwise it stays inline.
+function scheduleSection(host, p, readOnly) {
+  host.appendChild(el("h2", null, "Schedule"));
+  var eff = pset(p.id);
+  if (readOnly) {
+    host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + ", time multiplier " + eff.mult + "."));
+  } else {
+    host.appendChild(el("p", { "class": "hint" }, "Set this project's own start date and pace."));
+    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
+    function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
+    var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
+    var pm = el("input", { type: "number", id: "proj-mult", min: "0.25", max: "5", step: "0.25" }); pm.value = eff.mult;
+    function applyOwn() {
+      var sv = ps.value, mv = parseFloat(pm.value);
+      if (!isISO(sv)) { ps.value = eff.start; smsg.textContent = "Enter a valid start date."; return; }
+      if (isNaN(mv) || mv < 0.25 || mv > 5) { pm.value = eff.mult; smsg.textContent = "The time multiplier must be from 0.25 to 5."; return; }
+      p.start = sv; p.mult = mv; changed(); notify(p.name + " schedule saved.");
+    }
+    on(ps, "change", applyOwn); on(pm, "change", applyOwn);
+    sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm);
+    host.appendChild(sg); host.appendChild(smsg);
+  }
+}
+
 // The right-hand column of a project's page: its own Timeline and Burndown, with an
 // Expand button (desktop only; hidden by CSS on a phone) that opens them large.
 function projectChartsPanel(p) {
   var side = el("aside", { "class": "projright", "aria-label": "Timeline and burndown" });
   var ex = el("button", { type: "button", "class": "small projexpand", title: "Expand the timeline and burndown" }, "Expand");
-  on(ex, "click", function () { openModal("Timeline and burndown for " + p.name, function (body) { body.appendChild(projectCharts(p, true, null)); }, { full: true }); });
-  side.appendChild(projectCharts(p, false, ex));
+  on(ex, "click", function () { openModal("Timeline and burndown for " + p.name, function (body) { body.appendChild(projectCharts(p, true, null, true)); }, { full: true }); });
+  scheduleSection(side, p, false);
+  side.appendChild(projectCharts(p, false, ex, false));
   return side;
 }
-function projectCharts(p, wide, expandBtn) {
+function projectCharts(p, wide, expandBtn, first) {
   var out = el("div");
-  var th = el("div", { "class": "sechead" }); th.appendChild(el("h2", { "class": "first" }, "Timeline"));
+  var th = el("div", { "class": "sechead" }); th.appendChild(el("h2", first ? { "class": "first" } : null, "Timeline"));
   if (expandBtn) th.appendChild(expandBtn);
   out.appendChild(th);
   var tl = projectRangeBlock(p); out.appendChild(tl.node); wireMilestoneDiamonds(tl.node);
@@ -909,7 +916,7 @@ export function helpTopics() {
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
       "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burndown until you do."]],
     ["Manage projects", [
-      "Each project has its own page. Open **Projects** and select the project's name. There you can rename it and edit its notes, and set its start date and pace. Beside that (below it on a phone) are the project's own Timeline and Burndown. On a wide screen, **Expand** shows them large.",
+      "Each project has its own page. Open **Projects** and select the project's name. There you can rename it and edit its notes. Beside that (below it on a phone) are its Schedule, where you set its start date and pace, and its own Timeline and Burndown, which redraw as you change the schedule. On a wide screen, **Expand** shows them large.",
       "**Candidates** are projects that could take the next slot. Open one and choose **Choose as next project** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
       "**Where things stand** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there."]],
     ["Finish or archive a project", [
