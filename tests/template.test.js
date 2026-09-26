@@ -297,7 +297,21 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("overlay").hidden, "Leave in Projects closes the dialog");
   ok(k.$("view").textContent.includes("Restore") === false && !k.btn(k.$("view"), "Mark complete") && !k.btn(k.$("view"), "Archive") === false, "project stays Complete, not archived, after Leave in Projects");
   ok(k.saved().projects.find(p => p.id === "pApp").status === "complete", "status persisted as complete");
+  // set apart visually, and can be reopened
+  ok(!!k.d.querySelector("#view .chip.projcomplete"), "a Complete project shows a Complete badge on its own page");
+  ok(!!k.btn(k.$("view"), "Reopen") && !k.btn(k.$("view"), "Mark complete"), "Complete project offers Reopen in place of Mark complete");
+  k.tab("projects");
+  const appRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample App"));
+  ok(!!appRow.querySelector(".chip.projcomplete"), "the Projects section also shows the Complete badge");
+  k.click(k.btn(appRow, "View"));
+  ok(k.$("viewTitle").textContent === "Sample App", "View navigated to Sample App's own page");
+  k.click(k.btn(k.$("view"), "Reopen"));
+  ok(k.saved().projects.find(p => p.id === "pApp").status === "active", "Reopen sets the project back to active");
+  ok(!k.d.querySelector("#view .chip.projcomplete"), "reopened project loses the Complete badge");
+  ok(!!k.btn(k.$("view"), "Mark complete"), "reopened project offers Mark complete again");
   // sticky: reopening a task does not revert Complete
+  k.click(k.btn(k.$("view"), "Mark complete"));
+  k.click(k.btn(k.$("modalBody"), "Leave in Projects"));
   k.tab("schedule");
   k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Sketch the main screens")));
   const statusSel = k.d.querySelector(".detailpane .status"); statusSel.value = "In progress"; k.fire(statusSel);
@@ -344,12 +358,14 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   // archived project pages are genuinely viewable, read-only, until restored
   const k = kit(await mk());
+  const tasksBefore = k.saved().tasks.filter(t => t.projectId === "pGame" && !t.arch).length;
   k.tab("projects");
   const gameRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Game"));
   k.click(k.btn(gameRow, "View"));
   ok(k.$("viewTitle").textContent === "Sample Game", "navigated to Sample Game via Projects section");
   k.click(k.btn(k.$("view"), "Archive"));
   ok(k.$("viewTitle").textContent !== "Sample Game" || k.$("view").textContent.includes("Archived"), "archiving navigates away or shows an archived notice");
+  ok(k.saved().tasks.filter(t => t.projectId === "pGame" && !t.arch).length === 0 && tasksBefore > 0, "archiving a project cascades to archive its own tasks");
   k.tab("archive");
   const gameArchRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Game"));
   k.click(k.btn(gameArchRow, "View"));
@@ -359,6 +375,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!k.btn(k.$("view"), "Restore"), "archived project page offers Restore instead of Archive/Mark complete");
   k.click(k.btn(k.$("view"), "Restore"));
   ok(!k.saved().projects.find(p => p.id === "pGame").arch, "Restore un-archives the project");
+  ok(k.saved().tasks.filter(t => t.projectId === "pGame" && !t.arch).length === tasksBefore, "restoring the project also un-archives the tasks the archive cascade archived");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

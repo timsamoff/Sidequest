@@ -139,7 +139,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .tabbadge { min-width: 22px; text-align: center; padding: 0 var(--space-6); }
 .chip { display: inline-block; padding: var(--space-1) var(--space-10); border-radius: 999px; font-size: .82rem; background: var(--chip-idle); color: var(--chip-ink); }
 .chip[data-v="In progress"] { background: var(--chip-work); }
-.chip[data-v="Completed"] { background: var(--chip-done); }
+.chip[data-v="Completed"], .chip.projcomplete { background: var(--chip-done); }
 .tlist { list-style: none; margin: var(--space-10) 0 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
 .tlist li { border-bottom: 1px solid var(--line); }
 .tlist li:last-child { border-bottom: 0; }
@@ -196,7 +196,7 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
 .list.check label { display: flex; gap: var(--space-12); align-items: flex-start; cursor: pointer; }
 .list.check li.done span { color: var(--muted); text-decoration: line-through; }
 .progress { color: var(--muted); margin-top: var(--space-10); }
-.crow { display: flex; flex-wrap: wrap; gap: var(--space-6) var(--space-14); align-items: flex-start; }
+.crow { display: flex; flex-wrap: wrap; gap: var(--space-6) var(--space-14); align-items: flex-start; justify-content: space-between; }
 /* Single-line rows (a project name/link plus badges and buttons, all the
    same height) look wrong top-aligned -- a short chip like "Launch critical"
    sits pinned to the top of a taller sibling button instead of centering
@@ -251,8 +251,9 @@ tbody tr:last-child td { border-bottom: 0; }
 .ms { position: absolute; top: 4px; width: 14px; height: 14px; background: var(--burn); transform: translateX(-7px) rotate(45deg); border-radius: 2px; }
 .today { position: absolute; top: 22px; bottom: 0; width: 0; border-left: 2px solid var(--burn); opacity: .7; pointer-events: none; }
 .mslist { list-style: none; margin: var(--space-12) 0 0; padding: 0; }
-.box > .mslist { margin: 0; }
-.mslist li { display: flex; gap: var(--space-10); align-items: center; padding: var(--space-4) 0; flex-wrap: wrap; }
+.box > .mslist { margin: calc(var(--space-14) * -1) calc(var(--space-16) * -1) calc(var(--space-14) * -1); }
+.mslist li { display: flex; gap: var(--space-10); align-items: center; padding: var(--space-8) var(--space-16); flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+.mslist li:last-child { border-bottom: 0; }
 .mslist .d { color: var(--muted); min-width: 6.5rem; }
 
 /* modal and toast */

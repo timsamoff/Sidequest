@@ -405,11 +405,14 @@ export function pagesSection() {
   sec.appendChild(el("h2", { style: "margin-top:28px" }, "Projects"));
   sec.appendChild(el("p", { "class": "hint" }, "Pin a project to the sidebar for quick access. Removing it from the sidebar only hides it there. It stays listed here."));
   var ul = el("ul", { "class": "list" });
-  var rows = liveProjects().map(function (p) { return { key: "proj:" + p.id, name: p.name, meta: projectMeta(p) }; });
+  var rows = liveProjects().map(function (p) { return { key: "proj:" + p.id, name: p.name, meta: projectMeta(p), complete: p.status === "complete" }; });
   if (!rows.length) sec.appendChild(el("p", { "class": "hint" }, "No projects yet."));
   rows.forEach(function (r) {
-    var li = el("li"), row = el("div", { "class": "crow" });
-    var nm = el("div", { style: "flex:1 1 200px" }); nm.appendChild(el("span", { style: "font-weight:600" }, r.name)); nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, r.meta));
+    var li = el("li"), row = el("div", { "class": "crow oneline" });
+    var nm = el("div", { style: "flex:1 1 200px" });
+    nm.appendChild(el("span", { style: "font-weight:600" }, r.name));
+    if (r.complete) nm.appendChild(el("span", { "class": "chip projcomplete", style: "margin-left:8px" }, "Complete"));
+    nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, r.meta));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" }), pinned = isPinned(r.key);
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "View this project" }, "View"), "click", function () { go(r.key); }));
@@ -428,7 +431,10 @@ export function renderProjectPage(root, id) {
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
   var key = "proj:" + p.id, readOnly = !!p.arch;
   root.appendChild(pinBar(key));
-  root.appendChild(el("p", { "class": "hint first" }, projectMeta(p)));
+  var metaLine = el("p", { "class": "hint first" });
+  if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip projcomplete", style: "margin-right:8px" }, "Complete"));
+  metaLine.appendChild(document.createTextNode(projectMeta(p)));
+  root.appendChild(metaLine);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
   if (p.note) root.appendChild(el("p", { "class": "hint" }, p.note));
 
@@ -523,6 +529,12 @@ export function renderProjectPage(root, id) {
         // not a fallback for it (confirmed 2026-09-24).
         p.status = "complete"; changed(); completionDialog(p);
       }));
+    } else if (p.status === "complete") {
+      // No auto-revert exists (a reopened task doesn't undo Complete on its
+      // own -- confirmed 2026-09-24), so this is the only way back to Active.
+      ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Reopen this project" }, "Reopen"), "click", function () {
+        p.status = "active"; changed(); notify("Reopened.");
+      }));
     }
     ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Archive this project" }, "Archive"), "click", function () {
       var warn = incompleteLaunchCriticalLinks(p);
@@ -588,9 +600,12 @@ export function renderProjects(root) {
   if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a candidate."));
   cs.forEach(function (cd) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
+    var nmWrap = el("div", { style: "flex:1 1 200px" });
     var nm = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, cd.name);
     on(nm, "click", function () { go("proj:" + cd.id); });
-    row.appendChild(nm);
+    nmWrap.appendChild(nm);
+    if (cd.note) nmWrap.appendChild(el("p", { "class": "cnote", style: "margin-left:0" }, cd.note));
+    row.appendChild(nmWrap);
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Move to the Parking lot" }, "Park it"), "click", function () {
       state.projects = state.projects.filter(function (x) { return x.id !== cd.id; });
@@ -599,7 +614,6 @@ export function renderProjects(root) {
     var rm = el("button", { type: "button", "class": "small danger", title: "Archive this project" }, "Archive");
     on(rm, "click", function () { removeToArchive(cd, "Project"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row);
-    if (cd.note) li.appendChild(el("p", { "class": "cnote" }, cd.note));
     list.appendChild(li);
   });
   root.appendChild(list);
@@ -637,7 +651,7 @@ export function renderTimeline(root) {
   var ul = el("ul", { "class": "mslist" });
   if (!r.milestones.length) ul.appendChild(el("li", { "class": "hint" }, "No milestones yet. Add one to see it on the timeline."));
   r.milestones.slice().sort(function (a, b) { return a.date - b.date; }).forEach(function (m) {
-    var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date))); li.appendChild(el("span", null, m.text));
+    var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date))); li.appendChild(el("span", { style: "flex:1 1 auto" }, m.text));
     if (!m.auto) {
       var rm = el("button", { type: "button", "class": "small danger", title: "Remove this milestone (can be undone)" }, "Remove");
       on(rm, "click", function () { var orig = state.milestones.filter(function (x) { return x.id === m.id; })[0]; if (orig) removeNow(orig, "milestones", "Milestone"); });
@@ -709,6 +723,14 @@ export function archiveEntries() {
 export function dropEntry(e) { state[e.list] = state[e.list].filter(function (x) { return x !== e.item; }); }
 export function restoreEntry(e) {
   e.item.arch = null;
+  // Archiving a project cascades to archive its still-open tasks (see
+  // archiveProject()) -- restoring it must reverse that, or the project comes
+  // back as an empty shell. Tasks are never independently archivable (only
+  // removeNow()'d), so any task with .arch set on this project got there
+  // solely through that cascade, safe to reopen unconditionally.
+  if (e.kind === "project") {
+    state.tasks.forEach(function (t) { if (t.projectId === e.item.id && t.arch) t.arch = null; });
+  }
   changed(); notify(KIND_LABEL[e.kind] + " restored.");
 }
 export function deleteForever(e) {

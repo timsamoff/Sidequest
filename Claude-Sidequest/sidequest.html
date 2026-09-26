@@ -215,7 +215,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .tabbadge { min-width: 22px; text-align: center; padding: 0 var(--space-6); }
 .chip { display: inline-block; padding: var(--space-1) var(--space-10); border-radius: 999px; font-size: .82rem; background: var(--chip-idle); color: var(--chip-ink); }
 .chip[data-v="In progress"] { background: var(--chip-work); }
-.chip[data-v="Completed"] { background: var(--chip-done); }
+.chip[data-v="Completed"], .chip.projcomplete { background: var(--chip-done); }
 .tlist { list-style: none; margin: var(--space-10) 0 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
 .tlist li { border-bottom: 1px solid var(--line); }
 .tlist li:last-child { border-bottom: 0; }
@@ -272,7 +272,7 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
 .list.check label { display: flex; gap: var(--space-12); align-items: flex-start; cursor: pointer; }
 .list.check li.done span { color: var(--muted); text-decoration: line-through; }
 .progress { color: var(--muted); margin-top: var(--space-10); }
-.crow { display: flex; flex-wrap: wrap; gap: var(--space-6) var(--space-14); align-items: flex-start; }
+.crow { display: flex; flex-wrap: wrap; gap: var(--space-6) var(--space-14); align-items: flex-start; justify-content: space-between; }
 /* Single-line rows (a project name/link plus badges and buttons, all the
    same height) look wrong top-aligned -- a short chip like "Launch critical"
    sits pinned to the top of a taller sibling button instead of centering
@@ -327,8 +327,9 @@ tbody tr:last-child td { border-bottom: 0; }
 .ms { position: absolute; top: 4px; width: 14px; height: 14px; background: var(--burn); transform: translateX(-7px) rotate(45deg); border-radius: 2px; }
 .today { position: absolute; top: 22px; bottom: 0; width: 0; border-left: 2px solid var(--burn); opacity: .7; pointer-events: none; }
 .mslist { list-style: none; margin: var(--space-12) 0 0; padding: 0; }
-.box > .mslist { margin: 0; }
-.mslist li { display: flex; gap: var(--space-10); align-items: center; padding: var(--space-4) 0; flex-wrap: wrap; }
+.box > .mslist { margin: calc(var(--space-14) * -1) calc(var(--space-16) * -1) calc(var(--space-14) * -1); }
+.mslist li { display: flex; gap: var(--space-10); align-items: center; padding: var(--space-8) var(--space-16); flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+.mslist li:last-child { border-bottom: 0; }
 .mslist .d { color: var(--muted); min-width: 6.5rem; }
 
 /* modal and toast */
@@ -1919,11 +1920,14 @@ function pagesSection() {
   sec.appendChild(el("h2", { style: "margin-top:28px" }, "Projects"));
   sec.appendChild(el("p", { "class": "hint" }, "Pin a project to the sidebar for quick access. Removing it from the sidebar only hides it there. It stays listed here."));
   var ul = el("ul", { "class": "list" });
-  var rows = liveProjects().map(function (p) { return { key: "proj:" + p.id, name: p.name, meta: projectMeta(p) }; });
+  var rows = liveProjects().map(function (p) { return { key: "proj:" + p.id, name: p.name, meta: projectMeta(p), complete: p.status === "complete" }; });
   if (!rows.length) sec.appendChild(el("p", { "class": "hint" }, "No projects yet."));
   rows.forEach(function (r) {
-    var li = el("li"), row = el("div", { "class": "crow" });
-    var nm = el("div", { style: "flex:1 1 200px" }); nm.appendChild(el("span", { style: "font-weight:600" }, r.name)); nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, r.meta));
+    var li = el("li"), row = el("div", { "class": "crow oneline" });
+    var nm = el("div", { style: "flex:1 1 200px" });
+    nm.appendChild(el("span", { style: "font-weight:600" }, r.name));
+    if (r.complete) nm.appendChild(el("span", { "class": "chip projcomplete", style: "margin-left:8px" }, "Complete"));
+    nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, r.meta));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" }), pinned = isPinned(r.key);
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "View this project" }, "View"), "click", function () { go(r.key); }));
@@ -1942,7 +1946,10 @@ function renderProjectPage(root, id) {
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
   var key = "proj:" + p.id, readOnly = !!p.arch;
   root.appendChild(pinBar(key));
-  root.appendChild(el("p", { "class": "hint first" }, projectMeta(p)));
+  var metaLine = el("p", { "class": "hint first" });
+  if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip projcomplete", style: "margin-right:8px" }, "Complete"));
+  metaLine.appendChild(document.createTextNode(projectMeta(p)));
+  root.appendChild(metaLine);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
   if (p.note) root.appendChild(el("p", { "class": "hint" }, p.note));
 
@@ -2037,6 +2044,12 @@ function renderProjectPage(root, id) {
         // not a fallback for it (confirmed 2026-09-24).
         p.status = "complete"; changed(); completionDialog(p);
       }));
+    } else if (p.status === "complete") {
+      // No auto-revert exists (a reopened task doesn't undo Complete on its
+      // own -- confirmed 2026-09-24), so this is the only way back to Active.
+      ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Reopen this project" }, "Reopen"), "click", function () {
+        p.status = "active"; changed(); notify("Reopened.");
+      }));
     }
     ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Archive this project" }, "Archive"), "click", function () {
       var warn = incompleteLaunchCriticalLinks(p);
@@ -2102,9 +2115,12 @@ function renderProjects(root) {
   if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a candidate."));
   cs.forEach(function (cd) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
+    var nmWrap = el("div", { style: "flex:1 1 200px" });
     var nm = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, cd.name);
     on(nm, "click", function () { go("proj:" + cd.id); });
-    row.appendChild(nm);
+    nmWrap.appendChild(nm);
+    if (cd.note) nmWrap.appendChild(el("p", { "class": "cnote", style: "margin-left:0" }, cd.note));
+    row.appendChild(nmWrap);
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Move to the Parking lot" }, "Park it"), "click", function () {
       state.projects = state.projects.filter(function (x) { return x.id !== cd.id; });
@@ -2113,7 +2129,6 @@ function renderProjects(root) {
     var rm = el("button", { type: "button", "class": "small danger", title: "Archive this project" }, "Archive");
     on(rm, "click", function () { removeToArchive(cd, "Project"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row);
-    if (cd.note) li.appendChild(el("p", { "class": "cnote" }, cd.note));
     list.appendChild(li);
   });
   root.appendChild(list);
@@ -2151,7 +2166,7 @@ function renderTimeline(root) {
   var ul = el("ul", { "class": "mslist" });
   if (!r.milestones.length) ul.appendChild(el("li", { "class": "hint" }, "No milestones yet. Add one to see it on the timeline."));
   r.milestones.slice().sort(function (a, b) { return a.date - b.date; }).forEach(function (m) {
-    var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date))); li.appendChild(el("span", null, m.text));
+    var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date))); li.appendChild(el("span", { style: "flex:1 1 auto" }, m.text));
     if (!m.auto) {
       var rm = el("button", { type: "button", "class": "small danger", title: "Remove this milestone (can be undone)" }, "Remove");
       on(rm, "click", function () { var orig = state.milestones.filter(function (x) { return x.id === m.id; })[0]; if (orig) removeNow(orig, "milestones", "Milestone"); });
@@ -2223,6 +2238,14 @@ function archiveEntries() {
 function dropEntry(e) { state[e.list] = state[e.list].filter(function (x) { return x !== e.item; }); }
 function restoreEntry(e) {
   e.item.arch = null;
+  // Archiving a project cascades to archive its still-open tasks (see
+  // archiveProject()) -- restoring it must reverse that, or the project comes
+  // back as an empty shell. Tasks are never independently archivable (only
+  // removeNow()'d), so any task with .arch set on this project got there
+  // solely through that cascade, safe to reopen unconditionally.
+  if (e.kind === "project") {
+    state.tasks.forEach(function (t) { if (t.projectId === e.item.id && t.arch) t.arch = null; });
+  }
   changed(); notify(KIND_LABEL[e.kind] + " restored.");
 }
 function deleteForever(e) {
