@@ -13,7 +13,7 @@ export var modalReturn = null;
 export function openModal(title, build) {
   modalReturn = document.activeElement;
   $("modalTitle").textContent = title;
-  $("modalClose").title = "Close this dialog";
+  $("modalClose").title = "Close";
   var body = $("modalBody"); body.innerHTML = "";
   build(body);
   $("overlay").hidden = false;
@@ -176,7 +176,7 @@ export function slipDialog() {
     tw.appendChild(sel); body.appendChild(tw);
     var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
-    acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push the dates later" }, "Slip schedule"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push the dates later" }, "Push all dates later"), "click", function () {
       var n = parseInt(inp.value, 10), target = sel.value;
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
       // Snapshot every project's own start/mult (for undo) -- a project record
@@ -204,7 +204,7 @@ export function slipDialog() {
       state.lastSlip = null; changed(); closeModal();
       notify("Slip undone.");
     }));
-    acts.appendChild(on(el("button", { type: "button", title: "Close without slipping" }, "Cancel"), "click", closeModal));
+    acts.appendChild(on(el("button", { type: "button", title: "Cancel" }, "Cancel"), "click", closeModal));
     body.appendChild(acts);
   });
 }

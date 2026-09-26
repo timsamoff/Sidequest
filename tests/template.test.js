@@ -148,7 +148,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.d.querySelector("#view .progress").textContent !== before, "ticking updates progress");
   // step toggle wording
   k.tab("schedule"); k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Submit to the app store")));
-  ok(k.btn(k.d.querySelector(".detailpane"), "Launch") && k.d.querySelector(".detailpane").textContent.includes("Launch puts a step on the Launch checklist"), "step toggle says Launch");
+  ok(k.btn(k.d.querySelector(".detailpane"), "Cut from Launch") && k.d.querySelector(".detailpane").textContent.includes("Add to Launch puts a step on the Launch checklist"), "step toggle says Cut from Launch when already on the checklist");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App")); k.click(k.btn(k.$("view"), "Add item")); ok(k.$("modalTitle").textContent === "New launch item", "Add item dialog uses launch wording"); k.click(k.$("modalClose"));
 }
 
@@ -166,7 +166,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
   ok(titles.length === 10 && titles.includes("Launch page: steps and decisions"), "template Help keeps the Launch page topic (" + titles.length + " topics)");
-  ok(k.$("view").textContent.includes("tap Launch beside a step"), "and the topic explains the Launch button");
+  ok(k.$("view").textContent.includes("tap Add to Launch beside a step"), "and the topic explains the Launch button");
   ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Parking lot,Archive,Help,Settings", "Help sits between Archive and Settings");
 }
 

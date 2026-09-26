@@ -99,7 +99,7 @@ button:hover { border-color: var(--muted); }
 button.primary { background: var(--planned); border-color: var(--planned); color: var(--on-planned); font-weight: 600; }
 button.small { min-height: 34px; padding: var(--space-4) var(--space-10); font-size: .9rem; }
 /* Fixed width so the button doesn't resize when its label swaps Pin/Unpin. */
-button.pintoggle { min-width: 152px; }
+button.pintoggle { min-width: 64px; }
 button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: var(--late); }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-10); margin-top: var(--space-14); align-items: center; }
 .field { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-10); }
@@ -453,7 +453,7 @@ tbody tr:last-child td { border-bottom: 0; }
             <button type="button" role="menuitem" data-act="newDecision" title="Add a new decision">New decision</button>
             <button type="button" role="menuitem" data-act="newMilestone" title="Add a new milestone">New milestone</button>
             <button type="button" role="menuitem" data-act="newBacklog" title="Add a new backlog item">New backlog item</button>
-            <button type="button" role="menuitem" data-act="newIdea" title="Add a new idea to the Parking lot">New idea for the parking lot</button>
+            <button type="button" role="menuitem" data-act="newIdea" title="Add a new idea to the Parking lot">New idea</button>
           </div>
         </div>
         <div class="menuwrap">
@@ -1308,7 +1308,7 @@ var modalReturn = null;
 function openModal(title, build) {
   modalReturn = document.activeElement;
   $("modalTitle").textContent = title;
-  $("modalClose").title = "Close this dialog";
+  $("modalClose").title = "Close";
   var body = $("modalBody"); body.innerHTML = "";
   build(body);
   $("overlay").hidden = false;
@@ -1471,7 +1471,7 @@ function slipDialog() {
     tw.appendChild(sel); body.appendChild(tw);
     var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
-    acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push the dates later" }, "Slip schedule"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push the dates later" }, "Push all dates later"), "click", function () {
       var n = parseInt(inp.value, 10), target = sel.value;
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
       // Snapshot every project's own start/mult (for undo) -- a project record
@@ -1499,7 +1499,7 @@ function slipDialog() {
       state.lastSlip = null; changed(); closeModal();
       notify("Slip undone.");
     }));
-    acts.appendChild(on(el("button", { type: "button", title: "Close without slipping" }, "Cancel"), "click", closeModal));
+    acts.appendChild(on(el("button", { type: "button", title: "Cancel" }, "Cancel"), "click", closeModal));
     body.appendChild(acts);
   });
 }
@@ -1733,7 +1733,7 @@ function buildDetail(t) {
   var nDone = t.steps.filter(function (s) { return s.done; }).length;
   box.appendChild(el("h3", null, t.steps.length ? "Steps (" + nDone + " of " + t.steps.length + " done)" : "Steps"));
   if (!t.steps.length) box.appendChild(el("p", { "class": "hint" }, "No steps yet. This task counts as one item in the burndown. Add steps to break it up."));
-  if (t.steps.length) box.appendChild(el("p", { "class": "hint" }, "Launch puts a step on the Launch checklist. It stays one step, so nothing is counted twice."));
+  if (t.steps.length) box.appendChild(el("p", { "class": "hint" }, "Add to Launch puts a step on the Launch checklist. It stays one step, so nothing is counted twice."));
   var ul = el("ul", { "class": "steps" });
   t.steps.forEach(function (s) {
     var sli = el("li", { "class": s.done ? "done" : "" });
@@ -1743,10 +1743,10 @@ function buildDetail(t) {
     var ac = el("div", { "class": "li-actions" });
     var dc = decisionFor(s.id);
     if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the linked decision", title: "Go to the linked decision on the project page" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { go("proj:" + t.projectId); }));
-    var kb = el("button", { type: "button", "class": "small" + (s.launch ? " on" : ""), "aria-pressed": s.launch ? "true" : "false", "aria-label": "Show on the launch checklist: " + s.text, title: (s.launch ? "Remove from" : "Add to") + " the launch checklist" }, "Launch");
+    var kb = el("button", { type: "button", "class": "small" + (s.launch ? " on" : ""), "aria-pressed": s.launch ? "true" : "false", "aria-label": "Show on the launch checklist: " + s.text, title: (s.launch ? "Remove from" : "Add to") + " the launch checklist" }, s.launch ? "Cut from Launch" : "Add to Launch");
     on(kb, "click", function () { s.launch = !s.launch; changed(); });
     ac.appendChild(kb);
-    var rm = el("button", { type: "button", "class": "small danger", "aria-label": "Remove step: " + s.text, title: "Delete this step" }, "Remove");
+    var rm = el("button", { type: "button", "class": "small danger", "aria-label": "Remove step: " + s.text, title: "Remove this step" }, "Remove");
     on(rm, "click", function () { t.steps = t.steps.filter(function (x) { return x.id !== s.id; }); syncFromSteps(t); changed(); });
     ac.appendChild(rm); sli.appendChild(ac); ul.appendChild(sli);
   });
@@ -1905,7 +1905,7 @@ function launchSection(root, p) {
 
 function pinBar(key) {
   var bar = el("div", { "class": "pinbar" }), pinned = isPinned(key);
-  var b = el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin from sidebar" : "Pin to sidebar");
+  var b = el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin" : "Pin");
   on(b, "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
   bar.appendChild(b); return bar;
 }
@@ -1922,7 +1922,7 @@ function pagesSection() {
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" }), pinned = isPinned(r.key);
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "View this project" }, "View"), "click", function () { go(r.key); }));
-    acts.appendChild(on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + r.name, title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin from sidebar" : "Pin to sidebar"), "click", function () { if (pinned) unpinPage(r.key); else pinPage(r.key); }));
+    acts.appendChild(on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + r.name, title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(r.key); else pinPage(r.key); }));
     row.appendChild(acts); li.appendChild(row); ul.appendChild(li);
   });
   sec.appendChild(ul); return sec;
@@ -2127,7 +2127,7 @@ function renderParkingLot(root) {
     if (p.note) nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
-    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make this a candidate" }, "Make candidate"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make this a candidate" }, "Make this a candidate project"), "click", function () {
       state.parked = state.parked.filter(function (x) { return x.id !== p.id; });
       state.projects.push(makeProject(uid(), p.text, "candidate", { note: p.note })); changed();
     }));
@@ -2160,18 +2160,26 @@ function renderTimeline(root) {
   root.appendChild(el("p", { "class": "hint" }, "Enter the number of items left each week to draw your actual line on the burndown."));
   var wrap = el("div", { "class": "tablewrap weekly" }); var table = el("table");
   var thead = el("thead"); var hr = el("tr"); ["Week starting", "Planned remaining", "Actual remaining"].forEach(function (h) { hr.appendChild(el("th", null, h)); }); thead.appendChild(hr); table.appendChild(thead);
-  var body = el("tbody"); var tot = totalUnits();
+  var body = el("tbody"); var tot = totalUnits(), curIdx = currentCheckpointIndex();
   checkpoints().forEach(function (ms, i) {
     var tr = el("tr"); tr.appendChild(el("td", null, fmt(ms))); tr.appendChild(el("td", null, String(planned(ms))));
     var td = el("td");
-    var inp = el("input", { type: "number", min: "0", max: "1000", step: "1", inputmode: "numeric", "aria-label": "Actual items remaining, week of " + fmt(ms), title: "How many items were actually left this week" });
-    if (state.actual[i] !== null) inp.value = state.actual[i]; else if (i === 0) inp.placeholder = String(tot);
-    on(inp, "input", function () {
-      var v = inp.value === "" ? null : parseInt(inp.value, 10);
-      if (v !== null && (isNaN(v) || v < 0 || v > 1000)) return;
-      state.actual[i] = v; save();
-    });
-    td.appendChild(inp); tr.appendChild(td); body.appendChild(tr);
+    if (i === curIdx) {
+      // The current week's actual count is kept in sync automatically
+      // (recordCurrentWeek(), on every change anywhere in the app) --
+      // showing it as an input invites edits that the next change overwrites.
+      td.appendChild(el("span", { title: "Kept up to date automatically as you complete tasks" }, String(state.actual[i] !== null ? state.actual[i] : tot)));
+    } else {
+      var inp = el("input", { type: "number", min: "0", max: "1000", step: "1", inputmode: "numeric", "aria-label": "Actual items remaining, week of " + fmt(ms), title: "Correct or fill in this past week's actual count" });
+      if (state.actual[i] !== null) inp.value = state.actual[i];
+      on(inp, "input", function () {
+        var v = inp.value === "" ? null : parseInt(inp.value, 10);
+        if (v !== null && (isNaN(v) || v < 0 || v > 1000)) return;
+        state.actual[i] = v; save();
+      });
+      td.appendChild(inp);
+    }
+    tr.appendChild(td); body.appendChild(tr);
   });
   table.appendChild(body); wrap.appendChild(table); root.appendChild(wrap);
 }
@@ -2290,15 +2298,15 @@ function helpTopics() {
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
       "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burndown until you do."]],
     ["Manage projects", [
-      "Each project has its own page. Open **Projects**, then **Open** beside its name. Set its start date, pace, an optional length estimate, and notes.",
+      "Each project has its own page. Open **Projects**, then **View** beside its name. Set its start date, pace, an optional length estimate, and notes.",
       "**Candidates** are projects that could take the next slot. Choose one with its circle. Ideas that are not ready yet live on their own **Parking lot** page.",
-      "Use **Pin to sidebar** on any page for quick access. Unpinning only hides it. The page stays listed under **Projects**."]],
+      "Use **Pin** on any page for quick access. Unpinning only hides it. The page stays listed under **Projects**."]],
     ["Read the Timeline", [
       "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline.",
       "The full-width burndown and the weekly counts are further down the page."]],
     ["Launch page: steps and decisions", [
-      "On any task, tap **Launch** beside a step to put that step on that project's own **Launch** section. Ticking it there or in **Tasks** keeps both in sync.",
+      "On any task, tap **Add to Launch** beside a step to put that step on that project's own **Launch** section. Ticking it there or in **Tasks** keeps both in sync.",
       "A decision always links to a step. Answering the decision ticks the step, and clearing the answer unticks it.",
       "Use **Add item** to create a new step for the list, and **Add decision** to add a question to settle."]],
     ["Archive and undo", [
@@ -2353,14 +2361,14 @@ function startFreshDialog() {
     var ack = el("label", { "class": "radiorow" }); var cb = el("input", { type: "checkbox", id: "freshAck" });
     ack.appendChild(cb); ack.appendChild(el("span", null, "I understand this will erase everything.")); body.appendChild(ack);
     var acts = el("div", { "class": "actions" });
-    var go1 = el("button", { type: "button", "class": "dangerfill", id: "freshGo" }, "Erase everything"); go1.disabled = true;
+    var go1 = el("button", { type: "button", "class": "dangerfill", id: "freshGo", title: "Erase everything and start over" }, "Erase everything"); go1.disabled = true;
     on(cb, "change", function () { go1.disabled = !cb.checked; });
     on(go1, "click", function () {
       var keep = state.settings; keep.hideWelcome = true;
       if (picked === "original") { setState(defaults()); state.settings = keep; } else { setState(blankState()); }
       ui.sel = null; ui.detail = false; ui.archFilter = "all"; applyTheme(); save(); closeModal(); go("today"); notify("Started fresh.");
     });
-    acts.appendChild(on(el("button", { type: "button" }, "Cancel"), "click", closeModal)); acts.appendChild(go1); body.appendChild(acts);
+    acts.appendChild(on(el("button", { type: "button", title: "Cancel" }, "Cancel"), "click", closeModal)); acts.appendChild(go1); body.appendChild(acts);
   });
 }
 function renderSettings(root) {
@@ -2411,7 +2419,7 @@ function renderSettings(root) {
   root.appendChild(el("h2", null, "Archive"));
   root.appendChild(el("p", { "class": "hint" }, "Removing a project or an idea sends it to the Archive. A completed task just stays visible in its project."));
   var n = archiveEntries().length;
-  root.appendChild(on(el("button", { type: "button", "class": "small", style: "margin-top:12px" }, "Open the Archive (" + n + (n === 1 ? " item" : " items") + ")"), "click", function () { go("archive"); }));
+  root.appendChild(on(el("button", { type: "button", "class": "small", style: "margin-top:12px", title: "Go to the Archive" }, "Open the Archive (" + n + (n === 1 ? " item" : " items") + ")"), "click", function () { go("archive"); }));
 
   root.appendChild(el("h2", null, "Backup and restore"));
   backupPanel(root);
@@ -2419,7 +2427,7 @@ function renderSettings(root) {
   root.appendChild(el("h2", null, "Start fresh"));
   var box = el("div", { "class": "dangerbox" });
   box.appendChild(el("p", { "class": "first" }, "Erase everything in this browser and begin again. You will see a warning and a chance to save a backup first."));
-  box.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:12px", id: "startFresh" }, "Start fresh…"), "click", startFreshDialog));
+  box.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:12px", id: "startFresh", title: "Erase everything and start over" }, "Start fresh…"), "click", startFreshDialog));
   root.appendChild(box);
 
   root.appendChild(el("h2", null, "About"));
@@ -2441,7 +2449,7 @@ try {
 function backupJSON() { return JSON.stringify(state, null, 2); }
 function backupControls(host, msg) {
   var acts = el("div", { "class": "actions" });
-  var saveBtn = el("button", { type: "button", "class": "primary", id: "saveFile" }, "Save backup file"); saveBtn.hidden = !downloads;
+  var saveBtn = el("button", { type: "button", "class": "primary", id: "saveFile", title: "Save a backup file to your device" }, "Save backup file"); saveBtn.hidden = !downloads;
   dlWaiters.push(function () { saveBtn.hidden = !downloads; });
   on(saveBtn, "click", function () {
     if (!downloads) return;
@@ -2453,7 +2461,7 @@ function backupControls(host, msg) {
   var tbox = el("div", { style: "margin-top:12px" }); tbox.hidden = true;
   tbox.appendChild(el("label", { "for": "backupText", "class": "hint" }, "Copy this text and keep it somewhere safe."));
   var bt = el("textarea", { id: "backupText", readonly: "readonly" }); tbox.appendChild(bt);
-  acts.appendChild(on(el("button", { type: "button", id: "showText" }, "Show backup text"), "click", function () { bt.value = backupJSON(); tbox.hidden = false; bt.focus(); bt.select(); }));
+  acts.appendChild(on(el("button", { type: "button", id: "showText", title: "Show your backup as plain text to copy" }, "Show backup text"), "click", function () { bt.value = backupJSON(); tbox.hidden = false; bt.focus(); bt.select(); }));
   host.appendChild(acts); host.appendChild(tbox);
 }
 function backupPanel(root) {
@@ -2478,7 +2486,7 @@ function backupPanel(root) {
     var r = new FileReader(); r.onload = function () { restoreFrom(String(r.result || "")); }; r.onerror = function () { msg.textContent = "The file could not be read."; }; r.readAsText(f);
   });
   var a2 = el("div", { "class": "actions" });
-  a2.appendChild(on(el("button", { type: "button", id: "restoreBtn" }, "Restore from text"), "click", function () { restoreFrom(rt.value); }));
+  a2.appendChild(on(el("button", { type: "button", id: "restoreBtn", title: "Restore from the pasted backup text" }, "Restore from text"), "click", function () { restoreFrom(rt.value); }));
   root.appendChild(a2); root.appendChild(msg);
   root.appendChild(el("p", { "class": "msg", id: "restoreMsg", role: "status", "aria-live": "polite" }));
 }
@@ -2779,7 +2787,7 @@ function buildMoreMenu(pinned) {
   m.appendChild(el("hr"));
   BOTTOM.forEach(function (c) { item(c[0], c[1]); });
   m.appendChild(el("hr"));
-  m.appendChild(el("button", { type: "button", role: "menuitem", "data-act": "slip", title: "Push every date later to catch up" }, "Slip the schedule"));
+  m.appendChild(el("button", { type: "button", role: "menuitem", "data-act": "slip", title: "Push every date later to catch up" }, "Slip Schedule"));
 }
 function renderChrome() {
   var nav = $("nav"); nav.innerHTML = ""; var nb = $("navBottom"); nb.innerHTML = "";

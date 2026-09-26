@@ -34,7 +34,7 @@ export function buildMoreMenu(pinned) {
   m.appendChild(el("hr"));
   BOTTOM.forEach(function (c) { item(c[0], c[1]); });
   m.appendChild(el("hr"));
-  m.appendChild(el("button", { type: "button", role: "menuitem", "data-act": "slip", title: "Push every date later to catch up" }, "Slip the schedule"));
+  m.appendChild(el("button", { type: "button", role: "menuitem", "data-act": "slip", title: "Push every date later to catch up" }, "Slip Schedule"));
 }
 export function renderChrome() {
   var nav = $("nav"); nav.innerHTML = ""; var nb = $("navBottom"); nb.innerHTML = "";
