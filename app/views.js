@@ -142,7 +142,7 @@ export function welcomeBox() {
   box.appendChild(el("h2", { style: "margin-bottom:4px" }, "Welcome to Sidequest"));
   box.appendChild(el("p", { "class": "hint first" }, "The projects here are samples, so you can see how everything fits together. Look around, change things, and press / to search. When you are ready to start your own, open Settings and choose Start fresh."));
   var acts = el("div", { "class": "actions" });
-  acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Go to Settings to start fresh" }, "Go to Settings"), "click", function () { go("settings"); }));
+  acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Go to Settings" }, "Go to Settings"), "click", function () { go("settings"); }));
   acts.appendChild(on(el("button", { type: "button", id: "welcomeDismiss", title: "Hide this welcome message" }, "Dismiss"), "click", function () { state.settings.hideWelcome = true; save(); renderView(); }));
   box.appendChild(acts);
   return box;
@@ -387,7 +387,7 @@ export function launchSection(root, p) {
     stepOptions(p.id).forEach(function (o) { var op = el("option", { value: o.value }, o.label); if (o.value === d.step) op.selected = true; sel.appendChild(op); });
     on(sel, "change", function () { d.step = sel.value; save(); renderView(); });
     lf.appendChild(sel); li.appendChild(lf);
-    var rm = el("button", { type: "button", "class": "small danger", style: "margin-top:10px", title: "Remove this decision (you can undo this)" }, "Remove");
+    var rm = el("button", { type: "button", "class": "small danger", style: "margin-top:10px", title: "Remove this decision (can be undone)" }, "Remove");
     on(rm, "click", function () { removeNow(d, "decisions", "Decision"); });
     li.appendChild(rm); dl.appendChild(li);
   });
@@ -613,12 +613,12 @@ export function renderParkingLot(root) {
   var ps = live(state.parked);
   if (!ps.length) pl.appendChild(el("li", { "class": "hint" }, "Nothing parked."));
   ps.forEach(function (p) {
-    var li = el("li"), row = el("div", { "class": "crow" });
+    var li = el("li"), row = el("div", { "class": "crow" + (p.note ? "" : " oneline") });
     var nm = el("div", { style: "flex:1 1 200px" }); nm.appendChild(el("span", { style: "font-weight:600" }, p.text));
     if (p.note) nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
-    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make this a candidate" }, "Make this a candidate project"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make this a candidate project" }, "Make candidate"), "click", function () {
       state.parked = state.parked.filter(function (x) { return x.id !== p.id; });
       state.projects.push(makeProject(uid(), p.text, "candidate", { note: p.note })); changed();
     }));
