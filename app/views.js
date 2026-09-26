@@ -376,12 +376,6 @@ export function launchSection(root, p) {
 
 }
 
-export function pinBar(key) {
-  var bar = el("div", { "class": "pinbar" }), pinned = isPinned(key);
-  var b = el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin" : "Pin");
-  on(b, "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
-  bar.appendChild(b); return bar;
-}
 // Pin/Unpin for a project, shared by Where things stand and the Projects list.
 function projectPinButton(key, name) {
   var pinned = isPinned(key);
@@ -416,25 +410,24 @@ export function pagesSection() {
 export function renderProjectPage(root, id) {
   var p = findProject(id);
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
-  var key = "proj:" + p.id, readOnly = !!p.arch;
+  var readOnly = !!p.arch;
   // An active or complete project's page is two columns on a wide screen: its info on
   // the left and its own Timeline and Burndown on the right (stacked on a phone). A
   // candidate has nothing scheduled to chart, and an archived project's tasks are archived.
   var page = root, split = null;
-  if (!readOnly && (p.status === "active" || p.status === "complete")) {
-    split = el("div", { "class": "projsplit" });
-    root = el("div", { "class": "projtop" });
-    split.appendChild(root); page.appendChild(split);
-  }
-  root.appendChild(pinBar(key));
   var metaLine = el("p", { "class": "hint" });
   if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip projcomplete", style: "margin-right:8px" }, "Complete"));
   metaLine.appendChild(document.createTextNode(projectMeta(p)));
-  root.appendChild(metaLine);
-  if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
-  // The rest of the left column (Tasks and below) is its own grid item, so its first
-  // heading sits in the same row as the Timeline heading opposite it, by structure.
-  if (split) { root = el("div", { "class": "projrest" }); split.appendChild(root); }
+  if (!readOnly && (p.status === "active" || p.status === "complete")) {
+    split = el("div", { "class": "projsplit" });
+    // Row 1: Tasks (left) pairs with Schedule (right). Row 2: the rest of the left
+    // column pairs with Timeline/Burndown. See CSS grid-template-areas.
+    root = el("div", { "class": "projtop" });
+    split.appendChild(root); page.appendChild(split);
+  } else {
+    root.appendChild(metaLine);
+    if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
+  }
 
   if (p.status === "candidate" && readOnly) {
     root.appendChild(el("h2", null, "Notes"));
@@ -472,9 +465,11 @@ export function renderProjectPage(root, id) {
     return;
   }
 
-  var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h2", null, "Tasks"));
+  var hd = el("div", { "class": "sechead" + (split ? " first" : "") }); hd.appendChild(el("h2", split ? { "class": "first" } : null, "Tasks"));
   if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a task" }, "Add task"), "click", function () { taskDialog(p.id); }));
   root.appendChild(hd);
+  root.appendChild(metaLine);
+  if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
   var ts = ordered().filter(function (t) { return !t.isNext && t.projectId === p.id; }).concat(backlogTasks().filter(function (t) { return t.projectId === p.id; }));
   if (!ts.length) root.appendChild(el("p", { "class": "hint" }, "No tasks yet."));
   else {
@@ -492,7 +487,10 @@ export function renderProjectPage(root, id) {
     root.appendChild(ul);
   }
   if (!split) scheduleSection(root, p, readOnly);
-  root.appendChild(el("h2", null, "Notes"));
+  // The rest of the left column (Notes and below) is its own grid item, so its first
+  // heading sits in the same row as the Timeline heading opposite it, by structure.
+  if (split) { root = el("div", { "class": "projrest" }); split.appendChild(root); }
+  root.appendChild(el("h2", split ? { "class": "first" } : null, "Notes"));
   if (readOnly) {
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
   } else {

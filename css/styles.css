@@ -62,7 +62,6 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .nav { display: flex; flex-direction: column; gap: var(--space-2); overflow-y: auto; }
 .navlabel { padding: var(--space-14) var(--space-12) var(--space-4); font-size: .8rem; color: var(--muted); }
 .tab > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pinbar { display: flex; justify-content: flex-end; margin-bottom: var(--space-10); }
 .helpitem { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); margin-top: var(--space-10); }
 .helpitem > summary { padding: var(--space-12) var(--space-14); font-weight: 600; cursor: pointer; color: var(--ink); font-size: 1rem; }
 .hbody { padding: 0 var(--space-14) var(--space-12); }
@@ -290,7 +289,8 @@ svg.chart.nofocusring { outline: none; }
   .projtop { grid-area: top; }
   .projrest { grid-area: rest; }
   .projsched { grid-area: sched; }
-  /* Level with the Pin button opposite: same top, same 34px band, heading centered in it. */
+  /* Level with the Tasks heading opposite: same top, same 34px band as its Add task
+     button, heading centered in it. */
   .projsched > h2:first-child { margin-top: 0; min-height: 34px; display: flex; align-items: center; }
   .projcharts { grid-area: charts; }
   .projexpand { display: inline-block; }
