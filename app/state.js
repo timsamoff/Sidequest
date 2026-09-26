@@ -119,7 +119,7 @@ export function normalize(s) {
   if (Array.isArray(s.projects)) {
     d.projects = s.projects.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) {
       return {
-        id: S(x.id, 40), name: S(x.name, 120), note: S(x.note, 300),
+        id: S(x.id, 40), name: S(x.name, 120), note: S(x.note, 2000),
         status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
         start: isISO(x.start) ? x.start : "", mult: (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? x.mult : 1,
         months: (typeof x.months === "number" && x.months >= 1 && x.months <= 36) ? Math.round(x.months) : "",
@@ -180,7 +180,7 @@ export function normalize(s) {
       return x && typeof x.id === "string" && typeof x.step === "string" && liveStepIds[x.step];
     }).map(function (x) { return { id: S(x.id, 40), q: S(x.q, 300), a: S(x.a, 1000), step: S(x.step, 40) }; });
   }
-  if (Array.isArray(s.parked)) d.parked = s.parked.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 300), arch: validArch(x.arch) }; });
+  if (Array.isArray(s.parked)) d.parked = s.parked.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 2000), arch: validArch(x.arch) }; });
   // Milestones require a direct project link (no task/step chain to derive it
   // from) -- one pointing at a project that no longer exists is dropped.
   if (Array.isArray(s.milestones)) {

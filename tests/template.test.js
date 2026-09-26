@@ -165,8 +165,11 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
-  ok(titles.length === 10 && titles.includes("Launch page: steps and decisions"), "template Help keeps the Launch page topic (" + titles.length + " topics)");
+  ok(titles.length === 13 && titles.includes("Launch checklist and decisions"), "template Help has the Launch checklist topic (" + titles.length + " topics)");
   ok(k.$("view").textContent.includes("tap Add to Launch beside a step"), "and the topic explains the Launch button");
+  const helpText = k.$("view").textContent;
+  ok(!helpText.includes("Mark done") && !helpText.includes("archive completed tasks") && !helpText.includes("beside its name") && !helpText.includes("with its circle"), "Help no longer describes buttons and settings that were removed");
+  ok(["Finish or archive a project", "Link projects", "Use the Parking lot"].every(t => titles.includes(t)) && helpText.includes("Reopen") && helpText.includes("splash screen"), "Help covers Complete/Reopen, linking, the Parking lot, and the splash setting");
   ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Parking lot,Archive,Help,Settings", "Help sits between Archive and Settings");
 }
 
@@ -305,7 +308,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const appRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample App"));
   ok(!!appRow, "a Complete project (no longer in Where things stand) appears in the Projects section instead");
   ok(!!appRow.querySelector(".chip.projcomplete"), "the Projects section also shows the Complete badge");
-  k.click(k.btn(appRow, "View"));
+  ok(!k.btn(appRow, "View"), "Projects rows have no separate View button, the title is the link");
+  k.click(k.btn(appRow, "Sample App"));
   ok(k.$("viewTitle").textContent === "Sample App", "View navigated to Sample App's own page");
   k.click(k.btn(k.$("view"), "Reopen"));
   ok(k.saved().projects.find(p => p.id === "pApp").status === "active", "Reopen sets the project back to active");
@@ -369,7 +373,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.saved().tasks.filter(t => t.projectId === "pGame" && !t.arch).length === 0 && tasksBefore > 0, "archiving a project cascades to archive its own tasks");
   k.tab("archive");
   const gameArchRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Game"));
-  k.click(k.btn(gameArchRow, "View"));
+  ok(!k.btn(gameArchRow, "View") && gameArchRow.querySelector(".chip").previousElementSibling === k.btn(gameArchRow, "Sample Game"), "Archive rows have no View button, the title is the link, and the kind chip follows it");
+  k.click(k.btn(gameArchRow, "Sample Game"));
   ok(k.$("viewTitle").textContent === "Sample Game", "an archived project's own page is now reachable (previously invisible)");
   ok(k.$("view").textContent.includes("Archived. Restore it to make changes."), "archived project page states it's read-only");
   ok(!k.btn(k.$("view"), "Add task") && !k.d.querySelector("#proj-start") && !k.d.querySelector("#view textarea"), "no mutating controls (Add task, schedule inputs, notes textarea) on an archived project page");
@@ -377,6 +382,28 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(k.$("view"), "Restore"));
   ok(!k.saved().projects.find(p => p.id === "pGame").arch, "Restore un-archives the project");
   ok(k.saved().tasks.filter(t => t.projectId === "pGame" && !t.arch).length === tasksBefore, "restoring the project also un-archives the tasks the archive cascade archived");
+}
+
+{
+  // ideas are editable, and their note is a real multiline textarea
+  const k = kit(await mk());
+  k.tab("parking");
+  const row = () => [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Try a new game engine"));
+  k.click(k.btn(row(), "Edit"));
+  ok(k.$("modalTitle").textContent === "Edit idea", "Edit opens the idea dialog in edit mode");
+  ok(k.$("f-text").value === "Try a new game engine" && k.$("f-note").value === "Not competing for the next slot", "Edit pre-fills the idea's text and note");
+  ok(k.$("f-note").tagName === "TEXTAREA", "the note field is a multiline textarea");
+  k.setField("text", "Try Godot"); k.setField("note", "Line one\nLine two");
+  k.click(k.btn(k.$("modalBody"), "Save idea"));
+  const saved = k.saved().parked.find(p => p.id === "p1");
+  ok(saved && saved.text === "Try Godot" && saved.note === "Line one\nLine two", "Save updates the same idea in place, keeping line breaks");
+  ok(k.saved().parked.filter(p => !p.arch).length === 2, "editing does not add or remove ideas");
+  ok(row() === undefined && !!k.$("view").textContent.includes("Try Godot"), "the Parking lot shows the edited text");
+  k.menuAct("newBtn", "newIdea");
+  ok(k.$("modalTitle").textContent === "New idea" && k.$("f-note").tagName === "TEXTAREA", "adding a new idea also uses the textarea note");
+  k.setField("text", "Long note idea"); k.setField("note", "x".repeat(1500));
+  k.click(k.btn(k.$("modalBody"), "Add to parking lot"));
+  ok(k.saved().parked.find(p => p.text === "Long note idea").note.length === 1500, "a note longer than the old 300-character cap is kept");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

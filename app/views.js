@@ -409,12 +409,13 @@ export function pagesSection(excludeIds) {
   rows.forEach(function (r) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nm = el("div", { style: "flex:1 1 200px" });
-    nm.appendChild(el("span", { style: "font-weight:600" }, r.name));
+    var link = el("button", { type: "button", "class": "textbtn plink", style: "font-weight:600", title: "View this project" }, r.name);
+    on(link, "click", function () { go(r.key); });
+    nm.appendChild(link);
     if (r.complete) nm.appendChild(el("span", { "class": "chip projcomplete", style: "margin-left:8px" }, "Complete"));
     nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, r.meta));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" }), pinned = isPinned(r.key);
-    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "View this project" }, "View"), "click", function () { go(r.key); }));
     acts.appendChild(on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + r.name, title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(r.key); else pinPage(r.key); }));
     row.appendChild(acts); li.appendChild(row); ul.appendChild(li);
   });
@@ -435,7 +436,7 @@ export function renderProjectPage(root, id) {
   metaLine.appendChild(document.createTextNode(projectMeta(p)));
   root.appendChild(metaLine);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
-  if (p.note) root.appendChild(el("p", { "class": "hint" }, p.note));
+  if (p.note) root.appendChild(el("p", { "class": "hint notetext" }, p.note));
 
   if (p.status === "candidate") {
     var cb = el("div", { "class": "box", style: "margin-top:16px" });
@@ -604,7 +605,7 @@ export function candidatesSection() {
     var nm = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, cd.name);
     on(nm, "click", function () { go("proj:" + cd.id); });
     nmWrap.appendChild(nm);
-    if (cd.note) nmWrap.appendChild(el("p", { "class": "cnote", style: "margin-left:0" }, cd.note));
+    if (cd.note) nmWrap.appendChild(el("p", { "class": "cnote notetext", style: "margin-left:0" }, cd.note));
     row.appendChild(nmWrap);
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Move to the Parking lot" }, "Park it"), "click", function () {
@@ -636,9 +637,10 @@ export function renderParkingLot(root) {
   ps.forEach(function (p) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nm = el("div", { style: "flex:1 1 200px" }); nm.appendChild(el("span", { style: "font-weight:600" }, p.text));
-    if (p.note) nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, p.note));
+    if (p.note) nm.appendChild(el("p", { "class": "hint notetext", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
+    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Edit this idea" }, "Edit"), "click", function () { ideaDialog(p); }));
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make this a candidate project" }, "Make candidate"), "click", function () {
       state.parked = state.parked.filter(function (x) { return x.id !== p.id; });
       state.projects.push(makeProject(uid(), p.text, "candidate", { note: p.note })); changed();
@@ -769,15 +771,18 @@ export function renderArchive(root) {
   shown.forEach(function (e) {
     var li = el("li"), row = el("div", { "class": "crow", style: "align-items:center" });
     var info = el("div", { style: "flex:1 1 220px" });
-    info.appendChild(el("span", { "class": "chip" }, KIND_LABEL[e.kind]));
-    info.appendChild(el("span", { style: "margin-left:8px;font-weight:600" }, e.title));
+    // An archived project's own page is a real, reachable, read-only view
+    // (confirmed 2026-09-24) -- Ideas have no page of their own, so only a
+    // project's title is a link.
+    if (e.kind === "project") {
+      var tl = el("button", { type: "button", "class": "textbtn plink", style: "font-weight:600", title: "View this project" }, e.title);
+      on(tl, "click", function () { go("proj:" + e.item.id); });
+      info.appendChild(tl);
+    } else info.appendChild(el("span", { style: "font-weight:600" }, e.title));
+    info.appendChild(el("span", { "class": "chip", style: "margin-left:8px" }, KIND_LABEL[e.kind]));
     info.appendChild(el("p", { "class": "hint", style: "margin-top:4px" }, (e.item.arch.why === "done" ? "Completed " : "Removed ") + fmtY(parseISO(e.item.arch.at))));
     row.appendChild(info);
     var acts = el("div", { "class": "li-actions" });
-    // An archived project's own page is a real, reachable, read-only view
-    // (confirmed 2026-09-24) -- Ideas have no page of their own, so this link
-    // is project-only.
-    if (e.kind === "project") acts.appendChild(on(el("button", { type: "button", "class": "small", title: "View this project" }, "View"), "click", function () { go("proj:" + e.item.id); }));
     acts.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Restore this " + e.kind }, "Restore"), "click", function () { restoreEntry(e); }));
     acts.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this " + e.kind + " forever (can't be undone)" }, "Delete forever"), "click", function () { deleteForever(e); }));
     row.appendChild(acts); li.appendChild(row); ul.appendChild(li);
@@ -802,12 +807,12 @@ export function helpTopics() {
   return [
     ["Find your way around", [
       "On a computer, use the sidebar on the left. On a phone, use the tabs along the bottom.",
-      "The menu button (three lines, top right) lists every page.",
+      "The menu button (three lines, top right) lists every page, and **Slip Schedule**.",
       "The **+** button adds things: a task, backlog item, step, project, idea, decision, or milestone.",
       "Search: press [[/]] on a computer, or tap the magnifier on a phone. Press [[Enter]] to open the first result and [[Esc]] to clear it. On a phone, tap the **X** where the magnifier was to cancel."]],
     ["Work through your day (Today)", [
-      "**Next up** shows the task to do now. Use **Start**, **Mark done**, or **Open task**.",
-      "Anything past its end date appears below it. If you are running behind, use **Slip the schedule** in the menu.",
+      "**Next up** shows the task to do now. **Start** marks it in progress, and **Open task** takes you to it in Tasks.",
+      "Anything past its end date appears below it. If you are running behind, use **Slip the schedule** there, or **Slip Schedule** in the menu.",
       "The burndown shows work left against the plan. It records this week's count automatically whenever you make a change."]],
     ["Add and schedule tasks", [
       "Tap **+**, then **New task**. Enter the project, what you do, and when it is done.",
@@ -818,27 +823,37 @@ export function helpTopics() {
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
       "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burndown until you do."]],
     ["Manage projects", [
-      "Each project has its own page. Open **Projects**, then **View** beside its name. Set its start date, pace, an optional length estimate, and notes.",
-      "**Candidates** are projects that could take the next slot. Choose one with its circle. Ideas that are not ready yet live on their own **Parking lot** page.",
-      "Use **Pin** on any page for quick access. Unpinning only hides it. The page stays listed under **Projects**."]],
+      "Each project has its own page. Open **Projects** and select the project's name. Set its start date, pace, and notes.",
+      "**Candidates** are projects that could take the next slot. Open one and choose **Choose as next project** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
+      "**Where things stand** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there."]],
+    ["Finish or archive a project", [
+      "**Mark complete** on a project's page marks it done, even with tasks still open. A project also completes by itself once all its tasks are done. Either way, you can archive it right away or leave it in Projects.",
+      "A completed project shows a **Complete** badge and drops out of Where things stand. **Reopen** makes it active again.",
+      "**Archive** puts a project and its open tasks in the Archive. **Restore** brings all of it back."]],
+    ["Link projects", [
+      "**Linked projects**, on a project's page, connects it to related projects. A link goes both ways.",
+      "**Mark launch critical** flags a linked project that has to finish first. It shows on the other project's Launch checklist, and counts as done once it is complete or archived. Completing or archiving a project with an unfinished launch-critical link only warns you."]],
+    ["Use the Parking lot", [
+      "Ideas that are not ready yet live on the **Parking lot**. Add one with **Add idea**, and use **Edit** to change its text or note.",
+      "**Make candidate** turns an idea into a project candidate. **Archive** sends it to the Archive."]],
     ["Read the Timeline", [
       "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline.",
-      "The full-width burndown and the weekly counts are further down the page."]],
-    ["Launch page: steps and decisions", [
-      "On any task, tap **Add to Launch** beside a step to put that step on that project's own **Launch** section. Ticking it there or in **Tasks** keeps both in sync.",
+      "The full-width burndown and the weekly counts are further down the page. This week's actual count fills in by itself. You can correct or fill in earlier weeks by hand."]],
+    ["Launch checklist and decisions", [
+      "On any task, tap **Add to Launch** beside a step to put that step on that project's own **Launch** section. **Cut from Launch** takes it off. Ticking it there or in **Tasks** keeps both in sync.",
       "A decision always links to a step. Answering the decision ticks the step, and clearing the answer unticks it.",
       "Use **Add item** to create a new step for the list, and **Add decision** to add a question to settle."]],
     ["Archive and undo", [
-      "Only **Projects** and **Ideas** go to the **Archive**, when you remove them. A completed task just stays visible in its project, marked done.",
-      "Removing a task, decision, or milestone deletes it right away, with a short **Undo** in case you didn't mean to.",
-      "In the Archive, **Restore** puts a project or idea back where it was. **Delete forever** always asks first, and it cannot be undone."]],
+      "Only **Projects** and **Ideas** go to the **Archive**, using their **Archive** button. A completed task just stays visible in its project, marked done.",
+      "**Delete** on a task, or **Remove** on a decision or milestone, deletes it right away, with a short **Undo** in case you didn't mean to.",
+      "In the Archive, select a project's name to look at it. **Restore** puts a project or idea back, and a project's tasks with it. **Delete forever** always asks first, and it cannot be undone."]],
     ["Slip the schedule", [
-      "Open the menu and choose **Slip the schedule**. Pick the number of days, and whether to move everything or one project.",
+      "Open the menu and choose **Slip Schedule**. Pick the number of days, and whether to move everything or one project, then choose **Push dates later**.",
       "**Undo last slip** in the same dialog reverses it."]],
     ["Settings, backup, and starting over", [
-      "In **Settings**, set the default start date and pace, what to call a stretch of work (Block, Sprint, and so on), the date format, the theme, and when to archive completed tasks.",
-      "Everything is saved in this browser only. Under **Backup and restore**, copy your data as text, or save a file if your browser offers it, and paste it back later.",
+      "In **Settings**, set the default start date and pace, what to call a stretch of work (Block, Sprint, and so on), the date format, the theme, and whether the splash screen plays when the app opens.",
+      "Everything is saved in this browser only. Under **Backup and restore**, copy your data as text, or save a file if your browser offers it. Restore from a file or pasted text later.",
       "**Start fresh** erases everything after a warning. Save a backup first. You can begin empty or with the starting projects."]]
   ];
 }

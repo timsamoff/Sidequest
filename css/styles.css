@@ -206,6 +206,7 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
    first line. */
 .crow.oneline { align-items: center; }
 .crow label { display: flex; gap: var(--space-10); align-items: flex-start; font-weight: 600; cursor: pointer; flex: 1 1 200px; }
+.notetext { white-space: pre-line; }
 .cnote { color: var(--muted); font-size: .92rem; margin: var(--space-2) 0 0 var(--space-30); }
 .cfields { display: flex; flex-wrap: wrap; gap: var(--space-12); margin: var(--space-6) 0 0 var(--space-30); }
 .cfields .field { margin-top: var(--space-4); }
