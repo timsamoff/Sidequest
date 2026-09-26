@@ -1,24 +1,36 @@
 import { state } from "./state.js";
 import { fmt, fmtY, addDays, addMonths, parseISO, TODAY } from "./dates.js";
-import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, live, dispProject, findProject, projectBurn, projectBurnTasks, short } from "./model.js";
-import { el } from "./dom.js";
+import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, live, dispProject, findProject, projectBurn, projectBurnTasks, burnTasks, short } from "./model.js";
+import { el, on } from "./dom.js";
 
 export function svgEl(tag, attrs, text) {
   var e = document.createElementNS("http://www.w3.org/2000/svg", tag);
   Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
   if (text !== undefined) e.textContent = text; return e;
 }
+// Dismisses a tap-opened tooltip when the user taps anywhere that is not a chart
+// (a tap elsewhere does not blur the chart on every phone browser).
+var dismissTip = null;
+if (typeof document !== "undefined") document.addEventListener("pointerdown", function (e) {
+  if (dismissTip && !(e.target && e.target.closest && e.target.closest("svg.chart"))) dismissTip();
+});
+
 // Draws a burndown. cfg: { cps, planned[], actual[] (null = no point), total, label,
-// marks[] ({ms, text}) for milestone diamonds on the axis, tipPlanned(i), tipActual(i) }.
-// Shared by the global chart and each project's own chart.
+// marks[] ({ms, text}) for milestone diamonds on the axis, tip(i) -> the text for week i }.
+// Shared by the global chart and each project's chart. Each week is a full-height
+// hover column and the chart is ONE keyboard stop: Left and Right move between weeks
+// and milestones, Home and End jump, Esc closes. The same text shows on mouse hover,
+// on tap, and on keyboard focus, in a small tooltip that is also a live region, so it
+// reaches phones and screen readers (a native SVG <title> reaches neither).
 function renderBurn(host, wide, cfg) {
   host.innerHTML = "";
+  host.style.position = "relative";
   var cps = cfg.cps, n = cps.length, pl = cfg.planned, acts = cfg.actual;
   var ymax = Math.max(cfg.total, 1); acts.forEach(function (a) { if (a !== null && a > ymax) ymax = a; });
   var tick = Math.max(1, Math.ceil(ymax / 8));
   var W = wide ? 960 : 640, H = wide ? 320 : 300, L = 40, R = 18, T = 16, B = 44;
-  var svg = svgEl("svg", { "class": "chart", viewBox: "0 0 " + W + " " + H, role: "img" });
-  svg.setAttribute("aria-label", cfg.label);
+  var svg = svgEl("svg", { "class": "chart", viewBox: "0 0 " + W + " " + H, role: "group", tabindex: "0" });
+  svg.setAttribute("aria-label", cfg.label + " Use the left and right arrow keys to move between weeks.");
   function x(i) { return L + (W - L - R) * i / (n - 1); }
   function y(v) { return T + (H - T - B) * (1 - v / ymax); }
   for (var v = 0; v <= ymax; v += tick) {
@@ -33,44 +45,102 @@ function renderBurn(host, wide, cfg) {
   function flush() { if (seg.length > 1) svg.appendChild(svgEl("polyline", { "class": "actual", points: seg.join(" ") })); seg = []; }
   acts.forEach(function (a, i) { if (a === null) { flush(); return; } seg.push(x(i) + "," + y(a)); });
   flush();
-  if (cfg.tipPlanned) pl.forEach(function (p, i) {
-    var hit = svgEl("circle", { "class": "pdot", cx: x(i), cy: y(p), r: 7 });
-    hit.appendChild(svgEl("title", null, cfg.tipPlanned(i)));
+  acts.forEach(function (a, i) { if (a !== null) svg.appendChild(svgEl("circle", { "class": "dot", cx: x(i), cy: y(a), r: 5.5 })); });
+
+  // Everything the user can point at or arrow to, left to right.
+  var guide = svgEl("line", { "class": "guide", x1: 0, x2: 0, y1: T, y2: H - B });
+  guide.style.display = "none"; svg.appendChild(guide);
+  var stops = [];
+  cps.forEach(function (ms, i) {
+    var x0 = i === 0 ? L : (x(i - 1) + x(i)) / 2, x1 = i === n - 1 ? W - R : (x(i) + x(i + 1)) / 2;
+    var hit = svgEl("rect", { "class": "hit", x: x0, y: T, width: Math.max(1, x1 - x0), height: H - B - T });
     svg.appendChild(hit);
+    var ys = [y(pl[i])]; if (acts[i] !== null) ys.push(y(acts[i]));
+    stops.push({ x: x(i), y: Math.min.apply(null, ys), text: cfg.tip ? cfg.tip(i) : fmtY(cps[i]), el: hit, week: i, order: 0 });
   });
   (cfg.marks || []).forEach(function (m) {
     if (m.ms < cps[0] || m.ms > cps[n - 1]) return;
     var cx = L + (W - L - R) * (m.ms - cps[0]) / (cps[n - 1] - cps[0]), cy = y(0), r = 6;
-    var d = svgEl("polygon", { "class": "mark", points: cx + "," + (cy - r) + " " + (cx + r) + "," + cy + " " + cx + "," + (cy + r) + " " + (cx - r) + "," + cy });
-    d.appendChild(svgEl("title", null, m.text + ", " + fmtY(m.ms)));
-    svg.appendChild(d);
+    svg.appendChild(svgEl("polygon", { "class": "mark", points: cx + "," + (cy - r) + " " + (cx + r) + "," + cy + " " + cx + "," + (cy + r) + " " + (cx - r) + "," + cy }));
+    var mh = svgEl("circle", { "class": "hit", cx: cx, cy: cy, r: 11 });
+    svg.appendChild(mh);
+    stops.push({ x: cx, y: cy, text: m.text + ", " + fmtY(m.ms), el: mh, week: -1, order: 1 });
   });
-  acts.forEach(function (a, i) {
-    if (a === null) return;
-    var dot = svgEl("circle", { "class": "dot", cx: x(i), cy: y(a), r: 5.5 });
-    dot.appendChild(svgEl("title", null, cfg.tipActual ? cfg.tipActual(i) : fmtY(cps[i]) + ": " + a + (a === 1 ? " item" : " items") + " remaining"));
-    svg.appendChild(dot);
+  stops.sort(function (p, q) { return p.x - q.x || p.order - q.order; });
+
+  var tip = el("div", { "class": "charttip", role: "status", "aria-live": "polite" }); tip.hidden = true;
+  host.appendChild(svg); host.appendChild(tip);
+  var cur = -1, pinned = false;
+  function hide() { cur = -1; tip.hidden = true; guide.style.display = "none"; }
+  function show(k) {
+    cur = k; var s = stops[k];
+    tip.textContent = s.text; tip.hidden = false;
+    guide.setAttribute("x1", s.x); guide.setAttribute("x2", s.x); guide.style.display = "";
+    var r = svg.getBoundingClientRect(), hr = host.getBoundingClientRect(), sc = r.width / W;
+    var px = (r.left - hr.left) + s.x * sc, py = (r.top - hr.top) + s.y * sc, w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.max(0, Math.min(px - w / 2, hr.width - w)) + "px";
+    tip.style.top = (py - h - 12 < 0 ? py + 14 : py - h - 12) + "px";
+  }
+  // Where a keyboard user lands first: the latest week that has an actual point.
+  function startStop() {
+    var best = 0;
+    stops.forEach(function (s, k) { if (s.week >= 0 && acts[s.week] !== null) best = k; });
+    return best;
+  }
+  stops.forEach(function (s, k) {
+    on(s.el, "mouseenter", function () { show(k); });
+    on(s.el, "mouseleave", function () { if (!pinned) hide(); });
+    on(s.el, "click", function () { pinned = true; dismissTip = clear; show(k); });
   });
-  host.appendChild(svg);
+  function clear() { pinned = false; hide(); }
+  on(svg, "focus", function () { pinned = true; dismissTip = clear; if (cur < 0) show(startStop()); });
+  on(svg, "blur", clear);
+  // The focus ring is for keyboard users: hide it when focus came from a tap or click,
+  // and bring it back the moment a key is pressed.
+  on(svg, "pointerdown", function () { svg.classList.add("nofocusring"); });
+  on(svg, "keydown", function (e) {
+    svg.classList.remove("nofocusring");
+    var nk = cur;
+    if (e.key === "ArrowRight") nk = cur < 0 ? 0 : Math.min(stops.length - 1, cur + 1);
+    else if (e.key === "ArrowLeft") nk = cur < 0 ? stops.length - 1 : Math.max(0, cur - 1);
+    else if (e.key === "Home") nk = 0;
+    else if (e.key === "End") nk = stops.length - 1;
+    else if (e.key === "Escape") { if (cur >= 0) { e.preventDefault(); e.stopPropagation(); clear(); } return; }
+    else return;
+    e.preventDefault(); pinned = true; show(nk);
+  });
+}
+
+// The text for one week: planned and actual counts, then which tasks finish and which
+// were completed. The planned line is exact, so it can name the tasks that finish;
+// the actual line is a weekly snapshot and steps carry no timestamps, so it can only
+// say which tasks were completed that week (from doneAt), never which task caused a drop.
+function nameList(ts, withProject) {
+  var names = ts.slice(0, 6).map(function (t) { return (withProject ? dispProject(t) + ": " : "") + t.what; });
+  return names.join(", ") + (ts.length > 6 ? ", and " + (ts.length - 6) + " more" : "");
+}
+function weekTip(cps, i, pl, act, tasks, span, withProject) {
+  var lines = ["Week of " + fmtY(cps[i]), "Planned: " + pl[i] + " remaining"];
+  if (act[i] !== null) lines.push("Actual: " + act[i] + " remaining");
+  var fin = tasks.filter(function (t) { var e = taskEnd(t); return e <= cps[i] && (i === 0 || e > cps[i - 1]); });
+  if (fin.length) lines.push("Finishing: " + nameList(fin, withProject));
+  var done = tasks.filter(function (t) { if (!t.doneAt) return false; var d = parseISO(t.doneAt); return d >= cps[i] && d < cps[i] + span; });
+  if (done.length) lines.push("Completed this week: " + nameList(done, withProject));
+  return lines.join("\n");
 }
 
 export function drawChart(host, wide) {
   var total = totalUnits(), cps = checkpoints(), n = cps.length;
   var acts = state.actual.map(function (a, i) { return (a === null && i === 0) ? total : a; });
-  var pl = cps.map(planned);
+  var pl = cps.map(planned), tasks = burnTasks();
   renderBurn(host, wide, {
     cps: cps, planned: pl, actual: acts, total: total,
-    label: "Burndown chart. Planned items remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + "."
+    label: "Burndown chart. Planned items remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
+    tip: function (i) { return weekTip(cps, i, pl, acts, tasks, 7 * 86400000, true); }
   });
 }
 
-function nameList(ts) {
-  var names = ts.slice(0, 6).map(function (t) { return t.what; });
-  return names.join(", ") + (ts.length > 6 ? ", and " + (ts.length - 6) + " more" : "");
-}
-// One project's own burndown. The planned line is exact, so a hover on it can name
-// the tasks that finish. The actual line is a weekly snapshot and steps carry no
-// timestamps, so its hover can only say which tasks were completed that week.
+// One project's own burndown.
 export function drawProjectChart(host, p, wide) {
   var bd = projectBurn(p);
   if (!bd) { host.innerHTML = ""; return false; }
@@ -79,14 +149,7 @@ export function drawProjectChart(host, p, wide) {
   renderBurn(host, wide, {
     cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks,
     label: "Burndown chart for " + p.name + ". Planned steps remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
-    tipPlanned: function (i) {
-      var fin = bd.tasks.filter(function (t) { var e = taskEnd(t); return e <= cps[i] && (i === 0 || e > cps[i - 1]); });
-      return "Week of " + fmtY(cps[i]) + ": " + pl[i] + " planned to remain" + (fin.length ? ". Finishing: " + nameList(fin) : "");
-    },
-    tipActual: function (i) {
-      var a = bd.actual[i], done = bd.tasks.filter(function (t) { if (!t.doneAt) return false; var d = parseISO(t.doneAt); return d >= cps[i] && d < cps[i] + span; });
-      return "Week of " + fmtY(cps[i]) + ": " + a + (a === 1 ? " item" : " items") + " remaining" + (done.length ? ". Completed this week: " + nameList(done) : "");
-    }
+    tip: function (i) { return weekTip(cps, i, pl, bd.actual, bd.tasks, span, false); }
   });
   return true;
 }

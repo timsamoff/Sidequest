@@ -620,8 +620,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const svg = side.querySelector("svg.chart");
   ok(/^Burndown chart for Sample App\./.test(svg.getAttribute("aria-label")), "the burndown is this project's own");
   ok(svg.querySelectorAll(".dot").length === 3, "the actual line has its recorded weeks plus this week (" + svg.querySelectorAll(".dot").length + ")");
-  ok(svg.querySelectorAll(".mark").length === 1 && svg.querySelectorAll(".pdot").length >= 3, "a milestone marker and hoverable planned points are drawn");
-  ok([...svg.querySelectorAll(".pdot title")].some(t => /Finishing: /.test(t.textContent)), "a planned point names the tasks that finish that week");
+  ok(svg.querySelectorAll(".mark").length === 1 && svg.querySelectorAll("rect.hit").length >= 4, "a milestone marker and a hover column for each week are drawn");
+  ok(!svg.querySelector("title"), "the chart has no native tooltips, which would double up with the new one and never reach a phone or keyboard");
   ok(/8 items remaining, out of 16/.test(side.textContent), "the count line is this project's own steps");
   // Expand opens both charts in a full-size dialog, and closing restores normal dialogs
   k.click(k.btn(side, "Expand"));
@@ -672,6 +672,58 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.tab("archive"); k.click(k.btn(k.$("view"), "Sample Game"));
   ok(!k.d.querySelector("#view .projsplit"), "an archived project's page has no charts column");
   ok([...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Schedule") && !k.$("proj-start"), "an archived project still shows its Schedule, read only, in the single column");
+}
+
+{
+  // the burndown tooltip works on hover, tap, and keyboard, on both charts
+  const k = kit(await mk());
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  const side = k.d.querySelector("#view .projcharts");
+  const svg = side.querySelector("svg.chart");
+  const tip = () => side.querySelector(".charttip");
+  const hits = [...svg.querySelectorAll("rect.hit")];
+  const fire = (e, type) => e.dispatchEvent(new k.w.MouseEvent(type, { bubbles: false }));
+  const key = (name) => svg.dispatchEvent(new k.w.KeyboardEvent("keydown", { key: name, bubbles: true }));
+  ok(svg.getAttribute("tabindex") === "0" && svg.getAttribute("role") === "group" && /arrow keys/.test(svg.getAttribute("aria-label")), "the chart is one labeled keyboard stop");
+  ok(tip().hidden && tip().getAttribute("aria-live") === "polite" && tip().getAttribute("role") === "status", "the tooltip starts hidden and is a live region");
+  fire(hits[1], "mouseenter");
+  ok(!tip().hidden && /^Week of /.test(tip().textContent) && /Planned: \d+ remaining/.test(tip().textContent) && /Actual: 13 remaining/.test(tip().textContent), "hovering a week shows its planned and actual counts (" + tip().textContent.replace(/\n/g, " | ") + ")");
+  fire(hits[1], "mouseleave");
+  ok(tip().hidden, "moving the pointer away hides it");
+  const named = hits.map(h => { fire(h, "mouseenter"); const s = tip().textContent; fire(h, "mouseleave"); return s; });
+  ok(named.some(s => /Finishing: /.test(s)), "a week names the tasks that finish in it");
+  ok(named.some(s => /Completed this week: /.test(s)), "a week names the tasks completed in it");
+  // a tap (click) keeps it open until something else is tapped
+  k.click(hits[2]); fire(hits[2], "mouseleave");
+  ok(!tip().hidden, "a tap keeps the tooltip open after the pointer leaves");
+  k.d.body.dispatchEvent(new k.w.Event("pointerdown", { bubbles: true }));
+  ok(tip().hidden, "tapping somewhere that is not the chart closes it");
+  // keyboard
+  svg.dispatchEvent(new k.w.FocusEvent("focus"));
+  ok(!tip().hidden && /Actual: /.test(tip().textContent), "focusing the chart shows the latest week that has an actual point");
+  const start = tip().textContent;
+  key("ArrowLeft");
+  ok(tip().textContent !== start, "Left arrow moves to an earlier stop");
+  key("Home"); const first = tip().textContent; key("End");
+  ok(tip().textContent !== first, "Home and End jump to the two ends");
+  key("Home"); let found = false;
+  for (let i = 0; i < 30 && !found; i++) { if (/Sample App beta opens/.test(tip().textContent)) found = true; else key("ArrowRight"); }
+  ok(found, "the arrow keys also reach the milestone");
+  key("Escape");
+  ok(tip().hidden, "Esc closes the tooltip");
+  svg.dispatchEvent(new k.w.FocusEvent("focus")); svg.dispatchEvent(new k.w.FocusEvent("blur"));
+  ok(tip().hidden, "leaving the chart closes it");
+  svg.dispatchEvent(new k.w.Event("pointerdown", { bubbles: true }));
+  ok(svg.classList.contains("nofocusring"), "a tap or click hides the focus ring");
+  key("ArrowRight");
+  ok(!svg.classList.contains("nofocusring"), "and pressing a key brings it back");
+  // the all-projects burndown behaves the same, and names the project with each task
+  k.tab("today");
+  const g = k.d.querySelector("#view svg.chart");
+  const gh = [...g.querySelectorAll("rect.hit")];
+  ok(gh.length === 7 && g.getAttribute("tabindex") === "0", "the global burndown has a hover column per week and is a keyboard stop");
+  const gnamed = gh.map(h => { fire(h, "mouseenter"); const s = k.d.querySelector("#view .charttip").textContent; fire(h, "mouseleave"); return s; });
+  ok(gnamed.some(s => /Finishing: Sample [A-Za-z]+: /.test(s)), "and its tooltip names the project with each finishing task (" + gnamed.filter(s => /Finishing/.test(s))[0].replace(/\n/g, " | ") + ")");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
