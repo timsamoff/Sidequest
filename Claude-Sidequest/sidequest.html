@@ -1915,12 +1915,11 @@ function pinBar(key) {
   on(b, "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
   bar.appendChild(b); return bar;
 }
-function pagesSection() {
+function pagesSection(excludeIds) {
   var sec = el("div");
-  sec.appendChild(el("h2", { style: "margin-top:28px" }, "Projects"));
-  sec.appendChild(el("p", { "class": "hint" }, "Pin a project to the sidebar for quick access. Removing it from the sidebar only hides it there. It stays listed here."));
+  sec.appendChild(el("p", { "class": "hint", style: "margin-top:28px" }, "Pin a project to the sidebar for quick access. Removing it from the sidebar only hides it there. It stays listed here."));
   var ul = el("ul", { "class": "list" });
-  var rows = liveProjects().map(function (p) { return { key: "proj:" + p.id, name: p.name, meta: projectMeta(p), complete: p.status === "complete" }; });
+  var rows = liveProjects().filter(function (p) { return !excludeIds || excludeIds.indexOf(p.id) < 0; }).map(function (p) { return { key: "proj:" + p.id, name: p.name, meta: projectMeta(p), complete: p.status === "complete" }; });
   if (!rows.length) sec.appendChild(el("p", { "class": "hint" }, "No projects yet."));
   rows.forEach(function (r) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
@@ -2075,9 +2074,11 @@ function standingBlock(c) {
   wrap.appendChild(el("h2", { "class": "first" }, "Where things stand"));
   wrap.appendChild(el("p", { "class": "hint" }, "Built from your open tasks, ordered by when each project's next task starts."));
   var box = el("div", { "class": "box", style: "margin-top:10px" });
-  var groups = {}, order = [];
+  var groups = {}, order = [], listedIds = [];
   ordered().forEach(function (t) {
     if (t.isNext || t.status === "Completed") return;
+    var proj = findProject(t.projectId);
+    if (proj && proj.status === "complete") return;
     var g = groups[t.projectId]; if (!g) { g = groups[t.projectId] = { projectId: t.projectId, name: dispProject(t), open: 0, first: t }; order.push(g); }
     g.open++;
   });
@@ -2085,6 +2086,7 @@ function standingBlock(c) {
   var ul = el("ul", { "class": "standing" });
   if (!order.length) ul.appendChild(el("li", null, "No open tasks."));
   order.forEach(function (g) {
+    listedIds.push(g.projectId);
     var li = el("li"), top = el("div", { "class": "srow" });
     var nm = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, g.name);
     on(nm, "click", function () { go(validPage("proj:" + g.projectId) ? "proj:" + g.projectId : "projects"); });
@@ -2102,14 +2104,12 @@ function standingBlock(c) {
   else stEl.appendChild(el("span", { "class": "scount" }, "Not chosen yet"));
   sl.appendChild(stEl); ul.appendChild(sl);
   box.appendChild(ul); wrap.appendChild(box);
-  return wrap;
+  return { node: wrap, projectIds: listedIds };
 }
-function renderProjects(root) {
-  var c = chosen();
-  root.appendChild(standingBlock(c));
-  var hd = el("div", { "class": "sechead", style: "margin-top:22px" }); hd.appendChild(el("h2", { "class": "first" }, "Candidates"));
-  hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a new candidate project" }, "Add candidate"), "click", function () { projectDialog(); })); root.appendChild(hd);
-  root.appendChild(el("p", { "class": "hint" }, "Choose which project gets the next slot."));
+function candidatesSection() {
+  var sec = el("div");
+  var hd = el("div", { "class": "sechead", style: "margin-top:28px" }); hd.appendChild(el("h2", null, "Candidates")); sec.appendChild(hd);
+  sec.appendChild(el("p", { "class": "hint" }, "Choose which project gets the next slot. Use New project in the menu, or make an idea in the Parking lot a candidate."));
   var list = el("ul", { "class": "list" });
   var cs = candidateProjects();
   if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a candidate."));
@@ -2131,8 +2131,15 @@ function renderProjects(root) {
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row);
     list.appendChild(li);
   });
-  root.appendChild(list);
-  root.appendChild(pagesSection());
+  sec.appendChild(list);
+  return sec;
+}
+function renderProjects(root) {
+  var c = chosen();
+  var standing = standingBlock(c);
+  root.appendChild(standing.node);
+  root.appendChild(pagesSection(standing.projectIds));
+  root.appendChild(candidatesSection());
 }
 function renderParkingLot(root) {
   root.appendChild(el("p", { "class": "hint first" }, "Ideas and waiting items that are not competing for the next slot."));
