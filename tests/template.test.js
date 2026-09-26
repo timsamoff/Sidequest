@@ -336,7 +336,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   ok([...k.d.querySelectorAll("#view .list li")].some(li => li.textContent.includes("Sample Website") && li.textContent.includes("Launch critical")), "Linked Projects shows a Launch critical badge for Sample Website");
-  ok(!!k.btn(k.$("view"), "Unset launch critical"), "the toggle button reflects Sample Website's launch-critical state from Sample App's own page");
+  ok(!!k.btn(k.$("view"), "Unmark launch critical"), "the toggle button reflects Sample Website's launch-critical state from Sample App's own page");
   // archiving Sample App warns (soft gate) since Sample Website (launch-critical) is not complete/archived, but does not block
   k.click(k.btn(k.$("view"), "Archive"));
   ok(k.saved().projects.find(p => p.id === "pApp").arch, "archiving proceeds even with an incomplete launch-critical link (soft gate only, never a hard block)");

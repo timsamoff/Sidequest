@@ -1799,7 +1799,7 @@ function linksSection(root, p) {
       // Launch Critical is a property of the linked project itself, not of
       // this one relationship -- toggling it here flips lp's own record,
       // visible the same way from either side of the (bidirectional) link.
-      var lc = el("button", { type: "button", "class": "small" + (lp.launchCritical ? " on" : ""), "aria-pressed": lp.launchCritical ? "true" : "false", title: (lp.launchCritical ? "Unmark as" : "Mark as") + " launch critical" }, lp.launchCritical ? "Unset launch critical" : "Mark launch critical");
+      var lc = el("button", { type: "button", "class": "small" + (lp.launchCritical ? " on" : ""), "aria-pressed": lp.launchCritical ? "true" : "false", title: (lp.launchCritical ? "Unmark as" : "Mark as") + " launch critical" }, lp.launchCritical ? "Unmark launch critical" : "Mark launch critical");
       on(lc, "click", function () { lp.launchCritical = !lp.launchCritical; changed(); });
       acts.appendChild(lc);
       var rm = el("button", { type: "button", "class": "small danger", title: "Remove this link" }, "Unlink");
