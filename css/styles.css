@@ -274,7 +274,8 @@ tbody tr:last-child td { border-bottom: 0; }
 .bar.done { background: var(--chip-done); }
 @media (min-width: 900px) {
   .projsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: var(--space-22); align-items: start; }
-  .projright { margin-top: 0; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); max-height: calc(100vh - 110px); overflow-y: auto; }
+  /* The charts column grows to its full height and scrolls with the page: no inner scrollbar. */
+  .projright { margin-top: 0; }
   .projexpand { display: inline-block; }
   /* The Launch section is two columns on a wide page; in the narrower left column it stacks. */
   .projsplit .pgrid { display: block; }
