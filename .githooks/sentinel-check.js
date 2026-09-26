@@ -26,6 +26,7 @@ const path = require("path");
 const common = require("./lib/sentinel-common");
 const checks = require("./lib/check-pre-commit");
 const extCheck = require("./lib/check-new-extension");
+const helpDrift = require("./lib/check-help-drift");
 
 const BASELINE_PATH = path.join("sentinel-notes", "sentinel-baseline.json");
 
@@ -246,6 +247,8 @@ function main() {
       process.exitCode = 1;
       return;
     }
+    const helpReminder = helpDrift.helpDriftReminder();
+    if (helpReminder) console.log("[Sentinel] " + helpReminder);
     console.log("Sentinel: diff-scoped check passed, no violations.");
     process.exitCode = 0;
     return;

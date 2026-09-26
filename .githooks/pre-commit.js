@@ -6,6 +6,7 @@
 const common = require("./lib/sentinel-common");
 const checks = require("./lib/check-pre-commit");
 const extCheck = require("./lib/check-new-extension");
+const helpDrift = require("./lib/check-help-drift");
 
 function main() {
   let violations = [];
@@ -34,6 +35,9 @@ function main() {
     process.exitCode = 1;
     return;
   }
+
+  const helpReminder = helpDrift.helpDriftReminder();
+  if (helpReminder) process.stderr.write("\n[Sentinel] " + helpReminder + "\n");
 
   const reminder = checks.todoBacklogReminder();
   if (reminder) process.stderr.write("\n[Sentinel] " + reminder + "\n");
