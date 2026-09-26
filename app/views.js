@@ -636,11 +636,13 @@ export function renderParkingLot(root) {
   if (!ps.length) pl.appendChild(el("li", { "class": "hint" }, "Nothing parked."));
   ps.forEach(function (p) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
-    var nm = el("div", { style: "flex:1 1 200px" }); nm.appendChild(el("span", { style: "font-weight:600" }, p.text));
+    var nm = el("div", { style: "flex:1 1 200px" });
+    var link = el("button", { type: "button", "class": "textbtn plink", style: "font-weight:600", title: "Open this idea" }, p.text);
+    on(link, "click", function () { ideaDialog(p); });
+    nm.appendChild(link);
     if (p.note) nm.appendChild(el("p", { "class": "hint notetext", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
-    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Edit this idea" }, "Edit"), "click", function () { ideaDialog(p); }));
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make this a candidate project" }, "Make candidate"), "click", function () {
       state.parked = state.parked.filter(function (x) { return x.id !== p.id; });
       state.projects.push(makeProject(uid(), p.text, "candidate", { note: p.note })); changed();
@@ -834,7 +836,7 @@ export function helpTopics() {
       "**Linked projects**, on a project's page, connects it to related projects. A link goes both ways.",
       "**Mark launch critical** flags a linked project that has to finish first. It shows on the other project's Launch checklist, and counts as done once it is complete or archived. Completing or archiving a project with an unfinished launch-critical link only warns you."]],
     ["Use the Parking lot", [
-      "Ideas that are not ready yet live on the **Parking lot**. Add one with **Add idea**, and use **Edit** to change its text or note.",
+      "Ideas that are not ready yet live on the **Parking lot**. Add one with **Add idea**. Select an idea's title to open it and change its text or note.",
       "**Make candidate** turns an idea into a project candidate. **Archive** sends it to the Archive."]],
     ["Read the Timeline", [
       "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
