@@ -55,6 +55,15 @@ export function pset(projectId) { var p = findProject(projectId); return { start
 export function offsetFor(projectId, n) { return n * pset(projectId).days; }
 export function blockStartFor(projectId, b) { return addDays(parseISO(pset(projectId).start), offsetFor(projectId, b - 1)); }
 export function blockEndFor(projectId, b) { return addDays(parseISO(pset(projectId).start), offsetFor(projectId, b) - 1); }
+// The inverse of blockStartFor/blockEndFor: which block a given date falls
+// in, so a task can be scheduled by picking a due date instead of having to
+// know or look up a block number. Returns null for a date before the
+// project's own start (there's no block before Block 1 to place it in).
+export function blockForDate(projectId, dateMs) {
+  var eff = pset(projectId), start = parseISO(eff.start);
+  if (dateMs < start) return null;
+  return Math.floor((dateMs - start) / (eff.days * DAY)) + 1;
+}
 export function projKey(t) { return t.isNext ? null : t.projectId; }
 export function taskStart(t) { return blockStartFor(projKey(t), t.block); }
 export function taskEnd(t) { return blockEndFor(projKey(t), t.block); }

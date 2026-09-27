@@ -123,7 +123,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const rows = [...k.d.querySelectorAll(".listpane .tlist")[0].querySelectorAll(".item")].map(b => b.textContent);
   ok(rows.length === 16, "16 scheduled tasks (all tasks stay visible now -- completed ones aren't archived) (got " + rows.length + ")");
   ok(k.$("view").textContent.includes("Backlog (2)") && k.$("view").textContent.includes("Add a dark mode") && k.$("view").textContent.includes("Add a level editor"), "backlog has two samples");
-  ok(k.d.getElementById("task-block").textContent.includes("Sprint 1"), "vocabulary is Sprint in the samples");
+  ok(k.d.querySelector('label[for="task-due"]').textContent.includes("Due date"), "the task's schedule field is a due date");
   // per-project schedules
   k.tab("timeline");
   const lanes = [...k.d.querySelectorAll("#view .lane .lname")].map(l => l.textContent);
@@ -286,7 +286,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // add own project from scratch: a task needs an active project to attach to
   k.menuAct("newBtn", "newProject"); k.setField("name", "My App"); k.click(k.btn(k.$("modalBody"), "Add project"));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Promote"));
-  k.menuAct("newBtn", "newTask"); k.setField("what", "First task"); k.setField("block", "1"); k.click(k.btn(k.$("modalBody"), "Add task"));
+  k.menuAct("newBtn", "newTask"); k.setField("what", "First task"); k.click(k.btn(k.$("modalBody"), "Add task"));
   k.tab("today"); ok(k.$("view").textContent.includes("First task"), "can start working right away, once a project exists");
   // reload samples
   k.tab("settings"); k.click(k.$("startFresh")); const r = [...k.d.querySelectorAll('#modalBody input[name=fresh]')]; r[1].checked = true; k.fire(r[1]);

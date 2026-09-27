@@ -1,9 +1,9 @@
 import { state, ui, changed, isISO, task, project as makeProject } from "./state.js";
 import { iso, addDays, parseISO, fmt } from "./dates.js";
 import {
-  wd, wpC, counted, activeProjects, liveProjects, findProject, dispProject, nextTask, findTask,
+  wd, wl, wpC, counted, activeProjects, liveProjects, findProject, dispProject, nextTask, findTask,
   orderedAll, taskOptions, stepOptions, syncFromSteps, ordered, findStep, decisionFor,
-  pset, blockStartFor, blockEndFor, linkProjects
+  pset, blockStartFor, blockEndFor, blockForDate, linkProjects
 } from "./model.js";
 import { $, el, on, uid, notify } from "./dom.js";
 import { closeMenus } from "./app.js";
@@ -100,19 +100,24 @@ export function taskDialog(prefillProjectId, backlog) {
   var projOpts = activeProjects().map(function (p) { return { value: p.id, label: p.name }; });
   if (!projOpts.length) { notify("Add an active project first (Projects > Choose as next project)."); return; }
   var startId = typeof prefillProjectId === "string" ? prefillProjectId : (nt && !nt.isNext ? nt.projectId : projOpts[0].value);
+  var defaultDue = backlog ? "" : iso(blockStartFor(startId, nt ? nt.block : 4));
   formDialog(backlog ? "New backlog item" : "New task", [
     { key: "project", label: "Project", type: "select", options: projOpts, value: startId },
     { key: "what", label: "Task" },
     { key: "done", label: "How you'll know it's done (optional)" },
-    { key: "block", label: wd() + " number (1 to 12), or leave empty for the Backlog", type: "number", min: 1, max: 12, step: 1, placeholder: "Backlog", value: backlog ? "" : (nt ? nt.block : 4) }
+    { key: "due", label: "Due date, or leave empty for the Backlog", type: "date", value: defaultDue }
   ], backlog ? "Add to Backlog" : "Add task", function (v) {
-    var blk = v.block === "" ? 0 : Number(v.block);
     if (!v.project || !v.what) return "Choose a project and enter what you do.";
-    if (v.block !== "" && (!Number.isInteger(blk) || blk < 1 || blk > 12)) return wd() + " number must be from 1 to 12, or empty for the Backlog.";
+    var blk = 0;
+    if (v.due !== "") {
+      if (!isISO(v.due)) return "Enter a valid due date, or leave it empty for the Backlog.";
+      blk = blockForDate(v.project, parseISO(v.due));
+      if (blk === null) return "Pick a date on or after " + fmt(parseISO(pset(v.project).start)) + ", this project's own start date.";
+    }
     var t = task("c" + uid(), blk, v.project, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true });
     state.tasks.push(t); ui.sel = t.id; changed();
     return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(blockStartFor(v.project, blk)) + " to " + fmt(blockEndFor(v.project, blk)) + ")." };
-  }, wpC() + " set the dates. " + wd() + " 1 starts on the project's start date. Leave it empty to put the task in the Backlog.");
+  }, "Pick when this should be done and it's placed in the right " + wl() + " automatically. Leave it empty to put the task in the Backlog.");
 }
 export function projectDialog() {
   formDialog("New project", [{ key: "name", label: "Project name" }, { key: "notes", label: "Notes (optional)", type: "textarea", rows: 5 }], "Add project", function (v) {

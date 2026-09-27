@@ -1,7 +1,7 @@
 import { state, ui, save, changed, autoArchive, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, project as makeProject } from "./state.js";
 import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart } from "./dates.js";
 import {
-  WORDS, wd, wl, pset, blockStartFor, blockEndFor, projKey, taskStart, taskEnd,
+  WORDS, wd, wl, pset, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
   checkpoints, live, counted, liveProjects, activeProjects, candidateProjects, completeProjects,
   findProject, findAnyProject, linkedProjects, unlinkProjects, chosen, dispProject, dispWhat,
   totalUnits, remainingUnits, planned, ordered, backlogTasks,
@@ -235,13 +235,18 @@ export function buildDetail(t) {
   box.appendChild(whatRow);
   if (!(t.isNext && chosen())) box.appendChild(el("p", { "class": "dmeta" }, "Done when: " + t.done));
   if (!t.isNext) {
-    var bw = el("div", { "class": "field", style: "max-width:24rem" }); bw.appendChild(el("label", { "for": "task-block" }, wd()));
-    var bs = el("select", { id: "task-block", "class": "plain" });
-    bs.appendChild(el("option", { value: "0" }, "Backlog (not scheduled)"));
-    for (var bi = 1; bi <= 12; bi++) bs.appendChild(el("option", { value: String(bi) }, wd() + " " + bi + " (" + fmt(blockStartFor(projKey(t), bi)) + " to " + fmt(blockEndFor(projKey(t), bi)) + ")"));
-    bs.value = String(t.block);
-    on(bs, "change", function () { var v = parseInt(bs.value, 10); t.block = v; changed(); notify(v === 0 ? "Moved to the Backlog." : "Moved to " + wd() + " " + v + "."); });
-    bw.appendChild(bs); box.appendChild(bw);
+    var bw = el("div", { "class": "field", style: "max-width:24rem" }); bw.appendChild(el("label", { "for": "task-due" }, "Due date, or leave empty for the Backlog"));
+    var bd = el("input", { type: "date", id: "task-due" }); bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block));
+    var bmsg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
+    on(bd, "blur", function () {
+      if (bd.value === "") { t.block = 0; changed(); notify("Moved to the Backlog."); return; }
+      if (!isISO(bd.value)) { bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block)); bmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
+      var blk = blockForDate(projKey(t), parseISO(bd.value));
+      if (blk === null) { bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block)); bmsg.textContent = "Pick a date on or after " + fmt(parseISO(pset(projKey(t)).start)) + ", this project's own start date."; return; }
+      bmsg.textContent = "";
+      t.block = blk; changed(); notify("Moved to " + wd() + " " + blk + " (" + fmt(blockStartFor(projKey(t), blk)) + " to " + fmt(blockEndFor(projKey(t), blk)) + ").");
+    });
+    bw.appendChild(bd); box.appendChild(bw); box.appendChild(bmsg);
   }
 
   var nDone = t.steps.filter(function (s) { return s.done; }).length;
@@ -447,8 +452,7 @@ export function renderProjectPage(root, id) {
   root.appendChild(metaLine);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
   var ts = ordered().filter(function (t) { return !t.isNext && t.projectId === p.id; }).concat(backlogTasks().filter(function (t) { return t.projectId === p.id; }));
-  if (!ts.length) root.appendChild(el("p", { "class": "hint" }, "No tasks yet."));
-  else {
+  if (ts.length) {
     var ul = el("ul", { "class": "tlist" });
     ts.forEach(function (t) {
       var li = el("li"), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
@@ -535,8 +539,13 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
       if (isNaN(lv) || lv < 1 || lv > 90) { pl.value = eff.days; smsg.textContent = wd() + " length must be from 1 to 90 days."; return; }
       p.start = sv; p.days = lv; changed(); notify(p.name + " schedule saved.");
     }
-    on(ps, "change", applyOwn); on(pl, "change", applyOwn);
-    on(pd, "change", function () { p.due = isISO(pd.value) ? pd.value : ""; changed(); notify(p.due ? "Due date saved." : "Due date cleared."); });
+    // "blur", not "change": a type="date" input fires "change" once per
+    // segment as it's typed (month, then day, then year), each of which used
+    // to call changed() and re-render the whole page -- destroying this very
+    // input mid-keystroke and losing focus after a single digit. Committing
+    // on blur waits until the user is actually done with the field.
+    on(ps, "blur", applyOwn); on(pl, "blur", applyOwn);
+    on(pd, "blur", function () { p.due = isISO(pd.value) ? pd.value : ""; changed(); notify(p.due ? "Due date saved." : "Due date cleared."); });
     sfield("proj-start", "Start date", ps); sfield("proj-due", "Due date", pd); sfield("proj-days", "Days per " + wd(), pl);
     host.appendChild(sg); host.appendChild(smsg);
   }
@@ -557,9 +566,16 @@ function projectCharts(p, wide, expandBtn, first) {
   // Schedule keeps its own single "Schedule" heading from scheduleSection() -- the
   // Expand button rides along on that same heading row, no separate heading added.
   scheduleSection(out, p, false, first, expandBtn);
-  out.appendChild(el("h2", null, "Timeline"));
-  var tl = projectRangeBlock(p); out.appendChild(tl.node); wireMilestoneDiamonds(tl.node);
-  if (!tl.empty) {
+  var tl = projectRangeBlock(p);
+  if (tl.empty) {
+    // With nothing scheduled there is nothing to chart, so one combined
+    // heading covers both -- separate "Timeline" and "Burndown" headings
+    // over one hint sentence would just be two labels for the same emptiness.
+    out.appendChild(el("h2", null, "Timeline & burndown"));
+    out.appendChild(tl.node);
+  } else {
+    out.appendChild(el("h2", null, "Timeline"));
+    out.appendChild(tl.node); wireMilestoneDiamonds(tl.node);
     var b = burnParts({ project: p, wide: wide, level: "h2" });
     b.count.style.marginTop = "12px";
     out.appendChild(b.h); out.appendChild(b.chart); out.appendChild(b.count);
@@ -843,7 +859,7 @@ export function helpMarkup(text) {
   return frag;
 }
 export function helpTopics() {
-  var W = wd(), w = wl();
+  var w = wl();
   return [
     ["Find your way around", [
       "On a computer, use the sidebar on the left. On a phone, use the tabs along the bottom.",
@@ -856,12 +872,12 @@ export function helpTopics() {
       "The burndown shows work left against the plan. It records this week's count automatically whenever you make a change. Point at a week, tap it, or focus the chart and use the arrow keys to see that week's counts and tasks."]],
     ["Add and schedule tasks", [
       "Tap **+**, then **New task**. Enter the project, what you do, and when it is done.",
-      "The " + W + " number sets the dates. " + W + " 1 starts on the project's start date. Leave it empty to put the task in the Backlog.",
-      "Open a task in **Tasks** to change its status, add steps and notes, or move it to another " + w + ". Use the pencil beside its name to rename it.",
+      "Pick a due date and it's placed in the right " + w + " automatically. Leave it empty to put the task in the Backlog.",
+      "Open a task in **Tasks** to change its status, add steps and notes, or move it by changing its due date. Use the pencil beside its name to rename it.",
       "Finishing every step marks the task done."]],
     ["Use the Backlog", [
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
-      "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burndown until you do."]],
+      "To schedule it, open the item and set a due date. Backlog items stay out of the burndown until you do."]],
     ["Manage projects", [
       "Each active project has its own page. Open **Projects** and select the project's name. Use the pencil beside its title to rename it, and edit its notes there. Beside that (below it on a phone) are its Schedule, where you set its start date, due date, and block length, and its own Timeline and Burndown, which redraw as you change the schedule. On a wide screen, **Expand** shows them large.",
       "**Candidates** are projects that could take the next slot. Select one to edit its notes, start date, due date, and block length in a dialog, then use **Promote** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
