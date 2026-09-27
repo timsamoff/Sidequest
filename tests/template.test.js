@@ -300,7 +300,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk());
   k.tab("schedule"); const sel = k.d.querySelector(".detailpane select.status");
   ok(sel && sel.value === "In progress", "schedule shows the selected sample task");
-  k.tab("settings"); ok(k.d.getElementById("set-word").value === "Sprint" && k.$("view").textContent.includes("Sprint length in days"), "Settings show the Sprint vocabulary");
+  k.tab("settings"); ok(k.d.getElementById("set-word").value === "Sprint" && k.$("view").textContent.includes("days per Sprint"), "Settings show the Sprint vocabulary");
+  ok(!k.d.getElementById("set-start"), "Settings no longer has a default-start-date field");
   ok(k.d.querySelector("#view .about").textContent.includes("© Tim Samoff"), "About keeps the credit");
   // completing a sample task marks it Completed but keeps it visible (no archiving)
   k.tab("today"); const nextTaskTitle = k.d.querySelector("#view .panel .ptitle").textContent;
@@ -312,7 +313,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(completedRow && completedRow.classList.contains("done"), "the task shows as completed in Tasks, not moved anywhere");
   // backup text
   k.tab("settings"); k.click(k.$("showText")); const j = JSON.parse(k.$("backupText").value);
-  ok(j.tasks.length === 14 && j.projects.find(p => p.name === "Sample Game").mult === 2, "backup export contains the sample data");
+  ok(j.tasks.length === 14 && j.projects.find(p => p.name === "Sample Game").days === 14, "backup export contains the sample data");
   // reload keeps changes and skips the welcome
   const k2 = kit(await mk(k.saved())); ok(k2.$("viewTitle").textContent === "Today" && !k2.$("view").textContent.includes("Welcome to Sidequest") || k2.saved !== undefined, "reload opens on Today");
 }
@@ -613,7 +614,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const side = split.querySelector(".projcharts");
   ok([...side.querySelectorAll("h2")].map(h => h.textContent).join() === "Schedule,Timeline,Burndown", "the right column flows Schedule, then Timeline, then Burndown, as one column");
   ok([...split.children].map(c => c.className).join() === "projtop,projrest,projcharts", "the page is ordered info, rest, then the Schedule/Timeline/Burndown column, which is also the reading and phone order");
-  ok(!!side.querySelector("#proj-start") && !!side.querySelector("#proj-mult") && !split.querySelector(".projtop #proj-start, .projrest #proj-start") && ![...split.querySelectorAll(".projtop h2, .projrest h2")].some(h => h.textContent === "Schedule"), "the Schedule heading and fields are in the right column, not the left");
+  ok(!!side.querySelector("#proj-start") && !!side.querySelector("#proj-days") && !split.querySelector(".projtop #proj-start, .projrest #proj-start") && ![...split.querySelectorAll(".projtop h2, .projrest h2")].some(h => h.textContent === "Schedule"), "the Schedule heading and fields are in the right column, not the left");
   ok(!!k.btn(side, "Expand"), "the right column has an Expand button");
   ok(side.querySelectorAll(".lane").length === 6, "one timeline lane per scheduled task, plus the milestones lane (" + side.querySelectorAll(".lane").length + ")");
   ok(side.textContent.includes("1 backlog item is not shown until scheduled"), "an unscheduled Backlog task is counted, not drawn");

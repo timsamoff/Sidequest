@@ -191,8 +191,6 @@ export function renderSchedule(root) {
   var ul = el("ul", { "class": "tlist" });
   if (!o.length) ul.appendChild(el("li", { "class": "plain" }, "Nothing is scheduled. Choose a " + wl() + " for an item in the Backlog."));
   o.forEach(function (t) { ul.appendChild(taskRow(t)); });
-  var c = chosen();
-  if (o.length && c) ul.appendChild(el("li", { "class": "plain" }, "Next: start " + c.name + "."));
   lp.appendChild(ul);
   if (bl.length) {
     lp.appendChild(el("h2", null, "Backlog (" + bl.length + ")"));
@@ -332,7 +330,7 @@ export function linksSection(root, p) {
 // exists anymore (see DESIGN.md: only Projects are pinnable).
 export function launchSection(root, p) {
   var readOnly = !!p.arch;
-  var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h3", { id: "h-checks" }, "Before you launch"));
+  var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h2", { "class": "sechead-h", id: "h-checks" }, "Before you launch"));
   if (!readOnly) ha.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a launch checklist item" }, "Add item"), "click", function () { stepDialog(true, p.id); }));
   root.appendChild(ha);
   root.appendChild(el("p", { "class": "hint" }, "These are steps from this project's tasks. Tick one here or in Tasks and it stays in sync."));
@@ -449,7 +447,11 @@ export function renderProjectPage(root, id) {
     var f2 = el("div", { "class": "field" }); f2.appendChild(el("label", { "for": "cd-" + p.id }, "Due date"));
     var dd = el("input", { type: "date", id: "cd-" + p.id }); dd.value = p.due;
     on(dd, "change", function () { p.due = isISO(dd.value) ? dd.value : ""; save(); notify("Due date saved. See it on the Timeline."); });
-    f2.appendChild(dd); f.appendChild(f2); cb.appendChild(f);
+    f2.appendChild(dd); f.appendChild(f2);
+    var f3 = el("div", { "class": "field" }); f3.appendChild(el("label", { "for": "cl-" + p.id }, "Days per " + wd()));
+    var ld = el("input", { type: "number", id: "cl-" + p.id, min: "1", max: "90", step: "1" }); ld.value = p.days;
+    on(ld, "change", function () { var v = parseInt(ld.value, 10); if (v >= 1 && v <= 90) { p.days = v; save(); } else ld.value = p.days; });
+    f3.appendChild(ld); f.appendChild(f3); cb.appendChild(f);
     var ca = el("div", { "class": "actions", style: "margin-top:10px" });
     ca.appendChild(on(el("button", { type: "button", "class": "primary", title: "Make this the active project" }, "Choose as next project"), "click", function () { promoteToActive(p.id); }));
     cb.appendChild(ca); root.appendChild(cb);
@@ -536,23 +538,23 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
   host.appendChild(hd);
   var eff = pset(p.id);
   if (readOnly) {
-    host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + ", time multiplier " + eff.mult + (p.due ? ", due " + fmt(p.due) : "") + "."));
+    host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + (p.due ? ", due " + fmt(p.due) : "") + ", " + wl() + " length " + eff.days + " days" + "."));
   } else {
-    host.appendChild(el("p", { "class": "hint" }, "Set this project's own start date and pace."));
+    host.appendChild(el("p", { "class": "hint" }, "Set this project's own start date, due date, and " + wl() + " length."));
     var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
     var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
-    var pm = el("input", { type: "number", id: "proj-mult", min: "0.25", max: "5", step: "0.25" }); pm.value = eff.mult;
     var pd = el("input", { type: "date", id: "proj-due" }); pd.value = p.due;
+    var pl = el("input", { type: "number", id: "proj-days", min: "1", max: "90", step: "1" }); pl.value = eff.days;
     function applyOwn() {
-      var sv = ps.value, mv = parseFloat(pm.value);
+      var sv = ps.value, lv = parseInt(pl.value, 10);
       if (!isISO(sv)) { ps.value = eff.start; smsg.textContent = "Enter a valid start date."; return; }
-      if (isNaN(mv) || mv < 0.25 || mv > 5) { pm.value = eff.mult; smsg.textContent = "The time multiplier must be from 0.25 to 5."; return; }
-      p.start = sv; p.mult = mv; changed(); notify(p.name + " schedule saved.");
+      if (isNaN(lv) || lv < 1 || lv > 90) { pl.value = eff.days; smsg.textContent = wd() + " length must be from 1 to 90 days."; return; }
+      p.start = sv; p.days = lv; changed(); notify(p.name + " schedule saved.");
     }
-    on(ps, "change", applyOwn); on(pm, "change", applyOwn);
+    on(ps, "change", applyOwn); on(pl, "change", applyOwn);
     on(pd, "change", function () { p.due = isISO(pd.value) ? pd.value : ""; changed(); notify(p.due ? "Due date saved." : "Due date cleared."); });
-    sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm); sfield("proj-due", "Due date", pd);
+    sfield("proj-start", "Start date", ps); sfield("proj-due", "Due date", pd); sfield("proj-days", "Days per " + wd(), pl);
     host.appendChild(sg); host.appendChild(smsg);
   }
 }
@@ -932,7 +934,7 @@ export function renderHelp(root) {
 export function blankState() {
   var d = defaults();
   d.tasks = []; d.decisions = []; d.projects = []; d.parked = []; d.milestones = []; d.pins = []; d.lastSlip = null;
-  d.start = iso(TODAY); d.mult = state.mult; d.days = state.days; d.settings = state.settings;
+  d.start = iso(TODAY); d.days = state.days; d.settings = state.settings;
   return d;
 }
 export function startFreshDialog() {
@@ -963,22 +965,18 @@ export function startFreshDialog() {
 }
 export function renderSettings(root) {
   dlWaiters.length = 0;
-  var msg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
+  var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   root.appendChild(el("h2", { "class": "first" }, "Schedule defaults"));
-  root.appendChild(el("p", { "class": "hint" }, "Each project can set its own start date and pace on its page. These are used by any project that has not. At 1.5x each " + wl() + " runs about 50% longer. Lengths are rounded down to whole days."));
+  root.appendChild(el("p", { "class": "hint" }, "Each project sets its own start date on its page. This is the default " + wl() + " length for any project that hasn't set its own."));
   var grid = el("div", { "class": "setgrid" });
   function fieldOf(id, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); grid.appendChild(w); }
-  var st = el("input", { type: "date", id: "set-start" }); st.value = state.start;
-  on(st, "change", function () { if (!isISO(st.value)) { st.value = state.start; msg.textContent = "Enter a valid start date."; return; } state.start = st.value; state.lastSlip = null; changed(); notify("Start date saved."); });
-  var mu = el("input", { type: "number", id: "set-mult", min: "0.25", max: "5", step: "0.25" }); mu.value = state.mult;
-  on(mu, "change", function () { var v = parseFloat(mu.value); if (isNaN(v) || v < 0.25 || v > 5) { mu.value = state.mult; msg.textContent = "The time multiplier must be from 0.25 to 5."; return; } state.mult = v; changed(); notify("Time multiplier saved."); });
   var da = el("input", { type: "number", id: "set-days", min: "1", max: "30", step: "1" }); da.value = state.days;
   on(da, "change", function () { var v = parseInt(da.value, 10); if (isNaN(v) || v < 1 || v > 30) { da.value = state.days; msg.textContent = wd() + " length must be from 1 to 30 days."; return; } state.days = v; changed(); notify(wd() + " length saved."); });
-  fieldOf("set-start", "Default start date", st); fieldOf("set-mult", "Default time multiplier", mu); fieldOf("set-days", wd() + " length in days (at 1.0x)", da);
+  fieldOf("set-days", "Default days per " + wd(), da);
   var bwSel = el("select", { id: "set-word", "class": "plain" });
   Object.keys(WORDS).forEach(function (k) { var op = el("option", { value: k }, k); if (k === wd()) op.selected = true; bwSel.appendChild(op); });
   on(bwSel, "change", function () { state.settings.blockWord = bwSel.value; changed(); });
-  fieldOf("set-word", "Call each stretch of work a", bwSel);
+  fieldOf("set-word", "Name for each stretch of work", bwSel);
   root.appendChild(grid); root.appendChild(msg);
 
   root.appendChild(el("h2", null, "Appearance and formats"));

@@ -22,7 +22,7 @@ export function task(id, block, projectId, what, done, steps, extra) {
 // record and id carry through Candidate -> Active -> Archived, never a second
 // record. See DESIGN.md's "making Project a first-class entity" section.
 export function project(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", mult: 1, due: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, actual: {} };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, actual: {} };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -43,8 +43,8 @@ export function sampleData() {
     project("pApp", "Sample App", "active", { actual: appHistory, notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
     // launchCritical: the app's launch checklist shows the site as a line item,
     // done-state derived from the site's own status (see DESIGN.md).
-    project("pSite", "Sample Website", "active", { start: day(14), mult: 1, linkedProjectIds: ["pApp"], launchCritical: true }),
-    project("pGame", "Sample Game", "active", { start: day(21), mult: 2, due: day(21 + 122) }),
+    project("pSite", "Sample Website", "active", { start: day(14), linkedProjectIds: ["pApp"], launchCritical: true }),
+    project("pGame", "Sample Game", "active", { start: day(21), days: 14, due: day(21 + 122) }),
     project("pExt", "Sample Browser Extension", "candidate", { notes: "A small tool that could ship in a month" }),
     project("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own projects" })
   ];
@@ -91,7 +91,7 @@ export function sampleData() {
 export function defaults() {
   var d = sampleData();
   return {
-    v: 5, start: d.start, mult: 1, days: 7,
+    v: 5, start: d.start, days: 7,
     tasks: d.tasks, actual: [34, 31, 25, null, null, null, null],
     decisions: d.decisions, projects: d.projects, parked: d.parked,
     milestones: d.milestones, lastSlip: null, pins: ["proj:pApp"],
@@ -101,14 +101,14 @@ export function defaults() {
 
 export function validArch(a) { return (a && typeof a === "object" && isISO(a.at) && (a.why === "done" || a.why === "removed")) ? { at: a.at, why: a.why } : null; }
 export function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
-// A slip-snapshot's per-project start/mult pairs (used by slipDialog's undo).
-// Content-validated the same way a real project's own start/mult are.
+// A slip-snapshot's per-project start/days pairs (used by slipDialog's undo).
+// Content-validated the same way a real project's own start/days are.
 function cleanProjectSnap(o) {
   var out = {};
   if (o && typeof o === "object" && !Array.isArray(o)) Object.keys(o).slice(0, 200).forEach(function (k) {
     var v = o[k]; if (!v || typeof v !== "object") return;
-    var e = {}; if (isISO(v.start)) e.start = v.start; if (typeof v.mult === "number" && v.mult >= 0.25 && v.mult <= 5) e.mult = v.mult;
-    if (e.start || e.mult) out[S(k, 40)] = e;
+    var e = {}; if (isISO(v.start)) e.start = v.start; if (typeof v.days === "number" && v.days >= 1 && v.days <= 90) e.days = v.days;
+    if (e.start || e.days) out[S(k, 40)] = e;
   });
   return out;
 }
@@ -116,7 +116,6 @@ export function normalize(s) {
   var d = defaults();
   if (!s || typeof s !== "object") return d;
   if (isISO(s.start)) d.start = s.start;
-  if (typeof s.mult === "number" && s.mult >= 0.25 && s.mult <= 5) d.mult = s.mult;
   if (typeof s.days === "number" && s.days >= 1 && s.days <= 30) d.days = Math.round(s.days);
   if (Array.isArray(s.projects)) {
     d.projects = s.projects.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) {
@@ -127,10 +126,15 @@ export function normalize(s) {
       // Per-project burndown snapshots: { "<Monday ISO>": steps remaining }.
       var snaps = {};
       if (x.actual && typeof x.actual === "object" && !Array.isArray(x.actual)) Object.keys(x.actual).slice(0, 300).forEach(function (k) { var v = x.actual[k]; if (isISO(k) && typeof v === "number" && v >= 0 && v <= 100000) snaps[k] = Math.round(v); });
+      // A project used to have a `mult` (0.25-5) applied to the global block
+      // length instead of its own day count. Convert old saved data once:
+      // days = the global default block length times the old multiplier.
+      var days = (typeof x.days === "number" && x.days >= 1 && x.days <= 90) ? Math.round(x.days)
+        : (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? Math.max(1, Math.round(d.days * x.mult)) : d.days;
       return {
         id: S(x.id, 40), name: S(x.name, 120),
         status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
-        start: isISO(x.start) ? x.start : "", mult: (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? x.mult : 1,
+        start: isISO(x.start) ? x.start : "", days: days,
         due: isISO(x.due) ? x.due : "",
         notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true, actual: snaps,
         // Validated below, once every project's real id is known -- a link

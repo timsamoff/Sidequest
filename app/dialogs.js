@@ -261,9 +261,9 @@ export function slipDialog() {
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push dates later" }, "Push dates later"), "click", function () {
       var n = parseInt(inp.value, 10), target = sel.value;
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
-      // Snapshot every project's own start/mult (for undo) -- a project record
+      // Snapshot every project's own start/days (for undo) -- a project record
       // is the source of truth now, not a separate state.pset dictionary.
-      var projSnap = {}; state.projects.forEach(function (p) { projSnap[p.id] = { start: p.start, mult: p.mult }; });
+      var projSnap = {}; state.projects.forEach(function (p) { projSnap[p.id] = { start: p.start, days: p.days }; });
       var snap = { start: state.start, projects: projSnap };
       var targetName = target ? dispProject({ projectId: target }) : "";
       if (target === "") {
@@ -271,7 +271,7 @@ export function slipDialog() {
         state.projects.forEach(function (p) { if (p.start) p.start = iso(addDays(parseISO(p.start), n)); });
       } else {
         var eff = pset(target), p2 = findProject(target);
-        if (p2) { p2.start = iso(addDays(parseISO(eff.start), n)); p2.mult = eff.mult; }
+        if (p2) { p2.start = iso(addDays(parseISO(eff.start), n)); p2.days = eff.days; }
       }
       state.lastSlip = { days: n, snap: snap };
       changed(); closeModal();
@@ -281,7 +281,7 @@ export function slipDialog() {
       state.start = state.lastSlip.snap.start;
       Object.keys(state.lastSlip.snap.projects).forEach(function (pid) {
         var p = findProject(pid), snapped = state.lastSlip.snap.projects[pid];
-        if (p && snapped) { if (snapped.start) p.start = snapped.start; if (snapped.mult) p.mult = snapped.mult; }
+        if (p && snapped) { if (snapped.start) p.start = snapped.start; if (snapped.days) p.days = snapped.days; }
       });
       state.lastSlip = null; changed(); closeModal();
       notify("Slip undone.");

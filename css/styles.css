@@ -10,6 +10,7 @@ p { margin: 0; }
 .hint { color: var(--muted); font-size: .9rem; margin-top: var(--space-6); }
 .note { margin-top: var(--space-12); color: var(--muted); font-size: .9rem; }
 .msg { margin-top: var(--space-10); color: var(--muted); font-size: .9rem; min-height: 1.4em; }
+.schedulesmsg:empty { margin-top: 0; min-height: 0; }
 
 input, select, button, textarea { font: inherit; color: var(--ink); margin: 0; }
 input[type="text"], input[type="date"], input[type="number"], textarea {
@@ -235,7 +236,7 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
 .dstate.ok { color: var(--planned); }
 .decision input[type="text"] { margin-top: var(--space-6); }
 .sechead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-10); margin-top: var(--space-22); }
-.sechead h3 { margin-top: 0; }
+.sechead h3, .sechead .sechead-h { margin-top: 0; }
 .first { margin-top: 0; }
 
 .chartbox { margin-top: var(--space-12); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: var(--space-12) var(--space-12) var(--space-4); }

@@ -51,8 +51,8 @@ export function unlinkProjects(aId, bId) {
   if (a) a.linkedProjectIds = a.linkedProjectIds.filter(function (id) { return id !== bId; });
   if (b) b.linkedProjectIds = b.linkedProjectIds.filter(function (id) { return id !== aId; });
 }
-export function pset(projectId) { var p = findProject(projectId); return { start: (p && p.start) || state.start, mult: (p && p.mult) || state.mult }; }
-export function offsetFor(projectId, n) { return Math.floor(n * state.days * pset(projectId).mult + 1e-9); }
+export function pset(projectId) { var p = findProject(projectId); return { start: (p && p.start) || state.start, days: (p && p.days) || state.days }; }
+export function offsetFor(projectId, n) { return n * pset(projectId).days; }
 export function blockStartFor(projectId, b) { return addDays(parseISO(pset(projectId).start), offsetFor(projectId, b - 1)); }
 export function blockEndFor(projectId, b) { return addDays(parseISO(pset(projectId).start), offsetFor(projectId, b) - 1); }
 export function projKey(t) { return t.isNext ? null : t.projectId; }
