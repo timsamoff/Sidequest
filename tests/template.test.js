@@ -65,7 +65,7 @@ function kit(dom) {
     setField: (k, v) => { d.getElementById("f-" + k).value = v; },
     type: function (q) { const b = $("searchBox"); b.value = q; this.fire(b, "input"); },
     saved: () => JSON.parse(w.localStorage.getItem("sidequest-template-v1")) || {},
-    stand: () => [...d.querySelectorAll("#view .standing li")].map(li => (li.querySelector(".plink,.slabel") || {}).textContent) };
+    stand: () => [...d.querySelectorAll("#view .standing li")].map(li => (li.querySelector(".plink") || {}).textContent) };
 }
 
 async function main() {
@@ -113,7 +113,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 /* ---- sample projects ---- */
 {
   const k = kit(await mk()); k.tab("projects");
-  ok(k.stand().join() === "Sample Website,Sample App,Sample Game,Next slot", "In progress lists the three sample projects (" + k.stand().join() + ")");
+  ok(k.stand().join() === "Sample Website,Sample App,Sample Game", "In progress lists the three sample projects (" + k.stand().join() + ")");
   const pagesList = [...k.d.querySelectorAll("#view .list")][0].textContent;
   ok(!pagesList.includes("Sample App") && !pagesList.includes("Sample Website") && !pagesList.includes("Sample Game"), "the Projects list excludes the projects already shown in In progress");
   ok(k.$("view").textContent.includes("Sample Browser Extension") && k.$("view").textContent.includes("Sample Command-Line Tool"), "two sample candidates listed");
@@ -121,13 +121,13 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("view").textContent.includes("Try a new game engine") && k.$("view").textContent.includes("Write up lessons learned") && !k.$("view").textContent.includes("Redesign the logo"), "parking lot samples (removed one is in the Archive)");
   k.tab("schedule");
   const rows = [...k.d.querySelectorAll(".listpane .tlist")[0].querySelectorAll(".item")].map(b => b.textContent);
-  ok(rows.length === 12, "12 scheduled tasks (all tasks stay visible now -- completed ones aren't archived) (got " + rows.length + ")");
+  ok(rows.length === 14, "14 scheduled tasks (all tasks stay visible now -- completed ones aren't archived) (got " + rows.length + ")");
   ok(k.$("view").textContent.includes("Backlog (2)") && k.$("view").textContent.includes("Add a dark mode") && k.$("view").textContent.includes("Add a level editor"), "backlog has two samples");
   ok(k.d.getElementById("task-block").textContent.includes("Sprint 1"), "vocabulary is Sprint in the samples");
   // per-project schedules
   k.tab("timeline");
   const lanes = [...k.d.querySelectorAll("#view .lane .lname")].map(l => l.textContent);
-  ok(lanes.filter(l => l.startsWith("Sample")).length === 3, "timeline has a lane for each sample project");
+  ok(lanes.filter(l => l.startsWith("Sample")).length === 4, "timeline has a lane for each sample project");
   const game = [...k.d.querySelectorAll("#view .lane")].find(l => l.querySelector(".lname").textContent.startsWith("Sample Game"));
   ok(game.querySelectorAll(".bar").length === 2 && game.querySelector(".ldates").textContent.includes("due "), "Sample Game shows an estimate bar");
   const mil = k.d.querySelector("#view .mslist").textContent;
@@ -265,7 +265,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const statuses = rows.map(b => b.classList.contains("done"));
   const firstDone = statuses.indexOf(true);
   ok(firstDone === -1 || statuses.slice(firstDone).every(Boolean), "once a completed task appears, every task after it in the list is also completed (sunk to the bottom)");
-  ok(rows.length === 12, "completed tasks (Sketch the main screens, Build the sign-in flow) stay in the Tasks list, not moved to the Archive (" + rows.length + ")");
+  ok(rows.length === 14, "completed tasks (Sketch the main screens, Build the sign-in flow) stay in the Tasks list, not moved to the Archive (" + rows.length + ")");
 }
 
 /* ---- search works on samples ---- */
@@ -291,7 +291,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // reload samples
   k.tab("settings"); k.click(k.$("startFresh")); const r = [...k.d.querySelectorAll('#modalBody input[name=fresh]')]; r[1].checked = true; k.fire(r[1]);
   const a2 = k.$("freshAck"); a2.checked = true; k.fire(a2); k.click(k.$("freshGo"));
-  ok(k.saved().tasks.length === 14 && k.saved().pins.includes("proj:pApp"), "the samples can be reloaded");
+  ok(k.saved().tasks.length === 16 && k.saved().pins.includes("proj:pApp"), "the samples can be reloaded");
 }
 
 /* ---- core behavior still intact ---- */
@@ -312,7 +312,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(completedRow && completedRow.classList.contains("done"), "the task shows as completed in Tasks, not moved anywhere");
   // backup text
   k.tab("settings"); k.click(k.$("showText")); const j = JSON.parse(k.$("backupText").value);
-  ok(j.tasks.length === 14 && j.projects.find(p => p.name === "Sample Game").days === 14, "backup export contains the sample data");
+  ok(j.tasks.length === 16 && j.projects.find(p => p.name === "Sample Game").days === 14, "backup export contains the sample data");
   // reload keeps changes and skips the welcome
   const k2 = kit(await mk(k.saved())); ok(k2.$("viewTitle").textContent === "Today" && !k2.$("view").textContent.includes("Welcome to Sidequest") || k2.saved !== undefined, "reload opens on Today");
 }
@@ -384,9 +384,9 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!k.d.querySelector("#view .chip.projcomplete"), "a Complete project shows a Complete badge on its own page");
   ok(!!k.btn(k.$("view"), "Reopen") && !k.btn(k.$("view"), "Mark complete"), "Complete project offers Reopen in place of Mark complete");
   k.tab("projects");
-  ok(!k.stand().includes("Sample App"), "a Complete project drops out of Where things stand");
+  ok(!k.stand().includes("Sample App"), "a Complete project drops out of In progress");
   const appRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample App"));
-  ok(!!appRow, "a Complete project (no longer in Where things stand) appears in the Projects section instead");
+  ok(!!appRow, "a Complete project (no longer in In progress) appears in the Projects section instead");
   ok(!!appRow.querySelector(".chip.projcomplete"), "the Projects section also shows the Complete badge");
   ok(!k.btn(appRow, "View"), "Projects rows have no separate View button, the title is the link");
   k.click(k.btn(appRow, "Sample App"));

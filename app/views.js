@@ -577,7 +577,7 @@ export function promoteToActive(id) {
   if (t) t.status = "Completed";
   changed();
 }
-export function standingBlock(c) {
+export function standingBlock() {
   var wrap = el("div");
   wrap.appendChild(el("h2", { "class": "first" }, "In progress"));
   wrap.appendChild(el("p", { "class": "hint" }, "Built from your open tasks, ordered by when each project's next task starts. Pin a project to the sidebar for quick access."));
@@ -595,23 +595,18 @@ export function standingBlock(c) {
   var ul = el("ul", { "class": "standing" });
   if (!order.length) ul.appendChild(el("li", null, "No open tasks."));
   order.forEach(function (g) {
-    var li = el("li"), top = el("div", { "class": "srow" });
+    var li = el("li"), row = el("div", { "class": "srow" }), textWrap = el("div", { style: "flex:1 1 200px" });
     var nm = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, g.name);
     on(nm, "click", function () { go(validPage("proj:" + g.projectId) ? "proj:" + g.projectId : "projects"); });
-    top.appendChild(nm); top.appendChild(projectPinButton("proj:" + g.projectId, g.name));
-    li.appendChild(top);
+    textWrap.appendChild(nm);
     var nx = el("div", { "class": "snext" }); nx.appendChild(document.createTextNode("Next up: "));
     var tl = el("button", { type: "button", "class": "textbtn", title: "View this task" }, short(g.first.what, 90));
     on(tl, "click", function () { openTask(g.first.id); });
     nx.appendChild(tl); nx.appendChild(document.createTextNode(" · " + fmt(taskStart(g.first)) + " · " + g.open + " open " + (g.open === 1 ? "task" : "tasks")));
-    li.appendChild(nx); ul.appendChild(li);
+    textWrap.appendChild(nx);
+    row.appendChild(textWrap); row.appendChild(projectPinButton("proj:" + g.projectId, g.name));
+    li.appendChild(row); ul.appendChild(li);
   });
-  var sl = el("li"), stEl = el("div", { "class": "srow" });
-  stEl.appendChild(el("span", { "class": "slabel" }, "Next slot"));
-  if (c) { var cl = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, c.name); on(cl, "click", function () { go("proj:" + c.id); }); stEl.appendChild(cl); stEl.appendChild(projectPinButton("proj:" + c.id, c.name)); }
-  else stEl.appendChild(el("span", { "class": "scount" }, "Not chosen yet"));
-  sl.appendChild(stEl); ul.appendChild(sl);
-  if (c) projectIds.push(c.id);
   box.appendChild(ul); wrap.appendChild(box);
   return { node: wrap, projectIds: projectIds };
 }
@@ -647,8 +642,7 @@ export function candidatesSection() {
   return sec;
 }
 export function renderProjects(root) {
-  var c = chosen();
-  var standing = standingBlock(c);
+  var standing = standingBlock();
   root.appendChild(standing.node);
   root.appendChild(pagesSection(standing.projectIds));
   root.appendChild(candidatesSection());

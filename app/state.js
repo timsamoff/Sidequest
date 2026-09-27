@@ -71,7 +71,12 @@ export function sampleData() {
     task("g2", 2, "pGame", "Make the first ten levels", "Ten playable levels"),
     task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid", true), st("g3c", "Record a trailer", true)]),
     task("g4", 0, "pGame", "Add a level editor", "Players can make their own levels"),
-    task("n1", 6, null, "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true })
+    task("n1", 6, null, "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true }),
+    // pDone's own tasks: a Complete project keeps its tasks, all finished --
+    // demonstrates that a Complete project's task history stays intact and
+    // visible, not cleared out just because the project itself is done.
+    task("d1", 1, "pDone", "Build the core feature", "It works end to end", [st("d1a", "Build the happy path", false, true), st("d1b", "Handle errors", false, true)], { status: "Completed", doneAt: lastWeek }),
+    task("d2", 2, "pDone", "Ship it", "It's live", [st("d2a", "Write the release notes", false, true), st("d2b", "Announce it", false, true)], { status: "Completed", doneAt: yest })
   ];
   return {
     tasks: tasks,
