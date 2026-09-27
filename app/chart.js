@@ -208,14 +208,14 @@ export function rangeBlock() {
   });
   var maxEnd = addDays(s0, 400);
   order.forEach(function (pid) {
-    var g = groups[pid], p = findProject(pid), bars = [{ a: g.a, b: g.b, cls: "" }], dates = fmt(g.a) + " to " + fmt(g.b), est = p && p.months;
-    if (est) { var ea = addDays(g.b, 1), eb = addMonths(ea, est); bars.push({ a: ea, b: eb, cls: "est" }); dates += ", estimate to " + fmtY(eb); if (eb > maxEnd) maxEnd = eb; }
+    var g = groups[pid], p = findProject(pid), bars = [{ a: g.a, b: g.b, cls: "" }], dates = fmt(g.a) + " to " + fmt(g.b), due = p && p.due ? parseISO(p.due) : null;
+    if (due && due > g.b) { bars.push({ a: addDays(g.b, 1), b: due, cls: "est" }); dates += ", due " + fmtY(due); if (due > maxEnd) maxEnd = due; }
     lanes.push({ name: g.name, bars: bars, dates: dates });
   });
   var c = chosen(), openEnded = false;
   if (c && c.start) {
     var ca = parseISO(c.start), cb;
-    if (c.months) { cb = addMonths(ca, c.months); lanes.push({ name: c.name, bars: [{ a: ca, b: cb, cls: "" }], dates: fmt(ca) + " to " + fmtY(cb) }); if (cb > maxEnd) maxEnd = cb; }
+    if (c.due) { cb = parseISO(c.due); lanes.push({ name: c.name, bars: [{ a: ca, b: cb, cls: "" }], dates: fmt(ca) + " to " + fmtY(cb) }); if (cb > maxEnd) maxEnd = cb; }
     else { openEnded = true; lanes.push({ name: c.name, bars: [{ a: ca, b: null, cls: "open" }], dates: "from " + fmtY(ca) }); }
   }
   // Milestones require a direct project link (see DESIGN.md) -- labeled by

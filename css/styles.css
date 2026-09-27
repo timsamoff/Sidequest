@@ -128,7 +128,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .pgrid > .cl.r1 { margin-top: 0; }
 .pgrid > .cr.r1 { margin-top: var(--space-26); }
 .pgrid > button { justify-self: start; }
-.listbox { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.listbox { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; margin-top: var(--space-12); }
 .listbox > .list { border: 0; border-radius: 0; margin: 0; background: transparent; }
 .listbox > .progress { margin: 0; padding: var(--space-10) var(--space-14); border-bottom: 1px solid var(--line); }
 .listbox > .progress:empty { display: none; }

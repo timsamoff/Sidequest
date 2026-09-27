@@ -129,7 +129,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const lanes = [...k.d.querySelectorAll("#view .lane .lname")].map(l => l.textContent);
   ok(lanes.filter(l => l.startsWith("Sample")).length === 3, "timeline has a lane for each sample project");
   const game = [...k.d.querySelectorAll("#view .lane")].find(l => l.querySelector(".lname").textContent.startsWith("Sample Game"));
-  ok(game.querySelectorAll(".bar").length === 2 && game.querySelector(".ldates").textContent.includes("estimate to"), "Sample Game shows an estimate bar");
+  ok(game.querySelectorAll(".bar").length === 2 && game.querySelector(".ldates").textContent.includes("due "), "Sample Game shows an estimate bar");
   const mil = k.d.querySelector("#view .mslist").textContent;
   ok(mil.includes("Sample App beta opens") && mil.includes("Sample Game demo day"), "two sample milestones");
   // dates: three different starts

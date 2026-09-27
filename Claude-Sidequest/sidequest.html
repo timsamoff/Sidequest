@@ -204,7 +204,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .pgrid > .cl.r1 { margin-top: 0; }
 .pgrid > .cr.r1 { margin-top: var(--space-26); }
 .pgrid > button { justify-self: start; }
-.listbox { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.listbox { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; margin-top: var(--space-12); }
 .listbox > .list { border: 0; border-radius: 0; margin: 0; background: transparent; }
 .listbox > .progress { margin: 0; padding: var(--space-10) var(--space-14); border-bottom: 1px solid var(--line); }
 .listbox > .progress:empty { display: none; }
@@ -902,7 +902,7 @@ function task(id, block, projectId, what, done, steps, extra) {
 // record and id carry through Candidate -> Active -> Archived, never a second
 // record. See DESIGN.md's "making Project a first-class entity" section.
 function project(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", mult: 1, months: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, actual: {} };
+  var p = { id: id, name: name, status: status, start: "", mult: 1, due: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, actual: {} };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -924,7 +924,7 @@ function sampleData() {
     // launchCritical: the app's launch checklist shows the site as a line item,
     // done-state derived from the site's own status (see DESIGN.md).
     project("pSite", "Sample Website", "active", { start: day(14), mult: 1, linkedProjectIds: ["pApp"], launchCritical: true }),
-    project("pGame", "Sample Game", "active", { start: day(21), mult: 2, months: 4 }),
+    project("pGame", "Sample Game", "active", { start: day(21), mult: 2, due: day(21 + 122) }),
     project("pExt", "Sample Browser Extension", "candidate", { notes: "A small tool that could ship in a month" }),
     project("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own projects" })
   ];
@@ -1011,7 +1011,7 @@ function normalize(s) {
         id: S(x.id, 40), name: S(x.name, 120),
         status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
         start: isISO(x.start) ? x.start : "", mult: (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? x.mult : 1,
-        months: (typeof x.months === "number" && x.months >= 1 && x.months <= 36) ? Math.round(x.months) : "",
+        due: isISO(x.due) ? x.due : "",
         notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true, actual: snaps,
         // Validated below, once every project's real id is known -- a link
         // can only point at another project that actually exists in the
@@ -1399,14 +1399,14 @@ function rangeBlock() {
   });
   var maxEnd = addDays(s0, 400);
   order.forEach(function (pid) {
-    var g = groups[pid], p = findProject(pid), bars = [{ a: g.a, b: g.b, cls: "" }], dates = fmt(g.a) + " to " + fmt(g.b), est = p && p.months;
-    if (est) { var ea = addDays(g.b, 1), eb = addMonths(ea, est); bars.push({ a: ea, b: eb, cls: "est" }); dates += ", estimate to " + fmtY(eb); if (eb > maxEnd) maxEnd = eb; }
+    var g = groups[pid], p = findProject(pid), bars = [{ a: g.a, b: g.b, cls: "" }], dates = fmt(g.a) + " to " + fmt(g.b), due = p && p.due ? parseISO(p.due) : null;
+    if (due && due > g.b) { bars.push({ a: addDays(g.b, 1), b: due, cls: "est" }); dates += ", due " + fmtY(due); if (due > maxEnd) maxEnd = due; }
     lanes.push({ name: g.name, bars: bars, dates: dates });
   });
   var c = chosen(), openEnded = false;
   if (c && c.start) {
     var ca = parseISO(c.start), cb;
-    if (c.months) { cb = addMonths(ca, c.months); lanes.push({ name: c.name, bars: [{ a: ca, b: cb, cls: "" }], dates: fmt(ca) + " to " + fmtY(cb) }); if (cb > maxEnd) maxEnd = cb; }
+    if (c.due) { cb = parseISO(c.due); lanes.push({ name: c.name, bars: [{ a: ca, b: cb, cls: "" }], dates: fmt(ca) + " to " + fmtY(cb) }); if (cb > maxEnd) maxEnd = cb; }
     else { openEnded = true; lanes.push({ name: c.name, bars: [{ a: ca, b: null, cls: "open" }], dates: "from " + fmtY(ca) }); }
   }
   // Milestones require a direct project link (see DESIGN.md) -- labeled by
@@ -2064,7 +2064,7 @@ function renderSchedule(root) {
   if (!o.length) ul.appendChild(el("li", { "class": "plain" }, "Nothing is scheduled. Choose a " + wl() + " for an item in the Backlog."));
   o.forEach(function (t) { ul.appendChild(taskRow(t)); });
   var c = chosen();
-  if (o.length) ul.appendChild(el("li", { "class": "plain" }, "Next: start " + (c ? c.name : "the next project") + "."));
+  if (o.length && c) ul.appendChild(el("li", { "class": "plain" }, "Next: start " + c.name + "."));
   lp.appendChild(ul);
   if (bl.length) {
     lp.appendChild(el("h2", null, "Backlog (" + bl.length + ")"));
@@ -2314,23 +2314,14 @@ function renderProjectPage(root, id) {
     on(nt, "input", function () { p.notes = nt.value.slice(0, 5000); save(); });
     nf.appendChild(nt); cb.appendChild(nf);
     var f = el("div", { "class": "cfields", style: "margin:14px 0 0" });
-    var f1 = el("div", { "class": "field" }); f1.appendChild(el("label", { "for": "cs-" + p.id }, "Start date (optional)"));
+    var f1 = el("div", { "class": "field" }); f1.appendChild(el("label", { "for": "cs-" + p.id }, "Start date"));
     var sd = el("input", { type: "date", id: "cs-" + p.id }); sd.value = p.start;
-    on(sd, "change", function () { p.start = isISO(sd.value) ? sd.value : ""; cf.disabled = !p.start; if (!p.start) cf.value = ""; save(); notify("Start date saved. See it on the Timeline."); });
-    f1.appendChild(sd);
-    var f2 = el("div", { "class": "field" }); f2.appendChild(el("label", { "for": "cm-" + p.id }, "Estimated months (optional)"));
-    var mo = el("input", { type: "number", id: "cm-" + p.id, min: "1", max: "36", step: "1" }); mo.value = p.months;
-    on(mo, "change", function () { var v = parseInt(mo.value, 10); p.months = (v >= 1 && v <= 36) ? v : ""; if (p.months === "") mo.value = ""; if (cf) cf.value = ""; save(); });
-    f2.appendChild(mo); f.appendChild(f1); f.appendChild(f2);
-    var f3 = el("div", { "class": "field" }); f3.appendChild(el("label", { "for": "cf-" + p.id }, "Or pick a target completion date (optional)"));
-    var cf = el("input", p.start ? { type: "date", id: "cf-" + p.id } : { type: "date", id: "cf-" + p.id, disabled: "disabled" });
-    on(cf, "change", function () {
-      if (!p.start || !isISO(cf.value)) { cf.value = ""; return; }
-      var months = Math.round((parseISO(cf.value) - parseISO(p.start)) / (DAY * 30.44));
-      if (months < 1 || months > 36) { cf.value = ""; notify("Pick a date between 1 and 36 months from the start date."); return; }
-      p.months = months; mo.value = months; save(); notify("Completion date saved as about " + months + (months === 1 ? " month" : " months") + ".");
-    });
-    f3.appendChild(cf); f.appendChild(f3); cb.appendChild(f);
+    on(sd, "change", function () { p.start = isISO(sd.value) ? sd.value : ""; save(); notify("Start date saved. See it on the Timeline."); });
+    f1.appendChild(sd); f.appendChild(f1);
+    var f2 = el("div", { "class": "field" }); f2.appendChild(el("label", { "for": "cd-" + p.id }, "Due date"));
+    var dd = el("input", { type: "date", id: "cd-" + p.id }); dd.value = p.due;
+    on(dd, "change", function () { p.due = isISO(dd.value) ? dd.value : ""; save(); notify("Due date saved. See it on the Timeline."); });
+    f2.appendChild(dd); f.appendChild(f2); cb.appendChild(f);
     var ca = el("div", { "class": "actions", style: "margin-top:10px" });
     ca.appendChild(on(el("button", { type: "button", "class": "primary", title: "Make this the active project" }, "Choose as next project"), "click", function () { promoteToActive(p.id); }));
     cb.appendChild(ca); root.appendChild(cb);
@@ -2376,7 +2367,6 @@ function renderProjectPage(root, id) {
   root.appendChild(el("h2", null, "Linked projects"));
   linksSection(root, p);
 
-  root.appendChild(el("h2", null, "Launch"));
   launchSection(root, p);
 
   var ar = el("div", { "class": "actions", style: "margin-top:14px" });
@@ -2418,13 +2408,14 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
   host.appendChild(hd);
   var eff = pset(p.id);
   if (readOnly) {
-    host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + ", time multiplier " + eff.mult + "."));
+    host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + ", time multiplier " + eff.mult + (p.due ? ", due " + fmt(p.due) : "") + "."));
   } else {
     host.appendChild(el("p", { "class": "hint" }, "Set this project's own start date and pace."));
     var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
     var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
     var pm = el("input", { type: "number", id: "proj-mult", min: "0.25", max: "5", step: "0.25" }); pm.value = eff.mult;
+    var pd = el("input", { type: "date", id: "proj-due" }); pd.value = p.due;
     function applyOwn() {
       var sv = ps.value, mv = parseFloat(pm.value);
       if (!isISO(sv)) { ps.value = eff.start; smsg.textContent = "Enter a valid start date."; return; }
@@ -2432,7 +2423,8 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
       p.start = sv; p.mult = mv; changed(); notify(p.name + " schedule saved.");
     }
     on(ps, "change", applyOwn); on(pm, "change", applyOwn);
-    sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm);
+    on(pd, "change", function () { p.due = isISO(pd.value) ? pd.value : ""; changed(); notify(p.due ? "Due date saved." : "Due date cleared."); });
+    sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm); sfield("proj-due", "Due date", pd);
     host.appendChild(sg); host.appendChild(smsg);
   }
 }

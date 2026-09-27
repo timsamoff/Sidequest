@@ -192,7 +192,7 @@ export function renderSchedule(root) {
   if (!o.length) ul.appendChild(el("li", { "class": "plain" }, "Nothing is scheduled. Choose a " + wl() + " for an item in the Backlog."));
   o.forEach(function (t) { ul.appendChild(taskRow(t)); });
   var c = chosen();
-  if (o.length) ul.appendChild(el("li", { "class": "plain" }, "Next: start " + (c ? c.name : "the next project") + "."));
+  if (o.length && c) ul.appendChild(el("li", { "class": "plain" }, "Next: start " + c.name + "."));
   lp.appendChild(ul);
   if (bl.length) {
     lp.appendChild(el("h2", null, "Backlog (" + bl.length + ")"));
@@ -442,23 +442,14 @@ export function renderProjectPage(root, id) {
     on(nt, "input", function () { p.notes = nt.value.slice(0, 5000); save(); });
     nf.appendChild(nt); cb.appendChild(nf);
     var f = el("div", { "class": "cfields", style: "margin:14px 0 0" });
-    var f1 = el("div", { "class": "field" }); f1.appendChild(el("label", { "for": "cs-" + p.id }, "Start date (optional)"));
+    var f1 = el("div", { "class": "field" }); f1.appendChild(el("label", { "for": "cs-" + p.id }, "Start date"));
     var sd = el("input", { type: "date", id: "cs-" + p.id }); sd.value = p.start;
-    on(sd, "change", function () { p.start = isISO(sd.value) ? sd.value : ""; cf.disabled = !p.start; if (!p.start) cf.value = ""; save(); notify("Start date saved. See it on the Timeline."); });
-    f1.appendChild(sd);
-    var f2 = el("div", { "class": "field" }); f2.appendChild(el("label", { "for": "cm-" + p.id }, "Estimated months (optional)"));
-    var mo = el("input", { type: "number", id: "cm-" + p.id, min: "1", max: "36", step: "1" }); mo.value = p.months;
-    on(mo, "change", function () { var v = parseInt(mo.value, 10); p.months = (v >= 1 && v <= 36) ? v : ""; if (p.months === "") mo.value = ""; if (cf) cf.value = ""; save(); });
-    f2.appendChild(mo); f.appendChild(f1); f.appendChild(f2);
-    var f3 = el("div", { "class": "field" }); f3.appendChild(el("label", { "for": "cf-" + p.id }, "Or pick a target completion date (optional)"));
-    var cf = el("input", p.start ? { type: "date", id: "cf-" + p.id } : { type: "date", id: "cf-" + p.id, disabled: "disabled" });
-    on(cf, "change", function () {
-      if (!p.start || !isISO(cf.value)) { cf.value = ""; return; }
-      var months = Math.round((parseISO(cf.value) - parseISO(p.start)) / (DAY * 30.44));
-      if (months < 1 || months > 36) { cf.value = ""; notify("Pick a date between 1 and 36 months from the start date."); return; }
-      p.months = months; mo.value = months; save(); notify("Completion date saved as about " + months + (months === 1 ? " month" : " months") + ".");
-    });
-    f3.appendChild(cf); f.appendChild(f3); cb.appendChild(f);
+    on(sd, "change", function () { p.start = isISO(sd.value) ? sd.value : ""; save(); notify("Start date saved. See it on the Timeline."); });
+    f1.appendChild(sd); f.appendChild(f1);
+    var f2 = el("div", { "class": "field" }); f2.appendChild(el("label", { "for": "cd-" + p.id }, "Due date"));
+    var dd = el("input", { type: "date", id: "cd-" + p.id }); dd.value = p.due;
+    on(dd, "change", function () { p.due = isISO(dd.value) ? dd.value : ""; save(); notify("Due date saved. See it on the Timeline."); });
+    f2.appendChild(dd); f.appendChild(f2); cb.appendChild(f);
     var ca = el("div", { "class": "actions", style: "margin-top:10px" });
     ca.appendChild(on(el("button", { type: "button", "class": "primary", title: "Make this the active project" }, "Choose as next project"), "click", function () { promoteToActive(p.id); }));
     cb.appendChild(ca); root.appendChild(cb);
@@ -504,7 +495,6 @@ export function renderProjectPage(root, id) {
   root.appendChild(el("h2", null, "Linked projects"));
   linksSection(root, p);
 
-  root.appendChild(el("h2", null, "Launch"));
   launchSection(root, p);
 
   var ar = el("div", { "class": "actions", style: "margin-top:14px" });
@@ -546,13 +536,14 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
   host.appendChild(hd);
   var eff = pset(p.id);
   if (readOnly) {
-    host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + ", time multiplier " + eff.mult + "."));
+    host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + ", time multiplier " + eff.mult + (p.due ? ", due " + fmt(p.due) : "") + "."));
   } else {
     host.appendChild(el("p", { "class": "hint" }, "Set this project's own start date and pace."));
     var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
     var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
     var pm = el("input", { type: "number", id: "proj-mult", min: "0.25", max: "5", step: "0.25" }); pm.value = eff.mult;
+    var pd = el("input", { type: "date", id: "proj-due" }); pd.value = p.due;
     function applyOwn() {
       var sv = ps.value, mv = parseFloat(pm.value);
       if (!isISO(sv)) { ps.value = eff.start; smsg.textContent = "Enter a valid start date."; return; }
@@ -560,7 +551,8 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
       p.start = sv; p.mult = mv; changed(); notify(p.name + " schedule saved.");
     }
     on(ps, "change", applyOwn); on(pm, "change", applyOwn);
-    sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm);
+    on(pd, "change", function () { p.due = isISO(pd.value) ? pd.value : ""; changed(); notify(p.due ? "Due date saved." : "Due date cleared."); });
+    sfield("proj-start", "Start date", ps); sfield("proj-mult", "Time multiplier", pm); sfield("proj-due", "Due date", pd);
     host.appendChild(sg); host.appendChild(smsg);
   }
 }
