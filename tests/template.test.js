@@ -645,6 +645,24 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(Object.keys(app.actual).length >= 3, "the earlier weeks are kept");
 }
 {
+  // a Complete project's burndown never leaves a gap for a week nothing was
+  // recorded -- its remaining count is unambiguously 0 from completion on,
+  // unlike an active project's genuinely-unknown unrecorded past
+  const saved = {
+    projects: [{ id: "pDoneGap", name: "Finished Long Ago", status: "complete", start: "2026-08-03", days: 7, actual: { "2026-08-10": 1 } }],
+    tasks: [
+      { id: "g1", block: 1, projectId: "pDoneGap", what: "Step one", done: "done", status: "Completed", steps: [] },
+      { id: "g2", block: 2, projectId: "pDoneGap", what: "Step two", done: "done", status: "Completed", steps: [] }
+    ]
+  };
+  const k = kit(await mk(saved));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Finished Long Ago"));
+  const svg = k.d.querySelector("#view svg.chart");
+  const dots = [...svg.querySelectorAll(".dot")];
+  ok(dots.length >= 5, "every week from start to now has a plotted point, not just the recorded one (" + dots.length + ")");
+  ok(svg.querySelectorAll("polyline.actual").length === 1, "the actual line is one unbroken polyline, not split by an unrecorded gap week (" + svg.querySelectorAll("polyline.actual").length + " segments)");
+}
+{
   // saved snapshots are validated on load
   const saved = { projects: [{ id: "pV", name: "Snap", status: "active", actual: { "2026-09-14": 12, "bad": 3, "2026-09-21": -1, "2026-09-28": "x" } }], tasks: [] };
   const k = kit(await mk(saved));

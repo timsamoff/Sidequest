@@ -123,12 +123,19 @@ export function projectBurn(p) {
   cps.push(endWk);
   var planned = cps.map(function (ms) { var d = 0; ts.forEach(function (t) { if (taskEnd(t) <= ms) d += weight(t); }); return total - d; });
   var live = projectRemainingUnits(p);
+  // A Complete project's remaining count for any never-recorded week isn't
+  // genuinely unknown the way an active project's past would be -- it's 0,
+  // unambiguously, for every week from completion onward. Fall back to that
+  // instead of leaving a permanent gap in the actual line just because
+  // nothing happened to trigger recordProjectWeeks() during those weeks.
   var actual = cps.map(function (ms, i) {
     var next = i < cps.length - 1 ? cps[i + 1] : Infinity;
     if (ms <= cur && cur < next) return live;
-    if (ms > cur) return null;
+    if (ms > cur) return p.status === "complete" ? live : null;
     var v = p.actual[iso(ms)];
-    return v !== undefined ? v : (i === 0 ? total : null);
+    if (v !== undefined) return v;
+    if (i === 0) return total;
+    return p.status === "complete" ? live : null;
   });
   return { cps: cps, planned: planned, actual: actual, total: total, tasks: ts, step: step };
 }
