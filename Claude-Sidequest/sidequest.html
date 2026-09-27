@@ -922,6 +922,10 @@ function sampleData() {
   var lastWeek = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 7)).toISOString().slice(0, 10);
   // Sample App has 16 steps of scheduled work; it started two Mondays ago.
   var appHistory = {}; appHistory[day(0)] = 16; appHistory[day(7)] = 13;
+  // Sample Finished Project's own history: one week behind schedule, one
+  // exactly on schedule, one ahead -- a real zig-zag around the planned
+  // line, not a flat match, so its full-project Burndown has something to show.
+  var doneHistory = {}; doneHistory[day(-21)] = 7; doneHistory[day(-14)] = 4; doneHistory[day(-7)] = 1;
   var projects = [
     // pApp <-> pSite demonstrates a bidirectional project link (see
     // DESIGN.md's "linking related projects" section): the app and its
@@ -936,7 +940,7 @@ function sampleData() {
     project("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own projects" }),
     // Demonstrates a Complete project: drops out of In progress but still
     // shows in the plain Projects list with its Complete badge.
-    project("pDone", "Sample Finished Project", "complete", { start: day(-30), notes: "Shipped and wrapped up." }),
+    project("pDone", "Sample Finished Project", "complete", { start: day(-28), notes: "Shipped and wrapped up.", actual: doneHistory }),
     // Demonstrates a promoted-but-task-less Active project: shows as
     // "Next slot" in In progress, not in the plain Projects list (see
     // standingBlock()'s own projectIds exclusion) -- In progress is built
@@ -961,9 +965,14 @@ function sampleData() {
     task("n1", 6, null, "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true }),
     // pDone's own tasks: a Complete project keeps its tasks, all finished --
     // demonstrates that a Complete project's task history stays intact and
-    // visible, not cleared out just because the project itself is done.
-    task("d1", 1, "pDone", "Build the core feature", "It works end to end", [st("d1a", "Build the happy path", false, true), st("d1b", "Handle errors", false, true)], { status: "Completed", doneAt: lastWeek }),
-    task("d2", 2, "pDone", "Ship it", "It's live", [st("d2a", "Write the release notes", false, true), st("d2b", "Announce it", false, true)], { status: "Completed", doneAt: yest })
+    // visible, not cleared out just because the project itself is done. Four
+    // weekly tasks, two steps (so weight 2) each, so the planned line drops
+    // evenly by 2 a week -- doneHistory above then zig-zags the actual line
+    // around that even plan.
+    task("d1", 1, "pDone", "Design the feature", "The design is agreed", [st("d1a", "Sketch the approach", false, true), st("d1b", "Get sign-off", false, true)], { status: "Completed", doneAt: day(-22) }),
+    task("d2", 2, "pDone", "Build the core feature", "It works end to end", [st("d2a", "Build the happy path", false, true), st("d2b", "Handle errors", false, true)], { status: "Completed", doneAt: day(-15) }),
+    task("d3", 3, "pDone", "Test it", "The top bugs are fixed", [st("d3a", "Run through every screen", false, true), st("d3b", "Fix what's broken", false, true)], { status: "Completed", doneAt: day(-8) }),
+    task("d4", 4, "pDone", "Ship it", "It's live", [st("d4a", "Write the release notes", false, true), st("d4b", "Announce it", false, true)], { status: "Completed", doneAt: day(-1) })
   ];
   return {
     tasks: tasks,

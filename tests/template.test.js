@@ -121,7 +121,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("view").textContent.includes("Try a new game engine") && k.$("view").textContent.includes("Write up lessons learned") && !k.$("view").textContent.includes("Redesign the logo"), "parking lot samples (removed one is in the Archive)");
   k.tab("schedule");
   const rows = [...k.d.querySelectorAll(".listpane .tlist")[0].querySelectorAll(".item")].map(b => b.textContent);
-  ok(rows.length === 14, "14 scheduled tasks (all tasks stay visible now -- completed ones aren't archived) (got " + rows.length + ")");
+  ok(rows.length === 16, "16 scheduled tasks (all tasks stay visible now -- completed ones aren't archived) (got " + rows.length + ")");
   ok(k.$("view").textContent.includes("Backlog (2)") && k.$("view").textContent.includes("Add a dark mode") && k.$("view").textContent.includes("Add a level editor"), "backlog has two samples");
   ok(k.d.getElementById("task-block").textContent.includes("Sprint 1"), "vocabulary is Sprint in the samples");
   // per-project schedules
@@ -265,7 +265,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const statuses = rows.map(b => b.classList.contains("done"));
   const firstDone = statuses.indexOf(true);
   ok(firstDone === -1 || statuses.slice(firstDone).every(Boolean), "once a completed task appears, every task after it in the list is also completed (sunk to the bottom)");
-  ok(rows.length === 14, "completed tasks (Sketch the main screens, Build the sign-in flow) stay in the Tasks list, not moved to the Archive (" + rows.length + ")");
+  ok(rows.length === 16, "completed tasks (Sketch the main screens, Build the sign-in flow) stay in the Tasks list, not moved to the Archive (" + rows.length + ")");
 }
 
 /* ---- search works on samples ---- */
@@ -291,7 +291,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // reload samples
   k.tab("settings"); k.click(k.$("startFresh")); const r = [...k.d.querySelectorAll('#modalBody input[name=fresh]')]; r[1].checked = true; k.fire(r[1]);
   const a2 = k.$("freshAck"); a2.checked = true; k.fire(a2); k.click(k.$("freshGo"));
-  ok(k.saved().tasks.length === 16 && k.saved().pins.includes("proj:pApp"), "the samples can be reloaded");
+  ok(k.saved().tasks.length === 18 && k.saved().pins.includes("proj:pApp"), "the samples can be reloaded");
 }
 
 /* ---- core behavior still intact ---- */
@@ -312,7 +312,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(completedRow && completedRow.classList.contains("done"), "the task shows as completed in Tasks, not moved anywhere");
   // backup text
   k.tab("settings"); k.click(k.$("showText")); const j = JSON.parse(k.$("backupText").value);
-  ok(j.tasks.length === 16 && j.projects.find(p => p.name === "Sample Game").days === 14, "backup export contains the sample data");
+  ok(j.tasks.length === 18 && j.projects.find(p => p.name === "Sample Game").days === 14, "backup export contains the sample data");
   // reload keeps changes and skips the welcome
   const k2 = kit(await mk(k.saved())); ok(k2.$("viewTitle").textContent === "Today" && !k2.$("view").textContent.includes("Welcome to Sidequest") || k2.saved !== undefined, "reload opens on Today");
 }
