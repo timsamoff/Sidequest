@@ -46,7 +46,16 @@ export function sampleData() {
     project("pSite", "Sample Website", "active", { start: day(14), linkedProjectIds: ["pApp"], launchCritical: true }),
     project("pGame", "Sample Game", "active", { start: day(21), days: 14, due: day(21 + 122) }),
     project("pExt", "Sample Browser Extension", "candidate", { notes: "A small tool that could ship in a month" }),
-    project("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own projects" })
+    project("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own projects" }),
+    // Demonstrates a Complete project: drops out of In progress but still
+    // shows in the plain Projects list with its Complete badge.
+    project("pDone", "Sample Finished Project", "complete", { start: day(-30), notes: "Shipped and wrapped up." }),
+    // Demonstrates a promoted-but-task-less Active project: shows as
+    // "Next slot" in In progress, not in the plain Projects list (see
+    // standingBlock()'s own projectIds exclusion) -- In progress is built
+    // entirely from tasks, so this needs no particular start date to
+    // demonstrate that; it has none set here on purpose.
+    project("pNext", "Sample Next Project", "active", { notes: "Chosen, but nothing scheduled yet." })
   ];
   var tasks = [
     task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Completed", doneAt: lastWeek }),

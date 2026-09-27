@@ -113,9 +113,9 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 /* ---- sample projects ---- */
 {
   const k = kit(await mk()); k.tab("projects");
-  ok(k.stand().join() === "Sample Website,Sample App,Sample Game,Next slot", "Where things stand lists the three sample projects (" + k.stand().join() + ")");
+  ok(k.stand().join() === "Sample Website,Sample App,Sample Game,Next slot", "In progress lists the three sample projects (" + k.stand().join() + ")");
   const pagesList = [...k.d.querySelectorAll("#view .list")][0].textContent;
-  ok(pagesList.includes("Sample App") && pagesList.includes("Sample Website") && pagesList.includes("Sample Game"), "the Projects list also includes the projects shown in Where things stand");
+  ok(!pagesList.includes("Sample App") && !pagesList.includes("Sample Website") && !pagesList.includes("Sample Game"), "the Projects list excludes the projects already shown in In progress");
   ok(k.$("view").textContent.includes("Sample Browser Extension") && k.$("view").textContent.includes("Sample Command-Line Tool"), "two sample candidates listed");
   k.tab("parking");
   ok(k.$("view").textContent.includes("Try a new game engine") && k.$("view").textContent.includes("Write up lessons learned") && !k.$("view").textContent.includes("Redesign the logo"), "parking lot samples (removed one is in the Archive)");
@@ -285,8 +285,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.saved().projects.length === 0 && k.saved().pins.length === 0, "no projects and no pins after a fresh start");
   // add own project from scratch: a task needs an active project to attach to
   k.menuAct("newBtn", "newProject"); k.setField("name", "My App"); k.click(k.btn(k.$("modalBody"), "Add project"));
-  k.tab("projects"); k.click(k.btn(k.$("view"), "My App"));
-  k.click(k.btn(k.$("view"), "Choose as next project"));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Promote"));
   k.menuAct("newBtn", "newTask"); k.setField("what", "First task"); k.setField("block", "1"); k.click(k.btn(k.$("modalBody"), "Add task"));
   k.tab("today"); ok(k.$("view").textContent.includes("First task"), "can start working right away, once a project exists");
   // reload samples
@@ -428,8 +427,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // empty-task-set guard: a candidate with zero tasks must never auto-complete
   const k = kit(await mk());
   k.tab("projects");
-  k.click(k.btn(k.$("view"), "Sample Browser Extension"));
-  k.click(k.btn(k.$("view"), "Choose as next project"));
+  const extRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Browser Extension") && k.btn(li, "Promote"));
+  k.click(k.btn(extRow, "Promote"));
   ok(k.saved().projects.find(p => p.id === "pExt").status === "active" && k.$("overlay").hidden, "promoting a task-less project to Active does not trigger completion");
 }
 {
@@ -496,27 +495,23 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ], tasks: [] };
   const k = kit(await mk(saved));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Old shape"));
-  ok(!!k.$("cn-pOld") && k.$("cn-pOld").value === "short\n\nlong", "an old short note is folded into the front of Notes when both exist");
+  ok(!!k.$("f-notes") && k.$("f-notes").value === "short\n\nlong", "an old short note is folded into the front of Notes when both exist");
+  k.click(k.btn(k.$("modalBody"), "Cancel"));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Only short"));
-  ok(!!k.$("cn-pOnly") && k.$("cn-pOnly").value === "just this", "an old short note alone becomes the project's Notes");
+  ok(!!k.$("f-notes") && k.$("f-notes").value === "just this", "an old short note alone becomes the project's Notes");
 }
 {
-  // editable name and Notes on the project page
+  // a candidate is edited entirely through candidateDialog(), same pattern as an Idea
   const k = kit(await mk());
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Browser Extension"));
-  ok(k.$("cn-pExt").value === "A small tool that could ship in a month", "a candidate's page shows its Notes in an editable box");
-  const nt = k.$("cn-pExt"); nt.value = "Edited notes"; k.fire(nt, "input");
-  ok(k.saved().projects.find(p => p.id === "pExt").notes === "Edited notes", "editing a candidate's Notes saves");
-  ok(!k.$("proj-name"), "there is no separate Project name field; the name is edited from the heading");
-  ok(!k.$("renameBtn").hidden, "a candidate's page shows the pencil next to its title");
-  editTitle(k, "Renamed Extension");
-  ok(k.saved().projects.find(p => p.id === "pExt").name === "Renamed Extension" && k.$("viewTitle").textContent === "Renamed Extension" && !k.d.querySelector(".inlineedit"), "the pencil edits in place: Enter saves and updates the page title");
-  editTitle(k, "   ");
-  ok(k.saved().projects.find(p => p.id === "pExt").name === "Renamed Extension" && k.$("viewTitle").textContent === "Renamed Extension" && !k.d.querySelector(".inlineedit"), "a blank name is rejected and the old name is kept");
-  editTitle(k, "Never saved", "Escape");
-  ok(k.saved().projects.find(p => p.id === "pExt").name === "Renamed Extension" && !k.d.querySelector(".inlineedit") && !k.$("renameBtn").hidden, "Esc cancels the edit and puts the pencil back");
-  k.click(k.$("renameBtn")); const bi = k.d.querySelector(".inlineedit"); bi.value = "Saved on blur"; bi.dispatchEvent(new k.w.FocusEvent("blur"));
-  ok(k.saved().projects.find(p => p.id === "pExt").name === "Saved on blur", "clicking away saves the edit");
+  ok(k.$("f-notes").value === "A small tool that could ship in a month", "the candidate dialog shows its Notes");
+  ok(k.$("f-name").value === "Sample Browser Extension", "the candidate dialog shows its name");
+  k.setField("notes", "Edited notes"); k.setField("name", "Renamed Extension");
+  k.click(k.btn(k.$("modalBody"), "Save"));
+  ok(k.saved().projects.find(p => p.id === "pExt").notes === "Edited notes" && k.saved().projects.find(p => p.id === "pExt").name === "Renamed Extension", "saving the candidate dialog saves its name and Notes");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Renamed Extension"));
+  k.setField("name", "   "); k.click(k.btn(k.$("modalBody"), "Save"));
+  ok(k.$("modalBody").textContent.includes("Enter a project name"), "a blank candidate name is rejected");
 }
 {
   const k = kit(await mk());
@@ -653,7 +648,6 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // saved snapshots are validated on load
   const saved = { projects: [{ id: "pV", name: "Snap", status: "active", actual: { "2026-09-14": 12, "bad": 3, "2026-09-21": -1, "2026-09-28": "x" } }], tasks: [] };
   const k = kit(await mk(saved));
-  k.tab("projects"); k.click(k.btn(k.$("view"), "Pin"));
   const a = k.saved().projects[0].actual;
   ok(Object.keys(a).join() === "2026-09-14" && a["2026-09-14"] === 12, "only well-formed weekly snapshots are kept");
 }

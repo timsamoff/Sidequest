@@ -135,6 +135,30 @@ export function linkProjectDialog(p) {
     return { msg: "Linked to " + other.name + "." };
   }, "The link goes both ways: that project will show this one too.");
 }
+// Edits a candidate project's own fields in place: Notes, Start date, Due
+// date, and its own block/sprint length. Promotion (Candidate -> Active) is a
+// separate row action on the Candidates list, not a button in this dialog --
+// this dialog only saves, matching ideaDialog's own Edit/Save pattern.
+export function candidateDialog(p) {
+  formDialog("Edit candidate", [
+    { key: "name", label: "Project name", value: p.name },
+    { key: "notes", label: "Notes", type: "textarea", rows: 5, value: p.notes },
+    { key: "start", label: "Start date", type: "date", value: p.start },
+    { key: "due", label: "Due date", type: "date", value: p.due },
+    { key: "days", label: "Days per " + wd(), type: "number", min: "1", max: "90", step: "1", value: p.days }
+  ], "Save", function (v) {
+    if (!v.name) return "Enter a project name.";
+    var days = parseInt(v.days, 10);
+    if (isNaN(days) || days < 1 || days > 90) return wd() + " length must be from 1 to 90 days.";
+    p.name = v.name.slice(0, 120);
+    p.notes = v.notes.slice(0, 5000);
+    p.start = isISO(v.start) ? v.start : "";
+    p.due = isISO(v.due) ? v.due : "";
+    p.days = days;
+    changed();
+    return { msg: "Candidate saved." };
+  });
+}
 export function ideaDialog(idea) {
   formDialog(idea ? "Edit idea" : "New idea", [
     { key: "text", label: "Idea", value: idea ? idea.text : undefined },

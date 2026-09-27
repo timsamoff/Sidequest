@@ -3,6 +3,7 @@ import { parseISO, fmt, fmtY } from "./dates.js";
 import { taskStart, taskEnd, dispProject, liveProjects, projectMeta, short, validPage, findStep } from "./model.js";
 import { $, el, on, scrollTop } from "./dom.js";
 import { go, openTask, renderAll } from "./app.js";
+import { candidateDialog } from "./dialogs.js";
 
 /* search */
 export var SEARCH_LABELS = { task: "Tasks", step: "Steps", project: "Projects", idea: "Ideas", decision: "Decisions", milestone: "Milestones" };
@@ -48,7 +49,7 @@ export function searchAll(q, includeArchive) {
     });
   });
   liveProjects().forEach(function (p) {
-    consider("project", p.name, [p.notes], projectMeta(p), function () { go(validPage("proj:" + p.id) ? "proj:" + p.id : "projects"); }, false, ["Notes"]);
+    consider("project", p.name, [p.notes], projectMeta(p), function () { if (p.status === "candidate") candidateDialog(p); else go(validPage("proj:" + p.id) ? "proj:" + p.id : "projects"); }, false, ["Notes"]);
   });
   state.projects.forEach(function (p) { if (p.arch) consider("project", p.name, [p.notes], "Archived project", function () { go("archive"); }, true, ["Notes"]); });
   state.parked.forEach(function (p) { consider("idea", p.text, [p.note], "Parking lot", function () { go(p.arch ? "archive" : "parking"); }, !!p.arch, ["Note"]); });

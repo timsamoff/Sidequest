@@ -7,7 +7,7 @@ It is built for someone juggling several projects at once: a few tasks in each, 
 ## What it does
 
 - **Today:** the one task to work on next, anything overdue, and a burndown chart.
-- **Projects:** each project has its own page where you can rename it and edit its notes, start date, and pace. Choose which candidate gets the next slot. Each active project's page also charts its own Timeline and Burndown, right under the Schedule that drives them. Mark a project Complete at any time, or let it complete itself once every task is done; either way you can archive it right then or leave it visible in Projects, and Reopen it later if it isn't really done. Pin any project to the sidebar. Link related projects to each other, and mark a link "Launch critical" if one project genuinely can't ship without the other.
+- **Projects:** "In progress" lists each active project with open tasks and what's next up. Below it, any Complete or not-yet-started project. A candidate is edited in a dialog (notes, start date, due date, and pace) and promoted to active with one click when it's ready. Each active project also has its own page where you can rename it and edit its notes and schedule; its page also charts its own Timeline and Burndown, right under the Schedule that drives them. Mark a project Complete at any time, or let it complete itself once every task is done; either way you can archive it right then or leave it visible in Projects, and Reopen it later if it isn't really done. Pin any project to the sidebar. Link related projects to each other, and mark a link "Launch critical" if one project genuinely can't ship without the other.
 - **Tasks:** every task with steps, notes, and a status. Move tasks between sprints, or park them in the Backlog until you are ready. Rename a task, step, or project with the pencil beside it. Add a decision to any step, and answering it checks the step off.
 - **Timeline:** every project on one timeline, with optional estimates and your own milestones (select one to edit or remove it), plus the full-width burndown. Point at, tap, or arrow through any week on a burndown to see its counts and tasks.
 - **Launch checklist:** on each project's own page, a checklist built from any of its steps you flag as "Launch", plus a line for any Launch-critical linked project that tracks that project's own status automatically. Tick a step there or in Tasks and both stay in sync.
@@ -15,7 +15,7 @@ It is built for someone juggling several projects at once: a few tasks in each, 
 - **Archive:** archived projects and ideas land here. A project stays fully viewable, read only, until you restore it, and restoring it brings its tasks back too.
 - **Search:** press `/` anywhere to search tasks, steps, notes, projects, decisions, milestones, and the Archive.
 - **Help:** short instructions for everything, inside the app.
-- **Settings:** call each stretch of work a Block, Sprint, Iteration, Phase, or Week. Pick a date format and a theme, turn the splash screen on or off, back up and restore, or start fresh.
+- **Settings:** name each stretch of work Block, Sprint, Iteration, Phase, or Week, and set its default length in days. Pick a date format and a theme, turn the splash screen on or off, back up and restore, or start fresh.
 
 It works on phones too, in a web browser. On a small screen the sidebar becomes a bottom tab bar, and the menu button lists every page.
 

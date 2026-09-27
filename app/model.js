@@ -148,7 +148,14 @@ export function isCore(v) { return CORE.some(function (c) { return c[0] === v; }
 // renaming a project never breaks its pin or an in-flight link to it. No
 // separate standalone Launch page exists anymore (see DESIGN.md: only Projects
 // are pinnable, launch-critical items render as a section on a project's own page).
-export function validPage(key) { return typeof key === "string" && key.indexOf("proj:") === 0 && !!findProject(key.slice(5)); }
+// A live candidate has no page of its own (edited via candidateDialog()
+// instead, like an Idea) -- only an archived candidate's page is reachable,
+// as the one remaining read-only view of its notes from the Archive list.
+export function validPage(key) {
+  if (typeof key !== "string" || key.indexOf("proj:") !== 0) return false;
+  var p = findProject(key.slice(5));
+  return !!p && (p.status !== "candidate" || !!p.arch);
+}
 export function pageTitle(key) {
   if (key === "search") return "Search";
   if (typeof key === "string" && key.indexOf("proj:") === 0) { var p = findProject(key.slice(5)); return p ? p.name : ""; }

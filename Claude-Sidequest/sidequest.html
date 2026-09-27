@@ -822,7 +822,14 @@ function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
 // renaming a project never breaks its pin or an in-flight link to it. No
 // separate standalone Launch page exists anymore (see DESIGN.md: only Projects
 // are pinnable, launch-critical items render as a section on a project's own page).
-function validPage(key) { return typeof key === "string" && key.indexOf("proj:") === 0 && !!findProject(key.slice(5)); }
+// A live candidate has no page of its own (edited via candidateDialog()
+// instead, like an Idea) -- only an archived candidate's page is reachable,
+// as the one remaining read-only view of its notes from the Archive list.
+function validPage(key) {
+  if (typeof key !== "string" || key.indexOf("proj:") !== 0) return false;
+  var p = findProject(key.slice(5));
+  return !!p && (p.status !== "candidate" || !!p.arch);
+}
 function pageTitle(key) {
   if (key === "search") return "Search";
   if (typeof key === "string" && key.indexOf("proj:") === 0) { var p = findProject(key.slice(5)); return p ? p.name : ""; }
@@ -927,7 +934,16 @@ function sampleData() {
     project("pSite", "Sample Website", "active", { start: day(14), linkedProjectIds: ["pApp"], launchCritical: true }),
     project("pGame", "Sample Game", "active", { start: day(21), days: 14, due: day(21 + 122) }),
     project("pExt", "Sample Browser Extension", "candidate", { notes: "A small tool that could ship in a month" }),
-    project("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own projects" })
+    project("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own projects" }),
+    // Demonstrates a Complete project: drops out of In progress but still
+    // shows in the plain Projects list with its Complete badge.
+    project("pDone", "Sample Finished Project", "complete", { start: day(-30), notes: "Shipped and wrapped up." }),
+    // Demonstrates a promoted-but-task-less Active project: shows as
+    // "Next slot" in In progress, not in the plain Projects list (see
+    // standingBlock()'s own projectIds exclusion) -- In progress is built
+    // entirely from tasks, so this needs no particular start date to
+    // demonstrate that; it has none set here on purpose.
+    project("pNext", "Sample Next Project", "active", { notes: "Chosen, but nothing scheduled yet." })
   ];
   var tasks = [
     task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Completed", doneAt: lastWeek }),
@@ -1450,6 +1466,7 @@ function projectRangeBlock(p) {
 
 
 
+
 /* search */
 var SEARCH_LABELS = { task: "Tasks", step: "Steps", project: "Projects", idea: "Ideas", decision: "Decisions", milestone: "Milestones" };
 var SEARCH_ORDER = ["task", "step", "project", "idea", "decision", "milestone"];
@@ -1494,7 +1511,7 @@ function searchAll(q, includeArchive) {
     });
   });
   liveProjects().forEach(function (p) {
-    consider("project", p.name, [p.notes], projectMeta(p), function () { go(validPage("proj:" + p.id) ? "proj:" + p.id : "projects"); }, false, ["Notes"]);
+    consider("project", p.name, [p.notes], projectMeta(p), function () { if (p.status === "candidate") candidateDialog(p); else go(validPage("proj:" + p.id) ? "proj:" + p.id : "projects"); }, false, ["Notes"]);
   });
   state.projects.forEach(function (p) { if (p.arch) consider("project", p.name, [p.notes], "Archived project", function () { go("archive"); }, true, ["Notes"]); });
   state.parked.forEach(function (p) { consider("idea", p.text, [p.note], "Parking lot", function () { go(p.arch ? "archive" : "parking"); }, !!p.arch, ["Note"]); });
@@ -1715,6 +1732,30 @@ function linkProjectDialog(p) {
     linkProjects(p.id, other.id); changed();
     return { msg: "Linked to " + other.name + "." };
   }, "The link goes both ways: that project will show this one too.");
+}
+// Edits a candidate project's own fields in place: Notes, Start date, Due
+// date, and its own block/sprint length. Promotion (Candidate -> Active) is a
+// separate row action on the Candidates list, not a button in this dialog --
+// this dialog only saves, matching ideaDialog's own Edit/Save pattern.
+function candidateDialog(p) {
+  formDialog("Edit candidate", [
+    { key: "name", label: "Project name", value: p.name },
+    { key: "notes", label: "Notes", type: "textarea", rows: 5, value: p.notes },
+    { key: "start", label: "Start date", type: "date", value: p.start },
+    { key: "due", label: "Due date", type: "date", value: p.due },
+    { key: "days", label: "Days per " + wd(), type: "number", min: "1", max: "90", step: "1", value: p.days }
+  ], "Save", function (v) {
+    if (!v.name) return "Enter a project name.";
+    var days = parseInt(v.days, 10);
+    if (isNaN(days) || days < 1 || days > 90) return wd() + " length must be from 1 to 90 days.";
+    p.name = v.name.slice(0, 120);
+    p.notes = v.notes.slice(0, 5000);
+    p.start = isISO(v.start) ? v.start : "";
+    p.due = isISO(v.due) ? v.due : "";
+    p.days = days;
+    changed();
+    return { msg: "Candidate saved." };
+  });
 }
 function ideaDialog(idea) {
   formDialog(idea ? "Edit idea" : "New idea", [
@@ -2251,17 +2292,19 @@ function launchSection(root, p) {
 
 }
 
-// Pin/Unpin for a project, shared by Where things stand and the Projects list.
+// Pin/Unpin for a project, shared by In progress and the Projects list.
 function projectPinButton(key, name) {
   var pinned = isPinned(key);
   return on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + name, title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
 }
-function pagesSection() {
+function pagesSection(excludeIds) {
   var sec = el("div");
-  sec.appendChild(el("p", { "class": "hint", style: "margin-top:28px" }, "Pin a project to the sidebar for quick access. Removing it from the sidebar only hides it there. It stays listed here."));
+  var rows = liveProjects().filter(function (p) { return p.status !== "candidate" && (!excludeIds || excludeIds.indexOf(p.id) < 0); }).map(function (p) { return { id: p.id, key: "proj:" + p.id, name: p.name, meta: projectMeta(p), complete: p.status === "complete" }; });
+  var hasPending = rows.some(function (r) { return !r.complete; }), hasComplete = rows.some(function (r) { return r.complete; });
+  var heading = !rows.length ? "Pending & completed" : hasPending && hasComplete ? "Pending & completed" : hasComplete ? "Completed" : "Pending";
+  sec.appendChild(el("h2", { style: "margin-top:28px" }, heading));
   var ul = el("ul", { "class": "list" });
-  var rows = liveProjects().map(function (p) { return { key: "proj:" + p.id, name: p.name, meta: projectMeta(p), complete: p.status === "complete" }; });
-  if (!rows.length) sec.appendChild(el("p", { "class": "hint" }, "No projects yet."));
+  if (!rows.length) sec.appendChild(el("p", { "class": "hint" }, "Nothing here right now."));
   rows.forEach(function (r) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nm = el("div", { style: "flex:1 1 200px" });
@@ -2273,7 +2316,8 @@ function pagesSection() {
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(projectPinButton(r.key, r.name));
-    row.appendChild(acts); li.appendChild(row); ul.appendChild(li);
+    row.appendChild(acts);
+    li.appendChild(row); ul.appendChild(li);
   });
   sec.appendChild(ul); return sec;
 }
@@ -2304,34 +2348,14 @@ function renderProjectPage(root, id) {
     if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
   }
 
-  if (p.status === "candidate" && readOnly) {
+  // A live candidate has no page of its own anymore -- it's edited via
+  // candidateDialog() from the Candidates/Projects lists, same pattern as an
+  // Idea. An ARCHIVED candidate's page stays reachable and read-only (the
+  // Archive list's title link still routes here), since that's the one
+  // legitimate remaining way to look at an archived candidate's notes.
+  if (p.status === "candidate") {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
-    return;
-  }
-  if (p.status === "candidate") {
-    var cb = el("div", { "class": "box", style: "margin-top:16px" });
-    var nf = el("div", { "class": "field", style: "margin-top:0" });
-    nf.appendChild(el("label", { "for": "cn-" + p.id }, "Notes"));
-    var nt = el("textarea", { id: "cn-" + p.id, rows: 6 }); nt.value = p.notes;
-    on(nt, "input", function () { p.notes = nt.value.slice(0, 5000); save(); });
-    nf.appendChild(nt); cb.appendChild(nf);
-    var f = el("div", { "class": "cfields", style: "margin:14px 0 0" });
-    var f1 = el("div", { "class": "field" }); f1.appendChild(el("label", { "for": "cs-" + p.id }, "Start date"));
-    var sd = el("input", { type: "date", id: "cs-" + p.id }); sd.value = p.start;
-    on(sd, "change", function () { p.start = isISO(sd.value) ? sd.value : ""; save(); notify("Start date saved. See it on the Timeline."); });
-    f1.appendChild(sd); f.appendChild(f1);
-    var f2 = el("div", { "class": "field" }); f2.appendChild(el("label", { "for": "cd-" + p.id }, "Due date"));
-    var dd = el("input", { type: "date", id: "cd-" + p.id }); dd.value = p.due;
-    on(dd, "change", function () { p.due = isISO(dd.value) ? dd.value : ""; save(); notify("Due date saved. See it on the Timeline."); });
-    f2.appendChild(dd); f.appendChild(f2);
-    var f3 = el("div", { "class": "field" }); f3.appendChild(el("label", { "for": "cl-" + p.id }, "Days per " + wd()));
-    var ld = el("input", { type: "number", id: "cl-" + p.id, min: "1", max: "90", step: "1" }); ld.value = p.days;
-    on(ld, "change", function () { var v = parseInt(ld.value, 10); if (v >= 1 && v <= 90) { p.days = v; save(); } else ld.value = p.days; });
-    f3.appendChild(ld); f.appendChild(f3); cb.appendChild(f);
-    var ca = el("div", { "class": "actions", style: "margin-top:10px" });
-    ca.appendChild(on(el("button", { type: "button", "class": "primary", title: "Make this the active project" }, "Choose as next project"), "click", function () { promoteToActive(p.id); }));
-    cb.appendChild(ca); root.appendChild(cb);
     return;
   }
 
@@ -2473,8 +2497,8 @@ function promoteToActive(id) {
 }
 function standingBlock(c) {
   var wrap = el("div");
-  wrap.appendChild(el("h2", { "class": "first" }, "Where things stand"));
-  wrap.appendChild(el("p", { "class": "hint" }, "Built from your open tasks, ordered by when each project's next task starts."));
+  wrap.appendChild(el("h2", { "class": "first" }, "In progress"));
+  wrap.appendChild(el("p", { "class": "hint" }, "Built from your open tasks, ordered by when each project's next task starts. Pin a project to the sidebar for quick access."));
   var box = el("div", { "class": "box", style: "margin-top:10px" });
   var groups = {}, order = [];
   ordered().forEach(function (t) {
@@ -2485,6 +2509,7 @@ function standingBlock(c) {
     g.open++;
   });
   order.sort(function (a, b) { return taskStart(a.first) - taskStart(b.first); });
+  var projectIds = order.map(function (g) { return g.projectId; });
   var ul = el("ul", { "class": "standing" });
   if (!order.length) ul.appendChild(el("li", null, "No open tasks."));
   order.forEach(function (g) {
@@ -2501,11 +2526,12 @@ function standingBlock(c) {
   });
   var sl = el("li"), stEl = el("div", { "class": "srow" });
   stEl.appendChild(el("span", { "class": "slabel" }, "Next slot"));
-  if (c) { var cl = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, c.name); on(cl, "click", function () { go("proj:" + c.id); }); stEl.appendChild(cl); }
+  if (c) { var cl = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, c.name); on(cl, "click", function () { go("proj:" + c.id); }); stEl.appendChild(cl); stEl.appendChild(projectPinButton("proj:" + c.id, c.name)); }
   else stEl.appendChild(el("span", { "class": "scount" }, "Not chosen yet"));
   sl.appendChild(stEl); ul.appendChild(sl);
+  if (c) projectIds.push(c.id);
   box.appendChild(ul); wrap.appendChild(box);
-  return wrap;
+  return { node: wrap, projectIds: projectIds };
 }
 function candidatesSection() {
   var sec = el("div");
@@ -2517,17 +2543,20 @@ function candidatesSection() {
   cs.forEach(function (cd) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nmWrap = el("div", { style: "flex:1 1 200px" });
-    var nm = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, cd.name);
-    on(nm, "click", function () { go("proj:" + cd.id); });
+    var nm = el("button", { type: "button", "class": "textbtn plink", title: "Edit this candidate" }, cd.name);
+    on(nm, "click", function () { candidateDialog(cd); });
     nmWrap.appendChild(nm);
     if (cd.notes) nmWrap.appendChild(el("p", { "class": "cnote notetext noteclamp", style: "margin-left:0" }, cd.notes));
     row.appendChild(nmWrap);
     var acts = el("div", { "class": "li-actions" });
+    var pr = el("button", { type: "button", "class": "small", title: "Promote to project" }, "Promote");
+    on(pr, "click", function () { promoteToActive(cd.id); });
+    acts.appendChild(pr);
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Move to the Parking lot" }, "Park it"), "click", function () {
       state.projects = state.projects.filter(function (x) { return x.id !== cd.id; });
       state.parked.push({ id: uid(), text: cd.name, note: cd.notes }); changed();
     }));
-    var rm = el("button", { type: "button", "class": "small danger", title: "Archive this project" }, "Archive");
+    var rm = el("button", { type: "button", "class": "small danger", title: "Archive this candidate" }, "Archive");
     on(rm, "click", function () { removeToArchive(cd, "Project"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row);
     list.appendChild(li);
@@ -2537,8 +2566,9 @@ function candidatesSection() {
 }
 function renderProjects(root) {
   var c = chosen();
-  root.appendChild(standingBlock(c));
-  root.appendChild(pagesSection());
+  var standing = standingBlock(c);
+  root.appendChild(standing.node);
+  root.appendChild(pagesSection(standing.projectIds));
   root.appendChild(candidatesSection());
 }
 function renderParkingLot(root) {
@@ -2757,12 +2787,12 @@ function helpTopics() {
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
       "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burndown until you do."]],
     ["Manage projects", [
-      "Each project has its own page. Open **Projects** and select the project's name. Use the pencil beside its title to rename it, and edit its notes there. Beside that (below it on a phone) are its Schedule, where you set its start date and pace, and its own Timeline and Burndown, which redraw as you change the schedule. On a wide screen, **Expand** shows them large.",
-      "**Candidates** are projects that could take the next slot. Open one and choose **Choose as next project** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
-      "**Where things stand** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there."]],
+      "Each active project has its own page. Open **Projects** and select the project's name. Use the pencil beside its title to rename it, and edit its notes there. Beside that (below it on a phone) are its Schedule, where you set its start date, due date, and block length, and its own Timeline and Burndown, which redraw as you change the schedule. On a wide screen, **Expand** shows them large.",
+      "**Candidates** are projects that could take the next slot. Select one to edit its notes, start date, due date, and block length in a dialog, then use **Promote** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
+      "**In progress** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there."]],
     ["Finish or archive a project", [
       "**Mark complete** on a project's page marks it done, even with tasks still open. A project also completes by itself once all its tasks are done. Either way, you can archive it right away or leave it in Projects.",
-      "A completed project shows a **Complete** badge and drops out of Where things stand. **Reopen** makes it active again.",
+      "A completed project shows a **Complete** badge and drops out of In progress. **Reopen** makes it active again.",
       "**Archive** puts a project and its open tasks in the Archive. **Restore** brings all of it back."]],
     ["Link projects", [
       "**Linked projects**, on a project's page, connects it to related projects. Choose **Link project** and pick one. A link goes both ways.",

@@ -12,7 +12,7 @@ import {
 import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline } from "./dom.js";
 import { drawChart, drawProjectChart, rangeBlock, projectRangeBlock } from "./chart.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme } from "./app.js";
-import { stepDialog, stepEditDialog, decisionDialog, decisionEditDialog, linkProjectDialog, ideaDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
+import { stepDialog, stepEditDialog, decisionDialog, decisionEditDialog, linkProjectDialog, ideaDialog, candidateDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
 
 /* views */
 export function nextUpPanel() {
@@ -374,17 +374,19 @@ export function launchSection(root, p) {
 
 }
 
-// Pin/Unpin for a project, shared by Where things stand and the Projects list.
+// Pin/Unpin for a project, shared by In progress and the Projects list.
 function projectPinButton(key, name) {
   var pinned = isPinned(key);
   return on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + name, title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
 }
-export function pagesSection() {
+export function pagesSection(excludeIds) {
   var sec = el("div");
-  sec.appendChild(el("p", { "class": "hint", style: "margin-top:28px" }, "Pin a project to the sidebar for quick access. Removing it from the sidebar only hides it there. It stays listed here."));
+  var rows = liveProjects().filter(function (p) { return p.status !== "candidate" && (!excludeIds || excludeIds.indexOf(p.id) < 0); }).map(function (p) { return { id: p.id, key: "proj:" + p.id, name: p.name, meta: projectMeta(p), complete: p.status === "complete" }; });
+  var hasPending = rows.some(function (r) { return !r.complete; }), hasComplete = rows.some(function (r) { return r.complete; });
+  var heading = !rows.length ? "Pending & completed" : hasPending && hasComplete ? "Pending & completed" : hasComplete ? "Completed" : "Pending";
+  sec.appendChild(el("h2", { style: "margin-top:28px" }, heading));
   var ul = el("ul", { "class": "list" });
-  var rows = liveProjects().map(function (p) { return { key: "proj:" + p.id, name: p.name, meta: projectMeta(p), complete: p.status === "complete" }; });
-  if (!rows.length) sec.appendChild(el("p", { "class": "hint" }, "No projects yet."));
+  if (!rows.length) sec.appendChild(el("p", { "class": "hint" }, "Nothing here right now."));
   rows.forEach(function (r) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nm = el("div", { style: "flex:1 1 200px" });
@@ -396,7 +398,8 @@ export function pagesSection() {
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(projectPinButton(r.key, r.name));
-    row.appendChild(acts); li.appendChild(row); ul.appendChild(li);
+    row.appendChild(acts);
+    li.appendChild(row); ul.appendChild(li);
   });
   sec.appendChild(ul); return sec;
 }
@@ -427,34 +430,14 @@ export function renderProjectPage(root, id) {
     if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
   }
 
-  if (p.status === "candidate" && readOnly) {
+  // A live candidate has no page of its own anymore -- it's edited via
+  // candidateDialog() from the Candidates/Projects lists, same pattern as an
+  // Idea. An ARCHIVED candidate's page stays reachable and read-only (the
+  // Archive list's title link still routes here), since that's the one
+  // legitimate remaining way to look at an archived candidate's notes.
+  if (p.status === "candidate") {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
-    return;
-  }
-  if (p.status === "candidate") {
-    var cb = el("div", { "class": "box", style: "margin-top:16px" });
-    var nf = el("div", { "class": "field", style: "margin-top:0" });
-    nf.appendChild(el("label", { "for": "cn-" + p.id }, "Notes"));
-    var nt = el("textarea", { id: "cn-" + p.id, rows: 6 }); nt.value = p.notes;
-    on(nt, "input", function () { p.notes = nt.value.slice(0, 5000); save(); });
-    nf.appendChild(nt); cb.appendChild(nf);
-    var f = el("div", { "class": "cfields", style: "margin:14px 0 0" });
-    var f1 = el("div", { "class": "field" }); f1.appendChild(el("label", { "for": "cs-" + p.id }, "Start date"));
-    var sd = el("input", { type: "date", id: "cs-" + p.id }); sd.value = p.start;
-    on(sd, "change", function () { p.start = isISO(sd.value) ? sd.value : ""; save(); notify("Start date saved. See it on the Timeline."); });
-    f1.appendChild(sd); f.appendChild(f1);
-    var f2 = el("div", { "class": "field" }); f2.appendChild(el("label", { "for": "cd-" + p.id }, "Due date"));
-    var dd = el("input", { type: "date", id: "cd-" + p.id }); dd.value = p.due;
-    on(dd, "change", function () { p.due = isISO(dd.value) ? dd.value : ""; save(); notify("Due date saved. See it on the Timeline."); });
-    f2.appendChild(dd); f.appendChild(f2);
-    var f3 = el("div", { "class": "field" }); f3.appendChild(el("label", { "for": "cl-" + p.id }, "Days per " + wd()));
-    var ld = el("input", { type: "number", id: "cl-" + p.id, min: "1", max: "90", step: "1" }); ld.value = p.days;
-    on(ld, "change", function () { var v = parseInt(ld.value, 10); if (v >= 1 && v <= 90) { p.days = v; save(); } else ld.value = p.days; });
-    f3.appendChild(ld); f.appendChild(f3); cb.appendChild(f);
-    var ca = el("div", { "class": "actions", style: "margin-top:10px" });
-    ca.appendChild(on(el("button", { type: "button", "class": "primary", title: "Make this the active project" }, "Choose as next project"), "click", function () { promoteToActive(p.id); }));
-    cb.appendChild(ca); root.appendChild(cb);
     return;
   }
 
@@ -596,8 +579,8 @@ export function promoteToActive(id) {
 }
 export function standingBlock(c) {
   var wrap = el("div");
-  wrap.appendChild(el("h2", { "class": "first" }, "Where things stand"));
-  wrap.appendChild(el("p", { "class": "hint" }, "Built from your open tasks, ordered by when each project's next task starts."));
+  wrap.appendChild(el("h2", { "class": "first" }, "In progress"));
+  wrap.appendChild(el("p", { "class": "hint" }, "Built from your open tasks, ordered by when each project's next task starts. Pin a project to the sidebar for quick access."));
   var box = el("div", { "class": "box", style: "margin-top:10px" });
   var groups = {}, order = [];
   ordered().forEach(function (t) {
@@ -608,6 +591,7 @@ export function standingBlock(c) {
     g.open++;
   });
   order.sort(function (a, b) { return taskStart(a.first) - taskStart(b.first); });
+  var projectIds = order.map(function (g) { return g.projectId; });
   var ul = el("ul", { "class": "standing" });
   if (!order.length) ul.appendChild(el("li", null, "No open tasks."));
   order.forEach(function (g) {
@@ -624,11 +608,12 @@ export function standingBlock(c) {
   });
   var sl = el("li"), stEl = el("div", { "class": "srow" });
   stEl.appendChild(el("span", { "class": "slabel" }, "Next slot"));
-  if (c) { var cl = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, c.name); on(cl, "click", function () { go("proj:" + c.id); }); stEl.appendChild(cl); }
+  if (c) { var cl = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, c.name); on(cl, "click", function () { go("proj:" + c.id); }); stEl.appendChild(cl); stEl.appendChild(projectPinButton("proj:" + c.id, c.name)); }
   else stEl.appendChild(el("span", { "class": "scount" }, "Not chosen yet"));
   sl.appendChild(stEl); ul.appendChild(sl);
+  if (c) projectIds.push(c.id);
   box.appendChild(ul); wrap.appendChild(box);
-  return wrap;
+  return { node: wrap, projectIds: projectIds };
 }
 export function candidatesSection() {
   var sec = el("div");
@@ -640,17 +625,20 @@ export function candidatesSection() {
   cs.forEach(function (cd) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nmWrap = el("div", { style: "flex:1 1 200px" });
-    var nm = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, cd.name);
-    on(nm, "click", function () { go("proj:" + cd.id); });
+    var nm = el("button", { type: "button", "class": "textbtn plink", title: "Edit this candidate" }, cd.name);
+    on(nm, "click", function () { candidateDialog(cd); });
     nmWrap.appendChild(nm);
     if (cd.notes) nmWrap.appendChild(el("p", { "class": "cnote notetext noteclamp", style: "margin-left:0" }, cd.notes));
     row.appendChild(nmWrap);
     var acts = el("div", { "class": "li-actions" });
+    var pr = el("button", { type: "button", "class": "small", title: "Promote to project" }, "Promote");
+    on(pr, "click", function () { promoteToActive(cd.id); });
+    acts.appendChild(pr);
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Move to the Parking lot" }, "Park it"), "click", function () {
       state.projects = state.projects.filter(function (x) { return x.id !== cd.id; });
       state.parked.push({ id: uid(), text: cd.name, note: cd.notes }); changed();
     }));
-    var rm = el("button", { type: "button", "class": "small danger", title: "Archive this project" }, "Archive");
+    var rm = el("button", { type: "button", "class": "small danger", title: "Archive this candidate" }, "Archive");
     on(rm, "click", function () { removeToArchive(cd, "Project"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row);
     list.appendChild(li);
@@ -660,8 +648,9 @@ export function candidatesSection() {
 }
 export function renderProjects(root) {
   var c = chosen();
-  root.appendChild(standingBlock(c));
-  root.appendChild(pagesSection());
+  var standing = standingBlock(c);
+  root.appendChild(standing.node);
+  root.appendChild(pagesSection(standing.projectIds));
   root.appendChild(candidatesSection());
 }
 export function renderParkingLot(root) {
@@ -880,12 +869,12 @@ export function helpTopics() {
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
       "To schedule it, open the item and choose a " + w + ". Backlog items stay out of the burndown until you do."]],
     ["Manage projects", [
-      "Each project has its own page. Open **Projects** and select the project's name. Use the pencil beside its title to rename it, and edit its notes there. Beside that (below it on a phone) are its Schedule, where you set its start date and pace, and its own Timeline and Burndown, which redraw as you change the schedule. On a wide screen, **Expand** shows them large.",
-      "**Candidates** are projects that could take the next slot. Open one and choose **Choose as next project** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
-      "**Where things stand** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there."]],
+      "Each active project has its own page. Open **Projects** and select the project's name. Use the pencil beside its title to rename it, and edit its notes there. Beside that (below it on a phone) are its Schedule, where you set its start date, due date, and block length, and its own Timeline and Burndown, which redraw as you change the schedule. On a wide screen, **Expand** shows them large.",
+      "**Candidates** are projects that could take the next slot. Select one to edit its notes, start date, due date, and block length in a dialog, then use **Promote** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
+      "**In progress** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there."]],
     ["Finish or archive a project", [
       "**Mark complete** on a project's page marks it done, even with tasks still open. A project also completes by itself once all its tasks are done. Either way, you can archive it right away or leave it in Projects.",
-      "A completed project shows a **Complete** badge and drops out of Where things stand. **Reopen** makes it active again.",
+      "A completed project shows a **Complete** badge and drops out of In progress. **Reopen** makes it active again.",
       "**Archive** puts a project and its open tasks in the Archive. **Restore** brings all of it back."]],
     ["Link projects", [
       "**Linked projects**, on a project's page, connects it to related projects. Choose **Link project** and pick one. A link goes both ways.",
