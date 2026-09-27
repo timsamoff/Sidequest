@@ -343,13 +343,16 @@ tbody tr:last-child td { border-bottom: 0; }
 .bar { position: absolute; top: 2px; bottom: 2px; min-width: 6px; background: var(--planned); border-radius: 4px; }
 .bar.est { background: var(--est); border: 1px dashed var(--planned); }
 .bar.open { background: linear-gradient(to right, var(--est), transparent); border-left: 3px solid var(--planned); border-radius: 4px 0 0 4px; }
-/* A project's page: info on the left, its own Timeline and Burndown on the right. */
+/* A project's page: info on the left, its own Schedule/Timeline/Burndown on the right,
+   as one continuous flow (not row-synced to the left column -- Schedule sits close
+   above Timeline the same natural way Notes sits close below the Tasks list). */
 .projsplit { display: block; }
-.projtop, .projrest, .projsched, .projcharts { min-width: 0; }
-/* The Schedule's error line takes no room until it has something to say, so it does
-   not stretch the top row (and push Tasks and Timeline down) for nothing. */
-.projsched .msg { min-height: 0; margin-top: 0; }
-.projsched .msg:not(:empty) { margin-top: var(--space-10); }
+.projtop, .projrest, .projcharts { min-width: 0; }
+/* Schedule's own error line reserves no space until it has something to say, so it
+   does not push Timeline down when it's empty, which it almost always is -- applies
+   wherever Schedule renders (the page's own charts column, or the Expand dialog). */
+.schedmsg { min-height: 0; margin-top: 0; }
+.schedmsg:not(:empty) { margin-top: var(--space-10); }
 .projexpand { display: none; }
 .modal.full { max-width: none; width: 100%; height: 100%; max-height: none; }
 .chart .mark { fill: var(--burn); }
@@ -360,14 +363,12 @@ svg.chart.nofocusring { outline: none; }
 .charttip[hidden] { display: none; }
 .bar.done { background: var(--chip-done); }
 @media (min-width: 900px) {
-  /* Two rows so each column's first heading (Tasks, Timeline) starts in the same row. */
-  .projsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: "top sched" "rest charts"; column-gap: var(--space-22); row-gap: 0; align-items: start; }
+  /* Left column stacks Tasks then the rest (two rows); the right column is one grid
+     item spanning both rows, so its own Schedule/Timeline/Burndown flow continuously
+     and are never stretched or squeezed to match the left column's row heights. */
+  .projsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: "top charts" "rest charts"; column-gap: var(--space-22); row-gap: 0; align-items: start; }
   .projtop { grid-area: top; }
   .projrest { grid-area: rest; }
-  .projsched { grid-area: sched; }
-  /* Level with the Tasks heading opposite: same top, same 34px band as its Add task
-     button, heading centered in it. */
-  .projsched > h2:first-child { margin-top: 0; min-height: 34px; display: flex; align-items: center; }
   .projcharts { grid-area: charts; }
   .projexpand { display: inline-block; }
 }
@@ -2358,10 +2359,12 @@ function renderProjectPage(root, id) {
     root.appendChild(ul);
   }
   if (!split) scheduleSection(root, p, readOnly);
-  // The rest of the left column (Notes and below) is its own grid item, so its first
-  // heading sits in the same row as the Timeline heading opposite it, by structure.
+  // The rest of the left column (Notes and below) is its own grid item. Unlike
+  // .projtop/.projcharts, .projrest doesn't need to align with anything at the top of
+  // a shared row (.projcharts now spans both rows), so "Notes" keeps its normal
+  // top margin instead of being zeroed.
   if (split) { root = el("div", { "class": "projrest" }); split.appendChild(root); }
-  root.appendChild(el("h2", split ? { "class": "first" } : null, "Notes"));
+  root.appendChild(el("h2", null, "Notes"));
   if (readOnly) {
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
   } else {
@@ -2401,23 +2404,24 @@ function renderProjectPage(root, id) {
     }));
   }
   root.appendChild(ar);
-  if (split) {
-    var sched = el("div", { "class": "projsched" });
-    scheduleSection(sched, p, false);
-    split.appendChild(sched); split.appendChild(projectChartsPanel(p));
-  }
+  if (split) split.appendChild(projectChartsPanel(p));
 }
 
 // A project's Schedule (start date and pace). In the two-column layout it sits at the
-// top of the right column, above the charts it changes; otherwise it stays inline.
-function scheduleSection(host, p, readOnly) {
-  host.appendChild(el("h2", null, "Schedule"));
+// top of the right column, above the Timeline/Burndown it changes; otherwise it stays
+// inline. `first` puts the heading at the top of its column (no top margin); `extraBtn`
+// (the Expand button) rides on the same heading row when given.
+function scheduleSection(host, p, readOnly, first, extraBtn) {
+  var hd = el("div", { "class": "sechead" + (first ? " first" : "") });
+  hd.appendChild(el("h2", first ? { "class": "first" } : null, "Schedule"));
+  if (extraBtn) hd.appendChild(extraBtn);
+  host.appendChild(hd);
   var eff = pset(p.id);
   if (readOnly) {
     host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + ", time multiplier " + eff.mult + "."));
   } else {
     host.appendChild(el("p", { "class": "hint" }, "Set this project's own start date and pace."));
-    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
+    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
     var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
     var pm = el("input", { type: "number", id: "proj-mult", min: "0.25", max: "5", step: "0.25" }); pm.value = eff.mult;
@@ -2433,20 +2437,22 @@ function scheduleSection(host, p, readOnly) {
   }
 }
 
-// The right-hand column of a project's page: its own Timeline and Burndown, with an
-// Expand button (desktop only; hidden by CSS on a phone) that opens them large.
+// The right-hand column of a project's page: its own Schedule, Timeline, and
+// Burndown, flowing continuously (not row-synced to the left column), with an
+// Expand button (desktop only; hidden by CSS on a phone) that opens all three large.
 function projectChartsPanel(p) {
-  var side = el("aside", { "class": "projcharts", "aria-label": "Timeline and burndown" });
-  var ex = el("button", { type: "button", "class": "small projexpand", title: "Expand the timeline and burndown" }, "Expand");
+  var side = el("aside", { "class": "projcharts", "aria-label": "Schedule, timeline, and burndown" });
+  var ex = el("button", { type: "button", "class": "small projexpand", title: "Expand the schedule, timeline, and burndown" }, "Expand");
   on(ex, "click", function () { openModal("Timeline and burndown for " + p.name, function (body) { body.appendChild(projectCharts(p, true, null, true)); }, { full: true }); });
-  side.appendChild(projectCharts(p, false, ex, false));
+  side.appendChild(projectCharts(p, false, ex, true));
   return side;
 }
 function projectCharts(p, wide, expandBtn, first) {
   var out = el("div");
-  var th = el("div", { "class": "sechead" }); th.appendChild(el("h2", first ? { "class": "first" } : null, "Timeline"));
-  if (expandBtn) th.appendChild(expandBtn);
-  out.appendChild(th);
+  // Schedule keeps its own single "Schedule" heading from scheduleSection() -- the
+  // Expand button rides along on that same heading row, no separate heading added.
+  scheduleSection(out, p, false, first, expandBtn);
+  out.appendChild(el("h2", null, "Timeline"));
   var tl = projectRangeBlock(p); out.appendChild(tl.node); wireMilestoneDiamonds(tl.node);
   if (!tl.empty) {
     var b = burnParts({ project: p, wide: wide, level: "h2" });

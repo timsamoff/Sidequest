@@ -487,10 +487,12 @@ export function renderProjectPage(root, id) {
     root.appendChild(ul);
   }
   if (!split) scheduleSection(root, p, readOnly);
-  // The rest of the left column (Notes and below) is its own grid item, so its first
-  // heading sits in the same row as the Timeline heading opposite it, by structure.
+  // The rest of the left column (Notes and below) is its own grid item. Unlike
+  // .projtop/.projcharts, .projrest doesn't need to align with anything at the top of
+  // a shared row (.projcharts now spans both rows), so "Notes" keeps its normal
+  // top margin instead of being zeroed.
   if (split) { root = el("div", { "class": "projrest" }); split.appendChild(root); }
-  root.appendChild(el("h2", split ? { "class": "first" } : null, "Notes"));
+  root.appendChild(el("h2", null, "Notes"));
   if (readOnly) {
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
   } else {
@@ -530,23 +532,24 @@ export function renderProjectPage(root, id) {
     }));
   }
   root.appendChild(ar);
-  if (split) {
-    var sched = el("div", { "class": "projsched" });
-    scheduleSection(sched, p, false);
-    split.appendChild(sched); split.appendChild(projectChartsPanel(p));
-  }
+  if (split) split.appendChild(projectChartsPanel(p));
 }
 
 // A project's Schedule (start date and pace). In the two-column layout it sits at the
-// top of the right column, above the charts it changes; otherwise it stays inline.
-function scheduleSection(host, p, readOnly) {
-  host.appendChild(el("h2", null, "Schedule"));
+// top of the right column, above the Timeline/Burndown it changes; otherwise it stays
+// inline. `first` puts the heading at the top of its column (no top margin); `extraBtn`
+// (the Expand button) rides on the same heading row when given.
+function scheduleSection(host, p, readOnly, first, extraBtn) {
+  var hd = el("div", { "class": "sechead" + (first ? " first" : "") });
+  hd.appendChild(el("h2", first ? { "class": "first" } : null, "Schedule"));
+  if (extraBtn) hd.appendChild(extraBtn);
+  host.appendChild(hd);
   var eff = pset(p.id);
   if (readOnly) {
     host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + ", time multiplier " + eff.mult + "."));
   } else {
     host.appendChild(el("p", { "class": "hint" }, "Set this project's own start date and pace."));
-    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
+    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
     var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
     var pm = el("input", { type: "number", id: "proj-mult", min: "0.25", max: "5", step: "0.25" }); pm.value = eff.mult;
@@ -562,20 +565,22 @@ function scheduleSection(host, p, readOnly) {
   }
 }
 
-// The right-hand column of a project's page: its own Timeline and Burndown, with an
-// Expand button (desktop only; hidden by CSS on a phone) that opens them large.
+// The right-hand column of a project's page: its own Schedule, Timeline, and
+// Burndown, flowing continuously (not row-synced to the left column), with an
+// Expand button (desktop only; hidden by CSS on a phone) that opens all three large.
 function projectChartsPanel(p) {
-  var side = el("aside", { "class": "projcharts", "aria-label": "Timeline and burndown" });
-  var ex = el("button", { type: "button", "class": "small projexpand", title: "Expand the timeline and burndown" }, "Expand");
+  var side = el("aside", { "class": "projcharts", "aria-label": "Schedule, timeline, and burndown" });
+  var ex = el("button", { type: "button", "class": "small projexpand", title: "Expand the schedule, timeline, and burndown" }, "Expand");
   on(ex, "click", function () { openModal("Timeline and burndown for " + p.name, function (body) { body.appendChild(projectCharts(p, true, null, true)); }, { full: true }); });
-  side.appendChild(projectCharts(p, false, ex, false));
+  side.appendChild(projectCharts(p, false, ex, true));
   return side;
 }
 function projectCharts(p, wide, expandBtn, first) {
   var out = el("div");
-  var th = el("div", { "class": "sechead" }); th.appendChild(el("h2", first ? { "class": "first" } : null, "Timeline"));
-  if (expandBtn) th.appendChild(expandBtn);
-  out.appendChild(th);
+  // Schedule keeps its own single "Schedule" heading from scheduleSection() -- the
+  // Expand button rides along on that same heading row, no separate heading added.
+  scheduleSection(out, p, false, first, expandBtn);
+  out.appendChild(el("h2", null, "Timeline"));
   var tl = projectRangeBlock(p); out.appendChild(tl.node); wireMilestoneDiamonds(tl.node);
   if (!tl.empty) {
     var b = burnParts({ project: p, wide: wide, level: "h2" });
