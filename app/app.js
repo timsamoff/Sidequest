@@ -8,7 +8,7 @@ import {
 } from "./views.js";
 import { renderSearch, openSearch, closeSearch, wireSearchInput, focusSearch } from "./search.js";
 import {
-  taskDialog, projectDialog, ideaDialog, decisionDialog, milestoneDialog, slipDialog, stepDialog
+  taskDialog, projectDialog, ideaDialog, decisionDialog, milestoneDialog, stepDialog
 } from "./dialogs.js";
 import { playSplash } from "./splash.js";
 
@@ -33,8 +33,6 @@ export function buildMoreMenu(pinned) {
   if (pinned.length) { m.appendChild(el("hr")); m.appendChild(el("div", { "class": "menulabel", role: "presentation" }, "Pinned")); pinned.forEach(function (k) { item(k, pageTitle(k)); }); }
   m.appendChild(el("hr"));
   BOTTOM.forEach(function (c) { item(c[0], c[1]); });
-  m.appendChild(el("hr"));
-  m.appendChild(el("button", { type: "button", role: "menuitem", "data-act": "slip", title: "Push every date later to catch up" }, "Slip Schedule"));
 }
 export function renderChrome() {
   var nav = $("nav"); nav.innerHTML = ""; var nb = $("navBottom"); nb.innerHTML = "";
@@ -120,7 +118,7 @@ export function wireMenu(btnId, menuId) {
     closeMenus(false);
     if (t.getAttribute("data-view")) { go(t.getAttribute("data-view")); return; }
     var act = t.getAttribute("data-act");
-    ({ newTask: taskDialog, newBacklog: function () { taskDialog(undefined, true); }, newStep: function () { stepDialog(false); }, newProject: projectDialog, newIdea: ideaDialog, newDecision: decisionDialog, newMilestone: milestoneDialog, slip: slipDialog, archive: function () { go("archive"); }, settings: function () { go("settings"); } })[act]();
+    ({ newTask: taskDialog, newBacklog: function () { taskDialog(undefined, true); }, newStep: function () { stepDialog(false); }, newProject: projectDialog, newIdea: ideaDialog, newDecision: decisionDialog, newMilestone: milestoneDialog, archive: function () { go("archive"); }, settings: function () { go("settings"); } })[act]();
   });
   on(m, "keydown", function (e) {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;

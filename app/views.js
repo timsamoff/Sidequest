@@ -67,7 +67,6 @@ export function overduePanel() {
     on(b, "click", function () { openTask(t.id); }); li.appendChild(b); ul.appendChild(li);
   });
   box.appendChild(ul);
-  box.appendChild(on(el("button", { type: "button", "class": "textbtn", style: "margin-top:10px", title: "Push every date later to catch up" }, "Running behind? Slip the schedule"), "click", function () { slipDialog(); }));
   return box;
 }
 export function currentCheckpointIndex() {
@@ -242,7 +241,7 @@ export function buildDetail(t) {
       if (bd.value === "") { t.block = 0; changed(); notify("Moved to the Backlog."); return; }
       if (!isISO(bd.value)) { bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block)); bmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
       var blk = blockForDate(projKey(t), parseISO(bd.value));
-      if (blk === null) { bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block)); bmsg.textContent = "Pick a date on or after " + fmt(parseISO(pset(projKey(t)).start)) + ", this project's own start date."; return; }
+      if (blk === null) { bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block)); bmsg.textContent = "Pick a date on or after " + fmtY(parseISO(pset(projKey(t)).start)) + ", this project's own start date."; return; }
       bmsg.textContent = "";
       t.block = blk; changed(); notify("Moved to " + wd() + " " + blk + " (" + fmt(blockStartFor(projKey(t), blk)) + " to " + fmt(blockEndFor(projKey(t), blk)) + ").");
     });
@@ -571,10 +570,18 @@ function projectCharts(p, wide, expandBtn, first) {
     // With nothing scheduled there is nothing to chart, so one combined
     // heading covers both -- separate "Timeline" and "Burndown" headings
     // over one hint sentence would just be two labels for the same emptiness.
+    // No Slip button here either: with nothing incomplete scheduled, there's
+    // nothing for it to move.
     out.appendChild(el("h2", null, "Timeline & burndown"));
     out.appendChild(tl.node);
   } else {
-    out.appendChild(el("h2", null, "Timeline"));
+    // Slip lives on the Timeline heading's own row -- it moves this
+    // project's still-incomplete tasks later (see slipDialog()); Completed
+    // tasks and the Backlog are never touched.
+    var slipBtn = el("button", { type: "button", "class": "small", title: "Push this project's incomplete tasks later to catch up" }, "Slip schedule");
+    on(slipBtn, "click", function () { slipDialog(p); });
+    var hd1 = el("div", { "class": "sechead" }); hd1.appendChild(el("h2", null, "Timeline")); hd1.appendChild(slipBtn);
+    out.appendChild(hd1);
     out.appendChild(tl.node); wireMilestoneDiamonds(tl.node);
     var b = burnParts({ project: p, wide: wide, level: "h2" });
     b.count.style.marginTop = "12px";
@@ -863,12 +870,12 @@ export function helpTopics() {
   return [
     ["Find your way around", [
       "On a computer, use the sidebar on the left. On a phone, use the tabs along the bottom.",
-      "The menu button (three lines, top right) lists every page, and **Slip Schedule**.",
+      "The menu button (three lines, top right) lists every page.",
       "The **+** button adds things: a task, backlog item, step, project, idea, decision, or milestone.",
       "Search: press [[/]] on a computer, or tap the magnifier on a phone. Press [[Enter]] to open the first result and [[Esc]] to clear it. On a phone, tap the **X** where the magnifier was to cancel."]],
     ["Work through your day (Today)", [
       "**Next up** shows the task to do now. **Start** marks it in progress, and **Open task** takes you to it in Tasks.",
-      "Anything past its end date appears below it. If you are running behind, use **Slip the schedule** there, or **Slip Schedule** in the menu.",
+      "Anything past its end date appears below it. If you are running behind, open that project's own page and use **Slip schedule** there.",
       "The burndown shows work left against the plan. It records this week's count automatically whenever you make a change. Point at a week, tap it, or focus the chart and use the arrow keys to see that week's counts and tasks."]],
     ["Add and schedule tasks", [
       "Tap **+**, then **New task**. Enter the project, what you do, and when it is done.",
@@ -904,8 +911,8 @@ export function helpTopics() {
       "Only **Projects** and **Ideas** go to the **Archive**, using their **Archive** button. A completed task just stays visible in its project, marked done.",
       "**Delete** on a task, or **Remove** on a decision or milestone, deletes it right away, with a short **Undo** in case you didn't mean to.",
       "In the Archive, select a project's name to look at it. **Restore** puts a project or idea back, and a project's tasks with it. **Delete forever** always asks first, and it cannot be undone."]],
-    ["Slip the schedule", [
-      "Open the menu and choose **Slip Schedule**. Pick the number of days, and whether to move everything or one project, then choose **Push dates later**.",
+    ["Slip a project's schedule", [
+      "On a project's own page, above the Timeline, choose **Slip schedule**. Pick the number of days and choose **Push dates later** — its still-incomplete tasks move later by that many days. Completed tasks and the Backlog are not affected.",
       "**Undo last slip** in the same dialog reverses it."]],
     ["Settings, backup, and starting over", [
       "In **Settings**, set the default start date and pace, what to call a stretch of work (Block, Sprint, and so on), the date format, the theme, and whether the splash screen plays when the app opens.",

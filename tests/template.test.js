@@ -670,6 +670,39 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(Object.keys(a).join() === "2026-09-14" && a["2026-09-14"] === 12, "only well-formed weekly snapshots are kept");
 }
 {
+  // Slip schedule moves only a project's incomplete tasks, leaves Completed
+  // tasks and the Backlog untouched, and is reachable only from the project
+  // page now (not the Main Menu or Today's Overdue panel)
+  const saved = {
+    projects: [{ id: "pS", name: "Behind Schedule", status: "active", start: "2026-08-03", days: 7 }],
+    tasks: [
+      { id: "s1", block: 1, projectId: "pS", what: "Done already", done: "done", status: "Completed", steps: [] },
+      { id: "s2", block: 2, projectId: "pS", what: "Still open", done: "done", status: "Not started", steps: [] },
+      { id: "s3", block: 0, projectId: "pS", what: "In the backlog", done: "done", status: "Not started", steps: [] }
+    ]
+  };
+  const k = kit(await mk(saved));
+  const menuItems = () => { k.$("moreBtn").dispatchEvent(new k.w.MouseEvent("click", { bubbles: true })); return [...k.d.querySelectorAll("#moreMenu button")].map(b => b.textContent); };
+  ok(!menuItems().some(t => t.includes("Slip")), "Slip is no longer in the Main Menu");
+  k.d.querySelector("#moreMenu").dispatchEvent(new k.w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  k.tab("today");
+  ok(!k.$("view").textContent.includes("Slip"), "Slip is no longer offered from Today's Overdue panel");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Behind Schedule"));
+  const slipBtn = k.btn(k.$("view"), "Slip schedule");
+  ok(!!slipBtn, "a project's own page has a Slip schedule button");
+  k.click(slipBtn);
+  k.$("slipDays").value = "7"; k.click(k.$("slipGo"));
+  const tasksAfter = k.saved().tasks;
+  ok(tasksAfter.find(t => t.id === "s1").block === 1, "a Completed task's block is untouched by Slip");
+  ok(tasksAfter.find(t => t.id === "s2").block === 3, "an incomplete task's block moves forward by the slipped days (" + tasksAfter.find(t => t.id === "s2").block + ")");
+  ok(tasksAfter.find(t => t.id === "s3").block === 0, "a Backlog task stays in the Backlog");
+  // undo restores the exact original block
+  k.click(slipBtn);
+  ok(!!k.btn(k.$("modalBody"), "Undo last slip (7 days)"), "Undo is offered after a slip");
+  k.click(k.btn(k.$("modalBody"), "Undo last slip (7 days)"));
+  ok(k.saved().tasks.find(t => t.id === "s2").block === 2, "undo restores the task's original block");
+}
+{
   // an active project with nothing scheduled still has the panel, and says so
   const k = kit(await mk({ projects: [{ id: "pX", name: "Empty", status: "active" }], tasks: [] }));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Empty"));

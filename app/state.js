@@ -22,7 +22,7 @@ export function task(id, block, projectId, what, done, steps, extra) {
 // record and id carry through Candidate -> Active -> Archived, never a second
 // record. See DESIGN.md's "making Project a first-class entity" section.
 export function project(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, actual: {} };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, actual: {}, lastSlip: null };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -117,7 +117,7 @@ export function defaults() {
     v: 5, start: d.start, days: 7,
     tasks: d.tasks, actual: [34, 31, 25, null, null, null, null],
     decisions: d.decisions, projects: d.projects, parked: d.parked,
-    milestones: d.milestones, lastSlip: null, pins: ["proj:pApp"],
+    milestones: d.milestones, pins: ["proj:pApp"],
     settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true }
   };
 }
@@ -125,15 +125,14 @@ export function defaults() {
 export function validArch(a) { return (a && typeof a === "object" && isISO(a.at) && (a.why === "done" || a.why === "removed")) ? { at: a.at, why: a.why } : null; }
 export function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
 // A slip-snapshot's per-project start/days pairs (used by slipDialog's undo).
-// Content-validated the same way a real project's own start/days are.
-function cleanProjectSnap(o) {
-  var out = {};
-  if (o && typeof o === "object" && !Array.isArray(o)) Object.keys(o).slice(0, 200).forEach(function (k) {
-    var v = o[k]; if (!v || typeof v !== "object") return;
-    var e = {}; if (isISO(v.start)) e.start = v.start; if (typeof v.days === "number" && v.days >= 1 && v.days <= 90) e.days = v.days;
-    if (e.start || e.days) out[S(k, 40)] = e;
-  });
-  return out;
+// A slip's own undo snapshot: each affected task's own block number right
+// before the slip (slipDialog() moves individual incomplete tasks, not the
+// project's own start date -- see CLAUDE.md for why that changed).
+function cleanSlip(v) {
+  if (!v || typeof v !== "object" || typeof v.days !== "number" || !Array.isArray(v.snap)) return null;
+  var snap = v.snap.slice(0, 500).filter(function (s) { return s && typeof s.id === "string" && typeof s.block === "number" && s.block >= 0 && s.block <= 5000; }).map(function (s) { return { id: S(s.id, 40), block: Math.round(s.block) }; });
+  if (!snap.length) return null;
+  return { days: Math.round(v.days) || 0, snap: snap };
 }
 export function normalize(s) {
   var d = defaults();
@@ -160,6 +159,7 @@ export function normalize(s) {
         start: isISO(x.start) ? x.start : "", days: days,
         due: isISO(x.due) ? x.due : "",
         notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true, actual: snaps,
+        lastSlip: cleanSlip(x.lastSlip),
         // Validated below, once every project's real id is known -- a link
         // can only point at another project that actually exists in the
         // final set. Arbitrary depth/cycles are fine (see DESIGN.md); each
@@ -232,7 +232,6 @@ export function normalize(s) {
     if (typeof s.settings.showSplash === "boolean") d.settings.showSplash = s.settings.showSplash;
   }
   if (Array.isArray(s.pins)) d.pins = s.pins.filter(function (k) { return typeof k === "string" && k.length < 130; }).slice(0, 30);
-  if (s.lastSlip && s.lastSlip.snap && isISO(s.lastSlip.snap.start)) d.lastSlip = { days: Math.round(+s.lastSlip.days) || 0, snap: { start: s.lastSlip.snap.start, projects: cleanProjectSnap(s.lastSlip.snap.projects) } };
   return d;
 }
 // Storage adapter: localStorage (web app) is synchronous and always available;

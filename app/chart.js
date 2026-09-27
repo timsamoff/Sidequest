@@ -234,7 +234,7 @@ export function projectRangeBlock(p) {
   live(state.milestones).forEach(function (m) { if (m.projectId === p.id) mss.push({ id: m.id, text: m.text, date: parseISO(m.date) }); });
   var nb = counted().filter(function (t) { return t.projectId === p.id && !t.isNext && t.block === 0; }).length;
   var backlog = nb ? " " + nb + (nb === 1 ? " backlog item is" : " backlog items are") + " not shown until scheduled." : "";
-  if (!ts.length) return { node: el("p", { "class": "hint" }, "Nothing is scheduled yet. Create a task with a date to see them here." + backlog), milestones: mss, empty: true };
+  if (!ts.length) return { node: el("p", { "class": "hint" }, "Nothing is scheduled yet. Create a task with a due date to see them here." + backlog), milestones: mss, empty: true };
   var first = Infinity, maxEnd = -Infinity;
   var lanes = ts.map(function (t) {
     var a = taskStart(t), b = taskEnd(t);

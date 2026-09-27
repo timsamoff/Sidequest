@@ -1,9 +1,9 @@
 import { state, ui, changed, isISO, task, project as makeProject } from "./state.js";
-import { iso, addDays, parseISO, fmt } from "./dates.js";
+import { iso, addDays, parseISO, fmt, fmtY } from "./dates.js";
 import {
   wd, wl, wpC, counted, activeProjects, liveProjects, findProject, dispProject, nextTask, findTask,
-  orderedAll, taskOptions, stepOptions, syncFromSteps, ordered, findStep, decisionFor,
-  pset, blockStartFor, blockEndFor, blockForDate, linkProjects
+  orderedAll, taskOptions, stepOptions, syncFromSteps, findStep, decisionFor,
+  pset, blockStartFor, blockEndFor, blockForDate, taskStart, linkProjects
 } from "./model.js";
 import { $, el, on, uid, notify } from "./dom.js";
 import { closeMenus } from "./app.js";
@@ -112,7 +112,7 @@ export function taskDialog(prefillProjectId, backlog) {
     if (v.due !== "") {
       if (!isISO(v.due)) return "Enter a valid due date, or leave it empty for the Backlog.";
       blk = blockForDate(v.project, parseISO(v.due));
-      if (blk === null) return "Pick a date on or after " + fmt(parseISO(pset(v.project).start)) + ", this project's own start date.";
+      if (blk === null) return "Pick a date on or after " + fmtY(parseISO(pset(v.project).start)) + ", this project's own start date.";
     }
     var t = task("c" + uid(), blk, v.project, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true });
     state.tasks.push(t); ui.sel = t.id; changed();
@@ -276,43 +276,37 @@ export function milestoneDialog(m, onRemove) {
     return { msg: "Milestone added to the Timeline." };
   }, undefined, m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
 }
-export function slipDialog() {
-  openModal("Slip the schedule", function (body) {
-    body.appendChild(el("p", { "class": "hint first" }, "This moves start dates later, so the dates that follow them move too."));
+// Slips one project's INCOMPLETE tasks later by N days each, recomputing
+// which block each one falls into from its own current date -- Completed
+// tasks and Backlog items (no date to shift) are left untouched. This does
+// NOT touch the project's own start date (an earlier version did, which
+// moved every task uniformly including ones already done, which isn't a
+// "catch up" operation at all -- see CLAUDE.md for the full history of why
+// this changed). Scoped to a single project; there is no "slip everything."
+export function slipDialog(p) {
+  openModal("Slip " + p.name + "'s schedule", function (body) {
+    body.appendChild(el("p", { "class": "hint first" }, "This moves incomplete tasks later by the same number of days. Completed tasks and the Backlog are not affected."));
     var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": "slipDays" }, "Days to slip (1 to 90)"));
     var inp = el("input", { type: "number", id: "slipDays", min: "1", max: "90", step: "1" }); inp.value = "7"; w.appendChild(inp); body.appendChild(w);
-    var tw = el("div", { "class": "field" }); tw.appendChild(el("label", { "for": "slipWhat" }, "What to slip"));
-    var sel = el("select", { id: "slipWhat", "class": "plain" }); sel.appendChild(el("option", { value: "" }, "Everything"));
-    var seen = {}; ordered().forEach(function (t) { if (!t.isNext && !seen[t.projectId]) { seen[t.projectId] = 1; sel.appendChild(el("option", { value: t.projectId }, "Only " + dispProject(t))); } });
-    tw.appendChild(sel); body.appendChild(tw);
     var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push dates later" }, "Push dates later"), "click", function () {
-      var n = parseInt(inp.value, 10), target = sel.value;
+      var n = parseInt(inp.value, 10);
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
-      // Snapshot every project's own start/days (for undo) -- a project record
-      // is the source of truth now, not a separate state.pset dictionary.
-      var projSnap = {}; state.projects.forEach(function (p) { projSnap[p.id] = { start: p.start, days: p.days }; });
-      var snap = { start: state.start, projects: projSnap };
-      var targetName = target ? dispProject({ projectId: target }) : "";
-      if (target === "") {
-        state.start = iso(addDays(parseISO(state.start), n));
-        state.projects.forEach(function (p) { if (p.start) p.start = iso(addDays(parseISO(p.start), n)); });
-      } else {
-        var eff = pset(target), p2 = findProject(target);
-        if (p2) { p2.start = iso(addDays(parseISO(eff.start), n)); p2.days = eff.days; }
-      }
-      state.lastSlip = { days: n, snap: snap };
-      changed(); closeModal();
-      notify((target === "" ? "Everything" : targetName) + " moved back " + n + (n === 1 ? " day" : " days") + ".");
-    }));
-    if (state.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo", title: "Reverse the last slip" }, "Undo last slip (" + state.lastSlip.days + " days)"), "click", function () {
-      state.start = state.lastSlip.snap.start;
-      Object.keys(state.lastSlip.snap.projects).forEach(function (pid) {
-        var p = findProject(pid), snapped = state.lastSlip.snap.projects[pid];
-        if (p && snapped) { if (snapped.start) p.start = snapped.start; if (snapped.days) p.days = snapped.days; }
+      var targets = state.tasks.filter(function (t) { return t.projectId === p.id && !t.isNext && t.block > 0 && t.status !== "Completed" && !t.arch; });
+      if (!targets.length) { err.textContent = "Nothing incomplete is scheduled to slip."; return; }
+      var snap = targets.map(function (t) { return { id: t.id, block: t.block }; });
+      targets.forEach(function (t) {
+        var newDate = addDays(taskStart(t), n), newBlock = blockForDate(p.id, newDate);
+        t.block = newBlock === null ? t.block : newBlock;
       });
-      state.lastSlip = null; changed(); closeModal();
+      p.lastSlip = { days: n, snap: snap };
+      changed(); closeModal();
+      notify(targets.length + (targets.length === 1 ? " task" : " tasks") + " in " + p.name + " moved back " + n + (n === 1 ? " day" : " days") + ".");
+    }));
+    if (p.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo", title: "Reverse the last slip" }, "Undo last slip (" + p.lastSlip.days + " days)"), "click", function () {
+      p.lastSlip.snap.forEach(function (s) { var t = findTask(s.id); if (t) t.block = s.block; });
+      p.lastSlip = null; changed(); closeModal();
       notify("Slip undone.");
     }));
     acts.appendChild(on(el("button", { type: "button", title: "Cancel" }, "Cancel"), "click", closeModal));

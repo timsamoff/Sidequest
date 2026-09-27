@@ -925,7 +925,7 @@ function task(id, block, projectId, what, done, steps, extra) {
 // record and id carry through Candidate -> Active -> Archived, never a second
 // record. See DESIGN.md's "making Project a first-class entity" section.
 function project(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, actual: {} };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, actual: {}, lastSlip: null };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -1020,7 +1020,7 @@ function defaults() {
     v: 5, start: d.start, days: 7,
     tasks: d.tasks, actual: [34, 31, 25, null, null, null, null],
     decisions: d.decisions, projects: d.projects, parked: d.parked,
-    milestones: d.milestones, lastSlip: null, pins: ["proj:pApp"],
+    milestones: d.milestones, pins: ["proj:pApp"],
     settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true }
   };
 }
@@ -1028,15 +1028,14 @@ function defaults() {
 function validArch(a) { return (a && typeof a === "object" && isISO(a.at) && (a.why === "done" || a.why === "removed")) ? { at: a.at, why: a.why } : null; }
 function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
 // A slip-snapshot's per-project start/days pairs (used by slipDialog's undo).
-// Content-validated the same way a real project's own start/days are.
-function cleanProjectSnap(o) {
-  var out = {};
-  if (o && typeof o === "object" && !Array.isArray(o)) Object.keys(o).slice(0, 200).forEach(function (k) {
-    var v = o[k]; if (!v || typeof v !== "object") return;
-    var e = {}; if (isISO(v.start)) e.start = v.start; if (typeof v.days === "number" && v.days >= 1 && v.days <= 90) e.days = v.days;
-    if (e.start || e.days) out[S(k, 40)] = e;
-  });
-  return out;
+// A slip's own undo snapshot: each affected task's own block number right
+// before the slip (slipDialog() moves individual incomplete tasks, not the
+// project's own start date -- see CLAUDE.md for why that changed).
+function cleanSlip(v) {
+  if (!v || typeof v !== "object" || typeof v.days !== "number" || !Array.isArray(v.snap)) return null;
+  var snap = v.snap.slice(0, 500).filter(function (s) { return s && typeof s.id === "string" && typeof s.block === "number" && s.block >= 0 && s.block <= 5000; }).map(function (s) { return { id: S(s.id, 40), block: Math.round(s.block) }; });
+  if (!snap.length) return null;
+  return { days: Math.round(v.days) || 0, snap: snap };
 }
 function normalize(s) {
   var d = defaults();
@@ -1063,6 +1062,7 @@ function normalize(s) {
         start: isISO(x.start) ? x.start : "", days: days,
         due: isISO(x.due) ? x.due : "",
         notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true, actual: snaps,
+        lastSlip: cleanSlip(x.lastSlip),
         // Validated below, once every project's real id is known -- a link
         // can only point at another project that actually exists in the
         // final set. Arbitrary depth/cycles are fine (see DESIGN.md); each
@@ -1135,7 +1135,6 @@ function normalize(s) {
     if (typeof s.settings.showSplash === "boolean") d.settings.showSplash = s.settings.showSplash;
   }
   if (Array.isArray(s.pins)) d.pins = s.pins.filter(function (k) { return typeof k === "string" && k.length < 130; }).slice(0, 30);
-  if (s.lastSlip && s.lastSlip.snap && isISO(s.lastSlip.snap.start)) d.lastSlip = { days: Math.round(+s.lastSlip.days) || 0, snap: { start: s.lastSlip.snap.start, projects: cleanProjectSnap(s.lastSlip.snap.projects) } };
   return d;
 }
 // Storage adapter: localStorage (web app) is synchronous and always available;
@@ -1475,7 +1474,7 @@ function projectRangeBlock(p) {
   live(state.milestones).forEach(function (m) { if (m.projectId === p.id) mss.push({ id: m.id, text: m.text, date: parseISO(m.date) }); });
   var nb = counted().filter(function (t) { return t.projectId === p.id && !t.isNext && t.block === 0; }).length;
   var backlog = nb ? " " + nb + (nb === 1 ? " backlog item is" : " backlog items are") + " not shown until scheduled." : "";
-  if (!ts.length) return { node: el("p", { "class": "hint" }, "Nothing is scheduled yet. Create a task with a date to see them here." + backlog), milestones: mss, empty: true };
+  if (!ts.length) return { node: el("p", { "class": "hint" }, "Nothing is scheduled yet. Create a task with a due date to see them here." + backlog), milestones: mss, empty: true };
   var first = Infinity, maxEnd = -Infinity;
   var lanes = ts.map(function (t) {
     var a = taskStart(t), b = taskEnd(t);
@@ -1739,7 +1738,7 @@ function taskDialog(prefillProjectId, backlog) {
     if (v.due !== "") {
       if (!isISO(v.due)) return "Enter a valid due date, or leave it empty for the Backlog.";
       blk = blockForDate(v.project, parseISO(v.due));
-      if (blk === null) return "Pick a date on or after " + fmt(parseISO(pset(v.project).start)) + ", this project's own start date.";
+      if (blk === null) return "Pick a date on or after " + fmtY(parseISO(pset(v.project).start)) + ", this project's own start date.";
     }
     var t = task("c" + uid(), blk, v.project, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true });
     state.tasks.push(t); ui.sel = t.id; changed();
@@ -1903,43 +1902,37 @@ function milestoneDialog(m, onRemove) {
     return { msg: "Milestone added to the Timeline." };
   }, undefined, m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
 }
-function slipDialog() {
-  openModal("Slip the schedule", function (body) {
-    body.appendChild(el("p", { "class": "hint first" }, "This moves start dates later, so the dates that follow them move too."));
+// Slips one project's INCOMPLETE tasks later by N days each, recomputing
+// which block each one falls into from its own current date -- Completed
+// tasks and Backlog items (no date to shift) are left untouched. This does
+// NOT touch the project's own start date (an earlier version did, which
+// moved every task uniformly including ones already done, which isn't a
+// "catch up" operation at all -- see CLAUDE.md for the full history of why
+// this changed). Scoped to a single project; there is no "slip everything."
+function slipDialog(p) {
+  openModal("Slip " + p.name + "'s schedule", function (body) {
+    body.appendChild(el("p", { "class": "hint first" }, "This moves incomplete tasks later by the same number of days. Completed tasks and the Backlog are not affected."));
     var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": "slipDays" }, "Days to slip (1 to 90)"));
     var inp = el("input", { type: "number", id: "slipDays", min: "1", max: "90", step: "1" }); inp.value = "7"; w.appendChild(inp); body.appendChild(w);
-    var tw = el("div", { "class": "field" }); tw.appendChild(el("label", { "for": "slipWhat" }, "What to slip"));
-    var sel = el("select", { id: "slipWhat", "class": "plain" }); sel.appendChild(el("option", { value: "" }, "Everything"));
-    var seen = {}; ordered().forEach(function (t) { if (!t.isNext && !seen[t.projectId]) { seen[t.projectId] = 1; sel.appendChild(el("option", { value: t.projectId }, "Only " + dispProject(t))); } });
-    tw.appendChild(sel); body.appendChild(tw);
     var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push dates later" }, "Push dates later"), "click", function () {
-      var n = parseInt(inp.value, 10), target = sel.value;
+      var n = parseInt(inp.value, 10);
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
-      // Snapshot every project's own start/days (for undo) -- a project record
-      // is the source of truth now, not a separate state.pset dictionary.
-      var projSnap = {}; state.projects.forEach(function (p) { projSnap[p.id] = { start: p.start, days: p.days }; });
-      var snap = { start: state.start, projects: projSnap };
-      var targetName = target ? dispProject({ projectId: target }) : "";
-      if (target === "") {
-        state.start = iso(addDays(parseISO(state.start), n));
-        state.projects.forEach(function (p) { if (p.start) p.start = iso(addDays(parseISO(p.start), n)); });
-      } else {
-        var eff = pset(target), p2 = findProject(target);
-        if (p2) { p2.start = iso(addDays(parseISO(eff.start), n)); p2.days = eff.days; }
-      }
-      state.lastSlip = { days: n, snap: snap };
-      changed(); closeModal();
-      notify((target === "" ? "Everything" : targetName) + " moved back " + n + (n === 1 ? " day" : " days") + ".");
-    }));
-    if (state.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo", title: "Reverse the last slip" }, "Undo last slip (" + state.lastSlip.days + " days)"), "click", function () {
-      state.start = state.lastSlip.snap.start;
-      Object.keys(state.lastSlip.snap.projects).forEach(function (pid) {
-        var p = findProject(pid), snapped = state.lastSlip.snap.projects[pid];
-        if (p && snapped) { if (snapped.start) p.start = snapped.start; if (snapped.days) p.days = snapped.days; }
+      var targets = state.tasks.filter(function (t) { return t.projectId === p.id && !t.isNext && t.block > 0 && t.status !== "Completed" && !t.arch; });
+      if (!targets.length) { err.textContent = "Nothing incomplete is scheduled to slip."; return; }
+      var snap = targets.map(function (t) { return { id: t.id, block: t.block }; });
+      targets.forEach(function (t) {
+        var newDate = addDays(taskStart(t), n), newBlock = blockForDate(p.id, newDate);
+        t.block = newBlock === null ? t.block : newBlock;
       });
-      state.lastSlip = null; changed(); closeModal();
+      p.lastSlip = { days: n, snap: snap };
+      changed(); closeModal();
+      notify(targets.length + (targets.length === 1 ? " task" : " tasks") + " in " + p.name + " moved back " + n + (n === 1 ? " day" : " days") + ".");
+    }));
+    if (p.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo", title: "Reverse the last slip" }, "Undo last slip (" + p.lastSlip.days + " days)"), "click", function () {
+      p.lastSlip.snap.forEach(function (s) { var t = findTask(s.id); if (t) t.block = s.block; });
+      p.lastSlip = null; changed(); closeModal();
       notify("Slip undone.");
     }));
     acts.appendChild(on(el("button", { type: "button", title: "Cancel" }, "Cancel"), "click", closeModal));
@@ -2019,7 +2012,6 @@ function overduePanel() {
     on(b, "click", function () { openTask(t.id); }); li.appendChild(b); ul.appendChild(li);
   });
   box.appendChild(ul);
-  box.appendChild(on(el("button", { type: "button", "class": "textbtn", style: "margin-top:10px", title: "Push every date later to catch up" }, "Running behind? Slip the schedule"), "click", function () { slipDialog(); }));
   return box;
 }
 function currentCheckpointIndex() {
@@ -2194,7 +2186,7 @@ function buildDetail(t) {
       if (bd.value === "") { t.block = 0; changed(); notify("Moved to the Backlog."); return; }
       if (!isISO(bd.value)) { bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block)); bmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
       var blk = blockForDate(projKey(t), parseISO(bd.value));
-      if (blk === null) { bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block)); bmsg.textContent = "Pick a date on or after " + fmt(parseISO(pset(projKey(t)).start)) + ", this project's own start date."; return; }
+      if (blk === null) { bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block)); bmsg.textContent = "Pick a date on or after " + fmtY(parseISO(pset(projKey(t)).start)) + ", this project's own start date."; return; }
       bmsg.textContent = "";
       t.block = blk; changed(); notify("Moved to " + wd() + " " + blk + " (" + fmt(blockStartFor(projKey(t), blk)) + " to " + fmt(blockEndFor(projKey(t), blk)) + ").");
     });
@@ -2523,10 +2515,18 @@ function projectCharts(p, wide, expandBtn, first) {
     // With nothing scheduled there is nothing to chart, so one combined
     // heading covers both -- separate "Timeline" and "Burndown" headings
     // over one hint sentence would just be two labels for the same emptiness.
+    // No Slip button here either: with nothing incomplete scheduled, there's
+    // nothing for it to move.
     out.appendChild(el("h2", null, "Timeline & burndown"));
     out.appendChild(tl.node);
   } else {
-    out.appendChild(el("h2", null, "Timeline"));
+    // Slip lives on the Timeline heading's own row -- it moves this
+    // project's still-incomplete tasks later (see slipDialog()); Completed
+    // tasks and the Backlog are never touched.
+    var slipBtn = el("button", { type: "button", "class": "small", title: "Push this project's incomplete tasks later to catch up" }, "Slip schedule");
+    on(slipBtn, "click", function () { slipDialog(p); });
+    var hd1 = el("div", { "class": "sechead" }); hd1.appendChild(el("h2", null, "Timeline")); hd1.appendChild(slipBtn);
+    out.appendChild(hd1);
     out.appendChild(tl.node); wireMilestoneDiamonds(tl.node);
     var b = burnParts({ project: p, wide: wide, level: "h2" });
     b.count.style.marginTop = "12px";
@@ -2815,12 +2815,12 @@ function helpTopics() {
   return [
     ["Find your way around", [
       "On a computer, use the sidebar on the left. On a phone, use the tabs along the bottom.",
-      "The menu button (three lines, top right) lists every page, and **Slip Schedule**.",
+      "The menu button (three lines, top right) lists every page.",
       "The **+** button adds things: a task, backlog item, step, project, idea, decision, or milestone.",
       "Search: press [[/]] on a computer, or tap the magnifier on a phone. Press [[Enter]] to open the first result and [[Esc]] to clear it. On a phone, tap the **X** where the magnifier was to cancel."]],
     ["Work through your day (Today)", [
       "**Next up** shows the task to do now. **Start** marks it in progress, and **Open task** takes you to it in Tasks.",
-      "Anything past its end date appears below it. If you are running behind, use **Slip the schedule** there, or **Slip Schedule** in the menu.",
+      "Anything past its end date appears below it. If you are running behind, open that project's own page and use **Slip schedule** there.",
       "The burndown shows work left against the plan. It records this week's count automatically whenever you make a change. Point at a week, tap it, or focus the chart and use the arrow keys to see that week's counts and tasks."]],
     ["Add and schedule tasks", [
       "Tap **+**, then **New task**. Enter the project, what you do, and when it is done.",
@@ -2856,8 +2856,8 @@ function helpTopics() {
       "Only **Projects** and **Ideas** go to the **Archive**, using their **Archive** button. A completed task just stays visible in its project, marked done.",
       "**Delete** on a task, or **Remove** on a decision or milestone, deletes it right away, with a short **Undo** in case you didn't mean to.",
       "In the Archive, select a project's name to look at it. **Restore** puts a project or idea back, and a project's tasks with it. **Delete forever** always asks first, and it cannot be undone."]],
-    ["Slip the schedule", [
-      "Open the menu and choose **Slip Schedule**. Pick the number of days, and whether to move everything or one project, then choose **Push dates later**.",
+    ["Slip a project's schedule", [
+      "On a project's own page, above the Timeline, choose **Slip schedule**. Pick the number of days and choose **Push dates later** — its still-incomplete tasks move later by that many days. Completed tasks and the Backlog are not affected.",
       "**Undo last slip** in the same dialog reverses it."]],
     ["Settings, backup, and starting over", [
       "In **Settings**, set the default start date and pace, what to call a stretch of work (Block, Sprint, and so on), the date format, the theme, and whether the splash screen plays when the app opens.",
@@ -3325,8 +3325,6 @@ function buildMoreMenu(pinned) {
   if (pinned.length) { m.appendChild(el("hr")); m.appendChild(el("div", { "class": "menulabel", role: "presentation" }, "Pinned")); pinned.forEach(function (k) { item(k, pageTitle(k)); }); }
   m.appendChild(el("hr"));
   BOTTOM.forEach(function (c) { item(c[0], c[1]); });
-  m.appendChild(el("hr"));
-  m.appendChild(el("button", { type: "button", role: "menuitem", "data-act": "slip", title: "Push every date later to catch up" }, "Slip Schedule"));
 }
 function renderChrome() {
   var nav = $("nav"); nav.innerHTML = ""; var nb = $("navBottom"); nb.innerHTML = "";
@@ -3412,7 +3410,7 @@ function wireMenu(btnId, menuId) {
     closeMenus(false);
     if (t.getAttribute("data-view")) { go(t.getAttribute("data-view")); return; }
     var act = t.getAttribute("data-act");
-    ({ newTask: taskDialog, newBacklog: function () { taskDialog(undefined, true); }, newStep: function () { stepDialog(false); }, newProject: projectDialog, newIdea: ideaDialog, newDecision: decisionDialog, newMilestone: milestoneDialog, slip: slipDialog, archive: function () { go("archive"); }, settings: function () { go("settings"); } })[act]();
+    ({ newTask: taskDialog, newBacklog: function () { taskDialog(undefined, true); }, newStep: function () { stepDialog(false); }, newProject: projectDialog, newIdea: ideaDialog, newDecision: decisionDialog, newMilestone: milestoneDialog, archive: function () { go("archive"); }, settings: function () { go("settings"); } })[act]();
   });
   on(m, "keydown", function (e) {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
