@@ -31,11 +31,9 @@
   --radius-pill: 999px;
   /* Shared height for text/date/number inputs, select, and buttons. */
   --control-height: 40px;
-  /* Small-text scale, named by their own rem value. */
+  /* Small-text scale: a label size, a body-small size, and full body size. */
   --text-80: .8rem;
-  --text-85: .85rem;
   --text-sm: .9rem;
-  --text-92: .92rem;
   --text-100: 1rem;
   --shadow-menu: 0 8px 24px rgba(0, 0, 0, .18);
   --bg: #F2F4F1;
