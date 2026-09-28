@@ -1,22 +1,11 @@
-// Splash screen: a real overlay atop the already-rendered app (see app.js's
-// boot sequence -- the app renders immediately either way; this is purely
-// decorative, on every load, gated by state.settings.showSplash). Branching-
-// path artwork echoes the app icon's visual language (rounded elbow joints,
-// small square task-endpoints, one accent-colored milestone diamond), always
-// anchored at the top-left corner and identical every load (confirmed
-// 2026-09-25 -- a fixed, hand-composed layout, not procedural/randomized,
-// since a random generator's layout quality was inconsistent and the user
-// wants the same animation every time anyway). Exactly the icon's own 5
-// branches. Sequence: backdrop blurs immediately -> branches draw in ->
-// artwork blurs -> affirmation text fades in -> whole overlay fades out to
-// reveal the app. See DESIGN.md's splash-screen section.
+// Splash overlay atop the already-rendered app, gated by showSplash. Fixed,
+// hand-composed artwork (the icon's own 5 branches, not procedural).
+// Sequence: blur -> branches draw -> blur -> affirmation -> fade out.
 import { $ } from "./dom.js";
 
 var SVG_NS = "http://www.w3.org/2000/svg";
 
-// Short, plain, low-pressure phrases -- matches this app's existing voice
-// (see CLAUDE.md's writing-style guidance), not corporate-motivational or
-// cutesy. User plans to add more; keep this list easy to extend.
+// Short, plain, low-pressure phrases. Easy to extend.
 export var AFFIRMATIONS = [
   "Small steps still count.",
   "Progress, not perfection.",
@@ -88,29 +77,14 @@ function svgEl(tag, attrs) {
   return e;
 }
 
-// The real icon's own path/shape data, VERBATIM (assets/sidequest-icon.svg /
-// index.html's #sqLogo) -- confirmed 2026-09-25: exactly the icon's 5
-// branches, no invented extra branch, every node/end-square/milestone at the
-// exact coordinates and rotation the icon itself uses, so a line's endpoint
-// and its node/marker always coincide exactly. The root line intentionally
-// starts off-canvas (negative y), matching the icon's own confirmed-
-// intentional top crop.
-//
-// Each path's real endpoint (in absolute SVG user-space coordinates) is
-// given explicitly alongside its `d`, since the icon's own path data uses
-// relative commands (l/c) and computing the true endpoint by hand from those
-// is exactly the kind of arithmetic that produced the earlier
-// endpoint-doesn't-match-the-node bug -- these values were taken directly
-// from the icon's own absolute-coordinate node/rect positions, not
-// recomputed.
+// Verbatim from assets/sidequest-icon.svg -- the icon's real 5 branches, exact
+// coordinates. Endpoints are given explicitly (not computed from the
+// relative path commands) since that's what caused a real endpoint-mismatch
+// bug before.
 function buildTree() {
-  // Each path embeds the one node/marker it actually terminates at, so
-  // "this line finished drawing" and "show this node" are never coupled by
-  // fragile parallel-array position (confirmed 2026-09-25: an earlier
-  // index-based pairing showed the wrong node at the wrong line's finish).
-  // `parent` is the index of the path whose node this line grows out of
-  // (null for the root), so each line starts only once that node is showing.
-  // `len` values are Chromium's getTotalLength() of the icon's own paths.
+  // Each path embeds its own terminal node, so line and node stay paired.
+  // `parent` is the index this line grows from (null for the root).
+  // `len` is Chromium's getTotalLength() of the icon's own paths.
   return {
     paths: [
       // Top_Path -> Node_1 (circle)
@@ -121,20 +95,13 @@ function buildTree() {
       { d: "M207.09,157.08 l52.31,-10.29 c34.87,-6.86 55.74,7.15 62.6,42.02 l9.64,49.01", len: 189.8, parent: 0, node: { kind: "circle", x: 342.01, y: 290.53, r: 47.39 } },
       // Left_Path_2 -> End_2 (rotated square), grows from Node_2
       { d: "M295.51,299.68 l-23.25,4.57 c-25.19,4.95 -35.3,20.02 -30.35,45.21 l19.38,98.53", len: 186.6, parent: 2, node: { kind: "square", x: 261.29, y: 448.0, size: 77.01, rotate: -11.13 } },
-      // Right_Path_2 -> Milestone (rotated diamond), grows from Node_2. Center
-      // is the icon's real one (its rect's transform applied), not the line's
-      // endpoint: the diamond sits further along the line's own axis so its
-      // top corner meets the line, which ends hidden just inside it.
+      // Right_Path_2 -> Milestone. Center is the icon's real one, past the line's endpoint.
       { d: "M388.51,281.39 l29.06,-5.72 c32.94,-6.48 52.64,6.75 59.12,39.69 l4,20.34", len: 132.1, parent: 2, node: { kind: "diamond", x: 492.12, y: 393.79, size: 118.48, rotate: -56.13 } }
     ]
   };
 }
 
-// Same shapes/colors as the real icon: circles white-fill with a dark-blue
-// ring (Node_1/Node_2), solid dark-blue rounded squares (End_1/End_2), one
-// solid red rounded square rotated into a diamond (Milestone) -- each
-// rotated exactly the icon's own amount so a corner sits flush against its
-// line's real angle, same as the source artwork.
+// Same shapes/colors as the real icon, rotated to match its own angles.
 function buildNodeShape(n) {
   if (n.kind === "circle") {
     return svgEl("circle", { cx: n.x, cy: n.y, r: n.r, fill: "var(--surface)", stroke: "var(--planned)", "stroke-width": "16" });
@@ -144,10 +111,7 @@ function buildNodeShape(n) {
   return svgEl("rect", { x: n.x - half, y: n.y - half, width: n.size, height: n.size, rx: n.kind === "diamond" ? 9 : 8, fill: color, transform: "rotate(" + n.rotate + " " + n.x + " " + n.y + ")" });
 }
 
-// Renders each path and its own terminal node as a matched pair, returning
-// the pairs in draw order -- playSplash uses this directly, so "line i's
-// timer" and "node i's timer" are always the same i, never a separate lookup
-// that can drift out of sync.
+// Returns {path, node} pairs in draw order, so line i and node i always match.
 function renderTree(root, tree) {
   var linesGroup = root.querySelector("#splashLines");
   var nodesGroup = root.querySelector("#splashNodes");
@@ -155,16 +119,8 @@ function renderTree(root, tree) {
   nodesGroup.innerHTML = "";
 
   return tree.paths.map(function (p) {
-    // stroke-dasharray/stroke-dashoffset are set as real attributes in this
-    // SAME element-creation call, using the pre-measured p.len -- never left
-    // to a CSS custom-property fallback for even one synchronous step.
-    // Confirmed 2026-09-25: a path previously existed in the live DOM for a
-    // brief window with no --len set yet (getTotalLength() itself forces a
-    // layout, and the following line that set --len ran after), during which
-    // CSS's own var(--len, 400) fallback governed the dash pattern -- for a
-    // path whose real length isn't ~400, that rendered as a fragmented,
-    // disconnected line, briefly visible before snapping to the correct
-    // undrawn state once --len was actually set.
+    // Set as real attributes at creation, not a CSS var fallback -- avoids a
+    // real flash-of-wrong-dash-pattern bug seen before.
     var len = p.len.toFixed(1);
     var path = svgEl("path", { d: p.d, "stroke-dasharray": len, "stroke-dashoffset": len });
     linesGroup.appendChild(path);
@@ -175,11 +131,7 @@ function renderTree(root, tree) {
   });
 }
 
-// The tree grows outward node by node: each line starts once its parent node
-// has faded in, and every line draws at the same speed, so of two siblings
-// the shorter one finishes (and shows its node) first -- Node_2 before End_1,
-// Milestone before End_2. Blur/text/fade-out are measured from the moment
-// the last line finishes, so changing DRAW_SPEED can't desync them.
+// Grows outward node by node; timing below is relative to the last line finishing.
 var DRAW_SPEED = 0.4;  // SVG user units per ms
 var NODE_PAUSE = 150;  // ms from a node starting to fade in until its child lines start
 var TIMING = {
@@ -190,8 +142,7 @@ var TIMING = {
   fadeOutDur: 500
 };
 
-// Per-pair start/end times (ms from play), resolved parent-first. Paths are
-// listed parent-before-child in buildTree, so one forward pass suffices.
+// Per-pair start/end times, resolved parent-first (buildTree lists parent before child).
 function schedule(pairs) {
   var drawEnd = 0;
   pairs.forEach(function (pair) {
@@ -208,14 +159,8 @@ function schedule(pairs) {
 // showSplash is off or the element isn't present.
 export function playSplash(showSplash, done) {
   var root = $("splash");
-  // The splash markup ships visible-with-backdrop-already-blurred in plain
-  // HTML (no `hidden` attribute, `backdropBlurred` class present from the
-  // first paint) specifically so the blur is in effect before ANY JS runs --
-  // confirmed 2026-09-25: an earlier version relied on this function to
-  // reveal/blur it, which left a real, visible window (app rendered sharp,
-  // THEN the splash appeared moments later) since this runs after the app's
-  // own renderAll(). If the setting is off, this is the one path that must
-  // hide it immediately, before it can paint at all.
+  // Markup ships pre-blurred in plain HTML, before any JS runs -- avoids a
+  // real flash-of-sharp-app bug. If the setting's off, hide it now instead.
   if (!root || !showSplash) { if (root) root.hidden = true; if (done) done(); return; }
 
   var tree = buildTree();
@@ -224,12 +169,7 @@ export function playSplash(showSplash, done) {
   var textEl = $("splashText");
   textEl.textContent = AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)];
 
-  // Force a real layout/paint of the freshly-inserted paths' initial (full-
-  // length, undrawn) stroke-dashoffset state before any "drawn" class is
-  // added, so the browser has committed a genuine "before" frame for the
-  // transition to animate from -- without this, the browser can batch the
-  // insert and the first class-add into one frame, which can render as a
-  // flash of the wrong state before snapping to the real animated sequence.
+  // Forces a layout so the "undrawn" state paints before "drawn" is added.
   // eslint-disable-next-line no-unused-expressions
   root.offsetHeight;
 
@@ -242,8 +182,7 @@ export function playSplash(showSplash, done) {
   pairs.forEach(function (pair) {
     pair.path.style.transitionDuration = pair.dur + "ms";
     timers.push(setTimeout(function () { pair.path.classList.add("drawn"); }, pair.start));
-    // This node is THIS path's own terminus -- it only appears once this
-    // exact line has actually finished drawing (confirmed 2026-09-25).
+    // This node is this path's own terminus.
     timers.push(setTimeout(function () { pair.node.classList.add("shown"); }, pair.end));
   });
   timers.push(setTimeout(function () { root.classList.add("artBlurred"); }, artBlurAt));

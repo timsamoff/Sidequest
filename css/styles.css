@@ -7,24 +7,24 @@ h2 { font-size: 1.3rem; margin-top: var(--space-22); margin-bottom: var(--space-
 h3 { font-size: 1.05rem; margin-top: var(--space-22); }
 p { margin: 0; }
 [hidden] { display: none !important; }
-.hint { color: var(--muted); font-size: .9rem; margin-top: var(--space-6); }
-.note { margin-top: var(--space-12); color: var(--muted); font-size: .9rem; }
-.msg { margin-top: var(--space-10); color: var(--muted); font-size: .9rem; min-height: 1.4em; }
+.hint { color: var(--muted); font-size: var(--text-sm); margin-top: var(--space-6); }
+.note { margin-top: var(--space-12); color: var(--muted); font-size: var(--text-sm); }
+.msg { margin-top: var(--space-10); color: var(--muted); font-size: var(--text-sm); min-height: 1.4em; }
 .schedulesmsg:empty { margin-top: 0; min-height: 0; }
 
 input, select, button, textarea { font: inherit; color: var(--ink); margin: 0; }
 input[type="text"], input[type="date"], input[type="number"], textarea {
-  background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: var(--space-7) var(--space-10); min-height: 40px; max-width: 100%; width: 100%;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%;
 }
 input[type="file"] { max-width: 100%; }
 input[type="file"]::file-selector-button {
   font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
-  border-radius: 8px; padding: var(--space-8) var(--space-14); min-height: 40px; cursor: pointer; margin-right: var(--space-10);
+  border-radius: var(--radius-control); padding: var(--space-8) var(--space-14); min-height: var(--control-height); cursor: pointer; margin-right: var(--space-10);
 }
 input[type="file"]::file-selector-button:hover { border-color: var(--muted); }
 textarea { min-height: 84px; resize: vertical; }
 /* The pencil: the app's one "change this text" control, and the input it opens. */
-button.pencil { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 34px; min-height: 34px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--muted); }
+button.pencil { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 34px; min-height: 34px; padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); }
 button.pencil:hover { border: 0; background: var(--chip-idle); color: var(--planned); }
 button.pencil[hidden] { display: none; }
 .inlineedit { flex: 1 1 auto; min-width: 0; width: 100%; }
@@ -36,20 +36,20 @@ button.pencil[hidden] { display: none; }
 @supports not (scrollbar-color: auto) {
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb { background: var(--muted); border-radius: var(--radius-pill); border: 2px solid transparent; background-clip: content-box; }
 }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-button { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: var(--space-8) var(--space-14); min-height: 40px; cursor: pointer; }
+button { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control); padding: var(--space-8) var(--space-14); min-height: var(--control-height); cursor: pointer; }
 button:hover { border-color: var(--muted); }
 button.primary { background: var(--planned); border-color: var(--planned); color: var(--on-planned); font-weight: 600; }
-button.small { min-height: 34px; padding: var(--space-4) var(--space-10); font-size: .9rem; }
+button.small { min-height: 34px; padding: var(--space-4) var(--space-10); font-size: var(--text-sm); }
 /* Fixed width so the button doesn't resize when its label swaps Pin/Unpin. */
 button.pintoggle { min-width: 64px; }
 button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: var(--late); }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-10); margin-top: var(--space-14); align-items: center; }
 .field { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-10); }
-.field label { font-size: .9rem; color: var(--muted); }
-.linkbtn { display: inline-flex; align-items: center; min-height: 40px; padding: var(--space-8) var(--space-14); border-radius: 8px; background: var(--planned); color: var(--on-planned); font-weight: 600; text-decoration: none; }
+.field label { font-size: var(--text-sm); color: var(--muted); }
+.linkbtn { display: inline-flex; align-items: center; min-height: var(--control-height); padding: var(--space-8) var(--space-14); border-radius: var(--radius-control); background: var(--planned); color: var(--on-planned); font-weight: 600; text-decoration: none; }
 .linkbtn:hover { filter: brightness(1.1); }
 .textbtn { background: none; border: 0; padding: var(--space-4) 0; min-height: 0; color: var(--planned); text-decoration: underline; text-align: left; }
 
@@ -61,10 +61,14 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .mlogo { display: none; width: 44px; height: 44px; }
 .brand { font-family: var(--font-serif); font-weight: 600; font-size: 1.25rem; line-height: 1.1; }
 .nav { display: flex; flex-direction: column; gap: var(--space-2); overflow-y: auto; }
-.navlabel { padding: var(--space-14) var(--space-12) var(--space-4); font-size: .8rem; color: var(--muted); }
+.navlabel { padding: var(--space-14) var(--space-12) var(--space-4); font-size: var(--text-80); color: var(--muted); }
 .tab > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.helpitem { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); margin-top: var(--space-10); }
-.helpitem > summary { padding: var(--space-12) var(--space-14); font-weight: 600; cursor: pointer; color: var(--ink); font-size: 1rem; }
+/* Shared card look; each selector still sets its own padding/margin/overflow. */
+.helpitem, .menu, .listbox, .panel, .box, .tlist, .detail, .list, .chartbox, .tablewrap, .range {
+  border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface);
+}
+.helpitem { margin-top: var(--space-10); }
+.helpitem > summary { padding: var(--space-12) var(--space-14); font-weight: 600; cursor: pointer; color: var(--ink); font-size: var(--text-100); }
 .hbody { padding: 0 var(--space-14) var(--space-12); }
 .hbody ul { margin: 0; padding-left: 1.2rem; }
 .hbody li { margin-top: var(--space-6); }
@@ -74,10 +78,10 @@ kbd { font: inherit; font-size: .9em; border: 1px solid var(--line); border-bott
 .standing li:first-child { padding-top: 0; }
 .standing li:last-child { border-bottom: 0; padding-bottom: 0; }
 .srow { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4) var(--space-12); flex-wrap: wrap; }
-.srow .plink { font-weight: 600; font-size: 1rem; }
+.srow .plink { font-weight: 600; font-size: var(--text-100); }
 .plink { text-decoration: none; }
 .plink:hover, .plink:focus-visible { text-decoration: underline; }
-.snext { margin-top: var(--space-2); color: var(--muted); font-size: .92rem; }
+.snext { margin-top: var(--space-2); color: var(--muted); font-size: var(--text-92); }
 .tbleft { display: flex; align-items: center; gap: var(--space-10); min-width: 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .searchwrap { padding: 0 var(--space-4) var(--space-12); }
@@ -85,13 +89,13 @@ kbd { font: inherit; font-size: .9em; border: 1px solid var(--line); border-bott
 .searchbar { display: flex; flex-wrap: wrap; gap: var(--space-10) var(--space-16); align-items: center; }
 .searchbar input[type="search"] { flex: 1 1 260px; width: auto; }
 .searchbar label { display: flex; gap: var(--space-8); align-items: center; color: var(--muted); cursor: pointer; }
-input[type="search"] { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: var(--space-7) var(--space-10); min-height: 40px; max-width: 100%; }
+input[type="search"] { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; }
 mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding: 0 var(--space-1); }
 .sgroup { margin-top: var(--space-22); }
 .sgroup h3 { margin-top: 0; }
-.sgroup .item .snip { margin-top: var(--space-4); color: var(--muted); font-size: .9rem; }
+.sgroup .item .snip { margin-top: var(--space-4); color: var(--muted); font-size: var(--text-sm); }
 .chip.arch { background: var(--late-bg); color: var(--late); }
-.tab { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); width: 100%; text-align: left; border: 0; background: transparent; border-radius: 8px; padding: var(--space-10) var(--space-12); min-height: 44px; color: var(--muted); font-weight: 500; }
+.tab { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); width: 100%; text-align: left; border: 0; background: transparent; border-radius: var(--radius-control); padding: var(--space-10) var(--space-12); min-height: 44px; color: var(--muted); font-weight: 500; }
 .tab:hover { background: var(--chip-idle); border: 0; }
 .tab[aria-current="page"] { background: var(--sel); color: var(--ink); font-weight: 600; box-shadow: inset 3px 0 0 var(--planned); }
 .navbottom { margin-top: auto; padding-top: var(--space-8); border-top: 1px solid var(--line); }
@@ -99,26 +103,17 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); padding: var(--space-12) var(--space-24); background: var(--bg); border-bottom: 1px solid var(--line); }
 .topact { display: flex; gap: var(--space-8); align-items: center; flex: none; }
 .topact button { white-space: nowrap; }
-/* Wraps to at most 2 lines (its own ellipsis past that) rather than
-   truncating to one line -- a longer project name gets real room instead of
-   unreadable clipping. A small shrink at narrower widths comes first, so a
-   short/medium name (e.g. "Sample App") still fits on one line at common
-   360-375px widths rather than wrapping needlessly -- only a name too long
-   even at that smaller size actually wraps. See DESIGN.md/TODO's
-   project-title-truncation. */
+/* Wraps to at most 2 lines instead of truncating a long project name to one. */
 #viewTitle { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2; font-size: clamp(1.1rem, 3.5vw + 0.5rem, 1.5rem); }
 .menuwrap { position: relative; }
-.menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 210px; padding: var(--space-6); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .18); z-index: 30; display: flex; flex-direction: column; }
-.menu button { border: 0; background: transparent; text-align: left; border-radius: 6px; padding: var(--space-9) var(--space-12); min-height: 42px; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 210px; padding: var(--space-6); box-shadow: var(--shadow-menu); z-index: 30; display: flex; flex-direction: column; }
+.menu button { border: 0; background: transparent; text-align: left; border-radius: var(--radius-input); padding: var(--space-9) var(--space-12); min-height: 42px; }
 .menu button:hover { background: var(--chip-idle); }
 .menu button[aria-current="page"] { background: var(--sel); font-weight: 600; }
 .menu { max-height: 75vh; overflow-y: auto; }
-.menulabel { padding: var(--space-10) var(--space-12) var(--space-2); font-size: .8rem; color: var(--muted); }
+.menulabel { padding: var(--space-10) var(--space-12) var(--space-2); font-size: var(--text-80); color: var(--muted); }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: var(--space-4) 0; width: 100%; }
-/* Confirmed 2026-09-26: content spans the full browser width on every page
-   (padding only, no max-width cap) -- previously capped at 1040px with a
-   .content.wide escape hatch used only by Timeline; the cap is removed
-   everywhere now, not widened selectively per page. */
+/* Full browser width on every page, padding only, no max-width cap. */
 .content { padding: var(--space-22) var(--space-24) 72px; }
 
 .twocol { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--space-22); align-items: start; }
@@ -128,7 +123,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .pgrid > .cl.r1 { margin-top: 0; }
 .pgrid > .cr.r1 { margin-top: var(--space-26); }
 .pgrid > button { justify-self: start; }
-.listbox { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; margin-top: var(--space-12); }
+.listbox { overflow: hidden; margin-top: var(--space-12); }
 .listbox > .list { border: 0; border-radius: 0; margin: 0; background: transparent; }
 .listbox > .progress { margin: 0; padding: var(--space-10) var(--space-14); border-bottom: 1px solid var(--line); }
 .listbox > .progress:empty { display: none; }
@@ -143,81 +138,74 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
   .pgrid > .r4 { grid-row: 4; }
 }
 
-.panel { padding: var(--space-16) var(--space-18); background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--planned); border-radius: 10px; }
-.box { padding: var(--space-14) var(--space-16); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.panel { padding: var(--space-16) var(--space-18); border-left: 5px solid var(--planned); }
+.box { padding: var(--space-14) var(--space-16); }
 .ptitle { font-family: var(--font-serif); font-size: 1.3rem; font-weight: 600; line-height: 1.3; }
 .pmeta { margin-top: var(--space-6); color: var(--muted); }
 .pmeta b { color: var(--ink); font-weight: 600; }
 .pline { margin-top: var(--space-8); }
-.badge { display: inline-block; padding: var(--space-1) var(--space-9); border-radius: 999px; font-size: .8rem; font-weight: 600; background: var(--late-bg); color: var(--late); vertical-align: 1px; }
+.badge { display: inline-block; padding: var(--space-1) var(--space-9); border-radius: var(--radius-pill); font-size: var(--text-80); font-weight: 600; background: var(--late-bg); color: var(--late); vertical-align: 1px; }
 .tabbadge { min-width: 22px; text-align: center; padding: 0 var(--space-6); }
-.chip { display: inline-block; padding: var(--space-1) var(--space-10); border-radius: 999px; font-size: .82rem; background: var(--chip-idle); color: var(--chip-ink); }
+.chip { display: inline-block; padding: var(--space-1) var(--space-10); border-radius: var(--radius-pill); font-size: .82rem; background: var(--chip-idle); color: var(--chip-ink); }
 .chip[data-v="In progress"] { background: var(--chip-work); }
 .chip[data-v="Completed"], .chip.projcomplete { background: var(--chip-done); }
-.tlist { list-style: none; margin: var(--space-10) 0 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.tlist { list-style: none; margin: var(--space-10) 0 0; padding: 0; overflow: hidden; }
 .tlist li { border-bottom: 1px solid var(--line); }
 .tlist li:last-child { border-bottom: 0; }
-.tlist li.plain { padding: var(--space-12) var(--space-14); color: var(--muted); font-size: .92rem; }
+.tlist li.plain { padding: var(--space-12) var(--space-14); color: var(--muted); font-size: var(--text-92); }
 .item { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; padding: var(--space-12) var(--space-14); min-height: 0; }
 .item:hover { background: var(--chip-idle); border: 0; }
 .item[aria-current="true"] { background: var(--sel); box-shadow: inset 4px 0 0 var(--planned); }
-.item .l1 { color: var(--muted); font-size: .85rem; }
+.item .l1 { color: var(--muted); font-size: var(--text-85); }
 .item .l1 b { color: var(--ink); font-weight: 600; }
 .item .l2 { margin-top: var(--space-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .item.done .l2 { color: var(--muted); }
-.item .l3 { margin-top: var(--space-6); display: flex; gap: var(--space-8); align-items: center; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
+.item .l3 { margin-top: var(--space-6); display: flex; gap: var(--space-8); align-items: center; flex-wrap: wrap; font-size: var(--text-85); color: var(--muted); }
 
 .split { display: grid; grid-template-columns: minmax(280px, .95fr) minmax(0, 1.25fr); gap: var(--space-22); align-items: start; margin-top: var(--space-12); }
 .split .tlist { margin-top: 0; }
 .detailpane { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); }
-.detail { padding: var(--space-18) var(--space-20); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.detail { padding: var(--space-18) var(--space-20); }
 .detail .what { font-family: var(--font-serif); font-size: 1.25rem; font-weight: 600; line-height: 1.3; margin-top: var(--space-8); }
 .detail .dmeta { color: var(--muted); margin-top: var(--space-4); }
-select.status { border: 1px solid var(--line); border-radius: 999px; padding: var(--space-5) var(--space-12); min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
+select.status { border: 1px solid var(--line); border-radius: var(--radius-pill); padding: var(--space-5) var(--space-12); min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
 select.status[data-v="In progress"] { background: var(--chip-work); }
 select.status[data-v="Completed"] { background: var(--chip-done); }
 .steps { list-style: none; margin: var(--space-8) 0 0; padding: 0; }
-.steps li { display: flex; gap: var(--space-10); align-items: flex-start; padding: var(--space-5) 0; }
+.steps li { display: flex; flex-wrap: wrap; gap: var(--space-10); align-items: flex-start; padding: var(--space-5) 0; }
 .steps li label { display: flex; gap: var(--space-10); align-items: flex-start; flex: 1 1 auto; cursor: pointer; }
 .steps li.done label span { color: var(--muted); text-decoration: line-through; }
 input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin: var(--space-2) 0 0; flex: none; accent-color: var(--planned); }
 .inline { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-10); }
 .inline input[type="text"] { flex: 1 1 180px; width: auto; }
 .only-mobile { display: none; }
-.iconbtn { width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; flex: none; }
+.iconbtn { width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-card); flex: none; }
 .iconbtn svg { width: 20px; height: 20px; display: block; }
 .iconbtn.only-mobile { display: none; }
 .toast .toastbtn { margin-left: var(--space-12); background: transparent; border: 1px solid currentColor; color: inherit; min-height: 32px; padding: var(--space-2) var(--space-12); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-12); }
-.chipbtn { border-radius: 999px; min-height: 36px; padding: var(--space-4) var(--space-14); }
+.chipbtn { border-radius: var(--radius-pill); min-height: 36px; padding: var(--space-4) var(--space-14); }
 .chipbtn[aria-pressed="true"] { background: var(--sel); border-color: var(--planned); color: var(--planned); font-weight: 600; }
 button.dangerfill { background: var(--late); border-color: var(--late); color: var(--bg); font-weight: 600; }
 button:disabled { opacity: .5; cursor: not-allowed; }
-.dangerbox { border: 1px solid var(--late); background: var(--late-bg); border-radius: 10px; padding: var(--space-14) var(--space-16); margin-top: var(--space-10); }
+.dangerbox { border: 1px solid var(--late); background: var(--late-bg); border-radius: var(--radius-card); padding: var(--space-14) var(--space-16); margin-top: var(--space-10); }
 .setgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-4) var(--space-16); max-width: 640px; }
 .setgrid .field { min-width: 0; justify-content: flex-end; }
 .setgrid input, .setgrid select { min-width: 0; height: 42px; }
 @media (max-width: 640px) { .setgrid { grid-template-columns: minmax(0, 1fr); } }
 .about p { margin-top: var(--space-2); }
 .radiorow { display: flex; gap: var(--space-10); align-items: flex-start; margin-top: var(--space-10); cursor: pointer; }
-select.plain { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: var(--space-7) var(--space-10); min-height: 40px; max-width: 100%; width: 100%; }
+select.plain { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%; }
 button.small.on { background: var(--sel); border-color: var(--planned); color: var(--planned); font-weight: 600; }
-.steps li { flex-wrap: wrap; }
 
-.list { list-style: none; margin: var(--space-12) 0 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.list { list-style: none; margin: var(--space-12) 0 0; padding: 0; }
 .list > li { padding: var(--space-12) var(--space-14); border-bottom: 1px solid var(--line); }
 .list > li:last-child { border-bottom: 0; }
 .list.check label { display: flex; gap: var(--space-12); align-items: flex-start; cursor: pointer; }
 .list.check li.done span { color: var(--muted); text-decoration: line-through; }
 .progress { color: var(--muted); margin-top: var(--space-10); }
 .crow { display: flex; flex-wrap: wrap; gap: var(--space-6) var(--space-14); align-items: flex-start; justify-content: space-between; }
-/* Single-line rows (a project name/link plus badges and buttons, all the
-   same height) look wrong top-aligned -- a short chip like "Launch critical"
-   sits pinned to the top of a taller sibling button instead of centering
-   against it. Rows with a genuine multi-line text block (name + note/meta on
-   a second line) keep .crow's default flex-start, since centering THOSE
-   would misalign the buttons against the block's midpoint instead of its
-   first line. */
+/* Single-line rows center their items; multi-line rows keep .crow's flex-start. */
 .crow.oneline { align-items: center; }
 .crow label { display: flex; gap: var(--space-10); align-items: flex-start; font-weight: 600; cursor: pointer; flex: 1 1 200px; }
 .notetext { white-space: pre-line; }
@@ -225,20 +213,20 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
    note is one click away (an idea's title opens its dialog, a project's title
    opens its page). */
 .noteclamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.cnote { color: var(--muted); font-size: .92rem; margin: var(--space-2) 0 0 var(--space-30); }
+.cnote { color: var(--muted); font-size: var(--text-92); margin: var(--space-2) 0 0 var(--space-30); }
 .cfields { display: flex; flex-wrap: wrap; gap: var(--space-12); margin: var(--space-6) 0 0 var(--space-30); }
 .cfields .field { margin-top: var(--space-4); }
 .cfields input { width: 10rem; }
 .li-actions { display: flex; gap: var(--space-8); align-items: center; }
 .dq { font-weight: 500; }
-.dstate { font-size: .85rem; color: var(--muted); margin-left: var(--space-8); }
+.dstate { font-size: var(--text-85); color: var(--muted); margin-left: var(--space-8); }
 .dstate.ok { color: var(--planned); }
 .decision input[type="text"] { margin-top: var(--space-6); }
 .sechead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-10); margin-top: var(--space-22); }
 .sechead h3, .sechead .sechead-h { margin-top: 0; }
 .first { margin-top: 0; }
 
-.chartbox { margin-top: var(--space-12); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: var(--space-12) var(--space-12) var(--space-4); }
+.chartbox { margin-top: var(--space-12); padding: var(--space-12) var(--space-12) var(--space-4); }
 svg.chart { display: block; width: 100%; height: auto; }
 .chart .grid { stroke: var(--line); stroke-width: 1; }
 .chart .axis { fill: var(--muted); font-size: 12px; font-family: var(--font-sans); }
@@ -249,32 +237,28 @@ svg.chart { display: block; width: 100%; height: auto; }
 .legend span { display: inline-flex; align-items: center; gap: var(--space-8); }
 .legend i { display: inline-block; width: 24px; height: 0; border-top: 3px solid var(--burn); }
 .legend i.p { border-top: 3px dashed var(--planned); }
-.tablewrap { margin-top: var(--space-12); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow-x: auto; }
+.tablewrap { margin-top: var(--space-12); overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; vertical-align: top; padding: var(--space-10) var(--space-12); border-bottom: 1px solid var(--line); }
-th { font-weight: 600; font-size: .9rem; color: var(--muted); }
+th { font-weight: 600; font-size: var(--text-sm); color: var(--muted); }
 tbody tr:last-child td { border-bottom: 0; }
 .weekly td input { width: 5.5rem; }
 
 #view > .range:first-child { margin-top: 0; }
-.range { margin-top: var(--space-12); padding: var(--space-14) var(--space-16) var(--space-10); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.range { margin-top: var(--space-12); padding: var(--space-14) var(--space-16) var(--space-10); }
 .months { position: relative; height: 22px; border-bottom: 1px solid var(--line); }
 .months span { position: absolute; top: 0; font-size: .75rem; color: var(--muted); transform: translateX(-2px); white-space: nowrap; }
 .lane { margin-top: var(--space-12); }
-.lname { font-size: .92rem; font-weight: 600; }
+.lname { font-size: var(--text-92); font-weight: 600; }
 .ldates { font-weight: 400; color: var(--muted); margin-left: var(--space-6); }
-.track { position: relative; height: 22px; margin-top: var(--space-4); background: var(--chip-idle); border-radius: 4px; }
-.bar { position: absolute; top: 2px; bottom: 2px; min-width: 6px; background: var(--planned); border-radius: 4px; }
+.track { position: relative; height: 22px; margin-top: var(--space-4); background: var(--chip-idle); border-radius: var(--radius-track); }
+.bar { position: absolute; top: 2px; bottom: 2px; min-width: 6px; background: var(--planned); border-radius: var(--radius-track); }
 .bar.est { background: var(--est); border: 1px dashed var(--planned); }
-.bar.open { background: linear-gradient(to right, var(--est), transparent); border-left: 3px solid var(--planned); border-radius: 4px 0 0 4px; }
-/* A project's page: info on the left, its own Schedule/Timeline/Burndown on the right,
-   as one continuous flow (not row-synced to the left column -- Schedule sits close
-   above Timeline the same natural way Notes sits close below the Tasks list). */
+.bar.open { background: linear-gradient(to right, var(--est), transparent); border-left: 3px solid var(--planned); border-radius: var(--radius-track) 0 0 var(--radius-track); }
+/* Info on the left, Schedule/Timeline/Burndown on the right as one continuous flow. */
 .projsplit { display: block; }
 .projtop, .projrest, .projcharts { min-width: 0; }
-/* Schedule's own error line reserves no space until it has something to say, so it
-   does not push Timeline down when it's empty, which it almost always is -- applies
-   wherever Schedule renders (the page's own charts column, or the Expand dialog). */
+/* Reserves no space until there's an error, so an empty message doesn't push Timeline down. */
 .schedmsg { min-height: 0; margin-top: 0; }
 .schedmsg:not(:empty) { margin-top: var(--space-10); }
 .projexpand { display: none; }
@@ -283,13 +267,11 @@ tbody tr:last-child td { border-bottom: 0; }
 .chart .hit { fill: transparent; }
 svg.chart.nofocusring { outline: none; }
 .chart .guide { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
-.charttip { position: absolute; z-index: 3; max-width: 300px; padding: var(--space-8) var(--space-10); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, .18); font-size: .85rem; line-height: 1.35; white-space: pre-line; pointer-events: none; }
+.charttip { position: absolute; z-index: 3; max-width: 300px; padding: var(--space-8) var(--space-10); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-control); box-shadow: 0 4px 14px rgba(0, 0, 0, .18); font-size: var(--text-85); line-height: 1.35; white-space: pre-line; pointer-events: none; }
 .charttip[hidden] { display: none; }
 .bar.done { background: var(--chip-done); }
 @media (min-width: 900px) {
-  /* Left column stacks Tasks then the rest (two rows); the right column is one grid
-     item spanning both rows, so its own Schedule/Timeline/Burndown flow continuously
-     and are never stretched or squeezed to match the left column's row heights. */
+  /* Right column spans both rows so its own charts flow independent of the left column. */
   .projsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: "top charts" "rest charts"; column-gap: var(--space-22); row-gap: 0; align-items: start; }
   .projtop { grid-area: top; }
   .projrest { grid-area: rest; }
@@ -312,23 +294,13 @@ svg.chart.nofocusring { outline: none; }
 .modal { width: 100%; max-width: 520px; max-height: calc(100vh - 32px); overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: var(--space-18) var(--space-20) var(--space-20); }
 .mhead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-bottom: var(--space-4); }
 .mhead h2 { margin: 0; }
-.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); background: var(--ink); color: var(--bg); padding: var(--space-10) var(--space-16); border-radius: 10px; z-index: 60; font-size: .92rem; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); background: var(--ink); color: var(--bg); padding: var(--space-10) var(--space-16); border-radius: var(--radius-card); z-index: 60; font-size: var(--text-92); }
 .toast:empty { display: none; }
 
-/* splash screen: a real overlay atop the already-rendered (and blurred) app,
-   not the whole screen -- see DESIGN.md's splash-screen section. Sizing is
-   viewport-relative (min() of vw/vh) so the same ~75%-of-screen panel works
-   in both landscape and portrait without a separate breakpoint. */
+/* splash screen: viewport-relative sizing so the ~75% panel works in either orientation. */
 .splash { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity .5s ease; }
 .splash.fading { opacity: 0; }
-/* No transition on this property: backdropBlurred is present from the very
-   first HTML paint (see index.html), so the blur must never visibly ramp up
-   -- a transitioning blur over sharp text/UI edges can look like the
-   background is shaking as it resamples through each intermediate radius,
-   and it would also reopen the exact "readable for a moment" gap this class
-   exists to close. Only .splash.fading (a real, later, intentional state
-   change) transitions anything here, via its own opacity transition on
-   .splash itself. */
+/* No transition here -- backdropBlurred is present from first paint, must never ramp up. */
 .splashbackdrop { position: absolute; inset: 0; backdrop-filter: blur(0px); }
 .splash.backdropBlurred .splashbackdrop { backdrop-filter: blur(10px); }
 .splashpanel { position: relative; isolation: isolate; width: min(75vw, 75vh, 560px); aspect-ratio: 1 / 1; border-radius: 28px; overflow: hidden; background: var(--est); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; }
@@ -337,16 +309,10 @@ svg.chart.nofocusring { outline: none; }
 .splash.artBlurred .splashart { filter: blur(5px); }
 .splashtext { position: relative; z-index: 1; margin: 0; padding: var(--space-12) var(--space-20); max-width: 82%; text-align: center; color: var(--surface); background: var(--planned); border: 2px solid var(--surface); border-radius: 14px; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; line-height: 1.4; opacity: 0; transition: opacity .5s ease; }
 .splash.textIn .splashtext { opacity: 1; }
-/* stroke-dasharray/dashoffset's initial (undrawn) values come from the
-   element's own SVG attributes, set synchronously at creation time in
-   app/splash.js -- never a CSS var() fallback, which previously left a real
-   window where the wrong dash pattern (the fallback, not the path's real
-   length) rendered before JS set the correct value. CSS only owns the
-   transition TO 0 (fully drawn). */
+/* Initial dasharray/dashoffset come from real SVG attributes, not a CSS var fallback. */
 #splashLines path { transition: stroke-dashoffset .65s ease; }
 #splashLines path.drawn { stroke-dashoffset: 0; }
-/* Fade in place -- no scale/size change, so a rect's own rotate() attribute
-   (the icon's exact tilt) is never fought by a competing CSS transform. */
+/* Fade in place -- no scale/size change, so rect's own rotate() attribute isn't fought. */
 #splashNodes circle, #splashNodes rect { opacity: 0; transition: opacity .3s ease; }
 #splashNodes circle.shown, #splashNodes rect.shown { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
@@ -361,7 +327,7 @@ svg.chart.nofocusring { outline: none; }
   .nav { flex-direction: row; width: 100%; gap: 0; overflow: hidden; }
   .navlabel { display: none; }
   .tab.pinnedtab { display: none; }
-  .tab { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: var(--space-2); padding: var(--space-6) var(--space-2); min-height: 52px; font-size: .74rem; text-align: center; border-radius: 8px; }
+  .tab { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: var(--space-2); padding: var(--space-6) var(--space-2); min-height: 52px; font-size: .74rem; text-align: center; border-radius: var(--radius-control); }
   .tab[aria-current="page"] { box-shadow: inset 0 3px 0 var(--planned); }
   .topbar { padding: var(--space-10) var(--space-16); }
   .content { padding: var(--space-16) var(--space-16) 120px; }
@@ -377,10 +343,8 @@ svg.chart.nofocusring { outline: none; }
   .overlay { align-items: flex-end; padding: 0; }
   .modal { max-width: none; border-radius: 16px 16px 0 0; max-height: 92vh; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
   .menu { min-width: 220px; }
-  /* 75% of a narrow phone's own width/height is small in absolute terms --
-     widen the floor here so the panel stays legible on a small screen,
-     portrait or landscape. */
+  /* Widen the floor so the panel stays legible on a small phone. */
   .splashpanel { width: min(85vw, 85vh, 420px); }
-  .splashtext { font-size: 1rem; }
+  .splashtext { font-size: var(--text-100); }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }

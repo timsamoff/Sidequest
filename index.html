@@ -99,14 +99,7 @@
   </div>
 </div>
 <script>
-  // Synchronous, inline, blocking: runs the instant the parser reaches this
-  // point, before app.js (a deferred module) or any layout/paint of what
-  // follows -- the one way to hide the splash before first paint if the
-  // user turned it off, since app/splash.js's own JS runs too late for that
-  // (confirmed 2026-09-25: the splash otherwise ships visible in plain HTML
-  // specifically so its backdrop blur is in effect before ANY JS runs at
-  // all, which is correct when the setting is on but would flash the splash
-  // once before hiding it if a user has it disabled).
+  // Runs before first paint -- the only way to hide the splash if it's turned off.
   try {
     var raw = window.localStorage.getItem("sidequest-template-v1");
     var saved = raw ? JSON.parse(raw) : null;

@@ -127,31 +127,17 @@ export function wireMenu(btnId, menuId) {
   });
 }
 
-// Boot sequence. Deferred one microtask past module evaluation: app.js sits in a
-// genuine import cycle with state.js/views.js/dialogs.js/search.js (confirmed
-// acceptable, see DESIGN.md), and a module graph this cyclic can evaluate this
-// entry module's own top-level code before every module it transitively imports
-// has finished its own top-level evaluation, depending on which module the loader
-// happens to enter the graph from. Deferring the boot sequence past microtask
-// queue drain guarantees the whole graph (including state.js's `state = load()`)
-// has finished evaluating first, regardless of traversal order.
+// Deferred one microtask so the whole import cycle (state.js etc.) finishes evaluating first.
 Promise.resolve().then(function () {
   $("brand").textContent = APP_NAME;
   applyTheme();
   autoArchive(); save();
   renderAll();
 
-  // Purely decorative, on every load, gated by the Settings toggle -- the app
-  // has already rendered above regardless, so this never delays real content.
-  // See app/splash.js and DESIGN.md's splash-screen section.
+  // Decorative only -- the app has already rendered above.
   playSplash(state.settings.showSplash);
 
-  // If this view is running as a published Claude artifact with the db
-  // capability granted, its saved state lives there, not in this browser's
-  // localStorage -- check for it after the page has already painted once
-  // (never blocks first render on an async capability lookup). On the web
-  // app, getDb() resolves null immediately and this is a no-op. See
-  // DESIGN.md's "Claude Artifact parity version" section.
+  // Checked after first paint -- no-op on the web app, real on a published artifact with db.
   loadFromDbIfAvailable().then(function (swapped) {
     if (!swapped) return;
     autoArchive(); save();

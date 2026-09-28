@@ -18,6 +18,8 @@ function main() {
   violations = violations.concat(checks.checkTodoSync());
   violations = violations.concat(checks.checkNormalizeDefaultsPairing());
   violations = violations.concat(checks.checkHardcodedHex());
+  violations = violations.concat(checks.checkCommentVerbosity());
+  violations = violations.concat(checks.checkCssTokenValue());
   violations = violations.concat(checks.checkDuplicatedIconMarkup());
   violations = violations.concat(checks.checkSocialMetaDrift());
   violations = violations.concat(checks.checkArtifactBuildDrift());

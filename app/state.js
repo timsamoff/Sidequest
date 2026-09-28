@@ -19,8 +19,8 @@ export function task(id, block, projectId, what, done, steps, extra) {
 }
 // A project's own lifecycle: "candidate" (competing for the next slot, not yet
 // started) or "active" (chosen, has tasks). Promoted in place -- the same
-// record and id carry through Candidate -> Active -> Archived, never a second
-// record. See DESIGN.md's "making Project a first-class entity" section.
+// record and id carry through candidate -> active -> archived, never a second
+// record.
 export function project(id, name, status, extra) {
   var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, actual: {}, lastSlip: null };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
@@ -40,13 +40,9 @@ export function sampleData() {
   // line, not a flat match, so its full-project Burndown has something to show.
   var doneHistory = {}; doneHistory[day(-21)] = 7; doneHistory[day(-14)] = 4; doneHistory[day(-7)] = 1;
   var projects = [
-    // pApp <-> pSite demonstrates a bidirectional project link (see
-    // DESIGN.md's "linking related projects" section): the app and its
-    // marketing site are related efforts, linked without nesting one's tasks
-    // inside the other.
+    // pApp <-> pSite demonstrates a bidirectional project link.
     project("pApp", "Sample App", "active", { actual: appHistory, notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
-    // launchCritical: the app's launch checklist shows the site as a line item,
-    // done-state derived from the site's own status (see DESIGN.md).
+    // launchCritical: the app's launch checklist shows the site's own status.
     project("pSite", "Sample Website", "active", { start: day(14), linkedProjectIds: ["pApp"], launchCritical: true }),
     project("pGame", "Sample Game", "active", { start: day(21), days: 14, due: day(21 + 122) }),
     project("pExt", "Sample Browser Extension", "candidate", { notes: "A small tool that could ship in a month" }),
@@ -54,11 +50,9 @@ export function sampleData() {
     // Demonstrates a Complete project: drops out of In progress but still
     // shows in the plain Projects list with its Complete badge.
     project("pDone", "Sample Finished Project", "complete", { start: day(-28), notes: "Shipped and wrapped up.", actual: doneHistory }),
-    // Demonstrates a promoted-but-task-less Active project: shows as
-    // "Next slot" in In progress, not in the plain Projects list (see
-    // standingBlock()'s own projectIds exclusion) -- In progress is built
-    // entirely from tasks, so this needs no particular start date to
-    // demonstrate that; it has none set here on purpose.
+    // Demonstrates a promoted-but-task-less Active project: since In progress
+    // is built entirely from tasks, this one never appears there and lands in
+    // the plain Projects list under Pending instead -- no start date needed.
     project("pNext", "Sample Next Project", "active", { notes: "Chosen, but nothing scheduled yet." })
   ];
   var tasks = [
@@ -76,12 +70,9 @@ export function sampleData() {
     task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid", true), st("g3c", "Record a trailer", true)]),
     task("g4", 0, "pGame", "Add a level editor", "Players can make their own levels"),
     task("n1", 6, null, "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true }),
-    // pDone's own tasks: a Complete project keeps its tasks, all finished --
-    // demonstrates that a Complete project's task history stays intact and
-    // visible, not cleared out just because the project itself is done. Four
-    // weekly tasks, two steps (so weight 2) each, so the planned line drops
-    // evenly by 2 a week -- doneHistory above then zig-zags the actual line
-    // around that even plan.
+    // pDone's own tasks, all finished -- a Complete project keeps its task
+    // history rather than clearing it out. Four weekly tasks at weight 2 each
+    // give an even planned line, which doneHistory above then zig-zags around.
     task("d1", 1, "pDone", "Design the feature", "The design is agreed", [st("d1a", "Sketch the approach", false, true), st("d1b", "Get sign-off", false, true)], { status: "Completed", doneAt: day(-22) }),
     task("d2", 2, "pDone", "Build the core feature", "It works end to end", [st("d2a", "Build the happy path", false, true), st("d2b", "Handle errors", false, true)], { status: "Completed", doneAt: day(-15) }),
     task("d3", 3, "pDone", "Test it", "The top bugs are fixed", [st("d3a", "Run through every screen", false, true), st("d3b", "Fix what's broken", false, true)], { status: "Completed", doneAt: day(-8) }),
@@ -95,9 +86,7 @@ export function sampleData() {
       { id: "p2", text: "Write up lessons learned", note: "After the website launches" },
       { id: "p3", text: "Redesign the logo", note: "", arch: { at: yest, why: "removed" } }
     ],
-    // Decisions attach through a required step link (Project -> Task -> Step ->
-    // Decision) -- see DESIGN.md. d3 demonstrates an archived decision, which
-    // predates the required-step rule and is kept archived rather than backfilled.
+    // Decisions attach through a required step link. d3 is an archived example.
     decisions: [
       { id: "d1", q: "Which app store should you launch on first?", a: "Start with one store, then add the other.", step: "a5z" },
       { id: "d2", q: "Will the game be free, paid, or free with a paid upgrade?", a: "", step: "g3d" },
@@ -124,10 +113,8 @@ export function defaults() {
 
 export function validArch(a) { return (a && typeof a === "object" && isISO(a.at) && (a.why === "done" || a.why === "removed")) ? { at: a.at, why: a.why } : null; }
 export function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
-// A slip-snapshot's per-project start/days pairs (used by slipDialog's undo).
 // A slip's own undo snapshot: each affected task's own block number right
-// before the slip (slipDialog() moves individual incomplete tasks, not the
-// project's own start date -- see CLAUDE.md for why that changed).
+// before the slip, so Undo can put every one of them back exactly where it was.
 function cleanSlip(v) {
   if (!v || typeof v !== "object" || typeof v.days !== "number" || !Array.isArray(v.snap)) return null;
   var snap = v.snap.slice(0, 500).filter(function (s) { return s && typeof s.id === "string" && typeof s.block === "number" && s.block >= 0 && s.block <= 5000; }).map(function (s) { return { id: S(s.id, 40), block: Math.round(s.block) }; });
@@ -148,9 +135,8 @@ export function normalize(s) {
       // Per-project burndown snapshots: { "<Monday ISO>": steps remaining }.
       var snaps = {};
       if (x.actual && typeof x.actual === "object" && !Array.isArray(x.actual)) Object.keys(x.actual).slice(0, 300).forEach(function (k) { var v = x.actual[k]; if (isISO(k) && typeof v === "number" && v >= 0 && v <= 100000) snaps[k] = Math.round(v); });
-      // A project used to have a `mult` (0.25-5) applied to the global block
-      // length instead of its own day count. Convert old saved data once:
-      // days = the global default block length times the old multiplier.
+      // Old saved data may still have `mult`, a multiplier on the global
+      // block length instead of its own day count -- convert once on load.
       var days = (typeof x.days === "number" && x.days >= 1 && x.days <= 90) ? Math.round(x.days)
         : (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? Math.max(1, Math.round(d.days * x.mult)) : d.days;
       return {
@@ -161,9 +147,9 @@ export function normalize(s) {
         notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true, actual: snaps,
         lastSlip: cleanSlip(x.lastSlip),
         // Validated below, once every project's real id is known -- a link
-        // can only point at another project that actually exists in the
-        // final set. Arbitrary depth/cycles are fine (see DESIGN.md); each
-        // side of a link is just an id in this array, no traversal happens here.
+        // can only point at another project that actually exists in the final
+        // set. Arbitrary depth or cycles are fine; each side of a link is just
+        // an id in this array, and nothing here ever traverses the graph.
         linkedProjectIds: Array.isArray(x.linkedProjectIds) ? x.linkedProjectIds.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : []
       };
     });
@@ -178,10 +164,8 @@ export function normalize(s) {
       if (!t || typeof t !== "object" || typeof t.id !== "string") return;
       // A task's projectId must match a real project, or (for the "Next
       // project" placeholder only) be null/absent. An orphaned projectId --
-      // pointing at nothing -- drops the task rather than silently keeping it
-      // unreachable; there is no real saved data yet for this to affect (see
-      // DESIGN.md's migration decision), so this is a clean-shape guarantee,
-      // not a data-loss risk being accepted.
+      // pointing at nothing -- drops the task rather than keeping it around
+      // unreachable.
       var pid = (typeof t.projectId === "string" && projectIds[t.projectId]) ? t.projectId : null;
       if (!pid && !t.isNext) return;
       var steps = [];
@@ -208,9 +192,8 @@ export function normalize(s) {
   // Decisions require a real step link (Project -> Task -> Step -> Decision) --
   // a decision with no step, or one pointing at a step that doesn't exist, is
   // dropped rather than kept in a state the UI can't render meaningfully.
-  // Decisions no longer archive independently (confirmed 2026-09-24 -- only
-  // Projects/Ideas do), so there's no "archived, exempt from this rule" case
-  // anymore: every decision must resolve to a real, live step.
+  // Only Projects and Ideas archive independently, so there's no "archived,
+  // exempt from this rule" case: every decision must resolve to a real, live step.
   if (Array.isArray(s.decisions)) {
     d.decisions = s.decisions.filter(function (x) {
       return x && typeof x.id === "string" && typeof x.step === "string" && liveStepIds[x.step];
@@ -236,21 +219,17 @@ export function normalize(s) {
 }
 // Storage adapter: localStorage (web app) is synchronous and always available;
 // Claude's db capability (artifact version) is asynchronous and may resolve
-// null (not served as a published artifact, not granted, or failed to load --
-// indistinguishable by design, per the db capability contract). Rather than
-// make every one of the ~150 call sites across app/*.js that read `state.x`
-// synchronously deal with that, the whole app keeps reading `state` as a
-// plain, already-populated object -- this adapter is the only place that
-// knows storage might be async, at the load/save boundary alone. See
-// DESIGN.md's "Solved" subsection under "Claude Artifact parity version" for
-// the full reasoning.
+// null (not a published artifact, not granted, or failed to load --
+// indistinguishable by design). Rather than make every call site across
+// app/*.js that reads `state.x` deal with that, the whole app keeps reading
+// `state` as a plain, already-populated object -- this adapter is the only
+// place that knows storage might be async, at the load/save boundary alone.
 //
-// db, once resolved, stays a live reference for the rest of the page's life
-// (per the capability contract: "Awaiting use('db') again is free (memoized)").
-// null means either "this isn't a published artifact with db granted" (the
-// normal web-app case) or "db failed to load" -- both fall back to
-// localStorage identically, since a page that can't reach the network
-// shouldn't lose the ability to save at all.
+// Once resolved, db stays a live reference for the rest of the page's life
+// (awaiting use('db') again is free, per its own contract). A null db means
+// either "not a published artifact with db granted" or "db failed to load" --
+// both fall back to localStorage identically, since a page that can't reach
+// the network shouldn't lose the ability to save at all.
 var dbPromise = null;
 function getDb() {
   if (dbPromise) return dbPromise;
@@ -319,10 +298,9 @@ export var ui = { view: "today", sel: null, detail: false, query: "", prev: "tod
 export function saveUI() { /* nothing to save */ }
 
 // Stamps a task's completion date the moment its status becomes Done, and
-// clears it if the task is reopened. Only Projects and Ideas independently
-// archive now (confirmed 2026-09-24) -- a completed task just stays visible,
-// marked Done, inside its live Project; this function no longer moves
-// anything to the Archive itself.
+// clears it if the task is reopened. Only Projects and Ideas archive
+// independently -- a completed task just stays visible, marked Done, inside
+// its live project; this function never moves anything to the Archive itself.
 export function autoArchive() {
   state.tasks.forEach(function (t) {
     if (t.status !== "Completed") { t.doneAt = ""; return; }

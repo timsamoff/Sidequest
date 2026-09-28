@@ -175,9 +175,8 @@ export function ideaDialog(idea) {
     return { msg: "Added to the parking lot." };
   });
 }
-// prefill is a project id (offer only that project's steps) or { step } (the step is
-// already chosen, as when adding from a step's row). A decision must belong to a
-// step (Project -> Task -> Step -> Decision, see DESIGN.md), and a step has at most one.
+// prefill is a project id or { step } (already chosen). A decision must
+// belong to a step (Project -> Task -> Step -> Decision), at most one.
 export function decisionDialog(prefill) {
   var stepId = prefill && typeof prefill === "object" ? prefill.step : null;
   var projectId = typeof prefill === "string" ? prefill : undefined;
@@ -276,13 +275,11 @@ export function milestoneDialog(m, onRemove) {
     return { msg: "Milestone added to the Timeline." };
   }, undefined, m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
 }
-// Slips one project's INCOMPLETE tasks later by N days each, recomputing
-// which block each one falls into from its own current date -- Completed
-// tasks and Backlog items (no date to shift) are left untouched. This does
-// NOT touch the project's own start date (an earlier version did, which
-// moved every task uniformly including ones already done, which isn't a
-// "catch up" operation at all -- see CLAUDE.md for the full history of why
-// this changed). Scoped to a single project; there is no "slip everything."
+// Slips one project's incomplete tasks later by N days each, recomputing
+// which block each one falls into from its own current date. Completed tasks
+// and Backlog items have no date to shift, so they're left untouched, and the
+// project's own start date is never touched either -- shifting that would
+// move already-finished work too, which isn't really "catching up."
 export function slipDialog(p) {
   openModal("Slip " + p.name + "'s schedule", function (body) {
     body.appendChild(el("p", { "class": "hint first" }, "This moves incomplete tasks later by the same number of days. Completed tasks and the Backlog are not affected."));

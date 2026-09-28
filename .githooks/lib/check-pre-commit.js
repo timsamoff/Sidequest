@@ -475,6 +475,154 @@ function checkHardcodedHex() {
 }
 
 // ---------------------------------------------------------------------------
+// Comment-verbosity check
+// ---------------------------------------------------------------------------
+// Real precedent: a 2026-09-27 audit found comments across app/*.js drifting
+// into inline changelog entries -- dated confirmations ("confirmed
+// 2026-09-25"), "an earlier version did X" framing, and DESIGN.md/CLAUDE.md
+// pointers, none of which a future reader needs inline (that narrative
+// belongs in CLAUDE.md, which already tracks it). This is NOT a length or
+// prose-style check -- the project's own convention explicitly allows a
+// multi-line comment when it reads as human-written and stays scoped to its
+// block; a machine can't judge "reads human," but it can catch these specific
+// mechanical tells, which is what actually went wrong.
+
+const COMMENT_SCAN_FILES = ["css/tokens.css", "css/styles.css", "index.html"].concat(appModules());
+
+const COMMENT_VERBOSITY_PATTERNS = [
+  { name: "dated confirmation", re: /\bconfirmed\s+20\d\d-\d\d-\d\d\b/i },
+  { name: "bare date", re: /\b20\d\d-\d\d-\d\d\b/ },
+  { name: "doc pointer", re: /\b(?:see\s+)?(?:DESIGN|CLAUDE)\.md\b/i },
+  { name: "changelog framing", re: /\ban earlier version\b/i },
+];
+
+function checkCommentVerbosity() {
+  const violations = [];
+  const exception = common.findException("comment-verbosity");
+
+  COMMENT_SCAN_FILES.forEach((file) => {
+    if (!common.isStaged(file)) return;
+    const diff = common.stagedDiff(file) || "";
+    const addedLines = diff.split("\n").filter((l) => l.startsWith("+") && !l.startsWith("+++"));
+    addedLines.forEach((line) => {
+      const content = line.slice(1);
+      // Only lines that are themselves a comment (or continue one) -- a
+      // string literal that happens to contain "2026-09-27" (a real ISO date
+      // the app stores/displays) is not this check's business.
+      var trimmed = content.trim();
+      var looksLikeComment = /^\/\//.test(trimmed) || /^\/?\*/.test(trimmed) || /^<!--/.test(trimmed) || /-->$/.test(trimmed);
+      if (!looksLikeComment) return;
+      COMMENT_VERBOSITY_PATTERNS.forEach(({ name, re }) => {
+        if (!re.test(content)) return;
+        if (exception && exception.scope === file) return;
+        violations.push(
+          common.violation(
+            "comment-verbosity",
+            file,
+            null,
+            `Added comment reads like an inline changelog entry (${name}): "${trimmed.slice(0, 90)}". ` +
+            `Keep the comment a short pointer to the current behavior; put narrative/history in CLAUDE.md instead.`
+          )
+        );
+      });
+    });
+  });
+  return violations;
+}
+
+// ---------------------------------------------------------------------------
+// CSS token-organization check
+// ---------------------------------------------------------------------------
+// Real precedent: the tokens.css/styles.css audit (2026-09-27) found several
+// values repeated across many selectors in styles.css with no token behind
+// them at all (border-radius: 10px, 8px, 6px, 999px; min-height: 40px;
+// font-size: .9rem) -- each fixed by adding a token to tokens.css and pointing
+// every selector at it. This check is the forward-looking half of that fix:
+// catch a NEWLY ADDED line in styles.css that reintroduces one of those exact
+// literal values instead of referencing the token that already exists for it.
+
+// Every token in tokens.css whose value is a plain number/dimension/color
+// literal (not itself a var() reference). Returns a value -> [names] map
+// (plural: --space-10 and --radius-card can legitimately share a literal
+// value like 10px while meaning different things, so a value alone must not
+// collapse to a single name -- callers pick the right one by property family,
+// see CSS_PROPERTY_TOKEN_FAMILIES). Only tokens.css's first (light-theme)
+// :root block is read -- the dark-theme blocks reassign color tokens to
+// different literals for the same name, and none of the literals this check
+// cares about (radii, control heights, text sizes) vary by theme anyway.
+function extractTokenValues(tokensSource) {
+  const map = new Map();
+  const rootMatch = tokensSource.match(/:root\s*\{([\s\S]*?)\n\}/);
+  if (!rootMatch) return map;
+  const body = rootMatch[1];
+  const re = /--([\w-]+):\s*([^;]+);/g;
+  let m;
+  while ((m = re.exec(body)) !== null) {
+    const name = m[1], value = m[2].trim();
+    if (/var\(/.test(value)) continue;
+    if (!map.has(value)) map.set(value, []);
+    map.get(value).push(name);
+  }
+  return map;
+}
+
+// Given the value -> [names] map and a token-name-family test, returns the
+// one matching name for that property, or null.
+function tokenNameForFamily(tokenValues, value, nameRe) {
+  const names = tokenValues.get(value);
+  if (!names) return null;
+  return names.find((n) => nameRe.test(n)) || null;
+}
+
+// Which CSS property maps to which family of token names -- kept narrow and
+// explicit rather than one shared value -> name map, since --space-10 and
+// --radius-card can legitimately share a literal (10px) while meaning
+// completely different things; a "border-radius: 10px" violation must only
+// ever suggest --radius-card, never a --space-* token that happens to match
+// by coincidence. Each entry's regex is checked against a token's own name.
+const CSS_PROPERTY_TOKEN_FAMILIES = [
+  { prop: "border-radius", nameRe: /^radius-/ },
+  { prop: "min-height", nameRe: /^control-height$/ },
+  { prop: "font-size", nameRe: /^text-/ },
+];
+
+function checkCssTokenValue() {
+  const violations = [];
+  const file = "css/styles.css";
+  if (!common.isStaged(file)) return violations;
+  const tokensSource = common.stagedContent("css/tokens.css") || common.diskRead("css/tokens.css") || "";
+  const tokenValues = extractTokenValues(tokensSource);
+  if (!tokenValues.size) return violations;
+  const exception = common.findException("css-token-value");
+
+  const diff = common.stagedDiff(file) || "";
+  const addedLines = diff.split("\n").filter((l) => l.startsWith("+") && !l.startsWith("+++"));
+  addedLines.forEach((line) => {
+    const content = line.slice(1);
+    CSS_PROPERTY_TOKEN_FAMILIES.forEach(({ prop, nameRe }) => {
+      const re = new RegExp("\\b" + prop + ":\\s*([\\d.]+(?:px|rem|em)|999px)\\b", "g");
+      let m;
+      while ((m = re.exec(content)) !== null) {
+        const value = m[1];
+        const tokenName = tokenNameForFamily(tokenValues, value, nameRe);
+        if (!tokenName) continue;
+        if (exception && exception.scope === value) continue;
+        violations.push(
+          common.violation(
+            "css-token-value",
+            file,
+            null,
+            `Added line uses the literal "${value}" for ${prop}, which already has a token (--${tokenName}): "${content.trim().slice(0, 80)}". ` +
+            `Use var(--${tokenName}) instead of repeating the literal.`
+          )
+        );
+      }
+    });
+  });
+  return violations;
+}
+
+// ---------------------------------------------------------------------------
 // Duplicated-icon/SVG-markup check
 // ---------------------------------------------------------------------------
 // Real precedent: the search-icon duplication fix (sentinel-notes/TODO.md Done
@@ -690,6 +838,13 @@ module.exports = {
   extractDefaultsKeys,
   extractNormalizeBody,
   checkHardcodedHex,
+  checkCommentVerbosity,
+  COMMENT_SCAN_FILES,
+  COMMENT_VERBOSITY_PATTERNS,
+  checkCssTokenValue,
+  extractTokenValues,
+  tokenNameForFamily,
+  CSS_PROPERTY_TOKEN_FAMILIES,
   checkDuplicatedIconMarkup,
   checkSocialMetaDrift,
   checkArtifactBuildDrift,

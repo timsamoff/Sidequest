@@ -152,6 +152,54 @@ function fullScanSocialMetaDrift() {
   return [];
 }
 
+// A literal (radius/height/text-size value) that repeats 3+ times in
+// styles.css with no token behind it -- a candidate for promotion, the other
+// half of checkCssTokenValue()'s diff-scoped catch (that one only stops a
+// value that ALREADY has a token from being re-typed as a literal; this one
+// finds a value that never got a token in the first place, which only shows
+// up by looking at the whole file, not one diff line at a time).
+function fullScanCssRepeatedLiteral() {
+  const source = common.diskRead("css/styles.css") || "";
+  const tokensSource = common.diskRead("css/tokens.css") || "";
+  const tokenValues = checks.extractTokenValues(tokensSource);
+  const violations = [];
+  checks.CSS_PROPERTY_TOKEN_FAMILIES.forEach(({ prop, nameRe }) => {
+    const counts = new Map();
+    const re = new RegExp("\\b" + prop + ":\\s*([\\d.]+(?:px|rem|em)|999px)\\b", "g");
+    let m;
+    while ((m = re.exec(source)) !== null) {
+      const value = m[1];
+      if (checks.tokenNameForFamily(tokenValues, value, nameRe)) continue; // already tokenized for THIS property; checkCssTokenValue's job
+      counts.set(value, (counts.get(value) || 0) + 1);
+    }
+    counts.forEach((count, value) => {
+      if (count < 3) return;
+      violations.push(common.violation("css-repeated-literal", "css/styles.css", null, `The literal "${value}" appears ${count} times for ${prop} with no token behind it. Consider adding one to css/tokens.css.`));
+    });
+  });
+  return violations;
+}
+
+// Whole-file version of checkCommentVerbosity() -- catches existing comments
+// that already have the tell, not just newly-added ones.
+function fullScanCommentVerbosity() {
+  const violations = [];
+  checks.COMMENT_SCAN_FILES.forEach((file) => {
+    const source = common.diskRead(file);
+    if (!source) return;
+    source.split("\n").forEach((line) => {
+      const trimmed = line.trim();
+      const looksLikeComment = /^\/\//.test(trimmed) || /^\/?\*/.test(trimmed) || /^<!--/.test(trimmed) || /-->$/.test(trimmed);
+      if (!looksLikeComment) return;
+      checks.COMMENT_VERBOSITY_PATTERNS.forEach(({ name, re }) => {
+        if (!re.test(line)) return;
+        violations.push(common.violation("comment-verbosity", file, null, `Comment reads like an inline changelog entry (${name}): "${trimmed.slice(0, 90)}". Keep it a short pointer; put narrative in CLAUDE.md instead.`));
+      });
+    });
+  });
+  return violations;
+}
+
 function fullScanHookIntegrity() {
   const violations = [];
   const { execFileSync } = require("child_process");
@@ -195,6 +243,8 @@ function runFullScan() {
   violations = violations.concat(fullScanCrossListPairing());
   violations = violations.concat(fullScanHookIntegrity());
   violations = violations.concat(fullScanSocialMetaDrift());
+  violations = violations.concat(fullScanCssRepeatedLiteral());
+  violations = violations.concat(fullScanCommentVerbosity());
   // README keyword map, whole-repo version: every current CORE/BOTTOM/pinned-page
   // label should appear in README's current text. CORE/BOTTOM moved to
   // app/model.js in the JS module split (2026-09-21) -- was index.html.
@@ -238,6 +288,8 @@ function main() {
     violations = violations.concat(checks.checkTodoSync());
     violations = violations.concat(checks.checkNormalizeDefaultsPairing());
     violations = violations.concat(checks.checkHardcodedHex());
+    violations = violations.concat(checks.checkCommentVerbosity());
+    violations = violations.concat(checks.checkCssTokenValue());
     violations = violations.concat(checks.checkDuplicatedIconMarkup());
     violations = violations.concat(checks.checkSocialMetaDrift());
     violations = violations.concat(checks.checkArtifactBuildDrift());

@@ -18,11 +18,7 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
   --font-serif: "Spectral", Georgia, "Times New Roman", serif;
   --font-sans: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  /* Spacing scale (margin/padding/gap only -- not font-size, border-width/
-     radius, icon dimensions, or stroke-width, which are sized independently).
-     Named by their own pixel value, matching the literal values already in
-     use throughout styles.css -- this formalizes the existing consistency,
-     it doesn't introduce a new rhythm. */
+  /* Spacing scale: margin/padding/gap only, named by their own pixel value. */
   --space-1: 1px;
   --space-2: 2px;
   --space-4: 4px;
@@ -41,6 +37,21 @@
   --space-24: 24px;
   --space-26: 26px;
   --space-30: 30px;
+  /* Corner radii, named by role rather than size. */
+  --radius-track: 4px;
+  --radius-input: 6px;
+  --radius-control: 8px;
+  --radius-card: 10px;
+  --radius-pill: 999px;
+  /* Shared height for text/date/number inputs, select, and buttons. */
+  --control-height: 40px;
+  /* Small-text scale, named by their own rem value. */
+  --text-80: .8rem;
+  --text-85: .85rem;
+  --text-sm: .9rem;
+  --text-92: .92rem;
+  --text-100: 1rem;
+  --shadow-menu: 0 8px 24px rgba(0, 0, 0, .18);
   --bg: #F2F4F1;
   --surface: #FFFFFF;
   --ink: #1A2733;
@@ -83,24 +94,24 @@ h2 { font-size: 1.3rem; margin-top: var(--space-22); margin-bottom: var(--space-
 h3 { font-size: 1.05rem; margin-top: var(--space-22); }
 p { margin: 0; }
 [hidden] { display: none !important; }
-.hint { color: var(--muted); font-size: .9rem; margin-top: var(--space-6); }
-.note { margin-top: var(--space-12); color: var(--muted); font-size: .9rem; }
-.msg { margin-top: var(--space-10); color: var(--muted); font-size: .9rem; min-height: 1.4em; }
+.hint { color: var(--muted); font-size: var(--text-sm); margin-top: var(--space-6); }
+.note { margin-top: var(--space-12); color: var(--muted); font-size: var(--text-sm); }
+.msg { margin-top: var(--space-10); color: var(--muted); font-size: var(--text-sm); min-height: 1.4em; }
 .schedulesmsg:empty { margin-top: 0; min-height: 0; }
 
 input, select, button, textarea { font: inherit; color: var(--ink); margin: 0; }
 input[type="text"], input[type="date"], input[type="number"], textarea {
-  background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: var(--space-7) var(--space-10); min-height: 40px; max-width: 100%; width: 100%;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%;
 }
 input[type="file"] { max-width: 100%; }
 input[type="file"]::file-selector-button {
   font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
-  border-radius: 8px; padding: var(--space-8) var(--space-14); min-height: 40px; cursor: pointer; margin-right: var(--space-10);
+  border-radius: var(--radius-control); padding: var(--space-8) var(--space-14); min-height: var(--control-height); cursor: pointer; margin-right: var(--space-10);
 }
 input[type="file"]::file-selector-button:hover { border-color: var(--muted); }
 textarea { min-height: 84px; resize: vertical; }
 /* The pencil: the app's one "change this text" control, and the input it opens. */
-button.pencil { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 34px; min-height: 34px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--muted); }
+button.pencil { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 34px; min-height: 34px; padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); }
 button.pencil:hover { border: 0; background: var(--chip-idle); color: var(--planned); }
 button.pencil[hidden] { display: none; }
 .inlineedit { flex: 1 1 auto; min-width: 0; width: 100%; }
@@ -112,20 +123,20 @@ button.pencil[hidden] { display: none; }
 @supports not (scrollbar-color: auto) {
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb { background: var(--muted); border-radius: var(--radius-pill); border: 2px solid transparent; background-clip: content-box; }
 }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-button { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: var(--space-8) var(--space-14); min-height: 40px; cursor: pointer; }
+button { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control); padding: var(--space-8) var(--space-14); min-height: var(--control-height); cursor: pointer; }
 button:hover { border-color: var(--muted); }
 button.primary { background: var(--planned); border-color: var(--planned); color: var(--on-planned); font-weight: 600; }
-button.small { min-height: 34px; padding: var(--space-4) var(--space-10); font-size: .9rem; }
+button.small { min-height: 34px; padding: var(--space-4) var(--space-10); font-size: var(--text-sm); }
 /* Fixed width so the button doesn't resize when its label swaps Pin/Unpin. */
 button.pintoggle { min-width: 64px; }
 button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: var(--late); }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-10); margin-top: var(--space-14); align-items: center; }
 .field { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-10); }
-.field label { font-size: .9rem; color: var(--muted); }
-.linkbtn { display: inline-flex; align-items: center; min-height: 40px; padding: var(--space-8) var(--space-14); border-radius: 8px; background: var(--planned); color: var(--on-planned); font-weight: 600; text-decoration: none; }
+.field label { font-size: var(--text-sm); color: var(--muted); }
+.linkbtn { display: inline-flex; align-items: center; min-height: var(--control-height); padding: var(--space-8) var(--space-14); border-radius: var(--radius-control); background: var(--planned); color: var(--on-planned); font-weight: 600; text-decoration: none; }
 .linkbtn:hover { filter: brightness(1.1); }
 .textbtn { background: none; border: 0; padding: var(--space-4) 0; min-height: 0; color: var(--planned); text-decoration: underline; text-align: left; }
 
@@ -137,10 +148,14 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .mlogo { display: none; width: 44px; height: 44px; }
 .brand { font-family: var(--font-serif); font-weight: 600; font-size: 1.25rem; line-height: 1.1; }
 .nav { display: flex; flex-direction: column; gap: var(--space-2); overflow-y: auto; }
-.navlabel { padding: var(--space-14) var(--space-12) var(--space-4); font-size: .8rem; color: var(--muted); }
+.navlabel { padding: var(--space-14) var(--space-12) var(--space-4); font-size: var(--text-80); color: var(--muted); }
 .tab > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.helpitem { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); margin-top: var(--space-10); }
-.helpitem > summary { padding: var(--space-12) var(--space-14); font-weight: 600; cursor: pointer; color: var(--ink); font-size: 1rem; }
+/* Shared card look; each selector still sets its own padding/margin/overflow. */
+.helpitem, .menu, .listbox, .panel, .box, .tlist, .detail, .list, .chartbox, .tablewrap, .range {
+  border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface);
+}
+.helpitem { margin-top: var(--space-10); }
+.helpitem > summary { padding: var(--space-12) var(--space-14); font-weight: 600; cursor: pointer; color: var(--ink); font-size: var(--text-100); }
 .hbody { padding: 0 var(--space-14) var(--space-12); }
 .hbody ul { margin: 0; padding-left: 1.2rem; }
 .hbody li { margin-top: var(--space-6); }
@@ -150,10 +165,10 @@ kbd { font: inherit; font-size: .9em; border: 1px solid var(--line); border-bott
 .standing li:first-child { padding-top: 0; }
 .standing li:last-child { border-bottom: 0; padding-bottom: 0; }
 .srow { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4) var(--space-12); flex-wrap: wrap; }
-.srow .plink { font-weight: 600; font-size: 1rem; }
+.srow .plink { font-weight: 600; font-size: var(--text-100); }
 .plink { text-decoration: none; }
 .plink:hover, .plink:focus-visible { text-decoration: underline; }
-.snext { margin-top: var(--space-2); color: var(--muted); font-size: .92rem; }
+.snext { margin-top: var(--space-2); color: var(--muted); font-size: var(--text-92); }
 .tbleft { display: flex; align-items: center; gap: var(--space-10); min-width: 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .searchwrap { padding: 0 var(--space-4) var(--space-12); }
@@ -161,13 +176,13 @@ kbd { font: inherit; font-size: .9em; border: 1px solid var(--line); border-bott
 .searchbar { display: flex; flex-wrap: wrap; gap: var(--space-10) var(--space-16); align-items: center; }
 .searchbar input[type="search"] { flex: 1 1 260px; width: auto; }
 .searchbar label { display: flex; gap: var(--space-8); align-items: center; color: var(--muted); cursor: pointer; }
-input[type="search"] { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: var(--space-7) var(--space-10); min-height: 40px; max-width: 100%; }
+input[type="search"] { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; }
 mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding: 0 var(--space-1); }
 .sgroup { margin-top: var(--space-22); }
 .sgroup h3 { margin-top: 0; }
-.sgroup .item .snip { margin-top: var(--space-4); color: var(--muted); font-size: .9rem; }
+.sgroup .item .snip { margin-top: var(--space-4); color: var(--muted); font-size: var(--text-sm); }
 .chip.arch { background: var(--late-bg); color: var(--late); }
-.tab { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); width: 100%; text-align: left; border: 0; background: transparent; border-radius: 8px; padding: var(--space-10) var(--space-12); min-height: 44px; color: var(--muted); font-weight: 500; }
+.tab { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); width: 100%; text-align: left; border: 0; background: transparent; border-radius: var(--radius-control); padding: var(--space-10) var(--space-12); min-height: 44px; color: var(--muted); font-weight: 500; }
 .tab:hover { background: var(--chip-idle); border: 0; }
 .tab[aria-current="page"] { background: var(--sel); color: var(--ink); font-weight: 600; box-shadow: inset 3px 0 0 var(--planned); }
 .navbottom { margin-top: auto; padding-top: var(--space-8); border-top: 1px solid var(--line); }
@@ -175,26 +190,17 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); padding: var(--space-12) var(--space-24); background: var(--bg); border-bottom: 1px solid var(--line); }
 .topact { display: flex; gap: var(--space-8); align-items: center; flex: none; }
 .topact button { white-space: nowrap; }
-/* Wraps to at most 2 lines (its own ellipsis past that) rather than
-   truncating to one line -- a longer project name gets real room instead of
-   unreadable clipping. A small shrink at narrower widths comes first, so a
-   short/medium name (e.g. "Sample App") still fits on one line at common
-   360-375px widths rather than wrapping needlessly -- only a name too long
-   even at that smaller size actually wraps. See DESIGN.md/TODO's
-   project-title-truncation. */
+/* Wraps to at most 2 lines instead of truncating a long project name to one. */
 #viewTitle { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2; font-size: clamp(1.1rem, 3.5vw + 0.5rem, 1.5rem); }
 .menuwrap { position: relative; }
-.menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 210px; padding: var(--space-6); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .18); z-index: 30; display: flex; flex-direction: column; }
-.menu button { border: 0; background: transparent; text-align: left; border-radius: 6px; padding: var(--space-9) var(--space-12); min-height: 42px; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 210px; padding: var(--space-6); box-shadow: var(--shadow-menu); z-index: 30; display: flex; flex-direction: column; }
+.menu button { border: 0; background: transparent; text-align: left; border-radius: var(--radius-input); padding: var(--space-9) var(--space-12); min-height: 42px; }
 .menu button:hover { background: var(--chip-idle); }
 .menu button[aria-current="page"] { background: var(--sel); font-weight: 600; }
 .menu { max-height: 75vh; overflow-y: auto; }
-.menulabel { padding: var(--space-10) var(--space-12) var(--space-2); font-size: .8rem; color: var(--muted); }
+.menulabel { padding: var(--space-10) var(--space-12) var(--space-2); font-size: var(--text-80); color: var(--muted); }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: var(--space-4) 0; width: 100%; }
-/* Confirmed 2026-09-26: content spans the full browser width on every page
-   (padding only, no max-width cap) -- previously capped at 1040px with a
-   .content.wide escape hatch used only by Timeline; the cap is removed
-   everywhere now, not widened selectively per page. */
+/* Full browser width on every page, padding only, no max-width cap. */
 .content { padding: var(--space-22) var(--space-24) 72px; }
 
 .twocol { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--space-22); align-items: start; }
@@ -204,7 +210,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .pgrid > .cl.r1 { margin-top: 0; }
 .pgrid > .cr.r1 { margin-top: var(--space-26); }
 .pgrid > button { justify-self: start; }
-.listbox { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; margin-top: var(--space-12); }
+.listbox { overflow: hidden; margin-top: var(--space-12); }
 .listbox > .list { border: 0; border-radius: 0; margin: 0; background: transparent; }
 .listbox > .progress { margin: 0; padding: var(--space-10) var(--space-14); border-bottom: 1px solid var(--line); }
 .listbox > .progress:empty { display: none; }
@@ -219,81 +225,74 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
   .pgrid > .r4 { grid-row: 4; }
 }
 
-.panel { padding: var(--space-16) var(--space-18); background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--planned); border-radius: 10px; }
-.box { padding: var(--space-14) var(--space-16); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.panel { padding: var(--space-16) var(--space-18); border-left: 5px solid var(--planned); }
+.box { padding: var(--space-14) var(--space-16); }
 .ptitle { font-family: var(--font-serif); font-size: 1.3rem; font-weight: 600; line-height: 1.3; }
 .pmeta { margin-top: var(--space-6); color: var(--muted); }
 .pmeta b { color: var(--ink); font-weight: 600; }
 .pline { margin-top: var(--space-8); }
-.badge { display: inline-block; padding: var(--space-1) var(--space-9); border-radius: 999px; font-size: .8rem; font-weight: 600; background: var(--late-bg); color: var(--late); vertical-align: 1px; }
+.badge { display: inline-block; padding: var(--space-1) var(--space-9); border-radius: var(--radius-pill); font-size: var(--text-80); font-weight: 600; background: var(--late-bg); color: var(--late); vertical-align: 1px; }
 .tabbadge { min-width: 22px; text-align: center; padding: 0 var(--space-6); }
-.chip { display: inline-block; padding: var(--space-1) var(--space-10); border-radius: 999px; font-size: .82rem; background: var(--chip-idle); color: var(--chip-ink); }
+.chip { display: inline-block; padding: var(--space-1) var(--space-10); border-radius: var(--radius-pill); font-size: .82rem; background: var(--chip-idle); color: var(--chip-ink); }
 .chip[data-v="In progress"] { background: var(--chip-work); }
 .chip[data-v="Completed"], .chip.projcomplete { background: var(--chip-done); }
-.tlist { list-style: none; margin: var(--space-10) 0 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.tlist { list-style: none; margin: var(--space-10) 0 0; padding: 0; overflow: hidden; }
 .tlist li { border-bottom: 1px solid var(--line); }
 .tlist li:last-child { border-bottom: 0; }
-.tlist li.plain { padding: var(--space-12) var(--space-14); color: var(--muted); font-size: .92rem; }
+.tlist li.plain { padding: var(--space-12) var(--space-14); color: var(--muted); font-size: var(--text-92); }
 .item { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; padding: var(--space-12) var(--space-14); min-height: 0; }
 .item:hover { background: var(--chip-idle); border: 0; }
 .item[aria-current="true"] { background: var(--sel); box-shadow: inset 4px 0 0 var(--planned); }
-.item .l1 { color: var(--muted); font-size: .85rem; }
+.item .l1 { color: var(--muted); font-size: var(--text-85); }
 .item .l1 b { color: var(--ink); font-weight: 600; }
 .item .l2 { margin-top: var(--space-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .item.done .l2 { color: var(--muted); }
-.item .l3 { margin-top: var(--space-6); display: flex; gap: var(--space-8); align-items: center; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
+.item .l3 { margin-top: var(--space-6); display: flex; gap: var(--space-8); align-items: center; flex-wrap: wrap; font-size: var(--text-85); color: var(--muted); }
 
 .split { display: grid; grid-template-columns: minmax(280px, .95fr) minmax(0, 1.25fr); gap: var(--space-22); align-items: start; margin-top: var(--space-12); }
 .split .tlist { margin-top: 0; }
 .detailpane { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); }
-.detail { padding: var(--space-18) var(--space-20); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.detail { padding: var(--space-18) var(--space-20); }
 .detail .what { font-family: var(--font-serif); font-size: 1.25rem; font-weight: 600; line-height: 1.3; margin-top: var(--space-8); }
 .detail .dmeta { color: var(--muted); margin-top: var(--space-4); }
-select.status { border: 1px solid var(--line); border-radius: 999px; padding: var(--space-5) var(--space-12); min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
+select.status { border: 1px solid var(--line); border-radius: var(--radius-pill); padding: var(--space-5) var(--space-12); min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
 select.status[data-v="In progress"] { background: var(--chip-work); }
 select.status[data-v="Completed"] { background: var(--chip-done); }
 .steps { list-style: none; margin: var(--space-8) 0 0; padding: 0; }
-.steps li { display: flex; gap: var(--space-10); align-items: flex-start; padding: var(--space-5) 0; }
+.steps li { display: flex; flex-wrap: wrap; gap: var(--space-10); align-items: flex-start; padding: var(--space-5) 0; }
 .steps li label { display: flex; gap: var(--space-10); align-items: flex-start; flex: 1 1 auto; cursor: pointer; }
 .steps li.done label span { color: var(--muted); text-decoration: line-through; }
 input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin: var(--space-2) 0 0; flex: none; accent-color: var(--planned); }
 .inline { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-10); }
 .inline input[type="text"] { flex: 1 1 180px; width: auto; }
 .only-mobile { display: none; }
-.iconbtn { width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; flex: none; }
+.iconbtn { width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-card); flex: none; }
 .iconbtn svg { width: 20px; height: 20px; display: block; }
 .iconbtn.only-mobile { display: none; }
 .toast .toastbtn { margin-left: var(--space-12); background: transparent; border: 1px solid currentColor; color: inherit; min-height: 32px; padding: var(--space-2) var(--space-12); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-12); }
-.chipbtn { border-radius: 999px; min-height: 36px; padding: var(--space-4) var(--space-14); }
+.chipbtn { border-radius: var(--radius-pill); min-height: 36px; padding: var(--space-4) var(--space-14); }
 .chipbtn[aria-pressed="true"] { background: var(--sel); border-color: var(--planned); color: var(--planned); font-weight: 600; }
 button.dangerfill { background: var(--late); border-color: var(--late); color: var(--bg); font-weight: 600; }
 button:disabled { opacity: .5; cursor: not-allowed; }
-.dangerbox { border: 1px solid var(--late); background: var(--late-bg); border-radius: 10px; padding: var(--space-14) var(--space-16); margin-top: var(--space-10); }
+.dangerbox { border: 1px solid var(--late); background: var(--late-bg); border-radius: var(--radius-card); padding: var(--space-14) var(--space-16); margin-top: var(--space-10); }
 .setgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-4) var(--space-16); max-width: 640px; }
 .setgrid .field { min-width: 0; justify-content: flex-end; }
 .setgrid input, .setgrid select { min-width: 0; height: 42px; }
 @media (max-width: 640px) { .setgrid { grid-template-columns: minmax(0, 1fr); } }
 .about p { margin-top: var(--space-2); }
 .radiorow { display: flex; gap: var(--space-10); align-items: flex-start; margin-top: var(--space-10); cursor: pointer; }
-select.plain { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: var(--space-7) var(--space-10); min-height: 40px; max-width: 100%; width: 100%; }
+select.plain { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%; }
 button.small.on { background: var(--sel); border-color: var(--planned); color: var(--planned); font-weight: 600; }
-.steps li { flex-wrap: wrap; }
 
-.list { list-style: none; margin: var(--space-12) 0 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.list { list-style: none; margin: var(--space-12) 0 0; padding: 0; }
 .list > li { padding: var(--space-12) var(--space-14); border-bottom: 1px solid var(--line); }
 .list > li:last-child { border-bottom: 0; }
 .list.check label { display: flex; gap: var(--space-12); align-items: flex-start; cursor: pointer; }
 .list.check li.done span { color: var(--muted); text-decoration: line-through; }
 .progress { color: var(--muted); margin-top: var(--space-10); }
 .crow { display: flex; flex-wrap: wrap; gap: var(--space-6) var(--space-14); align-items: flex-start; justify-content: space-between; }
-/* Single-line rows (a project name/link plus badges and buttons, all the
-   same height) look wrong top-aligned -- a short chip like "Launch critical"
-   sits pinned to the top of a taller sibling button instead of centering
-   against it. Rows with a genuine multi-line text block (name + note/meta on
-   a second line) keep .crow's default flex-start, since centering THOSE
-   would misalign the buttons against the block's midpoint instead of its
-   first line. */
+/* Single-line rows center their items; multi-line rows keep .crow's flex-start. */
 .crow.oneline { align-items: center; }
 .crow label { display: flex; gap: var(--space-10); align-items: flex-start; font-weight: 600; cursor: pointer; flex: 1 1 200px; }
 .notetext { white-space: pre-line; }
@@ -301,20 +300,20 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
    note is one click away (an idea's title opens its dialog, a project's title
    opens its page). */
 .noteclamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.cnote { color: var(--muted); font-size: .92rem; margin: var(--space-2) 0 0 var(--space-30); }
+.cnote { color: var(--muted); font-size: var(--text-92); margin: var(--space-2) 0 0 var(--space-30); }
 .cfields { display: flex; flex-wrap: wrap; gap: var(--space-12); margin: var(--space-6) 0 0 var(--space-30); }
 .cfields .field { margin-top: var(--space-4); }
 .cfields input { width: 10rem; }
 .li-actions { display: flex; gap: var(--space-8); align-items: center; }
 .dq { font-weight: 500; }
-.dstate { font-size: .85rem; color: var(--muted); margin-left: var(--space-8); }
+.dstate { font-size: var(--text-85); color: var(--muted); margin-left: var(--space-8); }
 .dstate.ok { color: var(--planned); }
 .decision input[type="text"] { margin-top: var(--space-6); }
 .sechead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-10); margin-top: var(--space-22); }
 .sechead h3, .sechead .sechead-h { margin-top: 0; }
 .first { margin-top: 0; }
 
-.chartbox { margin-top: var(--space-12); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: var(--space-12) var(--space-12) var(--space-4); }
+.chartbox { margin-top: var(--space-12); padding: var(--space-12) var(--space-12) var(--space-4); }
 svg.chart { display: block; width: 100%; height: auto; }
 .chart .grid { stroke: var(--line); stroke-width: 1; }
 .chart .axis { fill: var(--muted); font-size: 12px; font-family: var(--font-sans); }
@@ -325,32 +324,28 @@ svg.chart { display: block; width: 100%; height: auto; }
 .legend span { display: inline-flex; align-items: center; gap: var(--space-8); }
 .legend i { display: inline-block; width: 24px; height: 0; border-top: 3px solid var(--burn); }
 .legend i.p { border-top: 3px dashed var(--planned); }
-.tablewrap { margin-top: var(--space-12); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow-x: auto; }
+.tablewrap { margin-top: var(--space-12); overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; vertical-align: top; padding: var(--space-10) var(--space-12); border-bottom: 1px solid var(--line); }
-th { font-weight: 600; font-size: .9rem; color: var(--muted); }
+th { font-weight: 600; font-size: var(--text-sm); color: var(--muted); }
 tbody tr:last-child td { border-bottom: 0; }
 .weekly td input { width: 5.5rem; }
 
 #view > .range:first-child { margin-top: 0; }
-.range { margin-top: var(--space-12); padding: var(--space-14) var(--space-16) var(--space-10); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.range { margin-top: var(--space-12); padding: var(--space-14) var(--space-16) var(--space-10); }
 .months { position: relative; height: 22px; border-bottom: 1px solid var(--line); }
 .months span { position: absolute; top: 0; font-size: .75rem; color: var(--muted); transform: translateX(-2px); white-space: nowrap; }
 .lane { margin-top: var(--space-12); }
-.lname { font-size: .92rem; font-weight: 600; }
+.lname { font-size: var(--text-92); font-weight: 600; }
 .ldates { font-weight: 400; color: var(--muted); margin-left: var(--space-6); }
-.track { position: relative; height: 22px; margin-top: var(--space-4); background: var(--chip-idle); border-radius: 4px; }
-.bar { position: absolute; top: 2px; bottom: 2px; min-width: 6px; background: var(--planned); border-radius: 4px; }
+.track { position: relative; height: 22px; margin-top: var(--space-4); background: var(--chip-idle); border-radius: var(--radius-track); }
+.bar { position: absolute; top: 2px; bottom: 2px; min-width: 6px; background: var(--planned); border-radius: var(--radius-track); }
 .bar.est { background: var(--est); border: 1px dashed var(--planned); }
-.bar.open { background: linear-gradient(to right, var(--est), transparent); border-left: 3px solid var(--planned); border-radius: 4px 0 0 4px; }
-/* A project's page: info on the left, its own Schedule/Timeline/Burndown on the right,
-   as one continuous flow (not row-synced to the left column -- Schedule sits close
-   above Timeline the same natural way Notes sits close below the Tasks list). */
+.bar.open { background: linear-gradient(to right, var(--est), transparent); border-left: 3px solid var(--planned); border-radius: var(--radius-track) 0 0 var(--radius-track); }
+/* Info on the left, Schedule/Timeline/Burndown on the right as one continuous flow. */
 .projsplit { display: block; }
 .projtop, .projrest, .projcharts { min-width: 0; }
-/* Schedule's own error line reserves no space until it has something to say, so it
-   does not push Timeline down when it's empty, which it almost always is -- applies
-   wherever Schedule renders (the page's own charts column, or the Expand dialog). */
+/* Reserves no space until there's an error, so an empty message doesn't push Timeline down. */
 .schedmsg { min-height: 0; margin-top: 0; }
 .schedmsg:not(:empty) { margin-top: var(--space-10); }
 .projexpand { display: none; }
@@ -359,13 +354,11 @@ tbody tr:last-child td { border-bottom: 0; }
 .chart .hit { fill: transparent; }
 svg.chart.nofocusring { outline: none; }
 .chart .guide { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
-.charttip { position: absolute; z-index: 3; max-width: 300px; padding: var(--space-8) var(--space-10); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, .18); font-size: .85rem; line-height: 1.35; white-space: pre-line; pointer-events: none; }
+.charttip { position: absolute; z-index: 3; max-width: 300px; padding: var(--space-8) var(--space-10); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-control); box-shadow: 0 4px 14px rgba(0, 0, 0, .18); font-size: var(--text-85); line-height: 1.35; white-space: pre-line; pointer-events: none; }
 .charttip[hidden] { display: none; }
 .bar.done { background: var(--chip-done); }
 @media (min-width: 900px) {
-  /* Left column stacks Tasks then the rest (two rows); the right column is one grid
-     item spanning both rows, so its own Schedule/Timeline/Burndown flow continuously
-     and are never stretched or squeezed to match the left column's row heights. */
+  /* Right column spans both rows so its own charts flow independent of the left column. */
   .projsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: "top charts" "rest charts"; column-gap: var(--space-22); row-gap: 0; align-items: start; }
   .projtop { grid-area: top; }
   .projrest { grid-area: rest; }
@@ -388,23 +381,13 @@ svg.chart.nofocusring { outline: none; }
 .modal { width: 100%; max-width: 520px; max-height: calc(100vh - 32px); overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: var(--space-18) var(--space-20) var(--space-20); }
 .mhead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-bottom: var(--space-4); }
 .mhead h2 { margin: 0; }
-.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); background: var(--ink); color: var(--bg); padding: var(--space-10) var(--space-16); border-radius: 10px; z-index: 60; font-size: .92rem; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); background: var(--ink); color: var(--bg); padding: var(--space-10) var(--space-16); border-radius: var(--radius-card); z-index: 60; font-size: var(--text-92); }
 .toast:empty { display: none; }
 
-/* splash screen: a real overlay atop the already-rendered (and blurred) app,
-   not the whole screen -- see DESIGN.md's splash-screen section. Sizing is
-   viewport-relative (min() of vw/vh) so the same ~75%-of-screen panel works
-   in both landscape and portrait without a separate breakpoint. */
+/* splash screen: viewport-relative sizing so the ~75% panel works in either orientation. */
 .splash { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity .5s ease; }
 .splash.fading { opacity: 0; }
-/* No transition on this property: backdropBlurred is present from the very
-   first HTML paint (see index.html), so the blur must never visibly ramp up
-   -- a transitioning blur over sharp text/UI edges can look like the
-   background is shaking as it resamples through each intermediate radius,
-   and it would also reopen the exact "readable for a moment" gap this class
-   exists to close. Only .splash.fading (a real, later, intentional state
-   change) transitions anything here, via its own opacity transition on
-   .splash itself. */
+/* No transition here -- backdropBlurred is present from first paint, must never ramp up. */
 .splashbackdrop { position: absolute; inset: 0; backdrop-filter: blur(0px); }
 .splash.backdropBlurred .splashbackdrop { backdrop-filter: blur(10px); }
 .splashpanel { position: relative; isolation: isolate; width: min(75vw, 75vh, 560px); aspect-ratio: 1 / 1; border-radius: 28px; overflow: hidden; background: var(--est); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; }
@@ -413,16 +396,10 @@ svg.chart.nofocusring { outline: none; }
 .splash.artBlurred .splashart { filter: blur(5px); }
 .splashtext { position: relative; z-index: 1; margin: 0; padding: var(--space-12) var(--space-20); max-width: 82%; text-align: center; color: var(--surface); background: var(--planned); border: 2px solid var(--surface); border-radius: 14px; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; line-height: 1.4; opacity: 0; transition: opacity .5s ease; }
 .splash.textIn .splashtext { opacity: 1; }
-/* stroke-dasharray/dashoffset's initial (undrawn) values come from the
-   element's own SVG attributes, set synchronously at creation time in
-   app/splash.js -- never a CSS var() fallback, which previously left a real
-   window where the wrong dash pattern (the fallback, not the path's real
-   length) rendered before JS set the correct value. CSS only owns the
-   transition TO 0 (fully drawn). */
+/* Initial dasharray/dashoffset come from real SVG attributes, not a CSS var fallback. */
 #splashLines path { transition: stroke-dashoffset .65s ease; }
 #splashLines path.drawn { stroke-dashoffset: 0; }
-/* Fade in place -- no scale/size change, so a rect's own rotate() attribute
-   (the icon's exact tilt) is never fought by a competing CSS transform. */
+/* Fade in place -- no scale/size change, so rect's own rotate() attribute isn't fought. */
 #splashNodes circle, #splashNodes rect { opacity: 0; transition: opacity .3s ease; }
 #splashNodes circle.shown, #splashNodes rect.shown { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
@@ -437,7 +414,7 @@ svg.chart.nofocusring { outline: none; }
   .nav { flex-direction: row; width: 100%; gap: 0; overflow: hidden; }
   .navlabel { display: none; }
   .tab.pinnedtab { display: none; }
-  .tab { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: var(--space-2); padding: var(--space-6) var(--space-2); min-height: 52px; font-size: .74rem; text-align: center; border-radius: 8px; }
+  .tab { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: var(--space-2); padding: var(--space-6) var(--space-2); min-height: 52px; font-size: .74rem; text-align: center; border-radius: var(--radius-control); }
   .tab[aria-current="page"] { box-shadow: inset 0 3px 0 var(--planned); }
   .topbar { padding: var(--space-10) var(--space-16); }
   .content { padding: var(--space-16) var(--space-16) 120px; }
@@ -453,11 +430,9 @@ svg.chart.nofocusring { outline: none; }
   .overlay { align-items: flex-end; padding: 0; }
   .modal { max-width: none; border-radius: 16px 16px 0 0; max-height: 92vh; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
   .menu { min-width: 220px; }
-  /* 75% of a narrow phone's own width/height is small in absolute terms --
-     widen the floor here so the panel stays legible on a small screen,
-     portrait or landscape. */
+  /* Widen the floor so the panel stays legible on a small phone. */
   .splashpanel { width: min(85vw, 85vh, 420px); }
-  .splashtext { font-size: 1rem; }
+  .splashtext { font-size: var(--text-100); }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
 
@@ -546,14 +521,7 @@ svg.chart.nofocusring { outline: none; }
   </div>
 </div>
 <script>
-  // Synchronous, inline, blocking: runs the instant the parser reaches this
-  // point, before app.js (a deferred module) or any layout/paint of what
-  // follows -- the one way to hide the splash before first paint if the
-  // user turned it off, since app/splash.js's own JS runs too late for that
-  // (confirmed 2026-09-25: the splash otherwise ships visible in plain HTML
-  // specifically so its backdrop blur is in effect before ANY JS runs at
-  // all, which is correct when the setting is on but would flash the splash
-  // once before hiding it if a user has it disabled).
+  // Runs before first paint -- the only way to hide the splash if it's turned off.
   try {
     var raw = window.localStorage.getItem("sidequest-template-v1");
     var saved = raw ? JSON.parse(raw) : null;
@@ -682,34 +650,28 @@ function wd() { return state.settings.blockWord in WORDS ? state.settings.blockW
 function wl() { return WORDS[wd()][0]; }
 function wpC() { var w = WORDS[wd()][1]; return w.charAt(0).toUpperCase() + w.slice(1); }
 /* project helpers -- Project is the top-tier entity every task/decision/
-   milestone attaches to by id (see DESIGN.md, "making Project a first-class
-   entity"). A project is promoted in place from candidate to active -- one id
-   for its whole life -- so "the active project named X" and "the candidate
-   named X" are never two different records. */
+   milestone attaches to by id. A project is promoted in place from candidate
+   to active, one id for its whole life, so "the active project named X" and
+   "the candidate named X" are never two different records. */
 function live(a) { return a.filter(function (x) { return !x.arch; }); }
 function liveProjects() { return live(state.projects); }
 function activeProjects() { return liveProjects().filter(function (p) { return p.status === "active"; }); }
 function candidateProjects() { return liveProjects().filter(function (p) { return p.status === "candidate"; }); }
 function completeProjects() { return liveProjects().filter(function (p) { return p.status === "complete"; }); }
 // Searches every project, archived or not -- an archived project's own page
-// must stay reachable (read-only) until restored (see DESIGN.md's "New idea
-// raised 2026-09-24"). Safe to widen past liveProjects() here because every
-// caller either wants an archived match now, or already filters to live
-// projects a level up (liveProjects()/activeProjects()/candidateProjects()/
-// completeProjects()/chosen() all call live() first, so this never leaks an
-// archived project into one of those lists).
+// must stay reachable, read-only, until restored. Safe to search past
+// liveProjects() here because every caller either wants an archived match
+// right now, or already filters to live projects one level up.
 function findProject(id) { for (var i = 0; i < state.projects.length; i++) if (state.projects[i].id === id) return state.projects[i]; return null; }
 function findAnyProject(id) { return findProject(id); }
 // True only when the project has at least one counted task and every one of
-// them is Completed -- the empty-task-set case must never read as "done"
-// (confirmed 2026-09-24).
+// them is Completed -- an empty task list must never read as "done."
 function projectTasksAllDone(p) {
   var ts = counted().filter(function (t) { return !t.isNext && t.projectId === p.id; });
   return ts.length > 0 && ts.every(function (t) { return t.status === "Completed"; });
 }
 // Direct links only, one hop -- a linked project may itself have further
-// links, but this never walks past the first one (see DESIGN.md: this is
-// what makes an arbitrary-depth/cyclic link graph safe to render).
+// links, but this never walks past the first one.
 function linkedProjects(p) { return (p.linkedProjectIds || []).map(findProject).filter(Boolean); }
 // A link is bidirectional -- one fact shared by both records, so linking
 // writes the id to both sides' arrays, and unlinking removes it from both.
@@ -749,19 +711,9 @@ function checkpoints() { var out = [], s = chartStart(); for (var i = 0; i < CHE
 
 /* task helpers */
 function counted() { return state.tasks.filter(function (t) { return !t.arch || t.arch.why === "done"; }); }
-// "Chosen as the next project" placeholder: the first active project with no
-// tasks yet -- there is no separate "next" pointer anymore (a project's own
-// status IS the chosen signal, set the moment it's promoted from candidate).
-// "Chosen as the next project" placeholder resolves to the first active
-// project (in state.projects array order, i.e. promotion order) that has no
-// tasks yet. This replaces the old explicit state.next pointer: choosing a
-// candidate now directly promotes it to "active" in place (see
-// promoteToActive() below), so a task-less active project IS the one just
-// chosen -- there's no longer a separate "chosen but not yet promoted" state
-// to track with its own pointer. Known simplification: if two active
-// projects were both promoted and neither has a task yet, this returns the
-// earlier one by array order, not necessarily the most recently promoted --
-// an acceptable edge case, not a design goal.
+// The "chosen" project is just the first active one with no tasks yet -- a
+// project's own status carries this, so there's no separate pointer to keep
+// in sync. If two are both task-less, whichever was promoted first wins.
 function chosen() { var a = activeProjects(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.projectId === a[i].id; })) return a[i]; return null; }
 function dispProject(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next project"; } var p = findProject(t.projectId); return p ? p.name : ""; }
 function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next project. Add its first tasks with the + button."; return t.what; }
@@ -771,9 +723,8 @@ function totalUnits() { return burnTasks().reduce(function (a, t) { return a + w
 function remainingUnits() { return burnTasks().reduce(function (a, t) { return a + weight(t) - doneUnits(t); }, 0); }
 function planned(ms) { var d = 0; burnTasks().forEach(function (t) { if (taskEnd(t) <= ms) d += weight(t); }); return totalUnits() - d; }
 function sortTasks(list) {
-  // Completed tasks sink to the bottom (confirmed 2026-09-24, since a task no
-  // longer archives away once done -- it stays visible in this same list
-  // permanently), ahead of the existing block/insertion-order sort.
+  // Completed tasks sink to the bottom -- a finished task stays in this list
+  // rather than archiving away, so it needs somewhere to settle.
   return list.map(function (t) { return { t: t, i: state.tasks.indexOf(t) }; }).sort(function (a, b) {
     var aDone = a.t.status === "Completed" ? 1 : 0, bDone = b.t.status === "Completed" ? 1 : 0;
     return aDone - bDone || (a.t.block || 99) - (b.t.block || 99) || a.i - b.i;
@@ -783,7 +734,7 @@ function ordered() { return sortTasks(live(state.tasks).filter(function (t) { re
 function orderedAll() { return sortTasks(live(state.tasks)); }
 function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0; })); }
 function burnTasks() { return counted().filter(function (t) { return t.block > 0; }); }
-// --- One project's own burndown (DESIGN.md, 2026-09-26) ---
+// --- One project's own burndown ---
 function projectBurnTasks(p) { return burnTasks().filter(function (t) { return t.projectId === p.id; }); }
 function projectTotalUnits(p) { return projectBurnTasks(p).reduce(function (a, t) { return a + weight(t); }, 0); }
 function projectRemainingUnits(p) { return projectBurnTasks(p).reduce(function (a, t) { return a + weight(t) - doneUnits(t); }, 0); }
@@ -834,12 +785,10 @@ function syncFromSteps(t) {
 function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Completed") return o[i]; return null; }
 function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
 // "proj:" + id routes to a project's own page -- id-based, not name-based, so
-// renaming a project never breaks its pin or an in-flight link to it. No
-// separate standalone Launch page exists anymore (see DESIGN.md: only Projects
-// are pinnable, launch-critical items render as a section on a project's own page).
-// A live candidate has no page of its own (edited via candidateDialog()
-// instead, like an Idea) -- only an archived candidate's page is reachable,
-// as the one remaining read-only view of its notes from the Archive list.
+// renaming a project never breaks its pin or an in-flight link to it. A live
+// candidate has no page of its own (edited via candidateDialog() instead,
+// like an Idea) -- only an archived candidate's page is reachable, as the one
+// remaining read-only view of its notes from the Archive list.
 function validPage(key) {
   if (typeof key !== "string" || key.indexOf("proj:") !== 0) return false;
   var p = findProject(key.slice(5));
@@ -881,9 +830,8 @@ function launchItems(projectId) {
   orderedCounted().forEach(function (t) { if (t.projectId !== projectId) return; t.steps.forEach(function (s) { if (s.launch) out.push({ t: t, s: s }); }); });
   return out;
 }
-// A decision must link to a real step (Project -> Task -> Step -> Decision,
-// see DESIGN.md) -- no "None" option, since an unlinked decision can no
-// longer be created. If projectId is given, only that project's steps are offered.
+// A decision must link to a real step -- no "None" option. If projectId is
+// given, only that project's steps are offered.
 function stepOptions(projectId) {
   var o = [];
   orderedCounted().forEach(function (t) {
@@ -922,8 +870,8 @@ function task(id, block, projectId, what, done, steps, extra) {
 }
 // A project's own lifecycle: "candidate" (competing for the next slot, not yet
 // started) or "active" (chosen, has tasks). Promoted in place -- the same
-// record and id carry through Candidate -> Active -> Archived, never a second
-// record. See DESIGN.md's "making Project a first-class entity" section.
+// record and id carry through candidate -> active -> archived, never a second
+// record.
 function project(id, name, status, extra) {
   var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, actual: {}, lastSlip: null };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
@@ -943,13 +891,9 @@ function sampleData() {
   // line, not a flat match, so its full-project Burndown has something to show.
   var doneHistory = {}; doneHistory[day(-21)] = 7; doneHistory[day(-14)] = 4; doneHistory[day(-7)] = 1;
   var projects = [
-    // pApp <-> pSite demonstrates a bidirectional project link (see
-    // DESIGN.md's "linking related projects" section): the app and its
-    // marketing site are related efforts, linked without nesting one's tasks
-    // inside the other.
+    // pApp <-> pSite demonstrates a bidirectional project link.
     project("pApp", "Sample App", "active", { actual: appHistory, notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
-    // launchCritical: the app's launch checklist shows the site as a line item,
-    // done-state derived from the site's own status (see DESIGN.md).
+    // launchCritical: the app's launch checklist shows the site's own status.
     project("pSite", "Sample Website", "active", { start: day(14), linkedProjectIds: ["pApp"], launchCritical: true }),
     project("pGame", "Sample Game", "active", { start: day(21), days: 14, due: day(21 + 122) }),
     project("pExt", "Sample Browser Extension", "candidate", { notes: "A small tool that could ship in a month" }),
@@ -957,11 +901,9 @@ function sampleData() {
     // Demonstrates a Complete project: drops out of In progress but still
     // shows in the plain Projects list with its Complete badge.
     project("pDone", "Sample Finished Project", "complete", { start: day(-28), notes: "Shipped and wrapped up.", actual: doneHistory }),
-    // Demonstrates a promoted-but-task-less Active project: shows as
-    // "Next slot" in In progress, not in the plain Projects list (see
-    // standingBlock()'s own projectIds exclusion) -- In progress is built
-    // entirely from tasks, so this needs no particular start date to
-    // demonstrate that; it has none set here on purpose.
+    // Demonstrates a promoted-but-task-less Active project: since In progress
+    // is built entirely from tasks, this one never appears there and lands in
+    // the plain Projects list under Pending instead -- no start date needed.
     project("pNext", "Sample Next Project", "active", { notes: "Chosen, but nothing scheduled yet." })
   ];
   var tasks = [
@@ -979,12 +921,9 @@ function sampleData() {
     task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid", true), st("g3c", "Record a trailer", true)]),
     task("g4", 0, "pGame", "Add a level editor", "Players can make their own levels"),
     task("n1", 6, null, "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true }),
-    // pDone's own tasks: a Complete project keeps its tasks, all finished --
-    // demonstrates that a Complete project's task history stays intact and
-    // visible, not cleared out just because the project itself is done. Four
-    // weekly tasks, two steps (so weight 2) each, so the planned line drops
-    // evenly by 2 a week -- doneHistory above then zig-zags the actual line
-    // around that even plan.
+    // pDone's own tasks, all finished -- a Complete project keeps its task
+    // history rather than clearing it out. Four weekly tasks at weight 2 each
+    // give an even planned line, which doneHistory above then zig-zags around.
     task("d1", 1, "pDone", "Design the feature", "The design is agreed", [st("d1a", "Sketch the approach", false, true), st("d1b", "Get sign-off", false, true)], { status: "Completed", doneAt: day(-22) }),
     task("d2", 2, "pDone", "Build the core feature", "It works end to end", [st("d2a", "Build the happy path", false, true), st("d2b", "Handle errors", false, true)], { status: "Completed", doneAt: day(-15) }),
     task("d3", 3, "pDone", "Test it", "The top bugs are fixed", [st("d3a", "Run through every screen", false, true), st("d3b", "Fix what's broken", false, true)], { status: "Completed", doneAt: day(-8) }),
@@ -998,9 +937,7 @@ function sampleData() {
       { id: "p2", text: "Write up lessons learned", note: "After the website launches" },
       { id: "p3", text: "Redesign the logo", note: "", arch: { at: yest, why: "removed" } }
     ],
-    // Decisions attach through a required step link (Project -> Task -> Step ->
-    // Decision) -- see DESIGN.md. d3 demonstrates an archived decision, which
-    // predates the required-step rule and is kept archived rather than backfilled.
+    // Decisions attach through a required step link. d3 is an archived example.
     decisions: [
       { id: "d1", q: "Which app store should you launch on first?", a: "Start with one store, then add the other.", step: "a5z" },
       { id: "d2", q: "Will the game be free, paid, or free with a paid upgrade?", a: "", step: "g3d" },
@@ -1027,10 +964,8 @@ function defaults() {
 
 function validArch(a) { return (a && typeof a === "object" && isISO(a.at) && (a.why === "done" || a.why === "removed")) ? { at: a.at, why: a.why } : null; }
 function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
-// A slip-snapshot's per-project start/days pairs (used by slipDialog's undo).
 // A slip's own undo snapshot: each affected task's own block number right
-// before the slip (slipDialog() moves individual incomplete tasks, not the
-// project's own start date -- see CLAUDE.md for why that changed).
+// before the slip, so Undo can put every one of them back exactly where it was.
 function cleanSlip(v) {
   if (!v || typeof v !== "object" || typeof v.days !== "number" || !Array.isArray(v.snap)) return null;
   var snap = v.snap.slice(0, 500).filter(function (s) { return s && typeof s.id === "string" && typeof s.block === "number" && s.block >= 0 && s.block <= 5000; }).map(function (s) { return { id: S(s.id, 40), block: Math.round(s.block) }; });
@@ -1051,9 +986,8 @@ function normalize(s) {
       // Per-project burndown snapshots: { "<Monday ISO>": steps remaining }.
       var snaps = {};
       if (x.actual && typeof x.actual === "object" && !Array.isArray(x.actual)) Object.keys(x.actual).slice(0, 300).forEach(function (k) { var v = x.actual[k]; if (isISO(k) && typeof v === "number" && v >= 0 && v <= 100000) snaps[k] = Math.round(v); });
-      // A project used to have a `mult` (0.25-5) applied to the global block
-      // length instead of its own day count. Convert old saved data once:
-      // days = the global default block length times the old multiplier.
+      // Old saved data may still have `mult`, a multiplier on the global
+      // block length instead of its own day count -- convert once on load.
       var days = (typeof x.days === "number" && x.days >= 1 && x.days <= 90) ? Math.round(x.days)
         : (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? Math.max(1, Math.round(d.days * x.mult)) : d.days;
       return {
@@ -1064,9 +998,9 @@ function normalize(s) {
         notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true, actual: snaps,
         lastSlip: cleanSlip(x.lastSlip),
         // Validated below, once every project's real id is known -- a link
-        // can only point at another project that actually exists in the
-        // final set. Arbitrary depth/cycles are fine (see DESIGN.md); each
-        // side of a link is just an id in this array, no traversal happens here.
+        // can only point at another project that actually exists in the final
+        // set. Arbitrary depth or cycles are fine; each side of a link is just
+        // an id in this array, and nothing here ever traverses the graph.
         linkedProjectIds: Array.isArray(x.linkedProjectIds) ? x.linkedProjectIds.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : []
       };
     });
@@ -1081,10 +1015,8 @@ function normalize(s) {
       if (!t || typeof t !== "object" || typeof t.id !== "string") return;
       // A task's projectId must match a real project, or (for the "Next
       // project" placeholder only) be null/absent. An orphaned projectId --
-      // pointing at nothing -- drops the task rather than silently keeping it
-      // unreachable; there is no real saved data yet for this to affect (see
-      // DESIGN.md's migration decision), so this is a clean-shape guarantee,
-      // not a data-loss risk being accepted.
+      // pointing at nothing -- drops the task rather than keeping it around
+      // unreachable.
       var pid = (typeof t.projectId === "string" && projectIds[t.projectId]) ? t.projectId : null;
       if (!pid && !t.isNext) return;
       var steps = [];
@@ -1111,9 +1043,8 @@ function normalize(s) {
   // Decisions require a real step link (Project -> Task -> Step -> Decision) --
   // a decision with no step, or one pointing at a step that doesn't exist, is
   // dropped rather than kept in a state the UI can't render meaningfully.
-  // Decisions no longer archive independently (confirmed 2026-09-24 -- only
-  // Projects/Ideas do), so there's no "archived, exempt from this rule" case
-  // anymore: every decision must resolve to a real, live step.
+  // Only Projects and Ideas archive independently, so there's no "archived,
+  // exempt from this rule" case: every decision must resolve to a real, live step.
   if (Array.isArray(s.decisions)) {
     d.decisions = s.decisions.filter(function (x) {
       return x && typeof x.id === "string" && typeof x.step === "string" && liveStepIds[x.step];
@@ -1139,21 +1070,17 @@ function normalize(s) {
 }
 // Storage adapter: localStorage (web app) is synchronous and always available;
 // Claude's db capability (artifact version) is asynchronous and may resolve
-// null (not served as a published artifact, not granted, or failed to load --
-// indistinguishable by design, per the db capability contract). Rather than
-// make every one of the ~150 call sites across app/*.js that read `state.x`
-// synchronously deal with that, the whole app keeps reading `state` as a
-// plain, already-populated object -- this adapter is the only place that
-// knows storage might be async, at the load/save boundary alone. See
-// DESIGN.md's "Solved" subsection under "Claude Artifact parity version" for
-// the full reasoning.
+// null (not a published artifact, not granted, or failed to load --
+// indistinguishable by design). Rather than make every call site across
+// app/*.js that reads `state.x` deal with that, the whole app keeps reading
+// `state` as a plain, already-populated object -- this adapter is the only
+// place that knows storage might be async, at the load/save boundary alone.
 //
-// db, once resolved, stays a live reference for the rest of the page's life
-// (per the capability contract: "Awaiting use('db') again is free (memoized)").
-// null means either "this isn't a published artifact with db granted" (the
-// normal web-app case) or "db failed to load" -- both fall back to
-// localStorage identically, since a page that can't reach the network
-// shouldn't lose the ability to save at all.
+// Once resolved, db stays a live reference for the rest of the page's life
+// (awaiting use('db') again is free, per its own contract). A null db means
+// either "not a published artifact with db granted" or "db failed to load" --
+// both fall back to localStorage identically, since a page that can't reach
+// the network shouldn't lose the ability to save at all.
 var dbPromise = null;
 function getDb() {
   if (dbPromise) return dbPromise;
@@ -1222,10 +1149,9 @@ var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", se
 function saveUI() { /* nothing to save */ }
 
 // Stamps a task's completion date the moment its status becomes Done, and
-// clears it if the task is reopened. Only Projects and Ideas independently
-// archive now (confirmed 2026-09-24) -- a completed task just stays visible,
-// marked Done, inside its live Project; this function no longer moves
-// anything to the Archive itself.
+// clears it if the task is reopened. Only Projects and Ideas archive
+// independently -- a completed task just stays visible, marked Done, inside
+// its live project; this function never moves anything to the Archive itself.
 function autoArchive() {
   state.tasks.forEach(function (t) {
     if (t.status !== "Completed") { t.doneAt = ""; return; }
@@ -1255,13 +1181,8 @@ if (typeof document !== "undefined") document.addEventListener("pointerdown", fu
   if (dismissTip && !(e.target && e.target.closest && e.target.closest("svg.chart"))) dismissTip();
 });
 
-// Draws a burndown. cfg: { cps, planned[], actual[] (null = no point), total, label,
-// marks[] ({ms, text}) for milestone diamonds on the axis, tip(i) -> the text for week i }.
-// Shared by the global chart and each project's chart. Each week is a full-height
-// hover column and the chart is ONE keyboard stop: Left and Right move between weeks
-// and milestones, Home and End jump, Esc closes. The same text shows on mouse hover,
-// on tap, and on keyboard focus, in a small tooltip that is also a live region, so it
-// reaches phones and screen readers (a native SVG <title> reaches neither).
+// Draws a burndown. cfg: { cps, planned[], actual[], total, label, marks[], tip(i) }.
+// One keyboard stop; arrows/Home/End/Esc navigate. Tooltip works on hover, tap, and focus.
 function renderBurn(host, wide, cfg) {
   host.innerHTML = "";
   host.style.position = "relative";
@@ -1351,10 +1272,8 @@ function renderBurn(host, wide, cfg) {
   });
 }
 
-// The text for one week: planned and actual counts, then which tasks finish and which
-// were completed. The planned line is exact, so it can name the tasks that finish;
-// the actual line is a weekly snapshot and steps carry no timestamps, so it can only
-// say which tasks were completed that week (from doneAt), never which task caused a drop.
+// Planned is exact (names finishing tasks); actual is a weekly snapshot, so it
+// can only say which tasks completed that week, not which one caused a drop.
 function nameList(ts, withProject) {
   var names = ts.slice(0, 6).map(function (t) { return (withProject ? dispProject(t) + ": " : "") + t.what; });
   return names.join(", ") + (ts.length > 6 ? ", and " + (ts.length - 6) + " more" : "");
@@ -1458,8 +1377,7 @@ function rangeBlock() {
     if (c.due) { cb = parseISO(c.due); lanes.push({ name: c.name, bars: [{ a: ca, b: cb, cls: "" }], dates: fmt(ca) + " to " + fmtY(cb) }); if (cb > maxEnd) maxEnd = cb; }
     else { openEnded = true; lanes.push({ name: c.name, bars: [{ a: ca, b: null, cls: "open" }], dates: "from " + fmtY(ca) }); }
   }
-  // Milestones require a direct project link (see DESIGN.md) -- labeled by
-  // project name here since the Timeline shows every project's milestones together.
+  // Labeled by project name since the Timeline shows every project's milestones together.
   var mss = [];
   live(state.milestones).forEach(function (m) { var p = findProject(m.projectId); mss.push({ id: m.id, text: (p ? p.name + ": " : "") + m.text, date: parseISO(m.date) }); });
   var wrap = timelineNode(lanes, mss, rs, maxEnd, "The red line marks today." + (openEnded ? " The chosen project has no length set, so its bar runs open-ended." : ""));
@@ -1543,8 +1461,7 @@ function searchAll(q, includeArchive) {
   });
   state.projects.forEach(function (p) { if (p.arch) consider("project", p.name, [p.notes], "Archived project", function () { go("archive"); }, true, ["Notes"]); });
   state.parked.forEach(function (p) { consider("idea", p.text, [p.note], "Parking lot", function () { go(p.arch ? "archive" : "parking"); }, !!p.arch, ["Note"]); });
-  // Decisions always link to a step (see DESIGN.md), so their project comes
-  // from following Decision -> Step -> Task -> Project, same as everywhere else.
+  // Project comes from following Decision -> Step -> Task -> Project.
   state.decisions.forEach(function (d) {
     var ls = findStep(d.step);
     consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { if (d.arch) go("archive"); else if (ls) openTask(ls.t.id); else go("projects"); }, !!d.arch, ["Answer"]);
@@ -1801,9 +1718,8 @@ function ideaDialog(idea) {
     return { msg: "Added to the parking lot." };
   });
 }
-// prefill is a project id (offer only that project's steps) or { step } (the step is
-// already chosen, as when adding from a step's row). A decision must belong to a
-// step (Project -> Task -> Step -> Decision, see DESIGN.md), and a step has at most one.
+// prefill is a project id or { step } (already chosen). A decision must
+// belong to a step (Project -> Task -> Step -> Decision), at most one.
 function decisionDialog(prefill) {
   var stepId = prefill && typeof prefill === "object" ? prefill.step : null;
   var projectId = typeof prefill === "string" ? prefill : undefined;
@@ -1902,13 +1818,11 @@ function milestoneDialog(m, onRemove) {
     return { msg: "Milestone added to the Timeline." };
   }, undefined, m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
 }
-// Slips one project's INCOMPLETE tasks later by N days each, recomputing
-// which block each one falls into from its own current date -- Completed
-// tasks and Backlog items (no date to shift) are left untouched. This does
-// NOT touch the project's own start date (an earlier version did, which
-// moved every task uniformly including ones already done, which isn't a
-// "catch up" operation at all -- see CLAUDE.md for the full history of why
-// this changed). Scoped to a single project; there is no "slip everything."
+// Slips one project's incomplete tasks later by N days each, recomputing
+// which block each one falls into from its own current date. Completed tasks
+// and Backlog items have no date to shift, so they're left untouched, and the
+// project's own start date is never touched either -- shifting that would
+// move already-finished work too, which isn't really "catching up."
 function slipDialog(p) {
   openModal("Slip " + p.name + "'s schedule", function (body) {
     body.appendChild(el("p", { "class": "hint first" }, "This moves incomplete tasks later by the same number of days. Completed tasks and the Backlog are not affected."));
@@ -2028,35 +1942,23 @@ function recordProjectWeeks() {
     if ((p.status === "active" || p.status === "complete") && projectTotalUnits(p) > 0) p.actual[key] = projectRemainingUnits(p);
   });
 }
-// Runs on every changed() call (same choke point as recordCurrentWeek), so
-// any task-status edit anywhere in the app is caught without patching each
-// call site individually. Only the auto-trigger lives here -- the manual
-// "Mark complete" button (renderProjectPage) sets status directly and calls
-// completionDialog itself, since it isn't gated on task state at all (see
-// DESIGN.md: both paths are equal, neither is secondary).
+// Auto-completion only -- runs on every changed(). Manual "Mark complete" is separate.
 function sweepProjectCompletion() {
   activeProjects().forEach(function (p) {
     if (projectTasksAllDone(p)) { p.status = "complete"; completionDialog(p); }
   });
 }
-// A project is Launch Critical to whoever links to it (a property of the
-// project itself, not of one specific link -- confirmed 2026-09-24). "Not yet
-// done" reads from the linked project's own status: complete/archived count
-// as done, anything else (active/candidate) does not.
+// Launch Critical is a property of the project, not of one link.
 function incompleteLaunchCriticalLinks(p) {
   return linkedProjects(p).filter(function (lp) { return lp.launchCritical && lp.status !== "complete" && lp.status !== "archived" && !lp.arch; });
 }
-// Shared by the manual "Mark complete" button and the auto-trigger sweep, and
-// itself shares the same task-archive cascade as the plain Archive button.
+// Shared archive path for the Archive button, Mark complete, and the auto-sweep.
 function archiveProject(p) {
   removeToArchive(p, "Project", function () {
     state.tasks.forEach(function (t) { if (t.projectId === p.id && !t.arch) t.arch = { at: iso(TODAY), why: "removed" }; });
   });
 }
-// Fires the moment a project becomes Complete, however it got there (manual
-// button or all-tasks-done auto-trigger) -- offers archiving now or leaving
-// it in Projects. Soft-gate only: an incomplete Launch-critical link shows a
-// warning line but never removes either choice (confirmed 2026-09-24).
+// Offers archiving now or leaving it in Projects. Launch-critical warning is soft, never blocking.
 function completionDialog(p) {
   var warn = incompleteLaunchCriticalLinks(p);
   openModal("Project complete", function (body) {
@@ -2235,10 +2137,7 @@ function buildDetail(t) {
   return box;
 }
 
-// Bidirectional link between two independent projects -- NOT a subtask
-// hierarchy (see DESIGN.md: "linking related projects, not nesting them").
-// Rendering is capped at one hop even though the data model allows arbitrary
-// depth/cycles: this section only ever lists p's own direct links.
+// Bidirectional link, not a subtask hierarchy. Lists p's own direct links only, one hop.
 function linksSection(root, p) {
   var readOnly = !!p.arch;
   var links = linkedProjects(p);
@@ -2252,9 +2151,7 @@ function linksSection(root, p) {
     if (lp.launchCritical) row.appendChild(el("span", { "class": "chip" }, "Launch critical"));
     if (!readOnly) {
       var acts = el("div", { "class": "li-actions" });
-      // Launch Critical is a property of the linked project itself, not of
-      // this one relationship -- toggling it here flips lp's own record,
-      // visible the same way from either side of the (bidirectional) link.
+      // Toggles lp's own record -- visible from either side of the link.
       var lc = el("button", { type: "button", "class": "small" + (lp.launchCritical ? " on" : ""), "aria-pressed": lp.launchCritical ? "true" : "false", title: (lp.launchCritical ? "Unmark as" : "Mark as") + " launch critical" }, lp.launchCritical ? "Unmark launch critical" : "Mark launch critical");
       on(lc, "click", function () { lp.launchCritical = !lp.launchCritical; changed(); });
       acts.appendChild(lc);
@@ -2274,9 +2171,8 @@ function linksSection(root, p) {
   }
 }
 
-// Launch-critical items and Decisions render as sections on a project's own
-// page, scoped to that project's tasks -- no separate standalone Launch page
-// exists anymore (see DESIGN.md: only Projects are pinnable).
+// Launch-critical items render as a section on a project's own page, scoped
+// to that project's tasks -- there's no separate standalone Launch page.
 function launchSection(root, p) {
   var readOnly = !!p.arch;
   var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h2", { "class": "sechead-h", id: "h-checks" }, "Before you launch"));
@@ -2306,9 +2202,7 @@ function launchSection(root, p) {
     li.appendChild(meta);
     ul.appendChild(li);
   });
-  // Launch-critical linked projects: a read-only line, done-state derived
-  // from the linked project's own status -- never a manual checkbox (see
-  // DESIGN.md: "auto-derived, never a manual checkbox").
+  // Read-only: done-state derives from lp's own status, never a manual checkbox.
   lcLinks.forEach(function (lp) {
     var done = lp.status === "complete" || lp.status === "archived";
     var li = el("li", { "class": done ? "done" : "" });
@@ -2353,25 +2247,21 @@ function pagesSection(excludeIds) {
   sec.appendChild(ul); return sec;
 }
 // A project's own lifecycle status decides how much of the page renders:
-// "candidate" (not yet started -- estimate fields and a Promote action) or
-// "active" (has its own Tasks/Schedule/Notes/Launch sections). Promotion is
-// in-place: the same record and id carry through, never a second record --
-// see DESIGN.md's "making Project a first-class entity" section.
+// "candidate" isn't started yet, "active" has its own Tasks/Schedule/Notes/
+// Launch sections. Promotion is in-place -- the same record and id carry
+// through, never a second record.
 function renderProjectPage(root, id) {
   var p = findProject(id);
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
   var readOnly = !!p.arch;
-  // An active or complete project's page is two columns on a wide screen: its info on
-  // the left and its own Timeline and Burndown on the right (stacked on a phone). A
-  // candidate has nothing scheduled to chart, and an archived project's tasks are archived.
+  // Active/complete: two columns (info left, Timeline/Burndown right), stacked on a phone.
   var page = root, split = null;
   var metaLine = el("p", { "class": "hint" });
   if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip projcomplete", style: "margin-right:8px" }, "Complete"));
   metaLine.appendChild(document.createTextNode(projectMeta(p)));
   if (!readOnly && (p.status === "active" || p.status === "complete")) {
     split = el("div", { "class": "projsplit" });
-    // Row 1: Tasks (left) pairs with Schedule (right). Row 2: the rest of the left
-    // column pairs with Timeline/Burndown. See CSS grid-template-areas.
+    // Grid areas defined in styles.css.
     root = el("div", { "class": "projtop" });
     split.appendChild(root); page.appendChild(split);
   } else {
@@ -2379,11 +2269,8 @@ function renderProjectPage(root, id) {
     if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
   }
 
-  // A live candidate has no page of its own anymore -- it's edited via
-  // candidateDialog() from the Candidates/Projects lists, same pattern as an
-  // Idea. An ARCHIVED candidate's page stays reachable and read-only (the
-  // Archive list's title link still routes here), since that's the one
-  // legitimate remaining way to look at an archived candidate's notes.
+  // A live candidate has no page -- edited via candidateDialog() instead.
+  // Archived candidates keep this read-only view (reachable from the Archive).
   if (p.status === "candidate") {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
@@ -2411,10 +2298,7 @@ function renderProjectPage(root, id) {
     root.appendChild(ul);
   }
   if (!split) scheduleSection(root, p, readOnly);
-  // The rest of the left column (Notes and below) is its own grid item. Unlike
-  // .projtop/.projcharts, .projrest doesn't need to align with anything at the top of
-  // a shared row (.projcharts now spans both rows), so "Notes" keeps its normal
-  // top margin instead of being zeroed.
+  // .projrest: the rest of the left column, its own grid item.
   if (split) { root = el("div", { "class": "projrest" }); split.appendChild(root); }
   root.appendChild(el("h2", null, "Notes"));
   if (readOnly) {
@@ -2436,14 +2320,11 @@ function renderProjectPage(root, id) {
   } else {
     if (p.status === "active") {
       ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Mark complete" }, "Mark complete"), "click", function () {
-        // Manual path: available any time the project is Active, regardless of
-        // task status -- equal in standing to the all-tasks-done auto-trigger,
-        // not a fallback for it (confirmed 2026-09-24).
+        // Manual path, equal in standing to the auto-trigger, not a fallback.
         p.status = "complete"; changed(); completionDialog(p);
       }));
     } else if (p.status === "complete") {
-      // No auto-revert exists (a reopened task doesn't undo Complete on its
-      // own -- confirmed 2026-09-24), so this is the only way back to Active.
+      // No auto-revert -- Reopen is the only way back to Active.
       ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Reopen this project" }, "Reopen"), "click", function () {
         p.status = "active"; changed(); notify("Reopened.");
       }));
@@ -2458,10 +2339,7 @@ function renderProjectPage(root, id) {
   if (split) split.appendChild(projectChartsPanel(p));
 }
 
-// A project's Schedule (start date and pace). In the two-column layout it sits at the
-// top of the right column, above the Timeline/Burndown it changes; otherwise it stays
-// inline. `first` puts the heading at the top of its column (no top margin); `extraBtn`
-// (the Expand button) rides on the same heading row when given.
+// `first` zeroes the heading's top margin; `extraBtn` rides its heading row.
 function scheduleSection(host, p, readOnly, first, extraBtn) {
   var hd = el("div", { "class": "sechead" + (first ? " first" : "") });
   hd.appendChild(el("h2", first ? { "class": "first" } : null, "Schedule"));
@@ -2483,11 +2361,7 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
       if (isNaN(lv) || lv < 1 || lv > 90) { pl.value = eff.days; smsg.textContent = wd() + " length must be from 1 to 90 days."; return; }
       p.start = sv; p.days = lv; changed(); notify(p.name + " schedule saved.");
     }
-    // "blur", not "change": a type="date" input fires "change" once per
-    // segment as it's typed (month, then day, then year), each of which used
-    // to call changed() and re-render the whole page -- destroying this very
-    // input mid-keystroke and losing focus after a single digit. Committing
-    // on blur waits until the user is actually done with the field.
+    // "blur", not "change" -- a date input fires "change" per segment while typing.
     on(ps, "blur", applyOwn); on(pl, "blur", applyOwn);
     on(pd, "blur", function () { p.due = isISO(pd.value) ? pd.value : ""; changed(); notify(p.due ? "Due date saved." : "Due date cleared."); });
     sfield("proj-start", "Start date", ps); sfield("proj-due", "Due date", pd); sfield("proj-days", "Days per " + wd(), pl);
@@ -2495,9 +2369,7 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
   }
 }
 
-// The right-hand column of a project's page: its own Schedule, Timeline, and
-// Burndown, flowing continuously (not row-synced to the left column), with an
-// Expand button (desktop only; hidden by CSS on a phone) that opens all three large.
+// Right column: Schedule, Timeline, Burndown, flowing continuously. Expand opens all three large.
 function projectChartsPanel(p) {
   var side = el("aside", { "class": "projcharts", "aria-label": "Schedule, timeline, and burndown" });
   var ex = el("button", { type: "button", "class": "small projexpand", title: "Expand the schedule, timeline, and burndown" }, "Expand");
@@ -2512,17 +2384,11 @@ function projectCharts(p, wide, expandBtn, first) {
   scheduleSection(out, p, false, first, expandBtn);
   var tl = projectRangeBlock(p);
   if (tl.empty) {
-    // With nothing scheduled there is nothing to chart, so one combined
-    // heading covers both -- separate "Timeline" and "Burndown" headings
-    // over one hint sentence would just be two labels for the same emptiness.
-    // No Slip button here either: with nothing incomplete scheduled, there's
-    // nothing for it to move.
+    // Nothing to chart -- one combined heading, no Slip button.
     out.appendChild(el("h2", null, "Timeline & burndown"));
     out.appendChild(tl.node);
   } else {
-    // Slip lives on the Timeline heading's own row -- it moves this
-    // project's still-incomplete tasks later (see slipDialog()); Completed
-    // tasks and the Backlog are never touched.
+    // Slip moves incomplete tasks only -- see slipDialog().
     var slipBtn = el("button", { type: "button", "class": "small", title: "Push this project's incomplete tasks later to catch up" }, "Slip schedule");
     on(slipBtn, "click", function () { slipDialog(p); });
     var hd1 = el("div", { "class": "sechead" }); hd1.appendChild(el("h2", null, "Timeline")); hd1.appendChild(slipBtn);
@@ -2535,8 +2401,7 @@ function projectCharts(p, wide, expandBtn, first) {
   return out;
 }
 
-// Promotes a candidate to active in place -- same record, same id, only its
-// status field changes. Replaces the old separate state.next pointer.
+// Promotes in place -- same record, same id.
 function promoteToActive(id) {
   var p = findAnyProject(id);
   if (!p) return;
@@ -2687,9 +2552,7 @@ function renderTimeline(root) {
     var tr = el("tr"); tr.appendChild(el("td", null, fmt(ms))); tr.appendChild(el("td", null, String(planned(ms))));
     var td = el("td");
     if (i === curIdx) {
-      // The current week's actual count is kept in sync automatically
-      // (recordCurrentWeek(), on every change anywhere in the app) --
-      // showing it as an input invites edits that the next change overwrites.
+      // This week is auto-synced (recordCurrentWeek()) -- read-only, not an input.
       td.appendChild(el("span", { title: "Kept up to date automatically as you complete tasks" }, String(state.actual[i] !== null ? state.actual[i] : tot)));
     } else {
       var inp = el("input", { type: "number", min: "0", max: "1000", step: "1", inputmode: "numeric", "aria-label": "Actual items remaining, week of " + fmt(ms), title: "Correct or fill in this past week's actual count" });
@@ -2706,21 +2569,14 @@ function renderTimeline(root) {
   table.appendChild(body); wrap.appendChild(table); root.appendChild(wrap);
 }
 
-// Only Projects and Ideas are independently archivable (confirmed 2026-09-24)
-// -- everything else (Tasks, Decisions, Milestones) lives inside its owning
-// Project and is removed immediately with a lightweight undo, not archived
-// as its own entry. See removeNow() below for that path.
+// Only Projects and Ideas archive independently -- see removeNow() for the rest.
 function removeToArchive(item, label, before) {
   if (before) before();
   item.arch = { at: iso(TODAY), why: "removed" };
   changed();
   notify(label + " moved to the Archive.", function () { item.arch = null; changed(); });
 }
-// Lightweight removal for Tasks/Decisions/Milestones: deleted immediately
-// (spliced out of state[list]), with a short-lived Undo toast that
-// re-inserts the exact same object at its original index -- no Archive
-// entry, no `arch` field involved. Confirmed 2026-09-24: these three kinds
-// no longer get their own Archive presence; only Projects/Ideas do.
+// Immediate delete with a short-lived Undo toast, no Archive entry.
 function removeNow(item, list, label) {
   var arr = state[list], idx = arr.indexOf(item);
   if (idx < 0) return;
@@ -2740,11 +2596,7 @@ function archiveEntries() {
 function dropEntry(e) { state[e.list] = state[e.list].filter(function (x) { return x !== e.item; }); }
 function restoreEntry(e) {
   e.item.arch = null;
-  // Archiving a project cascades to archive its still-open tasks (see
-  // archiveProject()) -- restoring it must reverse that, or the project comes
-  // back as an empty shell. Tasks are never independently archivable (only
-  // removeNow()'d), so any task with .arch set on this project got there
-  // solely through that cascade, safe to reopen unconditionally.
+  // Reverses archiveProject()'s task cascade, or the project comes back empty.
   if (e.kind === "project") {
     state.tasks.forEach(function (t) { if (t.projectId === e.item.id && t.arch) t.arch = null; });
   }
@@ -2779,9 +2631,7 @@ function renderArchive(root) {
   shown.forEach(function (e) {
     var li = el("li"), row = el("div", { "class": "crow", style: "align-items:center" });
     var info = el("div", { style: "flex:1 1 220px" });
-    // An archived project's own page is a real, reachable, read-only view
-    // (confirmed 2026-09-24) -- Ideas have no page of their own, so only a
-    // project's title is a link.
+    // Projects link to their read-only archived page; Ideas have no page.
     if (e.kind === "project") {
       var tl = el("button", { type: "button", "class": "textbtn plink", style: "font-weight:600", title: "View this project" }, e.title);
       on(tl, "click", function () { go("proj:" + e.item.id); });
@@ -3032,24 +2882,13 @@ function backupPanel(root) {
 
 
 // ---- splash.js ----
-// Splash screen: a real overlay atop the already-rendered app (see app.js's
-// boot sequence -- the app renders immediately either way; this is purely
-// decorative, on every load, gated by state.settings.showSplash). Branching-
-// path artwork echoes the app icon's visual language (rounded elbow joints,
-// small square task-endpoints, one accent-colored milestone diamond), always
-// anchored at the top-left corner and identical every load (confirmed
-// 2026-09-25 -- a fixed, hand-composed layout, not procedural/randomized,
-// since a random generator's layout quality was inconsistent and the user
-// wants the same animation every time anyway). Exactly the icon's own 5
-// branches. Sequence: backdrop blurs immediately -> branches draw in ->
-// artwork blurs -> affirmation text fades in -> whole overlay fades out to
-// reveal the app. See DESIGN.md's splash-screen section.
+// Splash overlay atop the already-rendered app, gated by showSplash. Fixed,
+// hand-composed artwork (the icon's own 5 branches, not procedural).
+// Sequence: blur -> branches draw -> blur -> affirmation -> fade out.
 
 var SVG_NS = "http://www.w3.org/2000/svg";
 
-// Short, plain, low-pressure phrases -- matches this app's existing voice
-// (see CLAUDE.md's writing-style guidance), not corporate-motivational or
-// cutesy. User plans to add more; keep this list easy to extend.
+// Short, plain, low-pressure phrases. Easy to extend.
 var AFFIRMATIONS = [
   "Small steps still count.",
   "Progress, not perfection.",
@@ -3121,29 +2960,14 @@ function svgEl(tag, attrs) {
   return e;
 }
 
-// The real icon's own path/shape data, VERBATIM (assets/sidequest-icon.svg /
-// index.html's #sqLogo) -- confirmed 2026-09-25: exactly the icon's 5
-// branches, no invented extra branch, every node/end-square/milestone at the
-// exact coordinates and rotation the icon itself uses, so a line's endpoint
-// and its node/marker always coincide exactly. The root line intentionally
-// starts off-canvas (negative y), matching the icon's own confirmed-
-// intentional top crop.
-//
-// Each path's real endpoint (in absolute SVG user-space coordinates) is
-// given explicitly alongside its `d`, since the icon's own path data uses
-// relative commands (l/c) and computing the true endpoint by hand from those
-// is exactly the kind of arithmetic that produced the earlier
-// endpoint-doesn't-match-the-node bug -- these values were taken directly
-// from the icon's own absolute-coordinate node/rect positions, not
-// recomputed.
+// Verbatim from assets/sidequest-icon.svg -- the icon's real 5 branches, exact
+// coordinates. Endpoints are given explicitly (not computed from the
+// relative path commands) since that's what caused a real endpoint-mismatch
+// bug before.
 function buildTree() {
-  // Each path embeds the one node/marker it actually terminates at, so
-  // "this line finished drawing" and "show this node" are never coupled by
-  // fragile parallel-array position (confirmed 2026-09-25: an earlier
-  // index-based pairing showed the wrong node at the wrong line's finish).
-  // `parent` is the index of the path whose node this line grows out of
-  // (null for the root), so each line starts only once that node is showing.
-  // `len` values are Chromium's getTotalLength() of the icon's own paths.
+  // Each path embeds its own terminal node, so line and node stay paired.
+  // `parent` is the index this line grows from (null for the root).
+  // `len` is Chromium's getTotalLength() of the icon's own paths.
   return {
     paths: [
       // Top_Path -> Node_1 (circle)
@@ -3154,20 +2978,13 @@ function buildTree() {
       { d: "M207.09,157.08 l52.31,-10.29 c34.87,-6.86 55.74,7.15 62.6,42.02 l9.64,49.01", len: 189.8, parent: 0, node: { kind: "circle", x: 342.01, y: 290.53, r: 47.39 } },
       // Left_Path_2 -> End_2 (rotated square), grows from Node_2
       { d: "M295.51,299.68 l-23.25,4.57 c-25.19,4.95 -35.3,20.02 -30.35,45.21 l19.38,98.53", len: 186.6, parent: 2, node: { kind: "square", x: 261.29, y: 448.0, size: 77.01, rotate: -11.13 } },
-      // Right_Path_2 -> Milestone (rotated diamond), grows from Node_2. Center
-      // is the icon's real one (its rect's transform applied), not the line's
-      // endpoint: the diamond sits further along the line's own axis so its
-      // top corner meets the line, which ends hidden just inside it.
+      // Right_Path_2 -> Milestone. Center is the icon's real one, past the line's endpoint.
       { d: "M388.51,281.39 l29.06,-5.72 c32.94,-6.48 52.64,6.75 59.12,39.69 l4,20.34", len: 132.1, parent: 2, node: { kind: "diamond", x: 492.12, y: 393.79, size: 118.48, rotate: -56.13 } }
     ]
   };
 }
 
-// Same shapes/colors as the real icon: circles white-fill with a dark-blue
-// ring (Node_1/Node_2), solid dark-blue rounded squares (End_1/End_2), one
-// solid red rounded square rotated into a diamond (Milestone) -- each
-// rotated exactly the icon's own amount so a corner sits flush against its
-// line's real angle, same as the source artwork.
+// Same shapes/colors as the real icon, rotated to match its own angles.
 function buildNodeShape(n) {
   if (n.kind === "circle") {
     return svgEl("circle", { cx: n.x, cy: n.y, r: n.r, fill: "var(--surface)", stroke: "var(--planned)", "stroke-width": "16" });
@@ -3177,10 +2994,7 @@ function buildNodeShape(n) {
   return svgEl("rect", { x: n.x - half, y: n.y - half, width: n.size, height: n.size, rx: n.kind === "diamond" ? 9 : 8, fill: color, transform: "rotate(" + n.rotate + " " + n.x + " " + n.y + ")" });
 }
 
-// Renders each path and its own terminal node as a matched pair, returning
-// the pairs in draw order -- playSplash uses this directly, so "line i's
-// timer" and "node i's timer" are always the same i, never a separate lookup
-// that can drift out of sync.
+// Returns {path, node} pairs in draw order, so line i and node i always match.
 function renderTree(root, tree) {
   var linesGroup = root.querySelector("#splashLines");
   var nodesGroup = root.querySelector("#splashNodes");
@@ -3188,16 +3002,8 @@ function renderTree(root, tree) {
   nodesGroup.innerHTML = "";
 
   return tree.paths.map(function (p) {
-    // stroke-dasharray/stroke-dashoffset are set as real attributes in this
-    // SAME element-creation call, using the pre-measured p.len -- never left
-    // to a CSS custom-property fallback for even one synchronous step.
-    // Confirmed 2026-09-25: a path previously existed in the live DOM for a
-    // brief window with no --len set yet (getTotalLength() itself forces a
-    // layout, and the following line that set --len ran after), during which
-    // CSS's own var(--len, 400) fallback governed the dash pattern -- for a
-    // path whose real length isn't ~400, that rendered as a fragmented,
-    // disconnected line, briefly visible before snapping to the correct
-    // undrawn state once --len was actually set.
+    // Set as real attributes at creation, not a CSS var fallback -- avoids a
+    // real flash-of-wrong-dash-pattern bug seen before.
     var len = p.len.toFixed(1);
     var path = svgEl("path", { d: p.d, "stroke-dasharray": len, "stroke-dashoffset": len });
     linesGroup.appendChild(path);
@@ -3208,11 +3014,7 @@ function renderTree(root, tree) {
   });
 }
 
-// The tree grows outward node by node: each line starts once its parent node
-// has faded in, and every line draws at the same speed, so of two siblings
-// the shorter one finishes (and shows its node) first -- Node_2 before End_1,
-// Milestone before End_2. Blur/text/fade-out are measured from the moment
-// the last line finishes, so changing DRAW_SPEED can't desync them.
+// Grows outward node by node; timing below is relative to the last line finishing.
 var DRAW_SPEED = 0.4;  // SVG user units per ms
 var NODE_PAUSE = 150;  // ms from a node starting to fade in until its child lines start
 var TIMING = {
@@ -3223,8 +3025,7 @@ var TIMING = {
   fadeOutDur: 500
 };
 
-// Per-pair start/end times (ms from play), resolved parent-first. Paths are
-// listed parent-before-child in buildTree, so one forward pass suffices.
+// Per-pair start/end times, resolved parent-first (buildTree lists parent before child).
 function schedule(pairs) {
   var drawEnd = 0;
   pairs.forEach(function (pair) {
@@ -3241,14 +3042,8 @@ function schedule(pairs) {
 // showSplash is off or the element isn't present.
 function playSplash(showSplash, done) {
   var root = $("splash");
-  // The splash markup ships visible-with-backdrop-already-blurred in plain
-  // HTML (no `hidden` attribute, `backdropBlurred` class present from the
-  // first paint) specifically so the blur is in effect before ANY JS runs --
-  // confirmed 2026-09-25: an earlier version relied on this function to
-  // reveal/blur it, which left a real, visible window (app rendered sharp,
-  // THEN the splash appeared moments later) since this runs after the app's
-  // own renderAll(). If the setting is off, this is the one path that must
-  // hide it immediately, before it can paint at all.
+  // Markup ships pre-blurred in plain HTML, before any JS runs -- avoids a
+  // real flash-of-sharp-app bug. If the setting's off, hide it now instead.
   if (!root || !showSplash) { if (root) root.hidden = true; if (done) done(); return; }
 
   var tree = buildTree();
@@ -3257,12 +3052,7 @@ function playSplash(showSplash, done) {
   var textEl = $("splashText");
   textEl.textContent = AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)];
 
-  // Force a real layout/paint of the freshly-inserted paths' initial (full-
-  // length, undrawn) stroke-dashoffset state before any "drawn" class is
-  // added, so the browser has committed a genuine "before" frame for the
-  // transition to animate from -- without this, the browser can batch the
-  // insert and the first class-add into one frame, which can render as a
-  // flash of the wrong state before snapping to the real animated sequence.
+  // Forces a layout so the "undrawn" state paints before "drawn" is added.
   // eslint-disable-next-line no-unused-expressions
   root.offsetHeight;
 
@@ -3275,8 +3065,7 @@ function playSplash(showSplash, done) {
   pairs.forEach(function (pair) {
     pair.path.style.transitionDuration = pair.dur + "ms";
     timers.push(setTimeout(function () { pair.path.classList.add("drawn"); }, pair.start));
-    // This node is THIS path's own terminus -- it only appears once this
-    // exact line has actually finished drawing (confirmed 2026-09-25).
+    // This node is this path's own terminus.
     timers.push(setTimeout(function () { pair.node.classList.add("shown"); }, pair.end));
   });
   timers.push(setTimeout(function () { root.classList.add("artBlurred"); }, artBlurAt));
@@ -3419,31 +3208,17 @@ function wireMenu(btnId, menuId) {
   });
 }
 
-// Boot sequence. Deferred one microtask past module evaluation: app.js sits in a
-// genuine import cycle with state.js/views.js/dialogs.js/search.js (confirmed
-// acceptable, see DESIGN.md), and a module graph this cyclic can evaluate this
-// entry module's own top-level code before every module it transitively imports
-// has finished its own top-level evaluation, depending on which module the loader
-// happens to enter the graph from. Deferring the boot sequence past microtask
-// queue drain guarantees the whole graph (including state.js's `state = load()`)
-// has finished evaluating first, regardless of traversal order.
+// Deferred one microtask so the whole import cycle (state.js etc.) finishes evaluating first.
 Promise.resolve().then(function () {
   $("brand").textContent = APP_NAME;
   applyTheme();
   autoArchive(); save();
   renderAll();
 
-  // Purely decorative, on every load, gated by the Settings toggle -- the app
-  // has already rendered above regardless, so this never delays real content.
-  // See app/splash.js and DESIGN.md's splash-screen section.
+  // Decorative only -- the app has already rendered above.
   playSplash(state.settings.showSplash);
 
-  // If this view is running as a published Claude artifact with the db
-  // capability granted, its saved state lives there, not in this browser's
-  // localStorage -- check for it after the page has already painted once
-  // (never blocks first render on an async capability lookup). On the web
-  // app, getDb() resolves null immediately and this is a no-op. See
-  // DESIGN.md's "Claude Artifact parity version" section.
+  // Checked after first paint -- no-op on the web app, real on a published artifact with db.
   loadFromDbIfAvailable().then(function (swapped) {
     if (!swapped) return;
     autoArchive(); save();

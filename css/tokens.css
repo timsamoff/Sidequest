@@ -4,11 +4,7 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
   --font-serif: "Spectral", Georgia, "Times New Roman", serif;
   --font-sans: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  /* Spacing scale (margin/padding/gap only -- not font-size, border-width/
-     radius, icon dimensions, or stroke-width, which are sized independently).
-     Named by their own pixel value, matching the literal values already in
-     use throughout styles.css -- this formalizes the existing consistency,
-     it doesn't introduce a new rhythm. */
+  /* Spacing scale: margin/padding/gap only, named by their own pixel value. */
   --space-1: 1px;
   --space-2: 2px;
   --space-4: 4px;
@@ -27,6 +23,21 @@
   --space-24: 24px;
   --space-26: 26px;
   --space-30: 30px;
+  /* Corner radii, named by role rather than size. */
+  --radius-track: 4px;
+  --radius-input: 6px;
+  --radius-control: 8px;
+  --radius-card: 10px;
+  --radius-pill: 999px;
+  /* Shared height for text/date/number inputs, select, and buttons. */
+  --control-height: 40px;
+  /* Small-text scale, named by their own rem value. */
+  --text-80: .8rem;
+  --text-85: .85rem;
+  --text-sm: .9rem;
+  --text-92: .92rem;
+  --text-100: 1rem;
+  --shadow-menu: 0 8px 24px rgba(0, 0, 0, .18);
   --bg: #F2F4F1;
   --surface: #FFFFFF;
   --ink: #1A2733;

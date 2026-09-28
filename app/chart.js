@@ -15,13 +15,8 @@ if (typeof document !== "undefined") document.addEventListener("pointerdown", fu
   if (dismissTip && !(e.target && e.target.closest && e.target.closest("svg.chart"))) dismissTip();
 });
 
-// Draws a burndown. cfg: { cps, planned[], actual[] (null = no point), total, label,
-// marks[] ({ms, text}) for milestone diamonds on the axis, tip(i) -> the text for week i }.
-// Shared by the global chart and each project's chart. Each week is a full-height
-// hover column and the chart is ONE keyboard stop: Left and Right move between weeks
-// and milestones, Home and End jump, Esc closes. The same text shows on mouse hover,
-// on tap, and on keyboard focus, in a small tooltip that is also a live region, so it
-// reaches phones and screen readers (a native SVG <title> reaches neither).
+// Draws a burndown. cfg: { cps, planned[], actual[], total, label, marks[], tip(i) }.
+// One keyboard stop; arrows/Home/End/Esc navigate. Tooltip works on hover, tap, and focus.
 function renderBurn(host, wide, cfg) {
   host.innerHTML = "";
   host.style.position = "relative";
@@ -111,10 +106,8 @@ function renderBurn(host, wide, cfg) {
   });
 }
 
-// The text for one week: planned and actual counts, then which tasks finish and which
-// were completed. The planned line is exact, so it can name the tasks that finish;
-// the actual line is a weekly snapshot and steps carry no timestamps, so it can only
-// say which tasks were completed that week (from doneAt), never which task caused a drop.
+// Planned is exact (names finishing tasks); actual is a weekly snapshot, so it
+// can only say which tasks completed that week, not which one caused a drop.
 function nameList(ts, withProject) {
   var names = ts.slice(0, 6).map(function (t) { return (withProject ? dispProject(t) + ": " : "") + t.what; });
   return names.join(", ") + (ts.length > 6 ? ", and " + (ts.length - 6) + " more" : "");
@@ -218,8 +211,7 @@ export function rangeBlock() {
     if (c.due) { cb = parseISO(c.due); lanes.push({ name: c.name, bars: [{ a: ca, b: cb, cls: "" }], dates: fmt(ca) + " to " + fmtY(cb) }); if (cb > maxEnd) maxEnd = cb; }
     else { openEnded = true; lanes.push({ name: c.name, bars: [{ a: ca, b: null, cls: "open" }], dates: "from " + fmtY(ca) }); }
   }
-  // Milestones require a direct project link (see DESIGN.md) -- labeled by
-  // project name here since the Timeline shows every project's milestones together.
+  // Labeled by project name since the Timeline shows every project's milestones together.
   var mss = [];
   live(state.milestones).forEach(function (m) { var p = findProject(m.projectId); mss.push({ id: m.id, text: (p ? p.name + ": " : "") + m.text, date: parseISO(m.date) }); });
   var wrap = timelineNode(lanes, mss, rs, maxEnd, "The red line marks today." + (openEnded ? " The chosen project has no length set, so its bar runs open-ended." : ""));

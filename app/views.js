@@ -83,35 +83,23 @@ export function recordProjectWeeks() {
     if ((p.status === "active" || p.status === "complete") && projectTotalUnits(p) > 0) p.actual[key] = projectRemainingUnits(p);
   });
 }
-// Runs on every changed() call (same choke point as recordCurrentWeek), so
-// any task-status edit anywhere in the app is caught without patching each
-// call site individually. Only the auto-trigger lives here -- the manual
-// "Mark complete" button (renderProjectPage) sets status directly and calls
-// completionDialog itself, since it isn't gated on task state at all (see
-// DESIGN.md: both paths are equal, neither is secondary).
+// Auto-completion only -- runs on every changed(). Manual "Mark complete" is separate.
 export function sweepProjectCompletion() {
   activeProjects().forEach(function (p) {
     if (projectTasksAllDone(p)) { p.status = "complete"; completionDialog(p); }
   });
 }
-// A project is Launch Critical to whoever links to it (a property of the
-// project itself, not of one specific link -- confirmed 2026-09-24). "Not yet
-// done" reads from the linked project's own status: complete/archived count
-// as done, anything else (active/candidate) does not.
+// Launch Critical is a property of the project, not of one link.
 export function incompleteLaunchCriticalLinks(p) {
   return linkedProjects(p).filter(function (lp) { return lp.launchCritical && lp.status !== "complete" && lp.status !== "archived" && !lp.arch; });
 }
-// Shared by the manual "Mark complete" button and the auto-trigger sweep, and
-// itself shares the same task-archive cascade as the plain Archive button.
+// Shared archive path for the Archive button, Mark complete, and the auto-sweep.
 export function archiveProject(p) {
   removeToArchive(p, "Project", function () {
     state.tasks.forEach(function (t) { if (t.projectId === p.id && !t.arch) t.arch = { at: iso(TODAY), why: "removed" }; });
   });
 }
-// Fires the moment a project becomes Complete, however it got there (manual
-// button or all-tasks-done auto-trigger) -- offers archiving now or leaving
-// it in Projects. Soft-gate only: an incomplete Launch-critical link shows a
-// warning line but never removes either choice (confirmed 2026-09-24).
+// Offers archiving now or leaving it in Projects. Launch-critical warning is soft, never blocking.
 export function completionDialog(p) {
   var warn = incompleteLaunchCriticalLinks(p);
   openModal("Project complete", function (body) {
@@ -290,10 +278,7 @@ export function buildDetail(t) {
   return box;
 }
 
-// Bidirectional link between two independent projects -- NOT a subtask
-// hierarchy (see DESIGN.md: "linking related projects, not nesting them").
-// Rendering is capped at one hop even though the data model allows arbitrary
-// depth/cycles: this section only ever lists p's own direct links.
+// Bidirectional link, not a subtask hierarchy. Lists p's own direct links only, one hop.
 export function linksSection(root, p) {
   var readOnly = !!p.arch;
   var links = linkedProjects(p);
@@ -307,9 +292,7 @@ export function linksSection(root, p) {
     if (lp.launchCritical) row.appendChild(el("span", { "class": "chip" }, "Launch critical"));
     if (!readOnly) {
       var acts = el("div", { "class": "li-actions" });
-      // Launch Critical is a property of the linked project itself, not of
-      // this one relationship -- toggling it here flips lp's own record,
-      // visible the same way from either side of the (bidirectional) link.
+      // Toggles lp's own record -- visible from either side of the link.
       var lc = el("button", { type: "button", "class": "small" + (lp.launchCritical ? " on" : ""), "aria-pressed": lp.launchCritical ? "true" : "false", title: (lp.launchCritical ? "Unmark as" : "Mark as") + " launch critical" }, lp.launchCritical ? "Unmark launch critical" : "Mark launch critical");
       on(lc, "click", function () { lp.launchCritical = !lp.launchCritical; changed(); });
       acts.appendChild(lc);
@@ -329,9 +312,8 @@ export function linksSection(root, p) {
   }
 }
 
-// Launch-critical items and Decisions render as sections on a project's own
-// page, scoped to that project's tasks -- no separate standalone Launch page
-// exists anymore (see DESIGN.md: only Projects are pinnable).
+// Launch-critical items render as a section on a project's own page, scoped
+// to that project's tasks -- there's no separate standalone Launch page.
 export function launchSection(root, p) {
   var readOnly = !!p.arch;
   var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h2", { "class": "sechead-h", id: "h-checks" }, "Before you launch"));
@@ -361,9 +343,7 @@ export function launchSection(root, p) {
     li.appendChild(meta);
     ul.appendChild(li);
   });
-  // Launch-critical linked projects: a read-only line, done-state derived
-  // from the linked project's own status -- never a manual checkbox (see
-  // DESIGN.md: "auto-derived, never a manual checkbox").
+  // Read-only: done-state derives from lp's own status, never a manual checkbox.
   lcLinks.forEach(function (lp) {
     var done = lp.status === "complete" || lp.status === "archived";
     var li = el("li", { "class": done ? "done" : "" });
@@ -408,25 +388,21 @@ export function pagesSection(excludeIds) {
   sec.appendChild(ul); return sec;
 }
 // A project's own lifecycle status decides how much of the page renders:
-// "candidate" (not yet started -- estimate fields and a Promote action) or
-// "active" (has its own Tasks/Schedule/Notes/Launch sections). Promotion is
-// in-place: the same record and id carry through, never a second record --
-// see DESIGN.md's "making Project a first-class entity" section.
+// "candidate" isn't started yet, "active" has its own Tasks/Schedule/Notes/
+// Launch sections. Promotion is in-place -- the same record and id carry
+// through, never a second record.
 export function renderProjectPage(root, id) {
   var p = findProject(id);
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
   var readOnly = !!p.arch;
-  // An active or complete project's page is two columns on a wide screen: its info on
-  // the left and its own Timeline and Burndown on the right (stacked on a phone). A
-  // candidate has nothing scheduled to chart, and an archived project's tasks are archived.
+  // Active/complete: two columns (info left, Timeline/Burndown right), stacked on a phone.
   var page = root, split = null;
   var metaLine = el("p", { "class": "hint" });
   if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip projcomplete", style: "margin-right:8px" }, "Complete"));
   metaLine.appendChild(document.createTextNode(projectMeta(p)));
   if (!readOnly && (p.status === "active" || p.status === "complete")) {
     split = el("div", { "class": "projsplit" });
-    // Row 1: Tasks (left) pairs with Schedule (right). Row 2: the rest of the left
-    // column pairs with Timeline/Burndown. See CSS grid-template-areas.
+    // Grid areas defined in styles.css.
     root = el("div", { "class": "projtop" });
     split.appendChild(root); page.appendChild(split);
   } else {
@@ -434,11 +410,8 @@ export function renderProjectPage(root, id) {
     if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
   }
 
-  // A live candidate has no page of its own anymore -- it's edited via
-  // candidateDialog() from the Candidates/Projects lists, same pattern as an
-  // Idea. An ARCHIVED candidate's page stays reachable and read-only (the
-  // Archive list's title link still routes here), since that's the one
-  // legitimate remaining way to look at an archived candidate's notes.
+  // A live candidate has no page -- edited via candidateDialog() instead.
+  // Archived candidates keep this read-only view (reachable from the Archive).
   if (p.status === "candidate") {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
@@ -466,10 +439,7 @@ export function renderProjectPage(root, id) {
     root.appendChild(ul);
   }
   if (!split) scheduleSection(root, p, readOnly);
-  // The rest of the left column (Notes and below) is its own grid item. Unlike
-  // .projtop/.projcharts, .projrest doesn't need to align with anything at the top of
-  // a shared row (.projcharts now spans both rows), so "Notes" keeps its normal
-  // top margin instead of being zeroed.
+  // .projrest: the rest of the left column, its own grid item.
   if (split) { root = el("div", { "class": "projrest" }); split.appendChild(root); }
   root.appendChild(el("h2", null, "Notes"));
   if (readOnly) {
@@ -491,14 +461,11 @@ export function renderProjectPage(root, id) {
   } else {
     if (p.status === "active") {
       ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Mark complete" }, "Mark complete"), "click", function () {
-        // Manual path: available any time the project is Active, regardless of
-        // task status -- equal in standing to the all-tasks-done auto-trigger,
-        // not a fallback for it (confirmed 2026-09-24).
+        // Manual path, equal in standing to the auto-trigger, not a fallback.
         p.status = "complete"; changed(); completionDialog(p);
       }));
     } else if (p.status === "complete") {
-      // No auto-revert exists (a reopened task doesn't undo Complete on its
-      // own -- confirmed 2026-09-24), so this is the only way back to Active.
+      // No auto-revert -- Reopen is the only way back to Active.
       ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Reopen this project" }, "Reopen"), "click", function () {
         p.status = "active"; changed(); notify("Reopened.");
       }));
@@ -513,10 +480,7 @@ export function renderProjectPage(root, id) {
   if (split) split.appendChild(projectChartsPanel(p));
 }
 
-// A project's Schedule (start date and pace). In the two-column layout it sits at the
-// top of the right column, above the Timeline/Burndown it changes; otherwise it stays
-// inline. `first` puts the heading at the top of its column (no top margin); `extraBtn`
-// (the Expand button) rides on the same heading row when given.
+// `first` zeroes the heading's top margin; `extraBtn` rides its heading row.
 function scheduleSection(host, p, readOnly, first, extraBtn) {
   var hd = el("div", { "class": "sechead" + (first ? " first" : "") });
   hd.appendChild(el("h2", first ? { "class": "first" } : null, "Schedule"));
@@ -538,11 +502,7 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
       if (isNaN(lv) || lv < 1 || lv > 90) { pl.value = eff.days; smsg.textContent = wd() + " length must be from 1 to 90 days."; return; }
       p.start = sv; p.days = lv; changed(); notify(p.name + " schedule saved.");
     }
-    // "blur", not "change": a type="date" input fires "change" once per
-    // segment as it's typed (month, then day, then year), each of which used
-    // to call changed() and re-render the whole page -- destroying this very
-    // input mid-keystroke and losing focus after a single digit. Committing
-    // on blur waits until the user is actually done with the field.
+    // "blur", not "change" -- a date input fires "change" per segment while typing.
     on(ps, "blur", applyOwn); on(pl, "blur", applyOwn);
     on(pd, "blur", function () { p.due = isISO(pd.value) ? pd.value : ""; changed(); notify(p.due ? "Due date saved." : "Due date cleared."); });
     sfield("proj-start", "Start date", ps); sfield("proj-due", "Due date", pd); sfield("proj-days", "Days per " + wd(), pl);
@@ -550,9 +510,7 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
   }
 }
 
-// The right-hand column of a project's page: its own Schedule, Timeline, and
-// Burndown, flowing continuously (not row-synced to the left column), with an
-// Expand button (desktop only; hidden by CSS on a phone) that opens all three large.
+// Right column: Schedule, Timeline, Burndown, flowing continuously. Expand opens all three large.
 function projectChartsPanel(p) {
   var side = el("aside", { "class": "projcharts", "aria-label": "Schedule, timeline, and burndown" });
   var ex = el("button", { type: "button", "class": "small projexpand", title: "Expand the schedule, timeline, and burndown" }, "Expand");
@@ -567,17 +525,11 @@ function projectCharts(p, wide, expandBtn, first) {
   scheduleSection(out, p, false, first, expandBtn);
   var tl = projectRangeBlock(p);
   if (tl.empty) {
-    // With nothing scheduled there is nothing to chart, so one combined
-    // heading covers both -- separate "Timeline" and "Burndown" headings
-    // over one hint sentence would just be two labels for the same emptiness.
-    // No Slip button here either: with nothing incomplete scheduled, there's
-    // nothing for it to move.
+    // Nothing to chart -- one combined heading, no Slip button.
     out.appendChild(el("h2", null, "Timeline & burndown"));
     out.appendChild(tl.node);
   } else {
-    // Slip lives on the Timeline heading's own row -- it moves this
-    // project's still-incomplete tasks later (see slipDialog()); Completed
-    // tasks and the Backlog are never touched.
+    // Slip moves incomplete tasks only -- see slipDialog().
     var slipBtn = el("button", { type: "button", "class": "small", title: "Push this project's incomplete tasks later to catch up" }, "Slip schedule");
     on(slipBtn, "click", function () { slipDialog(p); });
     var hd1 = el("div", { "class": "sechead" }); hd1.appendChild(el("h2", null, "Timeline")); hd1.appendChild(slipBtn);
@@ -590,8 +542,7 @@ function projectCharts(p, wide, expandBtn, first) {
   return out;
 }
 
-// Promotes a candidate to active in place -- same record, same id, only its
-// status field changes. Replaces the old separate state.next pointer.
+// Promotes in place -- same record, same id.
 export function promoteToActive(id) {
   var p = findAnyProject(id);
   if (!p) return;
@@ -742,9 +693,7 @@ export function renderTimeline(root) {
     var tr = el("tr"); tr.appendChild(el("td", null, fmt(ms))); tr.appendChild(el("td", null, String(planned(ms))));
     var td = el("td");
     if (i === curIdx) {
-      // The current week's actual count is kept in sync automatically
-      // (recordCurrentWeek(), on every change anywhere in the app) --
-      // showing it as an input invites edits that the next change overwrites.
+      // This week is auto-synced (recordCurrentWeek()) -- read-only, not an input.
       td.appendChild(el("span", { title: "Kept up to date automatically as you complete tasks" }, String(state.actual[i] !== null ? state.actual[i] : tot)));
     } else {
       var inp = el("input", { type: "number", min: "0", max: "1000", step: "1", inputmode: "numeric", "aria-label": "Actual items remaining, week of " + fmt(ms), title: "Correct or fill in this past week's actual count" });
@@ -761,21 +710,14 @@ export function renderTimeline(root) {
   table.appendChild(body); wrap.appendChild(table); root.appendChild(wrap);
 }
 
-// Only Projects and Ideas are independently archivable (confirmed 2026-09-24)
-// -- everything else (Tasks, Decisions, Milestones) lives inside its owning
-// Project and is removed immediately with a lightweight undo, not archived
-// as its own entry. See removeNow() below for that path.
+// Only Projects and Ideas archive independently -- see removeNow() for the rest.
 export function removeToArchive(item, label, before) {
   if (before) before();
   item.arch = { at: iso(TODAY), why: "removed" };
   changed();
   notify(label + " moved to the Archive.", function () { item.arch = null; changed(); });
 }
-// Lightweight removal for Tasks/Decisions/Milestones: deleted immediately
-// (spliced out of state[list]), with a short-lived Undo toast that
-// re-inserts the exact same object at its original index -- no Archive
-// entry, no `arch` field involved. Confirmed 2026-09-24: these three kinds
-// no longer get their own Archive presence; only Projects/Ideas do.
+// Immediate delete with a short-lived Undo toast, no Archive entry.
 export function removeNow(item, list, label) {
   var arr = state[list], idx = arr.indexOf(item);
   if (idx < 0) return;
@@ -795,11 +737,7 @@ export function archiveEntries() {
 export function dropEntry(e) { state[e.list] = state[e.list].filter(function (x) { return x !== e.item; }); }
 export function restoreEntry(e) {
   e.item.arch = null;
-  // Archiving a project cascades to archive its still-open tasks (see
-  // archiveProject()) -- restoring it must reverse that, or the project comes
-  // back as an empty shell. Tasks are never independently archivable (only
-  // removeNow()'d), so any task with .arch set on this project got there
-  // solely through that cascade, safe to reopen unconditionally.
+  // Reverses archiveProject()'s task cascade, or the project comes back empty.
   if (e.kind === "project") {
     state.tasks.forEach(function (t) { if (t.projectId === e.item.id && t.arch) t.arch = null; });
   }
@@ -834,9 +772,7 @@ export function renderArchive(root) {
   shown.forEach(function (e) {
     var li = el("li"), row = el("div", { "class": "crow", style: "align-items:center" });
     var info = el("div", { style: "flex:1 1 220px" });
-    // An archived project's own page is a real, reachable, read-only view
-    // (confirmed 2026-09-24) -- Ideas have no page of their own, so only a
-    // project's title is a link.
+    // Projects link to their read-only archived page; Ideas have no page.
     if (e.kind === "project") {
       var tl = el("button", { type: "button", "class": "textbtn plink", style: "font-weight:600", title: "View this project" }, e.title);
       on(tl, "click", function () { go("proj:" + e.item.id); });

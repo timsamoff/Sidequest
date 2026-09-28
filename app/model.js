@@ -9,34 +9,28 @@ export function wd() { return state.settings.blockWord in WORDS ? state.settings
 export function wl() { return WORDS[wd()][0]; }
 export function wpC() { var w = WORDS[wd()][1]; return w.charAt(0).toUpperCase() + w.slice(1); }
 /* project helpers -- Project is the top-tier entity every task/decision/
-   milestone attaches to by id (see DESIGN.md, "making Project a first-class
-   entity"). A project is promoted in place from candidate to active -- one id
-   for its whole life -- so "the active project named X" and "the candidate
-   named X" are never two different records. */
+   milestone attaches to by id. A project is promoted in place from candidate
+   to active, one id for its whole life, so "the active project named X" and
+   "the candidate named X" are never two different records. */
 export function live(a) { return a.filter(function (x) { return !x.arch; }); }
 export function liveProjects() { return live(state.projects); }
 export function activeProjects() { return liveProjects().filter(function (p) { return p.status === "active"; }); }
 export function candidateProjects() { return liveProjects().filter(function (p) { return p.status === "candidate"; }); }
 export function completeProjects() { return liveProjects().filter(function (p) { return p.status === "complete"; }); }
 // Searches every project, archived or not -- an archived project's own page
-// must stay reachable (read-only) until restored (see DESIGN.md's "New idea
-// raised 2026-09-24"). Safe to widen past liveProjects() here because every
-// caller either wants an archived match now, or already filters to live
-// projects a level up (liveProjects()/activeProjects()/candidateProjects()/
-// completeProjects()/chosen() all call live() first, so this never leaks an
-// archived project into one of those lists).
+// must stay reachable, read-only, until restored. Safe to search past
+// liveProjects() here because every caller either wants an archived match
+// right now, or already filters to live projects one level up.
 export function findProject(id) { for (var i = 0; i < state.projects.length; i++) if (state.projects[i].id === id) return state.projects[i]; return null; }
 export function findAnyProject(id) { return findProject(id); }
 // True only when the project has at least one counted task and every one of
-// them is Completed -- the empty-task-set case must never read as "done"
-// (confirmed 2026-09-24).
+// them is Completed -- an empty task list must never read as "done."
 export function projectTasksAllDone(p) {
   var ts = counted().filter(function (t) { return !t.isNext && t.projectId === p.id; });
   return ts.length > 0 && ts.every(function (t) { return t.status === "Completed"; });
 }
 // Direct links only, one hop -- a linked project may itself have further
-// links, but this never walks past the first one (see DESIGN.md: this is
-// what makes an arbitrary-depth/cyclic link graph safe to render).
+// links, but this never walks past the first one.
 export function linkedProjects(p) { return (p.linkedProjectIds || []).map(findProject).filter(Boolean); }
 // A link is bidirectional -- one fact shared by both records, so linking
 // writes the id to both sides' arrays, and unlinking removes it from both.
@@ -76,19 +70,9 @@ export function checkpoints() { var out = [], s = chartStart(); for (var i = 0; 
 
 /* task helpers */
 export function counted() { return state.tasks.filter(function (t) { return !t.arch || t.arch.why === "done"; }); }
-// "Chosen as the next project" placeholder: the first active project with no
-// tasks yet -- there is no separate "next" pointer anymore (a project's own
-// status IS the chosen signal, set the moment it's promoted from candidate).
-// "Chosen as the next project" placeholder resolves to the first active
-// project (in state.projects array order, i.e. promotion order) that has no
-// tasks yet. This replaces the old explicit state.next pointer: choosing a
-// candidate now directly promotes it to "active" in place (see
-// promoteToActive() below), so a task-less active project IS the one just
-// chosen -- there's no longer a separate "chosen but not yet promoted" state
-// to track with its own pointer. Known simplification: if two active
-// projects were both promoted and neither has a task yet, this returns the
-// earlier one by array order, not necessarily the most recently promoted --
-// an acceptable edge case, not a design goal.
+// The "chosen" project is just the first active one with no tasks yet -- a
+// project's own status carries this, so there's no separate pointer to keep
+// in sync. If two are both task-less, whichever was promoted first wins.
 export function chosen() { var a = activeProjects(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.projectId === a[i].id; })) return a[i]; return null; }
 export function dispProject(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next project"; } var p = findProject(t.projectId); return p ? p.name : ""; }
 export function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next project. Add its first tasks with the + button."; return t.what; }
@@ -98,9 +82,8 @@ export function totalUnits() { return burnTasks().reduce(function (a, t) { retur
 export function remainingUnits() { return burnTasks().reduce(function (a, t) { return a + weight(t) - doneUnits(t); }, 0); }
 export function planned(ms) { var d = 0; burnTasks().forEach(function (t) { if (taskEnd(t) <= ms) d += weight(t); }); return totalUnits() - d; }
 export function sortTasks(list) {
-  // Completed tasks sink to the bottom (confirmed 2026-09-24, since a task no
-  // longer archives away once done -- it stays visible in this same list
-  // permanently), ahead of the existing block/insertion-order sort.
+  // Completed tasks sink to the bottom -- a finished task stays in this list
+  // rather than archiving away, so it needs somewhere to settle.
   return list.map(function (t) { return { t: t, i: state.tasks.indexOf(t) }; }).sort(function (a, b) {
     var aDone = a.t.status === "Completed" ? 1 : 0, bDone = b.t.status === "Completed" ? 1 : 0;
     return aDone - bDone || (a.t.block || 99) - (b.t.block || 99) || a.i - b.i;
@@ -110,7 +93,7 @@ export function ordered() { return sortTasks(live(state.tasks).filter(function (
 export function orderedAll() { return sortTasks(live(state.tasks)); }
 export function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0; })); }
 export function burnTasks() { return counted().filter(function (t) { return t.block > 0; }); }
-// --- One project's own burndown (DESIGN.md, 2026-09-26) ---
+// --- One project's own burndown ---
 export function projectBurnTasks(p) { return burnTasks().filter(function (t) { return t.projectId === p.id; }); }
 export function projectTotalUnits(p) { return projectBurnTasks(p).reduce(function (a, t) { return a + weight(t); }, 0); }
 export function projectRemainingUnits(p) { return projectBurnTasks(p).reduce(function (a, t) { return a + weight(t) - doneUnits(t); }, 0); }
@@ -161,12 +144,10 @@ export function syncFromSteps(t) {
 export function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Completed") return o[i]; return null; }
 export function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
 // "proj:" + id routes to a project's own page -- id-based, not name-based, so
-// renaming a project never breaks its pin or an in-flight link to it. No
-// separate standalone Launch page exists anymore (see DESIGN.md: only Projects
-// are pinnable, launch-critical items render as a section on a project's own page).
-// A live candidate has no page of its own (edited via candidateDialog()
-// instead, like an Idea) -- only an archived candidate's page is reachable,
-// as the one remaining read-only view of its notes from the Archive list.
+// renaming a project never breaks its pin or an in-flight link to it. A live
+// candidate has no page of its own (edited via candidateDialog() instead,
+// like an Idea) -- only an archived candidate's page is reachable, as the one
+// remaining read-only view of its notes from the Archive list.
 export function validPage(key) {
   if (typeof key !== "string" || key.indexOf("proj:") !== 0) return false;
   var p = findProject(key.slice(5));
@@ -208,9 +189,8 @@ export function launchItems(projectId) {
   orderedCounted().forEach(function (t) { if (t.projectId !== projectId) return; t.steps.forEach(function (s) { if (s.launch) out.push({ t: t, s: s }); }); });
   return out;
 }
-// A decision must link to a real step (Project -> Task -> Step -> Decision,
-// see DESIGN.md) -- no "None" option, since an unlinked decision can no
-// longer be created. If projectId is given, only that project's steps are offered.
+// A decision must link to a real step -- no "None" option. If projectId is
+// given, only that project's steps are offered.
 export function stepOptions(projectId) {
   var o = [];
   orderedCounted().forEach(function (t) {

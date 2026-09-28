@@ -53,8 +53,7 @@ export function searchAll(q, includeArchive) {
   });
   state.projects.forEach(function (p) { if (p.arch) consider("project", p.name, [p.notes], "Archived project", function () { go("archive"); }, true, ["Notes"]); });
   state.parked.forEach(function (p) { consider("idea", p.text, [p.note], "Parking lot", function () { go(p.arch ? "archive" : "parking"); }, !!p.arch, ["Note"]); });
-  // Decisions always link to a step (see DESIGN.md), so their project comes
-  // from following Decision -> Step -> Task -> Project, same as everywhere else.
+  // Project comes from following Decision -> Step -> Task -> Project.
   state.decisions.forEach(function (d) {
     var ls = findStep(d.step);
     consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { if (d.arch) go("archive"); else if (ls) openTask(ls.t.id); else go("projects"); }, !!d.arch, ["Answer"]);
