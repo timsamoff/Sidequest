@@ -1,6 +1,7 @@
 // Splash overlay atop the already-rendered app, gated by showSplash. Fixed,
 // hand-composed artwork (the icon's own 5 branches, not procedural).
-// Sequence: blur -> branches draw -> blur -> affirmation -> fade out.
+// Sequence: blur -> branches draw -> blur -> the "Sidequest" title (shown from
+// first paint via static HTML) wipes into the affirmation -> fade out.
 import { $ } from "./dom.js";
 
 var SVG_NS = "http://www.w3.org/2000/svg";

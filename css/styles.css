@@ -307,8 +307,19 @@ svg.chart.nofocusring { outline: none; }
 .splashsvg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .splashart { transition: filter .6s ease; }
 .splash.artBlurred .splashart { filter: blur(5px); }
-.splashtext { position: relative; z-index: 1; margin: 0; padding: var(--space-12) var(--space-20); max-width: 82%; text-align: center; color: var(--surface); background: var(--planned); border: 2px solid var(--surface); border-radius: 14px; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; line-height: 1.4; opacity: 0; transition: opacity .5s ease; }
-.splash.textIn .splashtext { opacity: 1; }
+/* Title and affirmation share one slot, stacked and swapped with a left-to-
+   right wipe (a moving mask edge, not the text itself sliding). Sized to the
+   wider of the two so neither one is clipped or reflows the other. */
+.splashtextwrap { position: relative; z-index: 1; max-width: 82%; display: grid; }
+.splashtextwrap .splashtext { grid-area: 1 / 1; }
+.splashtext { margin: 0; padding: var(--space-12) var(--space-20); text-align: center; color: var(--surface); background: var(--planned); border: 2px solid var(--surface); border-radius: 14px; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; line-height: 1.4; }
+/* The wipe: a mask whose visible/hidden edge sweeps left to right, so the
+   handoff reads as a wipe across the text rather than a fade or a slide.
+   A short 10%-wide feather softens the edge instead of a hard cut. */
+.splashtitle { -webkit-mask-image: linear-gradient(to right, black 100%, transparent 110%); mask-image: linear-gradient(to right, black 100%, transparent 110%); transition: -webkit-mask-image .6s ease; transition: mask-image .6s ease; }
+.splashaffirm { -webkit-mask-image: linear-gradient(to right, black -10%, transparent 0%); mask-image: linear-gradient(to right, black -10%, transparent 0%); transition: -webkit-mask-image .6s ease; transition: mask-image .6s ease; }
+.splash.textIn .splashtitle { -webkit-mask-image: linear-gradient(to right, black -10%, transparent 0%); mask-image: linear-gradient(to right, black -10%, transparent 0%); }
+.splash.textIn .splashaffirm { -webkit-mask-image: linear-gradient(to right, black 100%, transparent 110%); mask-image: linear-gradient(to right, black 100%, transparent 110%); }
 /* Initial dasharray/dashoffset come from real SVG attributes, not a CSS var fallback. */
 #splashLines path { transition: stroke-dashoffset .65s ease; }
 #splashLines path.drawn { stroke-dashoffset: 0; }
@@ -316,7 +327,7 @@ svg.chart.nofocusring { outline: none; }
 #splashNodes circle, #splashNodes rect { opacity: 0; transition: opacity .3s ease; }
 #splashNodes circle.shown, #splashNodes rect.shown { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
-  .splash, .splashbackdrop, .splashsvg, .splashtext, #splashLines path, #splashNodes circle, #splashNodes rect { transition-duration: .01ms !important; }
+  .splash, .splashbackdrop, .splashsvg, .splashtitle, .splashaffirm, #splashLines path, #splashNodes circle, #splashNodes rect { transition-duration: .01ms !important; }
 }
 
 @media (max-width: 899px) {
