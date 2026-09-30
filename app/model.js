@@ -17,6 +17,11 @@ export function liveProjects() { return live(state.projects); }
 export function activeProjects() { return liveProjects().filter(function (p) { return p.status === "active"; }); }
 export function candidateProjects() { return liveProjects().filter(function (p) { return p.status === "candidate"; }); }
 export function completeProjects() { return liveProjects().filter(function (p) { return p.status === "complete"; }); }
+// A Complete-but-not-archived project's tasks stay in the project itself but
+// drop out of every cross-project surface (Tasks, Today, the global burndown
+// and Timeline) -- reversible the instant the project's status changes back,
+// since this reads the project's live status rather than a stored flag.
+export function isHiddenComplete(t) { var p = findProject(t.projectId); return !!p && p.status === "complete" && !p.arch; }
 // Searches every project, archived or not -- an archived project's own page
 // must stay reachable, read-only, until restored. Safe to search past
 // liveProjects() here because every caller either wants an archived match
@@ -89,12 +94,15 @@ export function sortTasks(list) {
     return aDone - bDone || (a.t.block || 99) - (b.t.block || 99) || a.i - b.i;
   }).map(function (x) { return x.t; });
 }
-export function ordered() { return sortTasks(live(state.tasks).filter(function (t) { return t.block > 0; })); }
+export function ordered() { return sortTasks(live(state.tasks).filter(function (t) { return t.block > 0 && !isHiddenComplete(t); })); }
 export function orderedAll() { return sortTasks(live(state.tasks)); }
-export function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0; })); }
-export function burnTasks() { return counted().filter(function (t) { return t.block > 0; }); }
+export function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0 && !isHiddenComplete(t); })); }
+export function burnTasks() { return counted().filter(function (t) { return t.block > 0 && !isHiddenComplete(t); }); }
 // --- One project's own burndown ---
-export function projectBurnTasks(p) { return burnTasks().filter(function (t) { return t.projectId === p.id; }); }
+// From counted(), not burnTasks() -- a Complete-but-kept project's own page
+// must keep showing its own burndown even while its tasks are hidden from
+// every cross-project surface that burnTasks() feeds.
+export function projectBurnTasks(p) { return counted().filter(function (t) { return t.block > 0 && t.projectId === p.id; }); }
 export function projectTotalUnits(p) { return projectBurnTasks(p).reduce(function (a, t) { return a + weight(t); }, 0); }
 export function projectRemainingUnits(p) { return projectBurnTasks(p).reduce(function (a, t) { return a + weight(t) - doneUnits(t); }, 0); }
 // Points are Mondays from the week of the project's first task to the week after

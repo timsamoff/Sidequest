@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { fmt, fmtY, addDays, addMonths, parseISO, TODAY } from "./dates.js";
-import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, live, dispProject, findProject, projectBurn, projectBurnTasks, burnTasks, short } from "./model.js";
+import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, live, dispProject, findProject, projectBurn, projectBurnTasks, burnTasks, short, isHiddenComplete } from "./model.js";
 import { el, on } from "./dom.js";
 
 export function svgEl(tag, attrs, text) {
@@ -193,7 +193,7 @@ export function rangeBlock() {
   var rs = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), 1);
   var lanes = [], groups = {}, order = [];
   counted().forEach(function (t) {
-    if (t.isNext || t.block === 0) return;
+    if (t.isNext || t.block === 0 || isHiddenComplete(t)) return;
     var g = groups[t.projectId], a = taskStart(t), b = taskEnd(t);
     if (!g) { g = groups[t.projectId] = { projectId: t.projectId, name: dispProject(t), a: a, b: b }; order.push(t.projectId); }
     if (a < g.a) g.a = a;

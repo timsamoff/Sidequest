@@ -121,13 +121,13 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("view").textContent.includes("Try a new game engine") && k.$("view").textContent.includes("Write up lessons learned") && !k.$("view").textContent.includes("Redesign the logo"), "parking lot samples (removed one is in the Archive)");
   k.tab("schedule");
   const rows = [...k.d.querySelectorAll(".listpane .tlist")[0].querySelectorAll(".item")].map(b => b.textContent);
-  ok(rows.length === 16, "16 scheduled tasks (all tasks stay visible now -- completed ones aren't archived) (got " + rows.length + ")");
+  ok(rows.length === 12, "12 scheduled tasks (Sample Finished Project's tasks are hidden while it's Complete) (got " + rows.length + ")");
   ok(k.$("view").textContent.includes("Backlog (2)") && k.$("view").textContent.includes("Add a dark mode") && k.$("view").textContent.includes("Add a level editor"), "backlog has two samples");
   ok(k.d.querySelector('label[for="task-due"]').textContent.includes("Due date"), "the task's schedule field is a due date");
   // per-project schedules
   k.tab("timeline");
   const lanes = [...k.d.querySelectorAll("#view .lane .lname")].map(l => l.textContent);
-  ok(lanes.filter(l => l.startsWith("Sample")).length === 4, "timeline has a lane for each sample project");
+  ok(lanes.filter(l => l.startsWith("Sample")).length === 3, "timeline has a lane for each non-Complete sample project (Sample Finished Project is hidden while Complete)");
   const game = [...k.d.querySelectorAll("#view .lane")].find(l => l.querySelector(".lname").textContent.startsWith("Sample Game"));
   ok(game.querySelectorAll(".bar").length === 2 && game.querySelector(".ldates").textContent.includes("due "), "Sample Game shows an estimate bar");
   const mil = k.d.querySelector("#view .mslist").textContent;
@@ -265,7 +265,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const statuses = rows.map(b => b.classList.contains("done"));
   const firstDone = statuses.indexOf(true);
   ok(firstDone === -1 || statuses.slice(firstDone).every(Boolean), "once a completed task appears, every task after it in the list is also completed (sunk to the bottom)");
-  ok(rows.length === 16, "completed tasks (Sketch the main screens, Build the sign-in flow) stay in the Tasks list, not moved to the Archive (" + rows.length + ")");
+  ok(rows.length === 12, "completed tasks (Sketch the main screens, Build the sign-in flow) stay in the Tasks list, not moved to the Archive (" + rows.length + ")");
 }
 
 /* ---- search works on samples ---- */
@@ -398,10 +398,23 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // sticky: reopening a task does not revert Complete
   k.click(k.btn(k.$("view"), "Mark complete"));
   k.click(k.btn(k.$("modalBody"), "Leave in Projects"));
+  // Complete-but-kept: its tasks drop out of the Tasks list and the global
+  // Timeline, but stay visible on the project's own page.
   k.tab("schedule");
-  k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Sketch the main screens")));
+  ok(!k.$("view").textContent.includes("Sketch the main screens"), "a Complete-but-kept project's tasks are hidden from the Tasks list");
+  ok(k.$("view").textContent.includes("Tasks from Complete projects are not listed here"), "the Tasks page explains why");
+  k.tab("timeline");
+  ok(![...k.d.querySelectorAll("#view .lane .lname")].some(l => l.textContent === "Sample App"), "a Complete-but-kept project's lane is hidden from the global Timeline");
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  ok(k.$("view").textContent.includes("Its tasks are not included in Tasks, Timeline, or Today"), "the project's own page explains the hiding");
+  k.click([...k.d.querySelectorAll(".projtop .tlist .item")].find(b => b.textContent.includes("Sketch the main screens")));
   const statusSel = k.d.querySelector(".detailpane .status"); statusSel.value = "In progress"; k.fire(statusSel);
   ok(k.saved().projects.find(p => p.id === "pApp").status === "complete", "reopening a task does not auto-revert a Complete project");
+  // reopening the project brings its tasks straight back, no separate restore
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  k.click(k.btn(k.$("view"), "Reopen"));
+  k.tab("schedule");
+  ok(k.$("view").textContent.includes("Sketch the main screens"), "reopening the project brings its tasks back into the Tasks list immediately");
 }
 {
   // auto-trigger: complete every counted task on a project with no open tasks left

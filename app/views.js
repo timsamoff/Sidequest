@@ -4,7 +4,7 @@ import {
   WORDS, wd, wl, pset, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
   checkpoints, live, counted, liveProjects, activeProjects, candidateProjects, completeProjects,
   findProject, findAnyProject, linkedProjects, unlinkProjects, chosen, dispProject, dispWhat,
-  totalUnits, remainingUnits, planned, ordered, backlogTasks,
+  totalUnits, remainingUnits, planned, ordered, backlogTasks, sortTasks,
   isLate, lateTasks, setStatus, syncFromSteps, nextTask, projectTasksAllDone, projectTotalUnits, projectRemainingUnits,
   validPage, isPinned, pinPage, unpinPage, projectMeta,
   findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask
@@ -170,9 +170,15 @@ export function taskRow(t) {
 }
 export function renderSchedule(root) {
   var o = ordered(), bl = backlogTasks();
-  if (!o.length && !bl.length) { root.appendChild(el("p", { "class": "hint first" }, counted().length ? "No open tasks. Completed tasks are in the Archive." : "No tasks yet. Use the + button to add one.")); return; }
+  var hiddenNote = completeProjects().length ? el("p", { "class": "hint first" }, "Tasks from Complete projects are not listed here. Open a Complete project's own page to see them.") : null;
+  if (!o.length && !bl.length) {
+    if (hiddenNote) root.appendChild(hiddenNote);
+    root.appendChild(el("p", { "class": "hint" + (hiddenNote ? "" : " first") }, counted().length ? "No open tasks. Completed tasks are in the Archive." : "No tasks yet. Use the + button to add one."));
+    return;
+  }
   if (!ui.sel || !findTask(ui.sel)) { var nt = nextTask() || o[0] || bl[0]; ui.sel = nt.id; }
-  root.appendChild(el("p", { "class": "hint first" + (ui.detail ? " hide-on-mobile" : "") }, "Choose a task to view its steps and notes."));
+  if (hiddenNote) root.appendChild(hiddenNote);
+  root.appendChild(el("p", { "class": "hint" + (hiddenNote ? "" : " first") + (ui.detail ? " hide-on-mobile" : "") }, "Choose a task to view its steps and notes."));
   var split = el("div", { "class": "split" + (ui.detail ? " detail-open" : "") });
   var lp = el("div", { "class": "listpane" });
   var ul = el("ul", { "class": "tlist" });
@@ -423,7 +429,11 @@ export function renderProjectPage(root, id) {
   root.appendChild(hd);
   root.appendChild(metaLine);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
-  var ts = ordered().filter(function (t) { return !t.isNext && t.projectId === p.id; }).concat(backlogTasks().filter(function (t) { return t.projectId === p.id; }));
+  else if (p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this project is Complete. Reopen it to bring them back."));
+  // orderedAll(), not ordered()/backlogTasks() -- a project's own page must
+  // keep showing its own tasks even while Complete, when those cross-project
+  // lists start excluding them.
+  var ts = sortTasks(live(state.tasks).filter(function (t) { return !t.isNext && t.projectId === p.id; }));
   if (ts.length) {
     var ul = el("ul", { "class": "tlist" });
     ts.forEach(function (t) {
