@@ -310,7 +310,7 @@ svg.chart.nofocusring { outline: none; }
 /* The box is fixed: set by the wrapper, never by the text inside it. It
    reserves two lines so a wrapping affirmation can't resize it. Title and
    affirmation stack in one cell and only the text is masked. */
-.splashtextwrap { position: relative; z-index: 1; width: 82%; box-sizing: border-box; display: grid; align-items: center; padding: var(--space-12) var(--space-20); min-height: calc(2 * 1.4em + 2 * var(--space-12) + 4px); text-align: center; color: var(--surface); background: var(--planned); border: 2px solid var(--surface); border-radius: 14px; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; line-height: 1.4; }
+.splashtextwrap { position: relative; z-index: 1; width: min(15rem, 82%); box-sizing: border-box; display: grid; align-items: center; padding: var(--space-12) var(--space-20); min-height: calc(2 * 1.4em + 2 * var(--space-12) + 4px); text-align: center; color: var(--surface); background: var(--planned); border: 2px solid var(--surface); border-radius: 14px; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; line-height: 1.4; }
 .splashtitle, .splashaffirm { grid-area: 1 / 1; margin: 0; }
 /* --wipe moves a soft mask edge across the text, left to right. It is a
    registered property because gradients themselves can't be transitioned. */
