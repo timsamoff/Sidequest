@@ -3,7 +3,7 @@ import { iso, addDays, parseISO, fmt, fmtY } from "./dates.js";
 import {
   wd, wl, wpC, counted, activeProjects, liveProjects, findProject, dispProject, nextTask, findTask,
   orderedAll, taskOptions, stepOptions, syncFromSteps, findStep, decisionFor,
-  pset, blockStartFor, blockEndFor, blockForDate, taskStart, linkProjects
+  pset, blockStartFor, blockEndFor, blockForDate, taskStart, taskEnd, linkProjects
 } from "./model.js";
 import { $, el, on, uid, notify } from "./dom.js";
 import { closeMenus } from "./app.js";
@@ -100,24 +100,39 @@ export function taskDialog(prefillProjectId, backlog) {
   var projOpts = activeProjects().map(function (p) { return { value: p.id, label: p.name }; });
   if (!projOpts.length) { notify("Add an active project first (Projects > Choose as next project)."); return; }
   var startId = typeof prefillProjectId === "string" ? prefillProjectId : (nt && !nt.isNext ? nt.projectId : projOpts[0].value);
-  var defaultDue = backlog ? "" : iso(blockStartFor(startId, nt ? nt.block : 4));
-  formDialog(backlog ? "New backlog item" : "New task", [
+  var defaultDue = backlog ? "" : iso(blockEndFor(startId, nt ? nt.block : 4));
+  var fields = [
     { key: "project", label: "Project", type: "select", options: projOpts, value: startId },
     { key: "what", label: "Task" },
-    { key: "done", label: "How you'll know it's done (optional)" },
-    { key: "due", label: "Due date, or leave empty for the Backlog", type: "date", value: defaultDue }
-  ], backlog ? "Add to Backlog" : "Add task", function (v) {
+    { key: "done", label: "How you'll know it's done (optional)" }
+  ];
+  if (!backlog) {
+    fields.push({ key: "start", label: "Start date (optional)", type: "date" });
+    fields.push({ key: "due", label: "Due date, or leave empty for the Backlog", type: "date", value: defaultDue });
+  }
+  fields.push({ key: "est", label: "Estimated time in hours (optional)", type: "number", min: "0", max: "9999", step: "0.25" });
+  formDialog(backlog ? "New backlog item" : "New task", fields, backlog ? "Add to Backlog" : "Add task", function (v) {
     if (!v.project || !v.what) return "Choose a project and enter what you do.";
-    var blk = 0;
-    if (v.due !== "") {
+    var blk = 0, start = "", due = "";
+    if (v.due) {
       if (!isISO(v.due)) return "Enter a valid due date, or leave it empty for the Backlog.";
+      var first = parseISO(pset(v.project).start);
       blk = blockForDate(v.project, parseISO(v.due));
-      if (blk === null) return "Pick a date on or after " + fmtY(parseISO(pset(v.project).start)) + ", this project's own start date.";
-    }
-    var t = task("c" + uid(), blk, v.project, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true });
+      if (blk === null) return "Pick a due date on or after " + fmtY(first) + ", this project's own start date.";
+      due = v.due;
+      if (v.start) {
+        if (!isISO(v.start)) return "Enter a valid start date, or leave it empty.";
+        if (parseISO(v.start) < first) return "Pick a start date on or after " + fmtY(first) + ", this project's own start date.";
+        if (v.start > due) return "The start date can't be after the due date.";
+        start = v.start;
+      }
+    } else if (v.start) return "Add a due date too, or clear the start date. A task with no due date goes to the Backlog.";
+    var est = v.est === "" ? 0 : parseFloat(v.est);
+    if (isNaN(est) || est < 0 || est > 9999) return "Enter the estimated time as hours from 0 to 9999, or leave it empty.";
+    var t = task("c" + uid(), blk, v.project, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100 });
     state.tasks.push(t); ui.sel = t.id; changed();
-    return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(blockStartFor(v.project, blk)) + " to " + fmt(blockEndFor(v.project, blk)) + ")." };
-  }, "Pick when this should be done and it's placed in the right " + wl() + " automatically. Leave it empty to put the task in the Backlog.");
+    return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ")." };
+  }, "Pick when this should be done and it's placed in the right " + wl() + " automatically. Leave the due date empty to put the task in the Backlog.");
 }
 export function projectDialog() {
   formDialog("New project", [{ key: "name", label: "Project name" }, { key: "notes", label: "Notes (optional)", type: "textarea", rows: 5 }], "Add project", function (v) {
@@ -275,8 +290,8 @@ export function milestoneDialog(m, onRemove) {
     return { msg: "Milestone added to the Timeline." };
   }, undefined, m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
 }
-// Slips one project's incomplete tasks later by N days each, recomputing
-// which block each one falls into from its own current date. Completed tasks
+// Slips one project's incomplete tasks later by N days each: start and due
+// both move, and each task's block is re-derived from its new due date. Completed tasks
 // and Backlog items have no date to shift, so they're left untouched, and the
 // project's own start date is never touched either -- shifting that would
 // move already-finished work too, which isn't really "catching up."
@@ -292,9 +307,12 @@ export function slipDialog(p) {
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
       var targets = state.tasks.filter(function (t) { return t.projectId === p.id && !t.isNext && t.block > 0 && t.status !== "Completed" && !t.arch; });
       if (!targets.length) { err.textContent = "Nothing incomplete is scheduled to slip."; return; }
-      var snap = targets.map(function (t) { return { id: t.id, block: t.block }; });
+      var snap = targets.map(function (t) { return { id: t.id, block: t.block, start: t.start, due: t.due }; });
       targets.forEach(function (t) {
-        var newDate = addDays(taskStart(t), n), newBlock = blockForDate(p.id, newDate);
+        // Both ends move by the same days, so a task keeps its own length.
+        var newStart = addDays(taskStart(t), n), newDue = addDays(taskEnd(t), n);
+        t.start = iso(newStart); t.due = iso(newDue);
+        var newBlock = blockForDate(p.id, newDue);
         t.block = newBlock === null ? t.block : newBlock;
       });
       p.lastSlip = { days: n, snap: snap };
@@ -302,7 +320,7 @@ export function slipDialog(p) {
       notify(targets.length + (targets.length === 1 ? " task" : " tasks") + " in " + p.name + " moved back " + n + (n === 1 ? " day" : " days") + ".");
     }));
     if (p.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo", title: "Reverse the last slip" }, "Undo last slip (" + p.lastSlip.days + " days)"), "click", function () {
-      p.lastSlip.snap.forEach(function (s) { var t = findTask(s.id); if (t) t.block = s.block; });
+      p.lastSlip.snap.forEach(function (s) { var t = findTask(s.id); if (t) { t.block = s.block; t.start = s.start || ""; t.due = s.due || ""; } });
       p.lastSlip = null; changed(); closeModal();
       notify("Slip undone.");
     }));

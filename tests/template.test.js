@@ -101,9 +101,10 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // dismiss
   k.click(k.$("welcomeDismiss")); ok(!k.$("view").textContent.includes("Welcome to Sidequest") && k.saved().settings.hideWelcome === true, "dismissing hides it and remembers");
   // Today content
-  ok(k.$("view").textContent.includes("Next up") && k.d.querySelector("#view .chartbox svg") && /\d+ items remaining, out of \d+/.test(k.$("view").textContent), "Today works with sample data");
+  ok(k.$("view").textContent.includes("Next up") && k.d.querySelector("#view .chartbox svg") && /\d+ tasks remaining, out of \d+/.test(k.$("view").textContent), "Today works with sample data");
   const next = k.d.querySelector("#view .panel .ptitle").textContent;
   ok(next === "Write the page copy", "Next up is the lowest-block open sample task: " + next);
+  ok(/1 task is overdue/.test(k.$("view").textContent) && k.$("view").textContent.includes("Build the sign-in flow") && /11 tasks remaining, out of 12/.test(k.$("view").textContent), "the samples include one overdue task, so the burndown sits above the plan");
   const projLink = k.btn(k.d.querySelector("#view .panel"), "Sample Website");
   ok(!!projLink && projLink.classList.contains("plink"), "Next up names the project as a link");
   k.click(projLink);
@@ -113,7 +114,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 /* ---- sample projects ---- */
 {
   const k = kit(await mk()); k.tab("projects");
-  ok(k.stand().join() === "Sample Website,Sample App,Sample Game", "In progress lists the three sample projects (" + k.stand().join() + ")");
+  ok(k.stand().join() === "Sample App,Sample Website,Sample Game", "In progress lists the three sample projects, earliest next task first (" + k.stand().join() + ")");
   const pagesList = [...k.d.querySelectorAll("#view .list")][0].textContent;
   ok(!pagesList.includes("Sample App") && !pagesList.includes("Sample Website") && !pagesList.includes("Sample Game"), "the Projects list excludes the projects already shown in In progress");
   ok(k.$("view").textContent.includes("Sample Browser Extension") && k.$("view").textContent.includes("Sample Command-Line Tool"), "two sample candidates listed");
@@ -407,8 +408,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(![...k.d.querySelectorAll("#view .lane .lname")].some(l => l.textContent === "Sample App"), "a Complete-but-kept project's lane is hidden from the global Timeline");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   ok(k.$("view").textContent.includes("Its tasks are not included in Tasks, Timeline, or Today"), "the project's own page explains the hiding");
-  k.click([...k.d.querySelectorAll(".projtop .tlist .item")].find(b => b.textContent.includes("Sketch the main screens")));
-  const statusSel = k.d.querySelector(".detailpane .status"); statusSel.value = "In progress"; k.fire(statusSel);
+  k.click([...k.d.querySelectorAll(".projmain .tlist .item")].find(b => b.textContent.includes("Sketch the main screens")));
+  const statusSel = k.d.querySelector(".projmain .detail .status"); statusSel.value = "In progress"; k.fire(statusSel);
   ok(k.saved().projects.find(p => p.id === "pApp").status === "complete", "reopening a task does not auto-revert a Complete project");
   // reopening the project brings its tasks straight back, no separate restore
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
@@ -611,28 +612,28 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 }
 
 {
-  // a project's page: its info on the left, its own Timeline and Burndown on the right
+  // a project's page: its content on the left, its own Timeline and Burndown on the right
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   const split = k.d.querySelector("#view .projsplit");
-  ok(!!split && !!split.querySelector(".projtop") && !!split.querySelector(".projrest") && !!split.querySelector(".projcharts"), "an active project's page has an info column and a Schedule/Timeline/Burndown column");
-  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".projtop h2")].some(h => h.textContent === "Tasks") && [...split.querySelectorAll(".projrest h2")].some(h => h.textContent === "Notes"), "Tasks is at the top of the left column, the rest (Notes, etc.) follows below it");
+  ok(!!split && !!split.querySelector(".projmain") && !split.querySelector(".projtop") && !split.querySelector(".projrest") && !!split.querySelector(".projcharts"), "an active project's page has one content column and a Schedule/Timeline/Burndown column");
+  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".projmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Notes,Linked projects", "the left column runs Tasks, Before you launch, Notes, then Linked projects (" + [...split.querySelectorAll(".projmain h2")].map(h => h.textContent).join() + ")");
   ok(!split.querySelector(".pintoggle") && !split.querySelector(".pinbar"), "there is no Pin button on a project's own page");
-  ok(split.querySelector(".projtop").textContent.includes("6 tasks (1 in the Backlog). 8 of 17 items done."), "the task-count line sits under the Tasks heading");
+  ok(split.querySelector(".projmain").textContent.includes("6 tasks (1 in the Backlog). 6 of 17 steps complete."), "the task-count line sits under the Tasks heading");
   const side = split.querySelector(".projcharts");
   ok([...side.querySelectorAll("h2")].map(h => h.textContent).join() === "Schedule,Timeline,Burndown", "the right column flows Schedule, then Timeline, then Burndown, as one column");
-  ok([...split.children].map(c => c.className).join() === "projtop,projrest,projcharts", "the page is ordered info, rest, then the Schedule/Timeline/Burndown column, which is also the reading and phone order");
-  ok(!!side.querySelector("#proj-start") && !!side.querySelector("#proj-days") && !split.querySelector(".projtop #proj-start, .projrest #proj-start") && ![...split.querySelectorAll(".projtop h2, .projrest h2")].some(h => h.textContent === "Schedule"), "the Schedule heading and fields are in the right column, not the left");
+  ok([...split.children].map(c => c.className).join() === "projmain,projcharts", "the page is ordered content, then the Schedule/Timeline/Burndown column, which is also the reading and phone order");
+  ok(!!side.querySelector("#proj-start") && !!side.querySelector("#proj-days") && !split.querySelector(".projmain #proj-start") && ![...split.querySelectorAll(".projmain h2")].some(h => h.textContent === "Schedule"), "the Schedule heading and fields are in the right column, not the left");
   ok(!!k.btn(side, "Expand"), "the right column has an Expand button");
   ok(side.querySelectorAll(".lane").length === 6, "one timeline lane per scheduled task, plus the milestones lane (" + side.querySelectorAll(".lane").length + ")");
-  ok(side.textContent.includes("1 backlog item is not shown until scheduled"), "an unscheduled Backlog task is counted, not drawn");
+  ok(side.textContent.includes("1 backlog task is not shown until scheduled"), "an unscheduled Backlog task is counted, not drawn");
   ok(side.querySelectorAll(".ms").length === 1 && /Sample App beta opens/.test(side.querySelector(".ms").getAttribute("aria-label")), "the timeline shows only this project's milestone");
   const svg = side.querySelector("svg.chart");
   ok(/^Burndown chart for Sample App\./.test(svg.getAttribute("aria-label")), "the burndown is this project's own");
   ok(svg.querySelectorAll(".dot").length === 3, "the actual line has its recorded weeks plus this week (" + svg.querySelectorAll(".dot").length + ")");
   ok(svg.querySelectorAll(".mark").length === 1 && svg.querySelectorAll("rect.hit").length >= 4, "a milestone marker and a hover column for each week are drawn");
   ok(!svg.querySelector("title"), "the chart has no native tooltips, which would double up with the new one and never reach a phone or keyboard");
-  ok(/8 items remaining, out of 16/.test(side.textContent), "the count line is this project's own steps");
+  ok(/4 tasks remaining, out of 5/.test(side.textContent), "the count line is this project's own tasks");
   // Expand opens both charts in a full-size dialog, and closing restores normal dialogs
   k.click(k.btn(side, "Expand"));
   const modal = k.d.querySelector("#overlay .modal");
@@ -646,23 +647,26 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.$("modalClose"));
 }
 {
-  // a project's own snapshots are recorded as it changes, and its chart reads them
+  // a project's own history is recorded as it changes, and its chart reads it
   const k = kit(await mk());
-  const d = new Date(), n = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
-  const wk = new Date(n - ((new Date(n).getUTCDay() + 6) % 7) * 86400000).toISOString().slice(0, 10);
+  const d = new Date(), todayKey = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
   k.tab("schedule");
   k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Build the home screen")));
   const sel = k.d.querySelector(".detailpane .status"); sel.value = "Completed"; k.fire(sel);
   const app = k.saved().projects.find(p => p.id === "pApp");
-  ok(typeof app.actual[wk] === "number" && app.actual[wk] < 8, "finishing a task records this week's steps remaining for its project (" + app.actual[wk] + ")");
-  ok(Object.keys(app.actual).length >= 3, "the earlier weeks are kept");
+  ok(JSON.stringify(app.hist[todayKey]) === "[5,3]", "finishing a task records the project's tasks in scope and still open for today (" + JSON.stringify(app.hist[todayKey]) + ")");
+  ok(Object.keys(app.hist).length >= 3, "the earlier records are kept");
+  // a second change that nets out to the same counts leaves no extra record
+  const sel2 = k.d.querySelector(".detailpane .status"); sel2.value = "In progress"; k.fire(sel2);
+  sel2.value = "Completed"; k.fire(sel2);
+  ok(JSON.stringify(k.saved().projects.find(p => p.id === "pApp").hist[todayKey]) === "[5,3]", "changing a task back and forth keeps the day's record at its final counts");
 }
 {
   // a Complete project's burndown never leaves a gap for a week nothing was
   // recorded -- its remaining count is unambiguously 0 from completion on,
   // unlike an active project's genuinely-unknown unrecorded past
   const saved = {
-    projects: [{ id: "pDoneGap", name: "Finished Long Ago", status: "complete", start: "2026-08-03", days: 7, actual: { "2026-08-10": 1 } }],
+    projects: [{ id: "pDoneGap", name: "Finished Long Ago", status: "complete", start: "2026-08-03", days: 7, hist: { "2026-08-10": [2, 1] } }],
     tasks: [
       { id: "g1", block: 1, projectId: "pDoneGap", what: "Step one", done: "done", status: "Completed", steps: [] },
       { id: "g2", block: 2, projectId: "pDoneGap", what: "Step two", done: "done", status: "Completed", steps: [] }
@@ -676,11 +680,124 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(svg.querySelectorAll("polyline.actual").length === 1, "the actual line is one unbroken polyline, not split by an unrecorded gap week (" + svg.querySelectorAll("polyline.actual").length + " segments)");
 }
 {
-  // saved snapshots are validated on load
-  const saved = { projects: [{ id: "pV", name: "Snap", status: "active", actual: { "2026-09-14": 12, "bad": 3, "2026-09-21": -1, "2026-09-28": "x" } }], tasks: [] };
+  // the open estimate drops as tasks complete; tasks open in place on a project's page
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
+  const before = k.d.querySelector("#view .estleft").textContent;
+  const row = [...k.d.querySelectorAll("#view .projmain .tlist li")].find(li => li.textContent.includes("Run a beta with five friends"));
+  k.click(row.querySelector("button.item"));
+  ok(k.$("viewTitle").textContent === "Sample App" && !!k.d.querySelector("#view .projmain .tlist .detail"), "clicking a task on a project's page opens it in place, not on the Tasks page");
+  ok(k.d.querySelector("#ptask-" + row.id.slice(6) + " button.item").getAttribute("aria-expanded") === "true", "the open row is marked expanded");
+  ok(k.d.querySelectorAll("#view .projmain .tlist .detail").length === 1 && !k.d.querySelector("#view .projmain .detail h2"), "one task is open at a time, with no project heading repeated inside it");
+  ok(!!k.btn(k.d.querySelector("#view .projmain .detail"), "Open in Tasks"), "an Open in Tasks link is offered");
+  const sel = k.d.querySelector("#view .projmain .detail .status"); sel.value = "Completed"; k.fire(sel);
+  ok(k.d.querySelectorAll("#view .projmain .tlist .detail").length === 1, "the task stays open after an edit");
+  const after = k.d.querySelector("#view .estleft").textContent;
+  ok(before === "Est. 27 h left" && after === "Est. 23 h left", "completing a 4 h task lowers the open estimate (" + before + " -> " + after + ")");
+  k.click(k.d.querySelector("#view .projmain .tlist button.item[aria-expanded='true']"));
+  ok(!k.d.querySelector("#view .projmain .tlist .detail"), "clicking the open task again closes it");
+  // the launch checklist's task link opens the task in place too
+  const launchLink = [...k.d.querySelectorAll("#view .projmain .textbtn")].find(b => b.title === "View this task");
+  k.click(launchLink);
+  ok(k.$("viewTitle").textContent === "Sample App" && !!k.d.querySelector("#view .projmain .tlist .detail"), "a task link in Before you launch opens that task in place");
+  k.click(k.btn(k.d.querySelector("#view .projmain .detail"), "Open in Tasks"));
+  ok(k.$("viewTitle").textContent === "Tasks", "Open in Tasks goes to the Tasks page");
+}
+{
+  // a pale band behind each task's bar shows its block
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Game"));
+  const lane = [...k.d.querySelectorAll("#view .projcharts .lane")].find(l => l.textContent.includes("Prototype the core mechanic"));
+  const bars = [...lane.querySelectorAll(".bar")];
+  ok(bars.length === 2 && bars[0].classList.contains("blk") && !bars[1].classList.contains("blk"), "each task lane has a block band behind its own bar");
+  const w = b => parseFloat(b.style.width);
+  ok(w(bars[1]) < w(bars[0]), "a task shorter than its block shows a bar narrower than the band (" + w(bars[1]).toFixed(1) + " vs " + w(bars[0]).toFixed(1) + ")");
+}
+{
+  // the Timeline's counts table is read-only and says what it is built from
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.tab("timeline");
+  const th = [...k.d.querySelectorAll("#view .weekly th")].map(h => h.textContent);
+  ok(th.join() === "Week starting,Planned remaining,Actual remaining,Tasks in scope,Scope change", "the counts table has a scope column (" + th.join() + ")");
+  ok(!k.d.querySelector("#view .weekly input"), "nothing in the counts table is editable");
+  ok(!/Enter the number/.test(k.$("view").textContent) && /Recorded automatically/.test(k.$("view").textContent), "its hint says the counts are recorded automatically");
+  const cells = [...k.d.querySelectorAll("#view .weekly tbody tr")].map(tr => [...tr.children].map(c => c.textContent));
+  ok(cells[0][2] === "11" && cells[0][3] === "11" && cells[1][2] === "10" && cells[2][2] === "11", "past rows read back the recorded counts, carrying a quiet day forward (" + JSON.stringify(cells.slice(0, 3)) + ")");
+  ok(cells[0][4] === "" && cells[1][4] === "" && cells[2][4] === "+1", "and the sample shows one scope change, a task added mid-way (" + JSON.stringify(cells.slice(0, 3).map(r => r[4])) + ")");
+}
+{
+  // a short schedule gets daily points, not a one-week floor; a gap day carries the last record forward
+  const d = new Date(), n = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()), iso = k => new Date(n + k * 86400000).toISOString().slice(0, 10);
+  const saved = {
+    start: iso(-4), days: 1,
+    projects: [{ id: "pQ", name: "Quick", status: "active", start: iso(-4), days: 1, hist: (h => { h[iso(-4)] = [4, 4]; h[iso(-2)] = [4, 3]; return h; })({}) }],
+    tasks: [1, 2, 3, 4].map(b => ({ id: "q" + b, block: b, projectId: "pQ", what: "Quick " + b, done: "d", status: b === 1 ? "Completed" : "Not started", steps: [] })),
+    hist: (h => { h[iso(-4)] = [4, 4]; h[iso(-2)] = [4, 3]; return h; })({})
+  };
   const k = kit(await mk(saved));
-  const a = k.saved().projects[0].actual;
-  ok(Object.keys(a).join() === "2026-09-14" && a["2026-09-14"] === 12, "only well-formed weekly snapshots are kept");
+  k.click(k.$("welcomeDismiss") || k.$("view"));
+  k.tab("timeline");
+  const rows = [...k.d.querySelectorAll("#view .weekly tbody tr")].map(tr => [...tr.children].map(c => c.textContent));
+  ok(k.d.querySelector("#view .weekly th").textContent === "Date" && rows.length === 7, "with one-day blocks the counts are by date, not by week (" + rows.length + " rows)");
+  ok(rows[0][2] === "4" && rows[1][2] === "4" && rows[2][2] === "3" && rows[3][2] === "3", "a day with no record carries the last one forward (" + rows.slice(0, 4).map(r => r[2]).join(",") + ")");
+  k.click(k.btn(k.d.querySelector("#nav"), "Projects") || k.d.querySelector('.tab[data-view="projects"]'));
+  k.click(k.btn(k.$("view"), "Quick"));
+  const svg = k.d.querySelector("#view .projcharts svg.chart");
+  const hits = svg.querySelectorAll("rect.hit").length;
+  ok(hits >= 5 && hits <= 7, "the project's own chart is daily too (" + hits + " points for a 4-day schedule)");
+}
+{
+  // ticking a step from the launch checklist counts like any other change: history is recorded and the project can complete
+  const d = new Date(), n = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()), iso = k => new Date(n + k * 86400000).toISOString().slice(0, 10);
+  const saved = {
+    projects: [{ id: "pL", name: "Launchy", status: "active", start: iso(-1), days: 7 }],
+    tasks: [{ id: "l1", block: 1, projectId: "pL", what: "Ship it", done: "d", status: "Not started", steps: [{ id: "l1a", text: "Press the button", done: false, launch: true }] }]
+  };
+  const k = kit(await mk(saved));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Launchy"));
+  const box = [...k.d.querySelectorAll("#view .list.check input[type=checkbox]")][0];
+  box.checked = true; k.fire(box);
+  const sv = k.saved();
+  ok(sv.tasks[0].status === "Completed" && JSON.stringify(sv.projects[0].hist[iso(0)]) === "[1,0]", "ticking the last step in Before you launch completes the task and records the project's counts");
+  ok(sv.projects[0].status === "complete" && k.$("modalTitle").textContent === "Project complete", "and the project completes from there too");
+}
+{
+  // scope changes are called out, Jira-style, in the table, the tooltip, and when completing a project
+  const d = new Date(), n = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()), iso = k => new Date(n + k * 86400000).toISOString().slice(0, 10);
+  const hh = {}; hh[iso(-14)] = [4, 4]; hh[iso(-7)] = [6, 5]; hh[iso(0)] = [6, 5];
+  const saved = {
+    start: iso(-14), days: 7,
+    projects: [{ id: "pS", name: "Grew", status: "active", start: iso(-14), days: 7, hist: hh }],
+    tasks: [1, 2, 3, 4, 5, 6].map(b => ({ id: "s" + b, block: Math.min(b, 3), projectId: "pS", what: "Grew " + b, done: "d", status: b === 1 ? "Completed" : "Not started", steps: [] })),
+    hist: hh
+  };
+  const k = kit(await mk(saved));
+  k.tab("timeline");
+  const rows = [...k.d.querySelectorAll("#view .weekly tbody tr")].map(tr => [...tr.children].map(c => c.textContent));
+  ok(rows[0][4] === "" && rows[1][4] === "+2" && rows[2][4] === "", "the table shows scope growing by 2 on the week it happened (" + rows.slice(0, 3).map(r => JSON.stringify(r[4])).join(",") + ")");
+  const svg = k.d.querySelector("#view svg.chart"), tip = k.d.querySelector("#view .charttip");
+  const hit = [...svg.querySelectorAll("rect.hit")][1];
+  hit.dispatchEvent(new k.w.MouseEvent("mouseenter", { bubbles: false }));
+  ok(/Scope grew from 4 to 6/.test(tip.textContent), "and the tooltip says so (" + tip.textContent.replace(/\n/g, " | ") + ")");
+}
+{
+  // marking a project complete with open tasks says they leave the main burndown
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  k.click(k.btn(k.$("view"), "Mark complete"));
+  ok(/4 open tasks are no longer counted in the main burndown/.test(k.$("modalBody").textContent), "the completion dialog warns about open tasks leaving the burndown (" + k.$("modalBody").textContent.slice(0, 160) + ")");
+}
+{
+  // saved history is validated on load, and the old step-count snapshots are not carried over
+  const saved = { actual: [34, 31, 25, null, null, null, null], hist: { "2026-09-14": [12, 5], bad: [1, 1], "2026-09-21": [3, 9], "2026-09-28": "x", "2026-09-29": [5, -1] }, projects: [{ id: "pV", name: "Snap", status: "active", actual: { "2026-09-14": 12 }, hist: { "2026-09-14": [12, 5], bad: [1, 1], "2026-09-21": [3, 9], "2026-09-28": "x", "2026-09-29": [5, -1] } }], tasks: [] };
+  const k = kit(await mk(saved));
+  const a = k.saved().projects[0].hist, g = k.saved().hist;
+  ok(Object.keys(a).join() === "2026-09-14" && a["2026-09-14"].join() === "12,5", "only well-formed history entries are kept on a project");
+  ok(Object.keys(g).join() === "2026-09-14" && !("actual" in k.saved()) && !("actual" in k.saved().projects[0]), "the same goes for the main burndown, and the old step-count fields are gone");
 }
 {
   // Slip schedule moves only a project's incomplete tasks, leaves Completed
@@ -747,7 +864,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(svg.getAttribute("tabindex") === "0" && svg.getAttribute("role") === "group" && /arrow keys/.test(svg.getAttribute("aria-label")), "the chart is one labeled keyboard stop");
   ok(tip().hidden && tip().getAttribute("aria-live") === "polite" && tip().getAttribute("role") === "status", "the tooltip starts hidden and is a live region");
   fire(hits[1], "mouseenter");
-  ok(!tip().hidden && /^Week of /.test(tip().textContent) && /Planned: \d+ remaining/.test(tip().textContent) && /Actual: 13 remaining/.test(tip().textContent), "hovering a week shows its planned and actual counts (" + tip().textContent.replace(/\n/g, " | ") + ")");
+  ok(!tip().hidden && /^Week of /.test(tip().textContent) && /Planned: \d+ remaining/.test(tip().textContent) && /Actual: 4 remaining of 5 in scope/.test(tip().textContent), "hovering a week shows its planned and actual counts (" + tip().textContent.replace(/\n/g, " | ") + ")");
   fire(hits[1], "mouseleave");
   ok(tip().hidden, "moving the pointer away hides it");
   const named = hits.map(h => { fire(h, "mouseenter"); const s = tip().textContent; fire(h, "mouseleave"); return s; });
@@ -784,6 +901,109 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(gh.length === 7 && g.getAttribute("tabindex") === "0", "the global burndown has a hover column per week and is a keyboard stop");
   const gnamed = gh.map(h => { fire(h, "mouseenter"); const s = k.d.querySelector("#view .charttip").textContent; fire(h, "mouseleave"); return s; });
   ok(gnamed.some(s => /Finishing: Sample [A-Za-z]+: /.test(s)), "and its tooltip names the project with each finishing task (" + gnamed.filter(s => /Finishing/.test(s))[0].replace(/\n/g, " | ") + ")");
+}
+
+{
+  // estimates, explicit start/due dates, and the project page order
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  const sv = k.saved().tasks;
+  const appTasks = sv.filter(t => t.projectId === "pApp");
+  const total = appTasks.reduce((n, t) => n + t.est, 0), left = appTasks.filter(t => t.status !== "Completed").reduce((n, t) => n + t.est, 0);
+  ok(total === 30, "Sample App's estimates add up to 30 h (" + total + ")");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
+  const est = k.d.querySelector("#view .metarow .estleft");
+  ok(!!est && est.textContent === "Est. " + left + " h left", "the project page shows the open estimate at the right of the count line (" + (est && est.textContent) + ")");
+  ok(!k.d.querySelector("#view .estline"), "the old estimate line under the list is gone");
+  const chips = [...k.d.querySelectorAll("#view .projmain .l3 span")].map(s => s.textContent);
+  ok(chips.includes("3 h") && chips.includes("6 h"), "task rows on the project page show their estimate");
+  const heads = [...k.d.querySelectorAll("#view .projmain h2")].map(h => h.textContent);
+  ok(heads.join() === "Tasks,Before you launch,Notes,Linked projects", "the project page order is Tasks, Before you launch, Notes, Linked projects (" + heads.join() + ")");
+  const g1 = sv.find(t => t.id === "g1");
+  ok(g1.block === 1 && g1.start && g1.due && g1.start < g1.due, "Sample Game's first task keeps block 1 with its own start and due");
+  const gp = k.saved().projects.find(p => p.id === "pGame");
+  ok(g1.start > gp.start && (Date.parse(g1.due) - Date.parse(g1.start)) / 864e5 === 7, "and its dates are shorter than its two-week block");
+  k.tab("schedule");
+  ok([...k.d.querySelectorAll(".listpane .item .l3 span")].some(s => s.textContent === "12 h"), "the Tasks list shows an estimate chip");
+}
+{
+  // editing start, due, and estimate in the Tasks detail pane
+  const saved = {
+    projects: [{ id: "pT", name: "Dates", status: "active", start: "2026-08-03", days: 7 }],
+    tasks: [{ id: "t1", block: 2, projectId: "pT", what: "Dated task", done: "done", status: "Not started", steps: [] }]
+  };
+  const k = kit(await mk(saved));
+  k.tab("schedule");
+  k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Dated task")));
+  const t = () => k.saved().tasks.find(x => x.id === "t1");
+  const set = (id, v) => { const i = k.$(id); i.value = v; k.fire(i, "blur"); };
+  ok(k.$("task-start").value === "2026-08-10" && k.$("task-due").value === "2026-08-16", "an undated task shows its block's dates");
+  set("task-due", "2026-08-30");
+  ok(t().due === "2026-08-30" && t().block === 4, "a new due date is stored and the block follows it (" + t().block + ")");
+  set("task-start", "2026-08-20");
+  ok(t().start === "2026-08-20", "a start date is stored");
+  set("task-start", "2026-09-05");
+  ok(t().start === "2026-08-20" && k.$("task-start").value === "2026-08-20" && k.$("view").textContent.includes("start date can't be after"), "a start after the due date is rejected");
+  set("task-start", "2026-07-01");
+  ok(t().start === "2026-08-20" && k.$("view").textContent.includes("on or after"), "a start before the project's start is rejected");
+  set("task-due", "2026-08-10");
+  ok(t().due === "2026-08-30" && k.$("view").textContent.includes("can't be before the start"), "a due date before the start is rejected");
+  set("task-due", "2026-07-01");
+  ok(t().due === "2026-08-30" && t().block === 4, "a due date before the project's start is rejected");
+  set("task-est", "2.5");
+  ok(t().est === 2.5, "an estimate is stored");
+  set("task-est", "-3");
+  ok(t().est === 2.5, "a negative estimate is rejected");
+  set("task-due", "");
+  ok(t().block === 0 && t().due === "" && t().start === "", "clearing the due date moves the task to the Backlog and clears the start");
+}
+{
+  // New Task dialog
+  const saved = { projects: [{ id: "pT", name: "Dates", status: "active", start: "2026-08-03", days: 7 }], tasks: [] };
+  const k = kit(await mk(saved));
+  k.menuAct("newBtn", "newTask");
+  ok(!!k.$("f-start") && !!k.$("f-due") && !!k.$("f-est"), "the New task dialog has start, due, and estimate fields");
+  k.setField("what", "Made in dialog"); k.setField("start", "2026-08-12"); k.setField("due", "2026-08-20"); k.setField("est", "4");
+  k.click(k.btn(k.$("modalBody"), "Add task"));
+  const t = k.saved().tasks.find(x => x.what === "Made in dialog");
+  ok(t && t.start === "2026-08-12" && t.due === "2026-08-20" && t.est === 4 && t.block === 3, "the dialog saves dates, estimate, and the derived block");
+  k.menuAct("newBtn", "newTask");
+  k.setField("what", "Bad order"); k.setField("start", "2026-08-25"); k.setField("due", "2026-08-20");
+  k.click(k.btn(k.$("modalBody"), "Add task"));
+  ok(!k.saved().tasks.some(x => x.what === "Bad order") && k.$("modalBody").textContent.includes("can't be after"), "the dialog rejects a start after the due date");
+}
+{
+  // Slip shifts start and due together; Undo restores them
+  const saved = {
+    projects: [{ id: "pS", name: "Slipper", status: "active", start: "2026-08-03", days: 7 }],
+    tasks: [{ id: "s1", block: 2, projectId: "pS", what: "Open", done: "done", status: "Not started", steps: [], start: "2026-08-12", due: "2026-08-14" }]
+  };
+  const k = kit(await mk(saved));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Slipper"));
+  const slipBtn = k.btn(k.$("view"), "Slip schedule");
+  k.click(slipBtn); k.$("slipDays").value = "7"; k.click(k.$("slipGo"));
+  let t = k.saved().tasks[0];
+  ok(t.start === "2026-08-19" && t.due === "2026-08-21" && t.block === 3, "Slip moves start and due together (" + t.start + " to " + t.due + ")");
+  k.click(slipBtn); k.click(k.btn(k.$("modalBody"), "Undo last slip (7 days)"));
+  t = k.saved().tasks[0];
+  ok(t.start === "2026-08-12" && t.due === "2026-08-14" && t.block === 2, "Undo restores start and due");
+}
+{
+  // saved data: a block above 12 survives, bad dates are cleaned
+  const saved = {
+    projects: [{ id: "pN", name: "Norm", status: "active", start: "2026-08-03", days: 7 }],
+    tasks: [
+      { id: "n1", block: 40, projectId: "pN", what: "Far out", done: "d", status: "Not started", steps: [] },
+      { id: "n2", block: 2, projectId: "pN", what: "Backwards", done: "d", status: "Not started", steps: [], start: "2026-08-15", due: "2026-08-11" },
+      { id: "n3", block: 0, projectId: "pN", what: "Parked", done: "d", status: "Not started", steps: [], start: "2026-08-11", due: "2026-08-12" }
+    ]
+  };
+  const k = kit(await mk(saved));
+  k.click(k.$("welcomeDismiss"));
+  const ts = k.saved().tasks, by = id => ts.find(x => x.id === id);
+  ok(by("n1").block === 40, "a saved block above 12 survives a reload");
+  ok(by("n2").start === "" && by("n2").due === "2026-08-11", "a start after its due date is dropped on load");
+  ok(by("n3").start === "" && by("n3").due === "", "a Backlog task's dates are cleared on load");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

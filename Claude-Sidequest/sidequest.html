@@ -240,7 +240,11 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .tlist li.plain { padding: var(--space-12) var(--space-14); color: var(--muted); font-size: var(--text-sm); }
 .item { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; padding: var(--space-12) var(--space-14); min-height: 0; }
 .item:hover { background: var(--chip-idle); border: 0; }
-.item[aria-current="true"] { background: var(--sel); box-shadow: inset 4px 0 0 var(--planned); }
+.item[aria-current="true"], .item[aria-expanded="true"] { background: var(--sel); box-shadow: inset 4px 0 0 var(--planned); }
+/* A task opened in place on a project's page: part of the list, not a separate card. */
+.tlist li > .detail { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+.metarow { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--space-4) var(--space-12); }
+.estleft { white-space: nowrap; }
 .item .l1 { color: var(--muted); font-size: var(--text-sm); }
 .item .l1 b { color: var(--ink); font-weight: 600; }
 .item .l2 { margin-top: var(--space-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -327,22 +331,23 @@ table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; vertical-align: top; padding: var(--space-10) var(--space-12); border-bottom: 1px solid var(--line); }
 th { font-weight: 600; font-size: var(--text-sm); color: var(--muted); }
 tbody tr:last-child td { border-bottom: 0; }
-.weekly td input { width: 5.5rem; }
 
 #view > .range:first-child { margin-top: 0; }
 .range { margin-top: var(--space-12); padding: var(--space-14) var(--space-16) var(--space-10); }
 .months { position: relative; height: 22px; border-bottom: 1px solid var(--line); }
 .months span { position: absolute; top: 0; font-size: .75rem; color: var(--muted); transform: translateX(-2px); white-space: nowrap; }
 .lane { margin-top: var(--space-12); }
-.lname { font-size: var(--text-sm); font-weight: 600; }
+.lname { padding-left: var(--space-5); font-size: var(--text-sm); font-weight: 600; }
 .ldates { font-weight: 400; color: var(--muted); margin-left: var(--space-6); }
 .track { position: relative; height: 22px; margin-top: var(--space-4); background: var(--chip-idle); border-radius: var(--radius-track); }
 .bar { position: absolute; top: 2px; bottom: 2px; min-width: 6px; background: var(--planned); border-radius: var(--radius-track); }
 .bar.est { background: var(--est); border: 1px dashed var(--planned); }
+/* The block a task sits in: a pale full-height band behind its own bar. */
+.bar.blk { top: 0; bottom: 0; background: color-mix(in srgb, var(--est) 55%, transparent); }
 .bar.open { background: linear-gradient(to right, var(--est), transparent); border-left: 3px solid var(--planned); border-radius: var(--radius-track) 0 0 var(--radius-track); }
-/* Info on the left, Schedule/Timeline/Burndown on the right as one continuous flow. */
+/* Page content on the left, Schedule/Timeline/Burndown on the right as one continuous flow. */
 .projsplit { display: block; }
-.projtop, .projrest, .projcharts { min-width: 0; }
+.projmain, .projcharts { min-width: 0; }
 /* Reserves no space until there's an error, so an empty message doesn't push Timeline down. */
 .schedmsg { min-height: 0; margin-top: 0; }
 .schedmsg:not(:empty) { margin-top: var(--space-10); }
@@ -356,11 +361,7 @@ svg.chart.nofocusring { outline: none; }
 .charttip[hidden] { display: none; }
 .bar.done { background: var(--chip-done); }
 @media (min-width: 900px) {
-  /* Right column spans both rows so its own charts flow independent of the left column. */
-  .projsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: "top charts" "rest charts"; column-gap: var(--space-22); row-gap: 0; align-items: start; }
-  .projtop { grid-area: top; }
-  .projrest { grid-area: rest; }
-  .projcharts { grid-area: charts; }
+  .projsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); column-gap: var(--space-22); align-items: start; }
   .projexpand { display: inline-block; }
 }
 .ms { position: absolute; top: 4px; width: 14px; height: 14px; background: var(--burn); transform: translateX(-7px) rotate(45deg); border-radius: 2px; cursor: pointer; }
@@ -719,14 +720,76 @@ function blockForDate(projectId, dateMs) {
   return Math.floor((dateMs - start) / (eff.days * DAY)) + 1;
 }
 function projKey(t) { return t.isNext ? null : t.projectId; }
-function taskStart(t) { return blockStartFor(projKey(t), t.block); }
-function taskEnd(t) { return blockEndFor(projKey(t), t.block); }
+// A task's own start/due dates, when set, are the truth; otherwise it fills its
+// block. Its block is always the one containing its due date (see syncTaskBlocks).
+function taskStart(t) { return t.start ? parseISO(t.start) : blockStartFor(projKey(t), t.block); }
+function taskEnd(t) { return t.due ? parseISO(t.due) : blockEndFor(projKey(t), t.block); }
+// Re-derives the block of every scheduled task that has its own due date, so a
+// change to a project's start or block length can't leave a stale block behind.
+function syncTaskBlocks() {
+  state.tasks.forEach(function (t) {
+    if (t.isNext || t.block === 0 || !t.due) return;
+    var b = blockForDate(t.projectId, parseISO(t.due));
+    t.block = b === null ? 1 : b;
+  });
+}
+// Estimated time is hours, shown as "3 h" or "1.5 h".
+function fmtHours(h) { return (Math.round(h * 100) / 100) + " h"; }
+// Total and still-open estimated hours across every task of one project,
+// Backlog included.
+function projectEstimate(p) {
+  var total = 0, left = 0;
+  counted().forEach(function (t) {
+    if (t.isNext || t.projectId !== p.id || !(t.est > 0)) return;
+    total += t.est; if (t.status !== "Completed") left += t.est;
+  });
+  return { total: total, left: left };
+}
 function chartStart() {
   var min = null;
-  state.tasks.forEach(function (t) { if ((t.arch && t.arch.why !== "done") || t.block === 0) return; var v = parseISO(pset(projKey(t)).start); if (min === null || v < min) min = v; });
+  state.tasks.forEach(function (t) { if ((t.arch && t.arch.why !== "done") || t.block === 0 || isHiddenComplete(t)) return; var v = parseISO(pset(projKey(t)).start); if (min === null || v < min) min = v; });
   return min === null ? parseISO(state.start) : min;
 }
-function checkpoints() { var out = [], s = chartStart(); for (var i = 0; i < CHECKPOINTS; i++) out.push(addDays(s, 7 * i)); return out; }
+// Days between points on the main burndown: daily or every few days when the
+// whole schedule is short, weekly once it is long enough to fill the window.
+function checkpointStep() {
+  var s = chartStart(), maxEnd = null;
+  burnTasks().forEach(function (t) { var e = taskEnd(t); if (maxEnd === null || e > maxEnd) maxEnd = e; });
+  if (maxEnd === null) return 7;
+  var need = Math.max(1, Math.round((maxEnd - s) / DAY)) / (CHECKPOINTS - 1);
+  return need <= 1 ? 1 : need <= 2 ? 2 : need <= 3 ? 3 : 7;
+}
+function checkpoints() { var out = [], s = chartStart(), d = checkpointStep(); for (var i = 0; i < CHECKPOINTS; i++) out.push(addDays(s, d * i)); return out; }
+
+/* burndown history -- { "<ISO day>": [tasks in scope, tasks still open] }.
+   Written only on a day something changed, and only when it differs from the
+   last record before it. Every change to the data happens in the app, so a
+   day with no record means nothing changed: read it as the latest earlier
+   record (carry forward), not as a gap. */
+function recordHist(hist, scope, left) {
+  var key = iso(TODAY), prior = Object.keys(hist).filter(function (k) { return k < key; }).sort();
+  var prev = prior.length ? hist[prior[prior.length - 1]] : null;
+  if (prev && prev[0] === scope && prev[1] === left) delete hist[key]; else hist[key] = [scope, left];
+  var all = Object.keys(hist).sort();
+  if (all.length > 1000) all.slice(0, all.length - 1000).forEach(function (k) { delete hist[k]; });
+}
+// The record in force at the end of the given day, or null before the first one.
+function histAt(hist, ms) {
+  var cut = iso(ms), best = null;
+  Object.keys(hist).forEach(function (k) { if (k <= cut && (best === null || k > best)) best = k; });
+  return best === null ? null : hist[best];
+}
+// Actual open tasks (and tasks in scope) at each point; the point covering today is live.
+function globalActual(cps) {
+  var step = cps.length > 1 ? cps[1] - cps[0] : 7 * DAY, live = remainingUnits(), total = totalUnits(), actual = [], scope = [];
+  cps.forEach(function (ms) {
+    if (ms <= TODAY && TODAY < ms + step) { actual.push(live); scope.push(total); return; }
+    if (ms > TODAY) { actual.push(null); scope.push(null); return; }
+    var rec = histAt(state.hist, ms);
+    actual.push(rec ? rec[1] : null); scope.push(rec ? rec[0] : null);
+  });
+  return { actual: actual, scope: scope };
+}
 
 /* task helpers */
 function counted() { return state.tasks.filter(function (t) { return !t.arch || t.arch.why === "done"; }); }
@@ -738,9 +801,11 @@ function dispProject(t) { if (t.isNext) { var c = chosen(); return c ? c.name : 
 function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next project. Add its first tasks with the + button."; return t.what; }
 function weight(t) { return Math.max(1, t.steps.length); }
 function doneUnits(t) { return t.status === "Completed" ? weight(t) : t.steps.filter(function (s) { return s.done; }).length; }
-function totalUnits() { return burnTasks().reduce(function (a, t) { return a + weight(t); }, 0); }
-function remainingUnits() { return burnTasks().reduce(function (a, t) { return a + weight(t) - doneUnits(t); }, 0); }
-function planned(ms) { var d = 0; burnTasks().forEach(function (t) { if (taskEnd(t) <= ms) d += weight(t); }); return totalUnits() - d; }
+// The burndown counts tasks, one each. weight()/doneUnits() above are step counts, used only by projectMeta().
+function isOpen(t) { return t.status !== "Completed"; }
+function totalUnits() { return burnTasks().length; }
+function remainingUnits() { return burnTasks().filter(isOpen).length; }
+function planned(ms) { var d = 0; burnTasks().forEach(function (t) { if (taskEnd(t) <= ms) d++; }); return totalUnits() - d; }
 function sortTasks(list) {
   // Completed tasks sink to the bottom -- a finished task stays in this list
   // rather than archiving away, so it needs somewhere to settle.
@@ -758,41 +823,37 @@ function burnTasks() { return counted().filter(function (t) { return t.block > 0
 // must keep showing its own burndown even while its tasks are hidden from
 // every cross-project surface that burnTasks() feeds.
 function projectBurnTasks(p) { return counted().filter(function (t) { return t.block > 0 && t.projectId === p.id; }); }
-function projectTotalUnits(p) { return projectBurnTasks(p).reduce(function (a, t) { return a + weight(t); }, 0); }
-function projectRemainingUnits(p) { return projectBurnTasks(p).reduce(function (a, t) { return a + weight(t) - doneUnits(t); }, 0); }
-// Points are Mondays from the week of the project's first task to the week after
-// its last (stretched to include this week if it has overrun). Planned is exact,
-// like the global chart's. Actual comes from the project's stored weekly
-// snapshots, except THIS week's point, which is always computed live from the
-// tasks so it never depends on a write. Returns null if nothing is scheduled.
+function projectTotalUnits(p) { return projectBurnTasks(p).length; }
+function projectRemainingUnits(p) { return projectBurnTasks(p).filter(isOpen).length; }
+// Points are days when the project's schedule is 21 days or shorter (and today is within
+// 45 days of its start), otherwise
+// Mondays from the week of its first task to the week after its last (stretched
+// to include today if it has overrun). Planned is exact, like the global
+// chart's. Actual is read from the project's own recorded history, except the
+// point covering today, which is always computed live. Returns null if nothing
+// is scheduled.
 function projectBurn(p) {
   var ts = projectBurnTasks(p);
   if (!ts.length) return null;
-  var total = projectTotalUnits(p), first = Infinity, last = -Infinity;
+  var total = ts.length, first = Infinity, last = -Infinity;
   ts.forEach(function (t) { first = Math.min(first, taskStart(t)); last = Math.max(last, taskEnd(t)); });
-  var cur = weekStart(TODAY), startWk = weekStart(first), endWk = addDays(weekStart(last), 7);
-  if (cur > endWk) endWk = cur;
-  var weeks = Math.round((endWk - startWk) / (7 * DAY)), step = Math.max(1, Math.ceil(weeks / 52));
+  var daily = (last - first) / DAY <= 21 && (TODAY - first) / DAY <= 45, base = daily ? TODAY : weekStart(TODAY), unit = daily ? 1 : 7;
+  var startPt = daily ? first : weekStart(first), endPt = daily ? addDays(last, 1) : addDays(weekStart(last), 7);
+  if (base > endPt) endPt = base;
+  var count = Math.round((endPt - startPt) / (unit * DAY)), step = daily ? 1 : Math.max(1, Math.ceil(count / 52));
   var cps = [];
-  for (var m = startWk; m < endWk; m = addDays(m, 7 * step)) cps.push(m);
-  cps.push(endWk);
-  var planned = cps.map(function (ms) { var d = 0; ts.forEach(function (t) { if (taskEnd(t) <= ms) d += weight(t); }); return total - d; });
-  var live = projectRemainingUnits(p);
-  // A Complete project's remaining count for any never-recorded week isn't
-  // genuinely unknown the way an active project's past would be -- it's 0,
-  // unambiguously, for every week from completion onward. Fall back to that
-  // instead of leaving a permanent gap in the actual line just because
-  // nothing happened to trigger recordProjectWeeks() during those weeks.
-  var actual = cps.map(function (ms, i) {
+  for (var m = startPt; m < endPt; m = addDays(m, unit * step)) cps.push(m);
+  cps.push(endPt);
+  var planned = cps.map(function (ms) { var d = 0; ts.forEach(function (t) { if (taskEnd(t) <= ms) d++; }); return total - d; });
+  var live = projectRemainingUnits(p), actual = [], scope = [];
+  cps.forEach(function (ms, i) {
     var next = i < cps.length - 1 ? cps[i + 1] : Infinity;
-    if (ms <= cur && cur < next) return live;
-    if (ms > cur) return p.status === "complete" ? live : null;
-    var v = p.actual[iso(ms)];
-    if (v !== undefined) return v;
-    if (i === 0) return total;
-    return p.status === "complete" ? live : null;
+    if (ms <= base && base < next) { actual.push(live); scope.push(total); return; }
+    if (ms > base) { actual.push(null); scope.push(null); return; }
+    var rec = histAt(p.hist, ms);
+    actual.push(rec ? rec[1] : null); scope.push(rec ? rec[0] : null);
   });
-  return { cps: cps, planned: planned, actual: actual, total: total, tasks: ts, step: step };
+  return { cps: cps, planned: planned, actual: actual, scope: scope, total: total, tasks: ts, stepDays: unit * step };
 }
 function orderedCounted() { return sortTasks(counted()); }
 function isLate(t) { return t.block > 0 && t.status !== "Completed" && taskEnd(t) < TODAY; }
@@ -831,7 +892,7 @@ function projectMeta(p) {
   var parts = [];
   if (ts.length) {
     var tot = 0, dn = 0, bk = ts.filter(function (t) { return t.block === 0; }).length; ts.forEach(function (t) { tot += weight(t); dn += doneUnits(t); });
-    parts.push(ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " (" + bk + " in the Backlog)" : "") + ". " + dn + " of " + tot + " items done.");
+    parts.push(ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " (" + bk + " in the Backlog)" : "") + ". " + dn + " of " + tot + " steps complete.");
   } else if (p.status === "candidate") {
     parts.push("Candidate for the next slot.");
   }
@@ -886,7 +947,7 @@ var APP_NAME = "Sidequest";
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
 function st(id, text, launch, done) { return { id: id, text: text, done: done === true, launch: launch === true }; }
 function task(id, block, projectId, what, done, steps, extra) {
-  var t = { id: id, block: block, projectId: projectId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false };
+  var t = { id: id, block: block, projectId: projectId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0 };
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
   return t;
 }
@@ -895,7 +956,7 @@ function task(id, block, projectId, what, done, steps, extra) {
 // record and id carry through candidate -> active -> archived, never a second
 // record.
 function project(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, actual: {}, lastSlip: null };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, hist: {}, lastSlip: null };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -906,15 +967,19 @@ function sampleData() {
   function day(k) { return new Date(m0 + k * D).toISOString().slice(0, 10); }
   var yest = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 1)).toISOString().slice(0, 10);
   var lastWeek = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 7)).toISOString().slice(0, 10);
-  // Sample App has 16 steps of scheduled work; it started two Mondays ago.
-  var appHistory = {}; appHistory[day(0)] = 16; appHistory[day(7)] = 13;
-  // Sample Finished Project's own history: one week behind schedule, one
-  // exactly on schedule, one ahead -- a real zig-zag around the planned
-  // line, not a flat match, so its full-project Burndown has something to show.
-  var doneHistory = {}; doneHistory[day(-21)] = 7; doneHistory[day(-14)] = 4; doneHistory[day(-7)] = 1;
+  // Burndown history entries are [tasks in scope, tasks still open], keyed by the
+  // day recorded. Sample App has five scheduled tasks and started two Mondays ago; its
+  // second one is running late, so the burndown sits above the plan.
+  var appHistory = {}; appHistory[day(0)] = [5, 5]; appHistory[day(5)] = [5, 4];
+  // Sample Finished Project runs a little late, then ahead, then lands on time,
+  // so its full-project Burndown crosses the planned line instead of tracking it.
+  var doneHistory = {}; doneHistory[day(-28)] = [4, 4]; doneHistory[day(-20)] = [4, 3]; doneHistory[day(-15)] = [4, 2]; doneHistory[day(-12)] = [4, 1]; doneHistory[day(-1)] = [4, 0];
+  // The main burndown counts every scheduled task that isn't hidden with a Complete project;
+  // a twelfth task was added on day 9, so its line steps up once.
+  var allHistory = {}; allHistory[day(0)] = [11, 11]; allHistory[day(5)] = [11, 10]; allHistory[day(9)] = [12, 11];
   var projects = [
     // pApp <-> pSite demonstrates a bidirectional project link.
-    project("pApp", "Sample App", "active", { actual: appHistory, notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
+    project("pApp", "Sample App", "active", { hist: appHistory, notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
     // launchCritical: the app's launch checklist shows the site's own status.
     project("pSite", "Sample Website", "active", { start: day(14), linkedProjectIds: ["pApp"], launchCritical: true }),
     project("pGame", "Sample Game", "active", { start: day(21), days: 14, due: day(21 + 122) }),
@@ -922,7 +987,7 @@ function sampleData() {
     project("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own projects" }),
     // Demonstrates a Complete project: drops out of In progress but still
     // shows in the plain Projects list with its Complete badge.
-    project("pDone", "Sample Finished Project", "complete", { start: day(-28), notes: "Shipped and wrapped up.", actual: doneHistory }),
+    project("pDone", "Sample Finished Project", "complete", { start: day(-28), notes: "Shipped and wrapped up.", hist: doneHistory }),
     // Demonstrates a promoted-but-task-less Active project: since In progress
     // is built entirely from tasks, this one never appears there and lands in
     // the plain Projects list under Pending instead -- no start date needed.
@@ -930,7 +995,7 @@ function sampleData() {
   ];
   var tasks = [
     task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Completed", doneAt: lastWeek }),
-    task("a2", 2, "pApp", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", false, true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "Completed", doneAt: yest }),
+    task("a2", 2, "pApp", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", false, true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "In progress" }),
     task("a3", 3, "pApp", "Build the home screen", "The list loads quickly and scrolls smoothly", [st("a3a", "Show the list of items", false, true), st("a3b", "Add pull to refresh"), st("a3c", "Handle an empty list")], { status: "In progress", notes: "Ask a friend to try this on an older phone before moving on." }),
     task("a4", 4, "pApp", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link", true), st("a4c", "Collect and sort the feedback")]),
     task("a5", 5, "pApp", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true, true), st("a5a", "Write the store description", true), st("a5b", "Prepare screenshots", true), st("a5c", "Submit for review", true)]),
@@ -951,6 +1016,13 @@ function sampleData() {
     task("d3", 3, "pDone", "Test it", "The top bugs are fixed", [st("d3a", "Run through every screen", false, true), st("d3b", "Fix what's broken", false, true)], { status: "Completed", doneAt: day(-8) }),
     task("d4", 4, "pDone", "Ship it", "It's live", [st("d4a", "Write the release notes", false, true), st("d4b", "Announce it", false, true)], { status: "Completed", doneAt: day(-1) })
   ];
+  var EST = { a1: 3, a2: 6, a3: 8, a4: 4, a5: 5, a6: 4, w1: 3, w2: 10, w3: 2, g1: 12, g2: 20, g3: 8, g4: 16, d1: 6, d2: 12, d3: 8, d4: 3 };
+  tasks.forEach(function (t) { if (EST[t.id]) t.est = EST[t.id]; });
+  // When the finished tasks were completed (Sample Finished Project's are a bit late, early, then on time).
+  var DONE = { a1: day(5), d1: day(-20), d2: day(-15), d3: day(-12), d4: day(-1) };
+  tasks.forEach(function (t) { if (DONE[t.id]) t.doneAt = DONE[t.id]; });
+  // Shorter than its two-week block: starts two days in, due a week later.
+  tasks.forEach(function (t) { if (t.id === "g1") { t.start = day(23); t.due = day(30); } });
   return {
     tasks: tasks,
     projects: projects,
@@ -970,6 +1042,7 @@ function sampleData() {
       { id: "m1", text: "Sample App beta opens", date: day(21), projectId: "pApp" },
       { id: "m2", text: "Sample Game demo day", date: day(63), projectId: "pGame" }
     ],
+    hist: allHistory,
     start: day(0)
   };
 }
@@ -977,7 +1050,7 @@ function defaults() {
   var d = sampleData();
   return {
     v: 5, start: d.start, days: 7,
-    tasks: d.tasks, actual: [34, 31, 25, null, null, null, null],
+    tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, projects: d.projects, parked: d.parked,
     milestones: d.milestones, pins: ["proj:pApp"],
     settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true }
@@ -988,9 +1061,21 @@ function validArch(a) { return (a && typeof a === "object" && isISO(a.at) && (a.
 function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
 // A slip's own undo snapshot: each affected task's own block number right
 // before the slip, so Undo can put every one of them back exactly where it was.
+// Burndown history: { "<ISO day>": [tasks in scope, tasks still open] }. Anything
+// malformed is dropped; the newest 1000 entries are kept. Saved data from before
+// history counted tasks (an `actual` field in step units) is not carried over.
+function cleanHist(v) {
+  var out = {};
+  if (!v || typeof v !== "object" || Array.isArray(v)) return out;
+  Object.keys(v).sort().slice(-1000).forEach(function (k) {
+    var e = v[k];
+    if (isISO(k) && Array.isArray(e) && typeof e[0] === "number" && typeof e[1] === "number" && e[0] >= 0 && e[0] <= 5000 && e[1] >= 0 && e[1] <= e[0]) out[k] = [Math.round(e[0]), Math.round(e[1])];
+  });
+  return out;
+}
 function cleanSlip(v) {
   if (!v || typeof v !== "object" || typeof v.days !== "number" || !Array.isArray(v.snap)) return null;
-  var snap = v.snap.slice(0, 500).filter(function (s) { return s && typeof s.id === "string" && typeof s.block === "number" && s.block >= 0 && s.block <= 5000; }).map(function (s) { return { id: S(s.id, 40), block: Math.round(s.block) }; });
+  var snap = v.snap.slice(0, 500).filter(function (s) { return s && typeof s.id === "string" && typeof s.block === "number" && s.block >= 0 && s.block <= 5000; }).map(function (s) { return { id: S(s.id, 40), block: Math.round(s.block), start: isISO(s.start) ? s.start : "", due: isISO(s.due) ? s.due : "" }; });
   if (!snap.length) return null;
   return { days: Math.round(v.days) || 0, snap: snap };
 }
@@ -1005,9 +1090,6 @@ function normalize(s) {
       // as `notes`. They are one field now: fold a saved `note` into the front
       // of `notes` so nothing is lost. Once saved, `note` no longer exists.
       var oldNote = S(x.note, 5000), body = S(x.notes, 5000);
-      // Per-project burndown snapshots: { "<Monday ISO>": steps remaining }.
-      var snaps = {};
-      if (x.actual && typeof x.actual === "object" && !Array.isArray(x.actual)) Object.keys(x.actual).slice(0, 300).forEach(function (k) { var v = x.actual[k]; if (isISO(k) && typeof v === "number" && v >= 0 && v <= 100000) snaps[k] = Math.round(v); });
       // Old saved data may still have `mult`, a multiplier on the global
       // block length instead of its own day count -- convert once on load.
       var days = (typeof x.days === "number" && x.days >= 1 && x.days <= 90) ? Math.round(x.days)
@@ -1017,7 +1099,7 @@ function normalize(s) {
         status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
         start: isISO(x.start) ? x.start : "", days: days,
         due: isISO(x.due) ? x.due : "",
-        notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true, actual: snaps,
+        notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true, hist: cleanHist(x.hist),
         lastSlip: cleanSlip(x.lastSlip),
         // Validated below, once every project's real id is known -- a link
         // can only point at another project that actually exists in the final
@@ -1046,8 +1128,14 @@ function normalize(s) {
         if (x && typeof x.id === "string") steps.push({ id: S(x.id, 40), text: S(x.text, 300), done: x.done === true, launch: x.launch === true });
       });
       var b = typeof t.block === "number" ? Math.round(t.block) : 1;
+      b = Math.min(5000, Math.max(0, b));
+      // Explicit dates belong only to a scheduled task, and a start after its
+      // due date is dropped. The block is re-derived from the due date on load.
+      var tdue = b > 0 && isISO(t.due) ? t.due : "", tstart = b > 0 && isISO(t.start) ? t.start : "";
+      if (tstart && tdue && tstart > tdue) tstart = "";
+      var test = typeof t.est === "number" && t.est > 0 && t.est <= 9999 ? Math.round(t.est * 100) / 100 : 0;
       ts.push({
-        id: S(t.id, 40), block: Math.min(12, Math.max(0, b)), projectId: pid, what: S(t.what, 400), done: S(t.done, 200),
+        id: S(t.id, 40), block: b, projectId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test,
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
         custom: t.custom === true, isNext: t.isNext === true,
         arch: validArch(t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : ""
@@ -1055,9 +1143,7 @@ function normalize(s) {
     });
     d.tasks = ts;
   }
-  if (Array.isArray(s.actual) && s.actual.length === CHECKPOINTS) {
-    d.actual = s.actual.map(function (v) { return (typeof v === "number" && v >= 0 && v <= 1000) ? v : null; });
-  }
+  d.hist = cleanHist(s.hist);
   // A step id belonging to any live (non-archived) task, across every project --
   // used below to require a decision's step link points at something real.
   var liveStepIds = {};
@@ -1166,7 +1252,7 @@ function loadFromDbIfAvailable() {
   });
 }
 
-var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchArchive: true };
+var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchArchive: true, notesH: {}, projOpen: {} };
 // Always opens on Today -- no-op.
 function saveUI() { /* nothing to save */ }
 
@@ -1181,7 +1267,7 @@ function autoArchive() {
   });
 }
 function changed() {
-  autoArchive(); sweepProjectCompletion(); recordCurrentWeek(); recordProjectWeeks(); save(); renderAll();
+  autoArchive(); syncTaskBlocks(); sweepProjectCompletion(); recordHistory(); recordProjectHistory(); save(); renderAll();
 }
 
 
@@ -1294,30 +1380,34 @@ function renderBurn(host, wide, cfg) {
   });
 }
 
-// Planned is exact (names finishing tasks); actual is a weekly snapshot, so it
-// can only say which tasks completed that week, not which one caused a drop.
+// Planned is exact (names finishing tasks). Actual comes from recorded history,
+// so it can say which tasks were completed in a period, and how many were in scope.
 function nameList(ts, withProject) {
   var names = ts.slice(0, 6).map(function (t) { return (withProject ? dispProject(t) + ": " : "") + t.what; });
   return names.join(", ") + (ts.length > 6 ? ", and " + (ts.length - 6) + " more" : "");
 }
-function weekTip(cps, i, pl, act, tasks, span, withProject) {
-  var lines = ["Week of " + fmtY(cps[i]), "Planned: " + pl[i] + " remaining"];
-  if (act[i] !== null) lines.push("Actual: " + act[i] + " remaining");
+function weekTip(cps, i, pl, act, scopes, tasks, span, withProject) {
+  var days = Math.round(span / 86400000), unit = days === 1 ? "day" : days === 7 ? "week" : "period";
+  var lines = [(days === 1 ? "" : days === 7 ? "Week of " : "From ") + fmtY(cps[i]), "Planned: " + pl[i] + " remaining"];
+  if (act[i] !== null) lines.push("Actual: " + act[i] + " remaining" + (scopes[i] !== null ? " of " + scopes[i] + " in scope" : ""));
+  // Jira-style: added or removed work is called out, not left looking like progress.
+  var prev = null;
+  for (var j = i - 1; j >= 0 && prev === null; j--) if (scopes[j] !== null) prev = scopes[j];
+  if (scopes[i] !== null && prev !== null && scopes[i] !== prev) lines.push(scopes[i] > prev ? "Scope grew from " + prev + " to " + scopes[i] : "Scope fell from " + prev + " to " + scopes[i]);
   var fin = tasks.filter(function (t) { var e = taskEnd(t); return e <= cps[i] && (i === 0 || e > cps[i - 1]); });
   if (fin.length) lines.push("Finishing: " + nameList(fin, withProject));
   var done = tasks.filter(function (t) { if (!t.doneAt) return false; var d = parseISO(t.doneAt); return d >= cps[i] && d < cps[i] + span; });
-  if (done.length) lines.push("Completed this week: " + nameList(done, withProject));
+  if (done.length) lines.push((days === 1 ? "Completed that day: " : "Completed this " + unit + ": ") + nameList(done, withProject));
   return lines.join("\n");
 }
 
 function drawChart(host, wide) {
-  var total = totalUnits(), cps = checkpoints(), n = cps.length;
-  var acts = state.actual.map(function (a, i) { return (a === null && i === 0) ? total : a; });
-  var pl = cps.map(planned), tasks = burnTasks();
+  var total = totalUnits(), cps = checkpoints(), n = cps.length, ga = globalActual(cps);
+  var pl = cps.map(planned), tasks = burnTasks(), span = checkpointStep() * 86400000;
   renderBurn(host, wide, {
-    cps: cps, planned: pl, actual: acts, total: total,
-    label: "Burndown chart. Planned items remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
-    tip: function (i) { return weekTip(cps, i, pl, acts, tasks, 7 * 86400000, true); }
+    cps: cps, planned: pl, actual: ga.actual, total: total,
+    label: "Burndown chart. Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
+    tip: function (i) { return weekTip(cps, i, pl, ga.actual, ga.scope, tasks, span, true); }
   });
 }
 
@@ -1325,12 +1415,12 @@ function drawChart(host, wide) {
 function drawProjectChart(host, p, wide) {
   var bd = projectBurn(p);
   if (!bd) { host.innerHTML = ""; return false; }
-  var cps = bd.cps, n = cps.length, pl = bd.planned, span = 7 * bd.step * 86400000;
+  var cps = bd.cps, n = cps.length, pl = bd.planned, span = bd.stepDays * 86400000;
   var marks = live(state.milestones).filter(function (m) { return m.projectId === p.id; }).map(function (m) { return { ms: parseISO(m.date), text: m.text }; });
   renderBurn(host, wide, {
     cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks,
-    label: "Burndown chart for " + p.name + ". Planned steps remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
-    tip: function (i) { return weekTip(cps, i, pl, bd.actual, bd.tasks, span, false); }
+    label: "Burndown chart for " + p.name + ". Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
+    tip: function (i) { return weekTip(cps, i, pl, bd.actual, bd.scope, bd.tasks, span, false); }
   });
   return true;
 }
@@ -1413,14 +1503,20 @@ function projectRangeBlock(p) {
   var mss = [];
   live(state.milestones).forEach(function (m) { if (m.projectId === p.id) mss.push({ id: m.id, text: m.text, date: parseISO(m.date) }); });
   var nb = counted().filter(function (t) { return t.projectId === p.id && !t.isNext && t.block === 0; }).length;
-  var backlog = nb ? " " + nb + (nb === 1 ? " backlog item is" : " backlog items are") + " not shown until scheduled." : "";
+  var backlog = nb ? " " + nb + (nb === 1 ? " backlog task is" : " backlog tasks are") + " not shown until scheduled." : "";
   if (!ts.length) return { node: el("p", { "class": "hint" }, "Nothing is scheduled yet. Create a task with a due date to see them here." + backlog), milestones: mss, empty: true };
   var first = Infinity, maxEnd = -Infinity;
   var lanes = ts.map(function (t) {
     var a = taskStart(t), b = taskEnd(t);
+    // A pale band behind the task's bar shows the block(s) it sits in: from the
+    // block holding its start to the block holding its due date.
+    var sb = t.start ? blockForDate(p.id, a) : null;
+    var bandA = blockStartFor(p.id, Math.min(sb === null ? t.block : sb, t.block)), bandB = blockEndFor(p.id, t.block);
+    if (bandA < first) first = bandA;
     if (a < first) first = a;
+    if (bandB > maxEnd) maxEnd = bandB;
     if (b > maxEnd) maxEnd = b;
-    return { name: short(t.what, 60), bars: [{ a: a, b: b, cls: t.status === "Completed" ? "done" : "" }], dates: fmt(a) + " to " + fmt(b) };
+    return { name: short(t.what, 60), bars: [{ a: bandA, b: bandB, cls: "blk" }, { a: a, b: b, cls: t.status === "Completed" ? "done" : "" }], dates: fmt(a) + " to " + fmt(b) };
   });
   mss.forEach(function (m) { if (m.date < first) first = m.date; });
   var f0 = new Date(first), rs = Date.UTC(f0.getUTCFullYear(), f0.getUTCMonth(), 1);
@@ -1665,24 +1761,39 @@ function taskDialog(prefillProjectId, backlog) {
   var projOpts = activeProjects().map(function (p) { return { value: p.id, label: p.name }; });
   if (!projOpts.length) { notify("Add an active project first (Projects > Choose as next project)."); return; }
   var startId = typeof prefillProjectId === "string" ? prefillProjectId : (nt && !nt.isNext ? nt.projectId : projOpts[0].value);
-  var defaultDue = backlog ? "" : iso(blockStartFor(startId, nt ? nt.block : 4));
-  formDialog(backlog ? "New backlog item" : "New task", [
+  var defaultDue = backlog ? "" : iso(blockEndFor(startId, nt ? nt.block : 4));
+  var fields = [
     { key: "project", label: "Project", type: "select", options: projOpts, value: startId },
     { key: "what", label: "Task" },
-    { key: "done", label: "How you'll know it's done (optional)" },
-    { key: "due", label: "Due date, or leave empty for the Backlog", type: "date", value: defaultDue }
-  ], backlog ? "Add to Backlog" : "Add task", function (v) {
+    { key: "done", label: "How you'll know it's done (optional)" }
+  ];
+  if (!backlog) {
+    fields.push({ key: "start", label: "Start date (optional)", type: "date" });
+    fields.push({ key: "due", label: "Due date, or leave empty for the Backlog", type: "date", value: defaultDue });
+  }
+  fields.push({ key: "est", label: "Estimated time in hours (optional)", type: "number", min: "0", max: "9999", step: "0.25" });
+  formDialog(backlog ? "New backlog item" : "New task", fields, backlog ? "Add to Backlog" : "Add task", function (v) {
     if (!v.project || !v.what) return "Choose a project and enter what you do.";
-    var blk = 0;
-    if (v.due !== "") {
+    var blk = 0, start = "", due = "";
+    if (v.due) {
       if (!isISO(v.due)) return "Enter a valid due date, or leave it empty for the Backlog.";
+      var first = parseISO(pset(v.project).start);
       blk = blockForDate(v.project, parseISO(v.due));
-      if (blk === null) return "Pick a date on or after " + fmtY(parseISO(pset(v.project).start)) + ", this project's own start date.";
-    }
-    var t = task("c" + uid(), blk, v.project, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true });
+      if (blk === null) return "Pick a due date on or after " + fmtY(first) + ", this project's own start date.";
+      due = v.due;
+      if (v.start) {
+        if (!isISO(v.start)) return "Enter a valid start date, or leave it empty.";
+        if (parseISO(v.start) < first) return "Pick a start date on or after " + fmtY(first) + ", this project's own start date.";
+        if (v.start > due) return "The start date can't be after the due date.";
+        start = v.start;
+      }
+    } else if (v.start) return "Add a due date too, or clear the start date. A task with no due date goes to the Backlog.";
+    var est = v.est === "" ? 0 : parseFloat(v.est);
+    if (isNaN(est) || est < 0 || est > 9999) return "Enter the estimated time as hours from 0 to 9999, or leave it empty.";
+    var t = task("c" + uid(), blk, v.project, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100 });
     state.tasks.push(t); ui.sel = t.id; changed();
-    return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(blockStartFor(v.project, blk)) + " to " + fmt(blockEndFor(v.project, blk)) + ")." };
-  }, "Pick when this should be done and it's placed in the right " + wl() + " automatically. Leave it empty to put the task in the Backlog.");
+    return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ")." };
+  }, "Pick when this should be done and it's placed in the right " + wl() + " automatically. Leave the due date empty to put the task in the Backlog.");
 }
 function projectDialog() {
   formDialog("New project", [{ key: "name", label: "Project name" }, { key: "notes", label: "Notes (optional)", type: "textarea", rows: 5 }], "Add project", function (v) {
@@ -1840,8 +1951,8 @@ function milestoneDialog(m, onRemove) {
     return { msg: "Milestone added to the Timeline." };
   }, undefined, m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
 }
-// Slips one project's incomplete tasks later by N days each, recomputing
-// which block each one falls into from its own current date. Completed tasks
+// Slips one project's incomplete tasks later by N days each: start and due
+// both move, and each task's block is re-derived from its new due date. Completed tasks
 // and Backlog items have no date to shift, so they're left untouched, and the
 // project's own start date is never touched either -- shifting that would
 // move already-finished work too, which isn't really "catching up."
@@ -1857,9 +1968,12 @@ function slipDialog(p) {
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
       var targets = state.tasks.filter(function (t) { return t.projectId === p.id && !t.isNext && t.block > 0 && t.status !== "Completed" && !t.arch; });
       if (!targets.length) { err.textContent = "Nothing incomplete is scheduled to slip."; return; }
-      var snap = targets.map(function (t) { return { id: t.id, block: t.block }; });
+      var snap = targets.map(function (t) { return { id: t.id, block: t.block, start: t.start, due: t.due }; });
       targets.forEach(function (t) {
-        var newDate = addDays(taskStart(t), n), newBlock = blockForDate(p.id, newDate);
+        // Both ends move by the same days, so a task keeps its own length.
+        var newStart = addDays(taskStart(t), n), newDue = addDays(taskEnd(t), n);
+        t.start = iso(newStart); t.due = iso(newDue);
+        var newBlock = blockForDate(p.id, newDue);
         t.block = newBlock === null ? t.block : newBlock;
       });
       p.lastSlip = { days: n, snap: snap };
@@ -1867,7 +1981,7 @@ function slipDialog(p) {
       notify(targets.length + (targets.length === 1 ? " task" : " tasks") + " in " + p.name + " moved back " + n + (n === 1 ? " day" : " days") + ".");
     }));
     if (p.lastSlip) acts.appendChild(on(el("button", { type: "button", id: "slipUndo", title: "Reverse the last slip" }, "Undo last slip (" + p.lastSlip.days + " days)"), "click", function () {
-      p.lastSlip.snap.forEach(function (s) { var t = findTask(s.id); if (t) t.block = s.block; });
+      p.lastSlip.snap.forEach(function (s) { var t = findTask(s.id); if (t) { t.block = s.block; t.start = s.start || ""; t.due = s.due || ""; } });
       p.lastSlip = null; changed(); closeModal();
       notify("Slip undone.");
     }));
@@ -1950,18 +2064,16 @@ function overduePanel() {
   box.appendChild(ul);
   return box;
 }
-function currentCheckpointIndex() {
-  var cps = checkpoints(), idx = 0;
-  cps.forEach(function (ms, i) { if (ms <= TODAY) idx = i; });
-  return idx;
+// Records the main burndown's and each project's task counts on every change
+// (see recordHist() in model.js for how that history is kept and read back).
+function recordHistory() {
+  if (totalUnits() > 0 || Object.keys(state.hist).length) recordHist(state.hist, totalUnits(), remainingUnits());
 }
-function recordCurrentWeek() { state.actual[currentCheckpointIndex()] = remainingUnits(); }
-// Each active or complete project keeps its own weekly steps-remaining snapshot,
-// keyed by the week's Monday, so a project's burndown keeps a real actual line.
-function recordProjectWeeks() {
-  var key = iso(weekStart(TODAY));
+function recordProjectHistory() {
   liveProjects().forEach(function (p) {
-    if ((p.status === "active" || p.status === "complete") && projectTotalUnits(p) > 0) p.actual[key] = projectRemainingUnits(p);
+    if (p.status !== "active" && p.status !== "complete") return;
+    var total = projectTotalUnits(p);
+    if (total > 0 || Object.keys(p.hist).length) recordHist(p.hist, total, projectRemainingUnits(p));
   });
 }
 // Auto-completion only -- runs on every changed(). Manual "Mark complete" is separate.
@@ -1985,6 +2097,8 @@ function completionDialog(p) {
   var warn = incompleteLaunchCriticalLinks(p);
   openModal("Project complete", function (body) {
     body.appendChild(el("p", { "class": "first" }, "“" + p.name + "” is marked complete. Archive it now, or leave it in Projects."));
+    var openTasks = projectRemainingUnits(p);
+    if (openTasks) body.appendChild(el("p", { "class": "hint" }, openTasks + (openTasks === 1 ? " open task is" : " open tasks are") + " no longer counted in the main burndown. Reopen the project to count " + (openTasks === 1 ? "it" : "them") + " again."));
     if (warn.length) body.appendChild(el("p", { "class": "hint" }, "Launch-critical linked " + (warn.length === 1 ? "project isn’t" : "projects aren’t") + " finished yet: " + warn.map(function (lp) { return lp.name; }).join(", ") + "."));
     var acts = el("div", { "class": "actions" });
     var leave = el("button", { type: "button", title: "Keep visible on Projects" }, "Leave in Projects");
@@ -2006,7 +2120,7 @@ function burnParts(o) {
   if (proj) drawProjectChart(host, proj, o.wide); else drawChart(host, o.wide);
   var rn = proj ? projectRemainingUnits(proj) : remainingUnits(), tot = proj ? projectTotalUnits(proj) : totalUnits(), rb = el("div", { "class": "box" });
   var nbk = proj ? counted().filter(function (t) { return t.projectId === proj.id && !t.isNext && t.block === 0; }).length : backlogTasks().length;
-  rb.appendChild(el("p", { "class": "hint first remaining" }, rn + (rn === 1 ? " item" : " items") + " remaining, out of " + tot + (nbk ? ". " + nbk + (nbk === 1 ? " backlog item is" : " backlog items are") + " not counted until scheduled." : "")));
+  rb.appendChild(el("p", { "class": "hint first remaining" }, rn + (rn === 1 ? " task" : " tasks") + " remaining, out of " + tot + (nbk ? ". " + nbk + (nbk === 1 ? " backlog task is" : " backlog tasks are") + " not counted until scheduled." : "")));
   return { h: h, chart: cb, count: rb };
 }
 function burnPanel(o) {
@@ -2044,6 +2158,7 @@ function taskRow(t) {
   var l3 = el("div", { "class": "l3" });
   l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
   if (t.steps.length) l3.appendChild(el("span", null, t.steps.filter(function (s) { return s.done; }).length + " of " + t.steps.length + " steps"));
+  if (t.est > 0) l3.appendChild(el("span", null, fmtHours(t.est)));
   if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
   b.appendChild(l3);
   on(b, "click", function () { ui.sel = t.id; ui.detail = true; renderView(); scrollTop(); });
@@ -2068,7 +2183,7 @@ function renderSchedule(root) {
   lp.appendChild(ul);
   if (bl.length) {
     lp.appendChild(el("h2", null, "Backlog (" + bl.length + ")"));
-    lp.appendChild(el("p", { "class": "hint" }, "Not scheduled yet. Open an item and choose a " + wl() + " to schedule it."));
+    lp.appendChild(el("p", { "class": "hint" }, "Not scheduled yet. Open an item and set a due date to schedule it."));
     var bul = el("ul", { "class": "tlist", style: "margin-top:10px" });
     bl.forEach(function (t) { bul.appendChild(taskRow(t)); });
     lp.appendChild(bul);
@@ -2077,12 +2192,13 @@ function renderSchedule(root) {
   split.appendChild(lp); split.appendChild(dp); root.appendChild(split);
 }
 
-function buildDetail(t) {
+// `inline` is the project page's in-place version: no heading or back button, plus an Open in Tasks link.
+function buildDetail(t, inline) {
   var box = el("div", { "class": "detail" });
-  box.appendChild(on(el("button", { type: "button", "class": "small only-mobile", style: "margin-bottom:10px", title: "Back to the task list" }, "All tasks"), "click", function () { ui.detail = false; renderView(); scrollTop(); }));
+  if (!inline) box.appendChild(on(el("button", { type: "button", "class": "small only-mobile", style: "margin-bottom:10px", title: "Back to the task list" }, "All tasks"), "click", function () { ui.detail = false; renderView(); scrollTop(); }));
   var top = el("div", { style: "display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap" });
   var lh = el("div");
-  lh.appendChild(el("h2", { style: "margin:0" }, dispProject(t)));
+  if (!inline) lh.appendChild(el("h2", { style: "margin:0" }, dispProject(t)));
   var dm = el("p", { "class": "dmeta" }, (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))) + " ");
   if (isLate(t)) dm.appendChild(el("span", { "class": "badge" }, "Overdue"));
   lh.appendChild(dm); top.appendChild(lh);
@@ -2109,18 +2225,48 @@ function buildDetail(t) {
   box.appendChild(whatRow);
   if (!(t.isNext && chosen())) box.appendChild(el("p", { "class": "dmeta" }, "Done when: " + t.done));
   if (!t.isNext) {
-    var bw = el("div", { "class": "field", style: "max-width:24rem" }); bw.appendChild(el("label", { "for": "task-due" }, "Due date, or leave empty for the Backlog"));
-    var bd = el("input", { type: "date", id: "task-due" }); bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block));
-    var bmsg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
+    var dg = el("div", { "class": "setgrid" });
+    var dmsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
+    function dfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); dg.appendChild(w); }
+    function shownStart() { return t.block === 0 ? "" : iso(taskStart(t)); }
+    function shownDue() { return t.block === 0 ? "" : iso(taskEnd(t)); }
+    var sd = el("input", { type: "date", id: "task-start" }), bd = el("input", { type: "date", id: "task-due" });
+    var ei = el("input", { type: "number", id: "task-est", min: "0", max: "9999", step: "0.25" });
+    sd.value = shownStart(); bd.value = shownDue(); ei.value = t.est > 0 ? t.est : "";
+    function resetDates() { sd.value = shownStart(); bd.value = shownDue(); }
+    var projFirst = parseISO(pset(projKey(t)).start);
+    // "blur", not "change" -- a date input fires "change" per segment while typing.
     on(bd, "blur", function () {
-      if (bd.value === "") { t.block = 0; changed(); notify("Moved to the Backlog."); return; }
-      if (!isISO(bd.value)) { bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block)); bmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
+      if (bd.value === shownDue()) return;
+      if (bd.value === "") { t.block = 0; t.start = ""; t.due = ""; changed(); notify("Moved to the Backlog."); return; }
+      if (!isISO(bd.value)) { resetDates(); dmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
       var blk = blockForDate(projKey(t), parseISO(bd.value));
-      if (blk === null) { bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block)); bmsg.textContent = "Pick a date on or after " + fmtY(parseISO(pset(projKey(t)).start)) + ", this project's own start date."; return; }
-      bmsg.textContent = "";
-      t.block = blk; changed(); notify("Moved to " + wd() + " " + blk + " (" + fmt(blockStartFor(projKey(t), blk)) + " to " + fmt(blockEndFor(projKey(t), blk)) + ").");
+      if (blk === null) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(projFirst) + ", this project's own start date."; return; }
+      if (t.block > 0 && t.start && bd.value < t.start) { resetDates(); dmsg.textContent = "The due date can't be before the start date."; return; }
+      dmsg.textContent = "";
+      t.due = bd.value; t.block = blk; changed();
+      notify("Due " + fmt(taskEnd(t)) + ", in " + wd() + " " + blk + ".");
     });
-    bw.appendChild(bd); box.appendChild(bw); box.appendChild(bmsg);
+    on(sd, "blur", function () {
+      if (sd.value === shownStart()) return;
+      if (t.block === 0) { sd.value = ""; dmsg.textContent = "Add a due date first. A task with no due date is in the Backlog."; return; }
+      if (sd.value === "") { dmsg.textContent = ""; t.start = ""; changed(); notify("Start date cleared. The task starts when its " + wl() + " does."); return; }
+      if (!isISO(sd.value)) { resetDates(); dmsg.textContent = "Enter a valid start date, or leave it empty."; return; }
+      if (parseISO(sd.value) < projFirst) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(projFirst) + ", this project's own start date."; return; }
+      if (sd.value > iso(taskEnd(t))) { resetDates(); dmsg.textContent = "The start date can't be after the due date."; return; }
+      dmsg.textContent = "";
+      t.start = sd.value; changed(); notify("Start date saved.");
+    });
+    on(ei, "blur", function () {
+      var v = ei.value === "" ? 0 : parseFloat(ei.value);
+      if (isNaN(v) || v < 0 || v > 9999) { ei.value = t.est > 0 ? t.est : ""; dmsg.textContent = "Enter the estimated time as hours from 0 to 9999."; return; }
+      v = Math.round(v * 100) / 100;
+      if (v === (t.est || 0)) return;
+      dmsg.textContent = "";
+      t.est = v; changed(); notify(v > 0 ? "Estimated time saved." : "Estimated time cleared.");
+    });
+    dfield("task-start", "Start date (optional)", sd); dfield("task-due", "Due date, or leave empty for the Backlog", bd); dfield("task-est", "Estimated time (hours)", ei);
+    box.appendChild(dg); box.appendChild(dmsg);
   }
 
   var nDone = t.steps.filter(function (s) { return s.done; }).length;
@@ -2160,6 +2306,7 @@ function buildDetail(t) {
   if (!t.isNext) {
     var ar = el("div", { "class": "actions", style: "margin-top:14px" });
     ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this task (can be undone)" }, "Delete"), "click", function () { ui.detail = false; removeNow(t, "tasks", "Task"); }));
+    if (inline) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Open this task on the Tasks page" }, "Open in Tasks"), "click", function () { openTask(t.id); }));
     box.appendChild(ar);
   }
   return box;
@@ -2220,11 +2367,11 @@ function launchSection(root, p) {
   items.forEach(function (x) {
     var li = el("li", { "class": x.s.done ? "done" : "" });
     var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = x.s.done; box.disabled = readOnly;
-    on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); autoArchive(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); });
+    on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); autoArchive(); sweepProjectCompletion(); recordHistory(); recordProjectHistory(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); });
     label.appendChild(box); label.appendChild(el("span", null, x.s.text)); li.appendChild(label);
     var meta = el("div", { "class": "cnote" });
     if (x.t.arch) meta.appendChild(document.createTextNode(short(dispWhat(x.t), 48) + " (archived)"));
-    else meta.appendChild(on(el("button", { type: "button", "class": "textbtn", title: "View this task" }, short(dispWhat(x.t), 48)), "click", function () { openTask(x.t.id); }));
+    else meta.appendChild(on(el("button", { type: "button", "class": "textbtn", title: "View this task" }, short(dispWhat(x.t), 48)), "click", function () { showTaskInProject(p, x.t); }));
     var dc = decisionFor(x.s.id);
     if (dc) meta.appendChild(document.createTextNode(" · Decision " + (dc.a ? "decided" : "open")));
     li.appendChild(meta);
@@ -2282,7 +2429,7 @@ function renderProjectPage(root, id) {
   var p = findProject(id);
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
   var readOnly = !!p.arch;
-  // Active/complete: two columns (info left, Timeline/Burndown right), stacked on a phone.
+  // Active/complete: two columns (page content left, Schedule/Timeline/Burndown right), stacked on a phone.
   var page = root, split = null;
   var metaLine = el("p", { "class": "hint" });
   if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip projcomplete", style: "margin-right:8px" }, "Complete"));
@@ -2290,7 +2437,7 @@ function renderProjectPage(root, id) {
   if (!readOnly && (p.status === "active" || p.status === "complete")) {
     split = el("div", { "class": "projsplit" });
     // Grid areas defined in styles.css.
-    root = el("div", { "class": "projtop" });
+    root = el("div", { "class": "projmain" });
     split.appendChild(root); page.appendChild(split);
   } else {
     root.appendChild(metaLine);
@@ -2308,7 +2455,11 @@ function renderProjectPage(root, id) {
   var hd = el("div", { "class": "sechead" + (split ? " first" : "") }); hd.appendChild(el("h2", split ? { "class": "first" } : null, "Tasks"));
   if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a task" }, "Add task"), "click", function () { taskDialog(p.id); }));
   root.appendChild(hd);
-  root.appendChild(metaLine);
+  // The count line on the left, the open estimated time on the right.
+  var est = projectEstimate(p), metaRow = el("div", { "class": "metarow" });
+  metaRow.appendChild(metaLine);
+  if (est.total > 0) metaRow.appendChild(el("span", { "class": "hint estleft" }, "Est. " + fmtHours(est.left) + " left"));
+  root.appendChild(metaRow);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
   else if (p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this project is Complete. Reopen it to bring them back."));
   // orderedAll(), not ordered()/backlogTasks() -- a project's own page must
@@ -2318,33 +2469,43 @@ function renderProjectPage(root, id) {
   if (ts.length) {
     var ul = el("ul", { "class": "tlist" });
     ts.forEach(function (t) {
-      var li = el("li"), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
+      // A live project's task opens in place under its row; an archived project's goes to the Tasks page.
+      var open = !readOnly && ui.projOpen[p.id] === t.id;
+      var li = el("li", { id: "ptask-" + t.id }), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
+      if (!readOnly) b.setAttribute("aria-expanded", open ? "true" : "false");
       b.appendChild(el("div", { "class": "l1" }, t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
       b.appendChild(el("div", { "class": "l2" }, t.what));
       var l3 = el("div", { "class": "l3" });
       l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
       if (t.steps.length) l3.appendChild(el("span", null, t.steps.filter(function (x) { return x.done; }).length + " of " + t.steps.length + " steps"));
+      if (t.est > 0) l3.appendChild(el("span", null, fmtHours(t.est)));
       if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
-      b.appendChild(l3); on(b, "click", function () { openTask(t.id); }); li.appendChild(b); ul.appendChild(li);
+      b.appendChild(l3);
+      on(b, "click", function () { if (readOnly) { openTask(t.id); return; } ui.projOpen[p.id] = open ? null : t.id; renderView(); });
+      li.appendChild(b);
+      if (open) li.appendChild(buildDetail(t, true));
+      ul.appendChild(li);
     });
     root.appendChild(ul);
   }
   if (!split) scheduleSection(root, p, readOnly);
-  // .projrest: the rest of the left column, its own grid item.
-  if (split) { root = el("div", { "class": "projrest" }); split.appendChild(root); }
+
+  launchSection(root, p);
+
   root.appendChild(el("h2", null, "Notes"));
   if (readOnly) {
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
   } else {
     var ta = el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" }); ta.value = p.notes;
+    // Remember a dragged height for this session, since every change rebuilds the page.
+    if (ui.notesH[p.id]) ta.style.height = ui.notesH[p.id] + "px";
     on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(); });
     root.appendChild(ta);
+    if (typeof ResizeObserver !== "undefined") new ResizeObserver(function () { if (ta.offsetHeight > 0) ui.notesH[p.id] = ta.offsetHeight; }).observe(ta);
   }
 
   root.appendChild(el("h2", null, "Linked projects"));
   linksSection(root, p);
-
-  launchSection(root, p);
 
   var ar = el("div", { "class": "actions", style: "margin-top:14px" });
   if (readOnly) {
@@ -2371,6 +2532,13 @@ function renderProjectPage(root, id) {
   if (split) split.appendChild(projectChartsPanel(p));
 }
 
+// On a project's own page a task opens in place; the Tasks page is for the cross-project list.
+function showTaskInProject(p, t) {
+  if (p.arch) { openTask(t.id); return; }
+  ui.projOpen[p.id] = t.id; renderView();
+  var row = document.getElementById("ptask-" + t.id);
+  if (row && row.scrollIntoView) row.scrollIntoView({ block: "nearest" });
+}
 // `first` zeroes the heading's top margin; `extraBtn` rides its heading row.
 function scheduleSection(host, p, readOnly, first, extraBtn) {
   var hd = el("div", { "class": "sechead" + (first ? " first" : "") });
@@ -2575,28 +2743,27 @@ function renderTimeline(root) {
   });
   mbox.appendChild(ul); root.appendChild(mbox);
   root.appendChild(burnPanel({ wide: true, level: "h2" }));
-  root.appendChild(el("h2", null, "Weekly counts"));
-  root.appendChild(el("p", { "class": "hint" }, "Enter the number of items left each week to draw your actual line on the burndown."));
+  root.appendChild(el("h2", null, "Task counts"));
+  root.appendChild(el("p", { "class": "hint" }, "Recorded automatically from your tasks each time you make a change. A date with no record keeps the last count."));
   var wrap = el("div", { "class": "tablewrap weekly" }); var table = el("table");
-  var thead = el("thead"); var hr = el("tr"); ["Week starting", "Planned remaining", "Actual remaining"].forEach(function (h) { hr.appendChild(el("th", null, h)); }); thead.appendChild(hr); table.appendChild(thead);
-  var body = el("tbody"); var tot = totalUnits(), curIdx = currentCheckpointIndex();
-  checkpoints().forEach(function (ms, i) {
+  var cps = checkpoints(), ga = globalActual(cps), stepMs = checkpointStep() * DAY;
+  var thead = el("thead"); var hr = el("tr"); [stepMs === 7 * DAY ? "Week starting" : "Date", "Planned remaining", "Actual remaining", "Tasks in scope", "Scope change"].forEach(function (h) { hr.appendChild(el("th", null, h)); }); thead.appendChild(hr); table.appendChild(thead);
+  var body = el("tbody"), prevScope = null;
+  cps.forEach(function (ms, i) {
     var tr = el("tr"); tr.appendChild(el("td", null, fmt(ms))); tr.appendChild(el("td", null, String(planned(ms))));
-    var td = el("td");
-    if (i === curIdx) {
-      // This week is auto-synced (recordCurrentWeek()) -- read-only, not an input.
-      td.appendChild(el("span", { title: "Kept up to date automatically as you complete tasks" }, String(state.actual[i] !== null ? state.actual[i] : tot)));
-    } else {
-      var inp = el("input", { type: "number", min: "0", max: "1000", step: "1", inputmode: "numeric", "aria-label": "Actual items remaining, week of " + fmt(ms), title: "Correct or fill in this past week's actual count" });
-      if (state.actual[i] !== null) inp.value = state.actual[i];
-      on(inp, "input", function () {
-        var v = inp.value === "" ? null : parseInt(inp.value, 10);
-        if (v !== null && (isNaN(v) || v < 0 || v > 1000)) return;
-        state.actual[i] = v; save();
-      });
-      td.appendChild(inp);
-    }
-    tr.appendChild(td); body.appendChild(tr);
+    var live = ms <= TODAY && TODAY < ms + stepMs;
+    [ga.actual[i], ga.scope[i]].forEach(function (v) {
+      var td = el("td");
+      if (v !== null) td.appendChild(el("span", live ? { title: "Counted from your tasks right now" } : null, String(v)));
+      else td.appendChild(el("span", { "class": "hint" }, ms > TODAY ? "" : "Not recorded"));
+      tr.appendChild(td);
+    });
+    // Added or removed work, compared with the previous point that has a count.
+    var sc = ga.scope[i], diff = sc !== null && prevScope !== null ? sc - prevScope : 0, tdc = el("td");
+    tdc.appendChild(el("span", null, diff > 0 ? "+" + diff : diff < 0 ? "\u2212" + (-diff) : ""));
+    tr.appendChild(tdc);
+    if (sc !== null) prevScope = sc;
+    body.appendChild(tr);
   });
   table.appendChild(body); wrap.appendChild(table); root.appendChild(wrap);
 }
@@ -2703,17 +2870,18 @@ function helpTopics() {
     ["Work through your day (Today)", [
       "**Next up** shows the task to do now. **Start** marks it in progress, and **Open task** takes you to it in Tasks.",
       "Anything past its end date appears below it. If you are running behind, open that project's own page and use **Slip schedule** there.",
-      "The burndown shows work left against the plan. It records this week's count automatically whenever you make a change. Point at a week, tap it, or focus the chart and use the arrow keys to see that week's counts and tasks."]],
+      "The burndown counts tasks, one each, and shows how many are still open against the plan. The app records the counts itself whenever you make a change, so nothing is typed in, and a day you did not open the app keeps the last count. Adding tasks later shows as the line stepping up, and a project marked Complete takes its open tasks off the chart. Both are called out as scope changes in the tooltip and the table. Point at a day or week, tap it, or focus the chart and use the arrow keys to see its counts and tasks."]],
     ["Add and schedule tasks", [
       "Tap **+**, then **New task**. Enter the project, what you do, and when it is done.",
-      "Pick a due date and it's placed in the right " + w + " automatically. Leave it empty to put the task in the Backlog.",
-      "Open a task in **Tasks** to change its status, add steps and notes, or move it by changing its due date. Use the pencil beside its name to rename it.",
+      "Pick a due date and the task lands in the " + w + " that contains it. Add a start date if it begins later than that " + w + " does, and an estimated time in hours if you want one. Leave the due date empty to put the task in the Backlog.",
+      "Open a task in **Tasks**, or select it on its project's page where it opens right in place, to change its status, add steps and notes, or edit its start date, due date, and estimated time. A start date can't be after the due date. Use the pencil beside its name to rename it.",
+      "A project's page shows the estimated time still open beside its task count, like \"Est. 12 h left\". It drops as you complete tasks.",
       "Finishing every step marks the task done."]],
     ["Use the Backlog", [
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
-      "To schedule it, open the item and set a due date. Backlog items stay out of the burndown until you do."]],
+      "To schedule it, open the item and set a due date. Backlog items stay out of the burndown until you do. Clearing a task's due date sends it back to the Backlog and clears its start date. An estimated time is kept either way."]],
     ["Manage projects", [
-      "Each active project has its own page. Open **Projects** and select the project's name. Use the pencil beside its title to rename it, and edit its notes there. Beside that (below it on a phone) are its Schedule, where you set its start date, due date, and block length, and its own Timeline and Burndown, which redraw as you change the schedule. On a wide screen, **Expand** shows them large.",
+      "Each active project has its own page. Open **Projects** and select the project's name. Use the pencil beside its title to rename it, and edit its notes there. Down the page you will find its Tasks, Before you launch checklist, Notes, and Linked projects, in that order. Select a task to open it right there. Beside that (below it on a phone) are its Schedule, where you set its start date, due date, and block length, and its own Timeline and Burndown, which redraw as you change the schedule. On the Timeline, a pale band behind each task's bar shows the block it sits in. On a wide screen, **Expand** shows them large.",
       "**Candidates** are projects that could take the next slot. Select one to edit its notes, start date, due date, and block length in a dialog, then use **Promote** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
       "**In progress** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there."]],
     ["Finish or archive a project", [
@@ -2729,7 +2897,7 @@ function helpTopics() {
     ["Read the Timeline", [
       "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline. Select a diamond, or a milestone's text in the list, to change its project, text, or date, or to remove it.",
-      "A project's own page has a Timeline with a lane for each scheduled task, and its own Burndown. Point at a week on a burndown, tap it, or focus it and use the left and right arrow keys, to see the week's counts and which tasks finish or were completed. The full-width burndown and the weekly counts are further down this page. This week's actual count fills in by itself. You can correct or fill in earlier weeks by hand."]],
+      "A project's own page has a Timeline with a lane for each scheduled task, and its own Burndown. Point at a week on a burndown, tap it, or focus it and use the left and right arrow keys, to see its counts and which tasks finish or were completed. The full-width burndown and a table of the counts are further down this page. The counts are recorded automatically from your tasks and can't be edited."]],
     ["Launch checklist and decisions", [
       "On any task, use the pencil beside a step to rename it, put it on that project's own **Launch** section, or remove it. A step on the checklist shows a **Launch** tag. Ticking it there or in **Tasks** keeps both in sync.",
       "A decision belongs to one step. Select **Add decision** beside a step to write down what you need to settle. Select the decision tag to answer it, change it, or remove it. Answering it ticks the step, and clearing the answer unticks it.",

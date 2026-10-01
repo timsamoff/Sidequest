@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { fmt, fmtY, addDays, addMonths, parseISO, TODAY } from "./dates.js";
-import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, live, dispProject, findProject, projectBurn, projectBurnTasks, burnTasks, short, isHiddenComplete } from "./model.js";
+import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, live, dispProject, findProject, projectBurn, projectBurnTasks, burnTasks, short, isHiddenComplete, blockStartFor, blockEndFor, blockForDate, checkpointStep, globalActual } from "./model.js";
 import { el, on } from "./dom.js";
 
 export function svgEl(tag, attrs, text) {
@@ -106,30 +106,34 @@ function renderBurn(host, wide, cfg) {
   });
 }
 
-// Planned is exact (names finishing tasks); actual is a weekly snapshot, so it
-// can only say which tasks completed that week, not which one caused a drop.
+// Planned is exact (names finishing tasks). Actual comes from recorded history,
+// so it can say which tasks were completed in a period, and how many were in scope.
 function nameList(ts, withProject) {
   var names = ts.slice(0, 6).map(function (t) { return (withProject ? dispProject(t) + ": " : "") + t.what; });
   return names.join(", ") + (ts.length > 6 ? ", and " + (ts.length - 6) + " more" : "");
 }
-function weekTip(cps, i, pl, act, tasks, span, withProject) {
-  var lines = ["Week of " + fmtY(cps[i]), "Planned: " + pl[i] + " remaining"];
-  if (act[i] !== null) lines.push("Actual: " + act[i] + " remaining");
+function weekTip(cps, i, pl, act, scopes, tasks, span, withProject) {
+  var days = Math.round(span / 86400000), unit = days === 1 ? "day" : days === 7 ? "week" : "period";
+  var lines = [(days === 1 ? "" : days === 7 ? "Week of " : "From ") + fmtY(cps[i]), "Planned: " + pl[i] + " remaining"];
+  if (act[i] !== null) lines.push("Actual: " + act[i] + " remaining" + (scopes[i] !== null ? " of " + scopes[i] + " in scope" : ""));
+  // Jira-style: added or removed work is called out, not left looking like progress.
+  var prev = null;
+  for (var j = i - 1; j >= 0 && prev === null; j--) if (scopes[j] !== null) prev = scopes[j];
+  if (scopes[i] !== null && prev !== null && scopes[i] !== prev) lines.push(scopes[i] > prev ? "Scope grew from " + prev + " to " + scopes[i] : "Scope fell from " + prev + " to " + scopes[i]);
   var fin = tasks.filter(function (t) { var e = taskEnd(t); return e <= cps[i] && (i === 0 || e > cps[i - 1]); });
   if (fin.length) lines.push("Finishing: " + nameList(fin, withProject));
   var done = tasks.filter(function (t) { if (!t.doneAt) return false; var d = parseISO(t.doneAt); return d >= cps[i] && d < cps[i] + span; });
-  if (done.length) lines.push("Completed this week: " + nameList(done, withProject));
+  if (done.length) lines.push((days === 1 ? "Completed that day: " : "Completed this " + unit + ": ") + nameList(done, withProject));
   return lines.join("\n");
 }
 
 export function drawChart(host, wide) {
-  var total = totalUnits(), cps = checkpoints(), n = cps.length;
-  var acts = state.actual.map(function (a, i) { return (a === null && i === 0) ? total : a; });
-  var pl = cps.map(planned), tasks = burnTasks();
+  var total = totalUnits(), cps = checkpoints(), n = cps.length, ga = globalActual(cps);
+  var pl = cps.map(planned), tasks = burnTasks(), span = checkpointStep() * 86400000;
   renderBurn(host, wide, {
-    cps: cps, planned: pl, actual: acts, total: total,
-    label: "Burndown chart. Planned items remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
-    tip: function (i) { return weekTip(cps, i, pl, acts, tasks, 7 * 86400000, true); }
+    cps: cps, planned: pl, actual: ga.actual, total: total,
+    label: "Burndown chart. Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
+    tip: function (i) { return weekTip(cps, i, pl, ga.actual, ga.scope, tasks, span, true); }
   });
 }
 
@@ -137,12 +141,12 @@ export function drawChart(host, wide) {
 export function drawProjectChart(host, p, wide) {
   var bd = projectBurn(p);
   if (!bd) { host.innerHTML = ""; return false; }
-  var cps = bd.cps, n = cps.length, pl = bd.planned, span = 7 * bd.step * 86400000;
+  var cps = bd.cps, n = cps.length, pl = bd.planned, span = bd.stepDays * 86400000;
   var marks = live(state.milestones).filter(function (m) { return m.projectId === p.id; }).map(function (m) { return { ms: parseISO(m.date), text: m.text }; });
   renderBurn(host, wide, {
     cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks,
-    label: "Burndown chart for " + p.name + ". Planned steps remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
-    tip: function (i) { return weekTip(cps, i, pl, bd.actual, bd.tasks, span, false); }
+    label: "Burndown chart for " + p.name + ". Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
+    tip: function (i) { return weekTip(cps, i, pl, bd.actual, bd.scope, bd.tasks, span, false); }
   });
   return true;
 }
@@ -225,14 +229,20 @@ export function projectRangeBlock(p) {
   var mss = [];
   live(state.milestones).forEach(function (m) { if (m.projectId === p.id) mss.push({ id: m.id, text: m.text, date: parseISO(m.date) }); });
   var nb = counted().filter(function (t) { return t.projectId === p.id && !t.isNext && t.block === 0; }).length;
-  var backlog = nb ? " " + nb + (nb === 1 ? " backlog item is" : " backlog items are") + " not shown until scheduled." : "";
+  var backlog = nb ? " " + nb + (nb === 1 ? " backlog task is" : " backlog tasks are") + " not shown until scheduled." : "";
   if (!ts.length) return { node: el("p", { "class": "hint" }, "Nothing is scheduled yet. Create a task with a due date to see them here." + backlog), milestones: mss, empty: true };
   var first = Infinity, maxEnd = -Infinity;
   var lanes = ts.map(function (t) {
     var a = taskStart(t), b = taskEnd(t);
+    // A pale band behind the task's bar shows the block(s) it sits in: from the
+    // block holding its start to the block holding its due date.
+    var sb = t.start ? blockForDate(p.id, a) : null;
+    var bandA = blockStartFor(p.id, Math.min(sb === null ? t.block : sb, t.block)), bandB = blockEndFor(p.id, t.block);
+    if (bandA < first) first = bandA;
     if (a < first) first = a;
+    if (bandB > maxEnd) maxEnd = bandB;
     if (b > maxEnd) maxEnd = b;
-    return { name: short(t.what, 60), bars: [{ a: a, b: b, cls: t.status === "Completed" ? "done" : "" }], dates: fmt(a) + " to " + fmt(b) };
+    return { name: short(t.what, 60), bars: [{ a: bandA, b: bandB, cls: "blk" }, { a: a, b: b, cls: t.status === "Completed" ? "done" : "" }], dates: fmt(a) + " to " + fmt(b) };
   });
   mss.forEach(function (m) { if (m.date < first) first = m.date; });
   var f0 = new Date(first), rs = Date.UTC(f0.getUTCFullYear(), f0.getUTCMonth(), 1);

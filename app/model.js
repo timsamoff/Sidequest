@@ -64,14 +64,76 @@ export function blockForDate(projectId, dateMs) {
   return Math.floor((dateMs - start) / (eff.days * DAY)) + 1;
 }
 export function projKey(t) { return t.isNext ? null : t.projectId; }
-export function taskStart(t) { return blockStartFor(projKey(t), t.block); }
-export function taskEnd(t) { return blockEndFor(projKey(t), t.block); }
+// A task's own start/due dates, when set, are the truth; otherwise it fills its
+// block. Its block is always the one containing its due date (see syncTaskBlocks).
+export function taskStart(t) { return t.start ? parseISO(t.start) : blockStartFor(projKey(t), t.block); }
+export function taskEnd(t) { return t.due ? parseISO(t.due) : blockEndFor(projKey(t), t.block); }
+// Re-derives the block of every scheduled task that has its own due date, so a
+// change to a project's start or block length can't leave a stale block behind.
+export function syncTaskBlocks() {
+  state.tasks.forEach(function (t) {
+    if (t.isNext || t.block === 0 || !t.due) return;
+    var b = blockForDate(t.projectId, parseISO(t.due));
+    t.block = b === null ? 1 : b;
+  });
+}
+// Estimated time is hours, shown as "3 h" or "1.5 h".
+export function fmtHours(h) { return (Math.round(h * 100) / 100) + " h"; }
+// Total and still-open estimated hours across every task of one project,
+// Backlog included.
+export function projectEstimate(p) {
+  var total = 0, left = 0;
+  counted().forEach(function (t) {
+    if (t.isNext || t.projectId !== p.id || !(t.est > 0)) return;
+    total += t.est; if (t.status !== "Completed") left += t.est;
+  });
+  return { total: total, left: left };
+}
 export function chartStart() {
   var min = null;
-  state.tasks.forEach(function (t) { if ((t.arch && t.arch.why !== "done") || t.block === 0) return; var v = parseISO(pset(projKey(t)).start); if (min === null || v < min) min = v; });
+  state.tasks.forEach(function (t) { if ((t.arch && t.arch.why !== "done") || t.block === 0 || isHiddenComplete(t)) return; var v = parseISO(pset(projKey(t)).start); if (min === null || v < min) min = v; });
   return min === null ? parseISO(state.start) : min;
 }
-export function checkpoints() { var out = [], s = chartStart(); for (var i = 0; i < CHECKPOINTS; i++) out.push(addDays(s, 7 * i)); return out; }
+// Days between points on the main burndown: daily or every few days when the
+// whole schedule is short, weekly once it is long enough to fill the window.
+export function checkpointStep() {
+  var s = chartStart(), maxEnd = null;
+  burnTasks().forEach(function (t) { var e = taskEnd(t); if (maxEnd === null || e > maxEnd) maxEnd = e; });
+  if (maxEnd === null) return 7;
+  var need = Math.max(1, Math.round((maxEnd - s) / DAY)) / (CHECKPOINTS - 1);
+  return need <= 1 ? 1 : need <= 2 ? 2 : need <= 3 ? 3 : 7;
+}
+export function checkpoints() { var out = [], s = chartStart(), d = checkpointStep(); for (var i = 0; i < CHECKPOINTS; i++) out.push(addDays(s, d * i)); return out; }
+
+/* burndown history -- { "<ISO day>": [tasks in scope, tasks still open] }.
+   Written only on a day something changed, and only when it differs from the
+   last record before it. Every change to the data happens in the app, so a
+   day with no record means nothing changed: read it as the latest earlier
+   record (carry forward), not as a gap. */
+export function recordHist(hist, scope, left) {
+  var key = iso(TODAY), prior = Object.keys(hist).filter(function (k) { return k < key; }).sort();
+  var prev = prior.length ? hist[prior[prior.length - 1]] : null;
+  if (prev && prev[0] === scope && prev[1] === left) delete hist[key]; else hist[key] = [scope, left];
+  var all = Object.keys(hist).sort();
+  if (all.length > 1000) all.slice(0, all.length - 1000).forEach(function (k) { delete hist[k]; });
+}
+// The record in force at the end of the given day, or null before the first one.
+export function histAt(hist, ms) {
+  var cut = iso(ms), best = null;
+  Object.keys(hist).forEach(function (k) { if (k <= cut && (best === null || k > best)) best = k; });
+  return best === null ? null : hist[best];
+}
+// Actual open tasks (and tasks in scope) at each point; the point covering today is live.
+export function globalActual(cps) {
+  var step = cps.length > 1 ? cps[1] - cps[0] : 7 * DAY, live = remainingUnits(), total = totalUnits(), actual = [], scope = [];
+  cps.forEach(function (ms) {
+    if (ms <= TODAY && TODAY < ms + step) { actual.push(live); scope.push(total); return; }
+    if (ms > TODAY) { actual.push(null); scope.push(null); return; }
+    var rec = histAt(state.hist, ms);
+    actual.push(rec ? rec[1] : null); scope.push(rec ? rec[0] : null);
+  });
+  return { actual: actual, scope: scope };
+}
 
 /* task helpers */
 export function counted() { return state.tasks.filter(function (t) { return !t.arch || t.arch.why === "done"; }); }
@@ -83,9 +145,11 @@ export function dispProject(t) { if (t.isNext) { var c = chosen(); return c ? c.
 export function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next project. Add its first tasks with the + button."; return t.what; }
 export function weight(t) { return Math.max(1, t.steps.length); }
 export function doneUnits(t) { return t.status === "Completed" ? weight(t) : t.steps.filter(function (s) { return s.done; }).length; }
-export function totalUnits() { return burnTasks().reduce(function (a, t) { return a + weight(t); }, 0); }
-export function remainingUnits() { return burnTasks().reduce(function (a, t) { return a + weight(t) - doneUnits(t); }, 0); }
-export function planned(ms) { var d = 0; burnTasks().forEach(function (t) { if (taskEnd(t) <= ms) d += weight(t); }); return totalUnits() - d; }
+// The burndown counts tasks, one each. weight()/doneUnits() above are step counts, used only by projectMeta().
+function isOpen(t) { return t.status !== "Completed"; }
+export function totalUnits() { return burnTasks().length; }
+export function remainingUnits() { return burnTasks().filter(isOpen).length; }
+export function planned(ms) { var d = 0; burnTasks().forEach(function (t) { if (taskEnd(t) <= ms) d++; }); return totalUnits() - d; }
 export function sortTasks(list) {
   // Completed tasks sink to the bottom -- a finished task stays in this list
   // rather than archiving away, so it needs somewhere to settle.
@@ -103,41 +167,37 @@ export function burnTasks() { return counted().filter(function (t) { return t.bl
 // must keep showing its own burndown even while its tasks are hidden from
 // every cross-project surface that burnTasks() feeds.
 export function projectBurnTasks(p) { return counted().filter(function (t) { return t.block > 0 && t.projectId === p.id; }); }
-export function projectTotalUnits(p) { return projectBurnTasks(p).reduce(function (a, t) { return a + weight(t); }, 0); }
-export function projectRemainingUnits(p) { return projectBurnTasks(p).reduce(function (a, t) { return a + weight(t) - doneUnits(t); }, 0); }
-// Points are Mondays from the week of the project's first task to the week after
-// its last (stretched to include this week if it has overrun). Planned is exact,
-// like the global chart's. Actual comes from the project's stored weekly
-// snapshots, except THIS week's point, which is always computed live from the
-// tasks so it never depends on a write. Returns null if nothing is scheduled.
+export function projectTotalUnits(p) { return projectBurnTasks(p).length; }
+export function projectRemainingUnits(p) { return projectBurnTasks(p).filter(isOpen).length; }
+// Points are days when the project's schedule is 21 days or shorter (and today is within
+// 45 days of its start), otherwise
+// Mondays from the week of its first task to the week after its last (stretched
+// to include today if it has overrun). Planned is exact, like the global
+// chart's. Actual is read from the project's own recorded history, except the
+// point covering today, which is always computed live. Returns null if nothing
+// is scheduled.
 export function projectBurn(p) {
   var ts = projectBurnTasks(p);
   if (!ts.length) return null;
-  var total = projectTotalUnits(p), first = Infinity, last = -Infinity;
+  var total = ts.length, first = Infinity, last = -Infinity;
   ts.forEach(function (t) { first = Math.min(first, taskStart(t)); last = Math.max(last, taskEnd(t)); });
-  var cur = weekStart(TODAY), startWk = weekStart(first), endWk = addDays(weekStart(last), 7);
-  if (cur > endWk) endWk = cur;
-  var weeks = Math.round((endWk - startWk) / (7 * DAY)), step = Math.max(1, Math.ceil(weeks / 52));
+  var daily = (last - first) / DAY <= 21 && (TODAY - first) / DAY <= 45, base = daily ? TODAY : weekStart(TODAY), unit = daily ? 1 : 7;
+  var startPt = daily ? first : weekStart(first), endPt = daily ? addDays(last, 1) : addDays(weekStart(last), 7);
+  if (base > endPt) endPt = base;
+  var count = Math.round((endPt - startPt) / (unit * DAY)), step = daily ? 1 : Math.max(1, Math.ceil(count / 52));
   var cps = [];
-  for (var m = startWk; m < endWk; m = addDays(m, 7 * step)) cps.push(m);
-  cps.push(endWk);
-  var planned = cps.map(function (ms) { var d = 0; ts.forEach(function (t) { if (taskEnd(t) <= ms) d += weight(t); }); return total - d; });
-  var live = projectRemainingUnits(p);
-  // A Complete project's remaining count for any never-recorded week isn't
-  // genuinely unknown the way an active project's past would be -- it's 0,
-  // unambiguously, for every week from completion onward. Fall back to that
-  // instead of leaving a permanent gap in the actual line just because
-  // nothing happened to trigger recordProjectWeeks() during those weeks.
-  var actual = cps.map(function (ms, i) {
+  for (var m = startPt; m < endPt; m = addDays(m, unit * step)) cps.push(m);
+  cps.push(endPt);
+  var planned = cps.map(function (ms) { var d = 0; ts.forEach(function (t) { if (taskEnd(t) <= ms) d++; }); return total - d; });
+  var live = projectRemainingUnits(p), actual = [], scope = [];
+  cps.forEach(function (ms, i) {
     var next = i < cps.length - 1 ? cps[i + 1] : Infinity;
-    if (ms <= cur && cur < next) return live;
-    if (ms > cur) return p.status === "complete" ? live : null;
-    var v = p.actual[iso(ms)];
-    if (v !== undefined) return v;
-    if (i === 0) return total;
-    return p.status === "complete" ? live : null;
+    if (ms <= base && base < next) { actual.push(live); scope.push(total); return; }
+    if (ms > base) { actual.push(null); scope.push(null); return; }
+    var rec = histAt(p.hist, ms);
+    actual.push(rec ? rec[1] : null); scope.push(rec ? rec[0] : null);
   });
-  return { cps: cps, planned: planned, actual: actual, total: total, tasks: ts, step: step };
+  return { cps: cps, planned: planned, actual: actual, scope: scope, total: total, tasks: ts, stepDays: unit * step };
 }
 export function orderedCounted() { return sortTasks(counted()); }
 export function isLate(t) { return t.block > 0 && t.status !== "Completed" && taskEnd(t) < TODAY; }
@@ -176,7 +236,7 @@ export function projectMeta(p) {
   var parts = [];
   if (ts.length) {
     var tot = 0, dn = 0, bk = ts.filter(function (t) { return t.block === 0; }).length; ts.forEach(function (t) { tot += weight(t); dn += doneUnits(t); });
-    parts.push(ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " (" + bk + " in the Backlog)" : "") + ". " + dn + " of " + tot + " items done.");
+    parts.push(ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " (" + bk + " in the Backlog)" : "") + ". " + dn + " of " + tot + " steps complete.");
   } else if (p.status === "candidate") {
     parts.push("Candidate for the next slot.");
   }

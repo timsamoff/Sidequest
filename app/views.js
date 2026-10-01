@@ -6,7 +6,7 @@ import {
   findProject, findAnyProject, linkedProjects, unlinkProjects, chosen, dispProject, dispWhat,
   totalUnits, remainingUnits, planned, ordered, backlogTasks, sortTasks,
   isLate, lateTasks, setStatus, syncFromSteps, nextTask, projectTasksAllDone, projectTotalUnits, projectRemainingUnits,
-  validPage, isPinned, pinPage, unpinPage, projectMeta,
+  validPage, isPinned, pinPage, unpinPage, projectMeta, fmtHours, projectEstimate, recordHist, checkpointStep, globalActual,
   findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask
 } from "./model.js";
 import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline } from "./dom.js";
@@ -69,18 +69,16 @@ export function overduePanel() {
   box.appendChild(ul);
   return box;
 }
-export function currentCheckpointIndex() {
-  var cps = checkpoints(), idx = 0;
-  cps.forEach(function (ms, i) { if (ms <= TODAY) idx = i; });
-  return idx;
+// Records the main burndown's and each project's task counts on every change
+// (see recordHist() in model.js for how that history is kept and read back).
+export function recordHistory() {
+  if (totalUnits() > 0 || Object.keys(state.hist).length) recordHist(state.hist, totalUnits(), remainingUnits());
 }
-export function recordCurrentWeek() { state.actual[currentCheckpointIndex()] = remainingUnits(); }
-// Each active or complete project keeps its own weekly steps-remaining snapshot,
-// keyed by the week's Monday, so a project's burndown keeps a real actual line.
-export function recordProjectWeeks() {
-  var key = iso(weekStart(TODAY));
+export function recordProjectHistory() {
   liveProjects().forEach(function (p) {
-    if ((p.status === "active" || p.status === "complete") && projectTotalUnits(p) > 0) p.actual[key] = projectRemainingUnits(p);
+    if (p.status !== "active" && p.status !== "complete") return;
+    var total = projectTotalUnits(p);
+    if (total > 0 || Object.keys(p.hist).length) recordHist(p.hist, total, projectRemainingUnits(p));
   });
 }
 // Auto-completion only -- runs on every changed(). Manual "Mark complete" is separate.
@@ -104,6 +102,8 @@ export function completionDialog(p) {
   var warn = incompleteLaunchCriticalLinks(p);
   openModal("Project complete", function (body) {
     body.appendChild(el("p", { "class": "first" }, "“" + p.name + "” is marked complete. Archive it now, or leave it in Projects."));
+    var openTasks = projectRemainingUnits(p);
+    if (openTasks) body.appendChild(el("p", { "class": "hint" }, openTasks + (openTasks === 1 ? " open task is" : " open tasks are") + " no longer counted in the main burndown. Reopen the project to count " + (openTasks === 1 ? "it" : "them") + " again."));
     if (warn.length) body.appendChild(el("p", { "class": "hint" }, "Launch-critical linked " + (warn.length === 1 ? "project isn’t" : "projects aren’t") + " finished yet: " + warn.map(function (lp) { return lp.name; }).join(", ") + "."));
     var acts = el("div", { "class": "actions" });
     var leave = el("button", { type: "button", title: "Keep visible on Projects" }, "Leave in Projects");
@@ -125,7 +125,7 @@ export function burnParts(o) {
   if (proj) drawProjectChart(host, proj, o.wide); else drawChart(host, o.wide);
   var rn = proj ? projectRemainingUnits(proj) : remainingUnits(), tot = proj ? projectTotalUnits(proj) : totalUnits(), rb = el("div", { "class": "box" });
   var nbk = proj ? counted().filter(function (t) { return t.projectId === proj.id && !t.isNext && t.block === 0; }).length : backlogTasks().length;
-  rb.appendChild(el("p", { "class": "hint first remaining" }, rn + (rn === 1 ? " item" : " items") + " remaining, out of " + tot + (nbk ? ". " + nbk + (nbk === 1 ? " backlog item is" : " backlog items are") + " not counted until scheduled." : "")));
+  rb.appendChild(el("p", { "class": "hint first remaining" }, rn + (rn === 1 ? " task" : " tasks") + " remaining, out of " + tot + (nbk ? ". " + nbk + (nbk === 1 ? " backlog task is" : " backlog tasks are") + " not counted until scheduled." : "")));
   return { h: h, chart: cb, count: rb };
 }
 export function burnPanel(o) {
@@ -163,6 +163,7 @@ export function taskRow(t) {
   var l3 = el("div", { "class": "l3" });
   l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
   if (t.steps.length) l3.appendChild(el("span", null, t.steps.filter(function (s) { return s.done; }).length + " of " + t.steps.length + " steps"));
+  if (t.est > 0) l3.appendChild(el("span", null, fmtHours(t.est)));
   if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
   b.appendChild(l3);
   on(b, "click", function () { ui.sel = t.id; ui.detail = true; renderView(); scrollTop(); });
@@ -187,7 +188,7 @@ export function renderSchedule(root) {
   lp.appendChild(ul);
   if (bl.length) {
     lp.appendChild(el("h2", null, "Backlog (" + bl.length + ")"));
-    lp.appendChild(el("p", { "class": "hint" }, "Not scheduled yet. Open an item and choose a " + wl() + " to schedule it."));
+    lp.appendChild(el("p", { "class": "hint" }, "Not scheduled yet. Open an item and set a due date to schedule it."));
     var bul = el("ul", { "class": "tlist", style: "margin-top:10px" });
     bl.forEach(function (t) { bul.appendChild(taskRow(t)); });
     lp.appendChild(bul);
@@ -196,12 +197,13 @@ export function renderSchedule(root) {
   split.appendChild(lp); split.appendChild(dp); root.appendChild(split);
 }
 
-export function buildDetail(t) {
+// `inline` is the project page's in-place version: no heading or back button, plus an Open in Tasks link.
+export function buildDetail(t, inline) {
   var box = el("div", { "class": "detail" });
-  box.appendChild(on(el("button", { type: "button", "class": "small only-mobile", style: "margin-bottom:10px", title: "Back to the task list" }, "All tasks"), "click", function () { ui.detail = false; renderView(); scrollTop(); }));
+  if (!inline) box.appendChild(on(el("button", { type: "button", "class": "small only-mobile", style: "margin-bottom:10px", title: "Back to the task list" }, "All tasks"), "click", function () { ui.detail = false; renderView(); scrollTop(); }));
   var top = el("div", { style: "display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap" });
   var lh = el("div");
-  lh.appendChild(el("h2", { style: "margin:0" }, dispProject(t)));
+  if (!inline) lh.appendChild(el("h2", { style: "margin:0" }, dispProject(t)));
   var dm = el("p", { "class": "dmeta" }, (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))) + " ");
   if (isLate(t)) dm.appendChild(el("span", { "class": "badge" }, "Overdue"));
   lh.appendChild(dm); top.appendChild(lh);
@@ -228,18 +230,48 @@ export function buildDetail(t) {
   box.appendChild(whatRow);
   if (!(t.isNext && chosen())) box.appendChild(el("p", { "class": "dmeta" }, "Done when: " + t.done));
   if (!t.isNext) {
-    var bw = el("div", { "class": "field", style: "max-width:24rem" }); bw.appendChild(el("label", { "for": "task-due" }, "Due date, or leave empty for the Backlog"));
-    var bd = el("input", { type: "date", id: "task-due" }); bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block));
-    var bmsg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
+    var dg = el("div", { "class": "setgrid" });
+    var dmsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
+    function dfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); dg.appendChild(w); }
+    function shownStart() { return t.block === 0 ? "" : iso(taskStart(t)); }
+    function shownDue() { return t.block === 0 ? "" : iso(taskEnd(t)); }
+    var sd = el("input", { type: "date", id: "task-start" }), bd = el("input", { type: "date", id: "task-due" });
+    var ei = el("input", { type: "number", id: "task-est", min: "0", max: "9999", step: "0.25" });
+    sd.value = shownStart(); bd.value = shownDue(); ei.value = t.est > 0 ? t.est : "";
+    function resetDates() { sd.value = shownStart(); bd.value = shownDue(); }
+    var projFirst = parseISO(pset(projKey(t)).start);
+    // "blur", not "change" -- a date input fires "change" per segment while typing.
     on(bd, "blur", function () {
-      if (bd.value === "") { t.block = 0; changed(); notify("Moved to the Backlog."); return; }
-      if (!isISO(bd.value)) { bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block)); bmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
+      if (bd.value === shownDue()) return;
+      if (bd.value === "") { t.block = 0; t.start = ""; t.due = ""; changed(); notify("Moved to the Backlog."); return; }
+      if (!isISO(bd.value)) { resetDates(); dmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
       var blk = blockForDate(projKey(t), parseISO(bd.value));
-      if (blk === null) { bd.value = t.block === 0 ? "" : iso(blockStartFor(projKey(t), t.block)); bmsg.textContent = "Pick a date on or after " + fmtY(parseISO(pset(projKey(t)).start)) + ", this project's own start date."; return; }
-      bmsg.textContent = "";
-      t.block = blk; changed(); notify("Moved to " + wd() + " " + blk + " (" + fmt(blockStartFor(projKey(t), blk)) + " to " + fmt(blockEndFor(projKey(t), blk)) + ").");
+      if (blk === null) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(projFirst) + ", this project's own start date."; return; }
+      if (t.block > 0 && t.start && bd.value < t.start) { resetDates(); dmsg.textContent = "The due date can't be before the start date."; return; }
+      dmsg.textContent = "";
+      t.due = bd.value; t.block = blk; changed();
+      notify("Due " + fmt(taskEnd(t)) + ", in " + wd() + " " + blk + ".");
     });
-    bw.appendChild(bd); box.appendChild(bw); box.appendChild(bmsg);
+    on(sd, "blur", function () {
+      if (sd.value === shownStart()) return;
+      if (t.block === 0) { sd.value = ""; dmsg.textContent = "Add a due date first. A task with no due date is in the Backlog."; return; }
+      if (sd.value === "") { dmsg.textContent = ""; t.start = ""; changed(); notify("Start date cleared. The task starts when its " + wl() + " does."); return; }
+      if (!isISO(sd.value)) { resetDates(); dmsg.textContent = "Enter a valid start date, or leave it empty."; return; }
+      if (parseISO(sd.value) < projFirst) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(projFirst) + ", this project's own start date."; return; }
+      if (sd.value > iso(taskEnd(t))) { resetDates(); dmsg.textContent = "The start date can't be after the due date."; return; }
+      dmsg.textContent = "";
+      t.start = sd.value; changed(); notify("Start date saved.");
+    });
+    on(ei, "blur", function () {
+      var v = ei.value === "" ? 0 : parseFloat(ei.value);
+      if (isNaN(v) || v < 0 || v > 9999) { ei.value = t.est > 0 ? t.est : ""; dmsg.textContent = "Enter the estimated time as hours from 0 to 9999."; return; }
+      v = Math.round(v * 100) / 100;
+      if (v === (t.est || 0)) return;
+      dmsg.textContent = "";
+      t.est = v; changed(); notify(v > 0 ? "Estimated time saved." : "Estimated time cleared.");
+    });
+    dfield("task-start", "Start date (optional)", sd); dfield("task-due", "Due date, or leave empty for the Backlog", bd); dfield("task-est", "Estimated time (hours)", ei);
+    box.appendChild(dg); box.appendChild(dmsg);
   }
 
   var nDone = t.steps.filter(function (s) { return s.done; }).length;
@@ -279,6 +311,7 @@ export function buildDetail(t) {
   if (!t.isNext) {
     var ar = el("div", { "class": "actions", style: "margin-top:14px" });
     ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this task (can be undone)" }, "Delete"), "click", function () { ui.detail = false; removeNow(t, "tasks", "Task"); }));
+    if (inline) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Open this task on the Tasks page" }, "Open in Tasks"), "click", function () { openTask(t.id); }));
     box.appendChild(ar);
   }
   return box;
@@ -339,11 +372,11 @@ export function launchSection(root, p) {
   items.forEach(function (x) {
     var li = el("li", { "class": x.s.done ? "done" : "" });
     var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = x.s.done; box.disabled = readOnly;
-    on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); autoArchive(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); });
+    on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); autoArchive(); sweepProjectCompletion(); recordHistory(); recordProjectHistory(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); });
     label.appendChild(box); label.appendChild(el("span", null, x.s.text)); li.appendChild(label);
     var meta = el("div", { "class": "cnote" });
     if (x.t.arch) meta.appendChild(document.createTextNode(short(dispWhat(x.t), 48) + " (archived)"));
-    else meta.appendChild(on(el("button", { type: "button", "class": "textbtn", title: "View this task" }, short(dispWhat(x.t), 48)), "click", function () { openTask(x.t.id); }));
+    else meta.appendChild(on(el("button", { type: "button", "class": "textbtn", title: "View this task" }, short(dispWhat(x.t), 48)), "click", function () { showTaskInProject(p, x.t); }));
     var dc = decisionFor(x.s.id);
     if (dc) meta.appendChild(document.createTextNode(" · Decision " + (dc.a ? "decided" : "open")));
     li.appendChild(meta);
@@ -401,7 +434,7 @@ export function renderProjectPage(root, id) {
   var p = findProject(id);
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
   var readOnly = !!p.arch;
-  // Active/complete: two columns (info left, Timeline/Burndown right), stacked on a phone.
+  // Active/complete: two columns (page content left, Schedule/Timeline/Burndown right), stacked on a phone.
   var page = root, split = null;
   var metaLine = el("p", { "class": "hint" });
   if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip projcomplete", style: "margin-right:8px" }, "Complete"));
@@ -409,7 +442,7 @@ export function renderProjectPage(root, id) {
   if (!readOnly && (p.status === "active" || p.status === "complete")) {
     split = el("div", { "class": "projsplit" });
     // Grid areas defined in styles.css.
-    root = el("div", { "class": "projtop" });
+    root = el("div", { "class": "projmain" });
     split.appendChild(root); page.appendChild(split);
   } else {
     root.appendChild(metaLine);
@@ -427,7 +460,11 @@ export function renderProjectPage(root, id) {
   var hd = el("div", { "class": "sechead" + (split ? " first" : "") }); hd.appendChild(el("h2", split ? { "class": "first" } : null, "Tasks"));
   if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a task" }, "Add task"), "click", function () { taskDialog(p.id); }));
   root.appendChild(hd);
-  root.appendChild(metaLine);
+  // The count line on the left, the open estimated time on the right.
+  var est = projectEstimate(p), metaRow = el("div", { "class": "metarow" });
+  metaRow.appendChild(metaLine);
+  if (est.total > 0) metaRow.appendChild(el("span", { "class": "hint estleft" }, "Est. " + fmtHours(est.left) + " left"));
+  root.appendChild(metaRow);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
   else if (p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this project is Complete. Reopen it to bring them back."));
   // orderedAll(), not ordered()/backlogTasks() -- a project's own page must
@@ -437,33 +474,43 @@ export function renderProjectPage(root, id) {
   if (ts.length) {
     var ul = el("ul", { "class": "tlist" });
     ts.forEach(function (t) {
-      var li = el("li"), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
+      // A live project's task opens in place under its row; an archived project's goes to the Tasks page.
+      var open = !readOnly && ui.projOpen[p.id] === t.id;
+      var li = el("li", { id: "ptask-" + t.id }), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
+      if (!readOnly) b.setAttribute("aria-expanded", open ? "true" : "false");
       b.appendChild(el("div", { "class": "l1" }, t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
       b.appendChild(el("div", { "class": "l2" }, t.what));
       var l3 = el("div", { "class": "l3" });
       l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
       if (t.steps.length) l3.appendChild(el("span", null, t.steps.filter(function (x) { return x.done; }).length + " of " + t.steps.length + " steps"));
+      if (t.est > 0) l3.appendChild(el("span", null, fmtHours(t.est)));
       if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
-      b.appendChild(l3); on(b, "click", function () { openTask(t.id); }); li.appendChild(b); ul.appendChild(li);
+      b.appendChild(l3);
+      on(b, "click", function () { if (readOnly) { openTask(t.id); return; } ui.projOpen[p.id] = open ? null : t.id; renderView(); });
+      li.appendChild(b);
+      if (open) li.appendChild(buildDetail(t, true));
+      ul.appendChild(li);
     });
     root.appendChild(ul);
   }
   if (!split) scheduleSection(root, p, readOnly);
-  // .projrest: the rest of the left column, its own grid item.
-  if (split) { root = el("div", { "class": "projrest" }); split.appendChild(root); }
+
+  launchSection(root, p);
+
   root.appendChild(el("h2", null, "Notes"));
   if (readOnly) {
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
   } else {
     var ta = el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" }); ta.value = p.notes;
+    // Remember a dragged height for this session, since every change rebuilds the page.
+    if (ui.notesH[p.id]) ta.style.height = ui.notesH[p.id] + "px";
     on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(); });
     root.appendChild(ta);
+    if (typeof ResizeObserver !== "undefined") new ResizeObserver(function () { if (ta.offsetHeight > 0) ui.notesH[p.id] = ta.offsetHeight; }).observe(ta);
   }
 
   root.appendChild(el("h2", null, "Linked projects"));
   linksSection(root, p);
-
-  launchSection(root, p);
 
   var ar = el("div", { "class": "actions", style: "margin-top:14px" });
   if (readOnly) {
@@ -490,6 +537,13 @@ export function renderProjectPage(root, id) {
   if (split) split.appendChild(projectChartsPanel(p));
 }
 
+// On a project's own page a task opens in place; the Tasks page is for the cross-project list.
+function showTaskInProject(p, t) {
+  if (p.arch) { openTask(t.id); return; }
+  ui.projOpen[p.id] = t.id; renderView();
+  var row = document.getElementById("ptask-" + t.id);
+  if (row && row.scrollIntoView) row.scrollIntoView({ block: "nearest" });
+}
 // `first` zeroes the heading's top margin; `extraBtn` rides its heading row.
 function scheduleSection(host, p, readOnly, first, extraBtn) {
   var hd = el("div", { "class": "sechead" + (first ? " first" : "") });
@@ -694,28 +748,27 @@ export function renderTimeline(root) {
   });
   mbox.appendChild(ul); root.appendChild(mbox);
   root.appendChild(burnPanel({ wide: true, level: "h2" }));
-  root.appendChild(el("h2", null, "Weekly counts"));
-  root.appendChild(el("p", { "class": "hint" }, "Enter the number of items left each week to draw your actual line on the burndown."));
+  root.appendChild(el("h2", null, "Task counts"));
+  root.appendChild(el("p", { "class": "hint" }, "Recorded automatically from your tasks each time you make a change. A date with no record keeps the last count."));
   var wrap = el("div", { "class": "tablewrap weekly" }); var table = el("table");
-  var thead = el("thead"); var hr = el("tr"); ["Week starting", "Planned remaining", "Actual remaining"].forEach(function (h) { hr.appendChild(el("th", null, h)); }); thead.appendChild(hr); table.appendChild(thead);
-  var body = el("tbody"); var tot = totalUnits(), curIdx = currentCheckpointIndex();
-  checkpoints().forEach(function (ms, i) {
+  var cps = checkpoints(), ga = globalActual(cps), stepMs = checkpointStep() * DAY;
+  var thead = el("thead"); var hr = el("tr"); [stepMs === 7 * DAY ? "Week starting" : "Date", "Planned remaining", "Actual remaining", "Tasks in scope", "Scope change"].forEach(function (h) { hr.appendChild(el("th", null, h)); }); thead.appendChild(hr); table.appendChild(thead);
+  var body = el("tbody"), prevScope = null;
+  cps.forEach(function (ms, i) {
     var tr = el("tr"); tr.appendChild(el("td", null, fmt(ms))); tr.appendChild(el("td", null, String(planned(ms))));
-    var td = el("td");
-    if (i === curIdx) {
-      // This week is auto-synced (recordCurrentWeek()) -- read-only, not an input.
-      td.appendChild(el("span", { title: "Kept up to date automatically as you complete tasks" }, String(state.actual[i] !== null ? state.actual[i] : tot)));
-    } else {
-      var inp = el("input", { type: "number", min: "0", max: "1000", step: "1", inputmode: "numeric", "aria-label": "Actual items remaining, week of " + fmt(ms), title: "Correct or fill in this past week's actual count" });
-      if (state.actual[i] !== null) inp.value = state.actual[i];
-      on(inp, "input", function () {
-        var v = inp.value === "" ? null : parseInt(inp.value, 10);
-        if (v !== null && (isNaN(v) || v < 0 || v > 1000)) return;
-        state.actual[i] = v; save();
-      });
-      td.appendChild(inp);
-    }
-    tr.appendChild(td); body.appendChild(tr);
+    var live = ms <= TODAY && TODAY < ms + stepMs;
+    [ga.actual[i], ga.scope[i]].forEach(function (v) {
+      var td = el("td");
+      if (v !== null) td.appendChild(el("span", live ? { title: "Counted from your tasks right now" } : null, String(v)));
+      else td.appendChild(el("span", { "class": "hint" }, ms > TODAY ? "" : "Not recorded"));
+      tr.appendChild(td);
+    });
+    // Added or removed work, compared with the previous point that has a count.
+    var sc = ga.scope[i], diff = sc !== null && prevScope !== null ? sc - prevScope : 0, tdc = el("td");
+    tdc.appendChild(el("span", null, diff > 0 ? "+" + diff : diff < 0 ? "\u2212" + (-diff) : ""));
+    tr.appendChild(tdc);
+    if (sc !== null) prevScope = sc;
+    body.appendChild(tr);
   });
   table.appendChild(body); wrap.appendChild(table); root.appendChild(wrap);
 }
@@ -822,17 +875,18 @@ export function helpTopics() {
     ["Work through your day (Today)", [
       "**Next up** shows the task to do now. **Start** marks it in progress, and **Open task** takes you to it in Tasks.",
       "Anything past its end date appears below it. If you are running behind, open that project's own page and use **Slip schedule** there.",
-      "The burndown shows work left against the plan. It records this week's count automatically whenever you make a change. Point at a week, tap it, or focus the chart and use the arrow keys to see that week's counts and tasks."]],
+      "The burndown counts tasks, one each, and shows how many are still open against the plan. The app records the counts itself whenever you make a change, so nothing is typed in, and a day you did not open the app keeps the last count. Adding tasks later shows as the line stepping up, and a project marked Complete takes its open tasks off the chart. Both are called out as scope changes in the tooltip and the table. Point at a day or week, tap it, or focus the chart and use the arrow keys to see its counts and tasks."]],
     ["Add and schedule tasks", [
       "Tap **+**, then **New task**. Enter the project, what you do, and when it is done.",
-      "Pick a due date and it's placed in the right " + w + " automatically. Leave it empty to put the task in the Backlog.",
-      "Open a task in **Tasks** to change its status, add steps and notes, or move it by changing its due date. Use the pencil beside its name to rename it.",
+      "Pick a due date and the task lands in the " + w + " that contains it. Add a start date if it begins later than that " + w + " does, and an estimated time in hours if you want one. Leave the due date empty to put the task in the Backlog.",
+      "Open a task in **Tasks**, or select it on its project's page where it opens right in place, to change its status, add steps and notes, or edit its start date, due date, and estimated time. A start date can't be after the due date. Use the pencil beside its name to rename it.",
+      "A project's page shows the estimated time still open beside its task count, like \"Est. 12 h left\". It drops as you complete tasks.",
       "Finishing every step marks the task done."]],
     ["Use the Backlog", [
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
-      "To schedule it, open the item and set a due date. Backlog items stay out of the burndown until you do."]],
+      "To schedule it, open the item and set a due date. Backlog items stay out of the burndown until you do. Clearing a task's due date sends it back to the Backlog and clears its start date. An estimated time is kept either way."]],
     ["Manage projects", [
-      "Each active project has its own page. Open **Projects** and select the project's name. Use the pencil beside its title to rename it, and edit its notes there. Beside that (below it on a phone) are its Schedule, where you set its start date, due date, and block length, and its own Timeline and Burndown, which redraw as you change the schedule. On a wide screen, **Expand** shows them large.",
+      "Each active project has its own page. Open **Projects** and select the project's name. Use the pencil beside its title to rename it, and edit its notes there. Down the page you will find its Tasks, Before you launch checklist, Notes, and Linked projects, in that order. Select a task to open it right there. Beside that (below it on a phone) are its Schedule, where you set its start date, due date, and block length, and its own Timeline and Burndown, which redraw as you change the schedule. On the Timeline, a pale band behind each task's bar shows the block it sits in. On a wide screen, **Expand** shows them large.",
       "**Candidates** are projects that could take the next slot. Select one to edit its notes, start date, due date, and block length in a dialog, then use **Promote** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
       "**In progress** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there."]],
     ["Finish or archive a project", [
@@ -848,7 +902,7 @@ export function helpTopics() {
     ["Read the Timeline", [
       "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline. Select a diamond, or a milestone's text in the list, to change its project, text, or date, or to remove it.",
-      "A project's own page has a Timeline with a lane for each scheduled task, and its own Burndown. Point at a week on a burndown, tap it, or focus it and use the left and right arrow keys, to see the week's counts and which tasks finish or were completed. The full-width burndown and the weekly counts are further down this page. This week's actual count fills in by itself. You can correct or fill in earlier weeks by hand."]],
+      "A project's own page has a Timeline with a lane for each scheduled task, and its own Burndown. Point at a week on a burndown, tap it, or focus it and use the left and right arrow keys, to see its counts and which tasks finish or were completed. The full-width burndown and a table of the counts are further down this page. The counts are recorded automatically from your tasks and can't be edited."]],
     ["Launch checklist and decisions", [
       "On any task, use the pencil beside a step to rename it, put it on that project's own **Launch** section, or remove it. A step on the checklist shows a **Launch** tag. Ticking it there or in **Tasks** keeps both in sync.",
       "A decision belongs to one step. Select **Add decision** beside a step to write down what you need to settle. Select the decision tag to answer it, change it, or remove it. Answering it ticks the step, and clearing the answer unticks it.",

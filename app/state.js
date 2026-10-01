@@ -1,7 +1,7 @@
 import { DAY, iso, parseISO, TODAY } from "./dates.js";
-import { findAnyTask } from "./model.js";
+import { findAnyTask, syncTaskBlocks } from "./model.js";
 import { notify } from "./dom.js";
-import { recordCurrentWeek, recordProjectWeeks, sweepProjectCompletion } from "./views.js";
+import { recordHistory, recordProjectHistory, sweepProjectCompletion } from "./views.js";
 import { renderAll } from "./app.js";
 
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
@@ -13,7 +13,7 @@ export var APP_NAME = "Sidequest";
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
 export function st(id, text, launch, done) { return { id: id, text: text, done: done === true, launch: launch === true }; }
 export function task(id, block, projectId, what, done, steps, extra) {
-  var t = { id: id, block: block, projectId: projectId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false };
+  var t = { id: id, block: block, projectId: projectId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0 };
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
   return t;
 }
@@ -22,7 +22,7 @@ export function task(id, block, projectId, what, done, steps, extra) {
 // record and id carry through candidate -> active -> archived, never a second
 // record.
 export function project(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, actual: {}, lastSlip: null };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, hist: {}, lastSlip: null };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -33,15 +33,19 @@ export function sampleData() {
   function day(k) { return new Date(m0 + k * D).toISOString().slice(0, 10); }
   var yest = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 1)).toISOString().slice(0, 10);
   var lastWeek = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 7)).toISOString().slice(0, 10);
-  // Sample App has 16 steps of scheduled work; it started two Mondays ago.
-  var appHistory = {}; appHistory[day(0)] = 16; appHistory[day(7)] = 13;
-  // Sample Finished Project's own history: one week behind schedule, one
-  // exactly on schedule, one ahead -- a real zig-zag around the planned
-  // line, not a flat match, so its full-project Burndown has something to show.
-  var doneHistory = {}; doneHistory[day(-21)] = 7; doneHistory[day(-14)] = 4; doneHistory[day(-7)] = 1;
+  // Burndown history entries are [tasks in scope, tasks still open], keyed by the
+  // day recorded. Sample App has five scheduled tasks and started two Mondays ago; its
+  // second one is running late, so the burndown sits above the plan.
+  var appHistory = {}; appHistory[day(0)] = [5, 5]; appHistory[day(5)] = [5, 4];
+  // Sample Finished Project runs a little late, then ahead, then lands on time,
+  // so its full-project Burndown crosses the planned line instead of tracking it.
+  var doneHistory = {}; doneHistory[day(-28)] = [4, 4]; doneHistory[day(-20)] = [4, 3]; doneHistory[day(-15)] = [4, 2]; doneHistory[day(-12)] = [4, 1]; doneHistory[day(-1)] = [4, 0];
+  // The main burndown counts every scheduled task that isn't hidden with a Complete project;
+  // a twelfth task was added on day 9, so its line steps up once.
+  var allHistory = {}; allHistory[day(0)] = [11, 11]; allHistory[day(5)] = [11, 10]; allHistory[day(9)] = [12, 11];
   var projects = [
     // pApp <-> pSite demonstrates a bidirectional project link.
-    project("pApp", "Sample App", "active", { actual: appHistory, notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
+    project("pApp", "Sample App", "active", { hist: appHistory, notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
     // launchCritical: the app's launch checklist shows the site's own status.
     project("pSite", "Sample Website", "active", { start: day(14), linkedProjectIds: ["pApp"], launchCritical: true }),
     project("pGame", "Sample Game", "active", { start: day(21), days: 14, due: day(21 + 122) }),
@@ -49,7 +53,7 @@ export function sampleData() {
     project("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own projects" }),
     // Demonstrates a Complete project: drops out of In progress but still
     // shows in the plain Projects list with its Complete badge.
-    project("pDone", "Sample Finished Project", "complete", { start: day(-28), notes: "Shipped and wrapped up.", actual: doneHistory }),
+    project("pDone", "Sample Finished Project", "complete", { start: day(-28), notes: "Shipped and wrapped up.", hist: doneHistory }),
     // Demonstrates a promoted-but-task-less Active project: since In progress
     // is built entirely from tasks, this one never appears there and lands in
     // the plain Projects list under Pending instead -- no start date needed.
@@ -57,7 +61,7 @@ export function sampleData() {
   ];
   var tasks = [
     task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Completed", doneAt: lastWeek }),
-    task("a2", 2, "pApp", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", false, true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "Completed", doneAt: yest }),
+    task("a2", 2, "pApp", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", false, true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "In progress" }),
     task("a3", 3, "pApp", "Build the home screen", "The list loads quickly and scrolls smoothly", [st("a3a", "Show the list of items", false, true), st("a3b", "Add pull to refresh"), st("a3c", "Handle an empty list")], { status: "In progress", notes: "Ask a friend to try this on an older phone before moving on." }),
     task("a4", 4, "pApp", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link", true), st("a4c", "Collect and sort the feedback")]),
     task("a5", 5, "pApp", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true, true), st("a5a", "Write the store description", true), st("a5b", "Prepare screenshots", true), st("a5c", "Submit for review", true)]),
@@ -78,6 +82,13 @@ export function sampleData() {
     task("d3", 3, "pDone", "Test it", "The top bugs are fixed", [st("d3a", "Run through every screen", false, true), st("d3b", "Fix what's broken", false, true)], { status: "Completed", doneAt: day(-8) }),
     task("d4", 4, "pDone", "Ship it", "It's live", [st("d4a", "Write the release notes", false, true), st("d4b", "Announce it", false, true)], { status: "Completed", doneAt: day(-1) })
   ];
+  var EST = { a1: 3, a2: 6, a3: 8, a4: 4, a5: 5, a6: 4, w1: 3, w2: 10, w3: 2, g1: 12, g2: 20, g3: 8, g4: 16, d1: 6, d2: 12, d3: 8, d4: 3 };
+  tasks.forEach(function (t) { if (EST[t.id]) t.est = EST[t.id]; });
+  // When the finished tasks were completed (Sample Finished Project's are a bit late, early, then on time).
+  var DONE = { a1: day(5), d1: day(-20), d2: day(-15), d3: day(-12), d4: day(-1) };
+  tasks.forEach(function (t) { if (DONE[t.id]) t.doneAt = DONE[t.id]; });
+  // Shorter than its two-week block: starts two days in, due a week later.
+  tasks.forEach(function (t) { if (t.id === "g1") { t.start = day(23); t.due = day(30); } });
   return {
     tasks: tasks,
     projects: projects,
@@ -97,6 +108,7 @@ export function sampleData() {
       { id: "m1", text: "Sample App beta opens", date: day(21), projectId: "pApp" },
       { id: "m2", text: "Sample Game demo day", date: day(63), projectId: "pGame" }
     ],
+    hist: allHistory,
     start: day(0)
   };
 }
@@ -104,7 +116,7 @@ export function defaults() {
   var d = sampleData();
   return {
     v: 5, start: d.start, days: 7,
-    tasks: d.tasks, actual: [34, 31, 25, null, null, null, null],
+    tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, projects: d.projects, parked: d.parked,
     milestones: d.milestones, pins: ["proj:pApp"],
     settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true }
@@ -115,9 +127,21 @@ export function validArch(a) { return (a && typeof a === "object" && isISO(a.at)
 export function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
 // A slip's own undo snapshot: each affected task's own block number right
 // before the slip, so Undo can put every one of them back exactly where it was.
+// Burndown history: { "<ISO day>": [tasks in scope, tasks still open] }. Anything
+// malformed is dropped; the newest 1000 entries are kept. Saved data from before
+// history counted tasks (an `actual` field in step units) is not carried over.
+function cleanHist(v) {
+  var out = {};
+  if (!v || typeof v !== "object" || Array.isArray(v)) return out;
+  Object.keys(v).sort().slice(-1000).forEach(function (k) {
+    var e = v[k];
+    if (isISO(k) && Array.isArray(e) && typeof e[0] === "number" && typeof e[1] === "number" && e[0] >= 0 && e[0] <= 5000 && e[1] >= 0 && e[1] <= e[0]) out[k] = [Math.round(e[0]), Math.round(e[1])];
+  });
+  return out;
+}
 function cleanSlip(v) {
   if (!v || typeof v !== "object" || typeof v.days !== "number" || !Array.isArray(v.snap)) return null;
-  var snap = v.snap.slice(0, 500).filter(function (s) { return s && typeof s.id === "string" && typeof s.block === "number" && s.block >= 0 && s.block <= 5000; }).map(function (s) { return { id: S(s.id, 40), block: Math.round(s.block) }; });
+  var snap = v.snap.slice(0, 500).filter(function (s) { return s && typeof s.id === "string" && typeof s.block === "number" && s.block >= 0 && s.block <= 5000; }).map(function (s) { return { id: S(s.id, 40), block: Math.round(s.block), start: isISO(s.start) ? s.start : "", due: isISO(s.due) ? s.due : "" }; });
   if (!snap.length) return null;
   return { days: Math.round(v.days) || 0, snap: snap };
 }
@@ -132,9 +156,6 @@ export function normalize(s) {
       // as `notes`. They are one field now: fold a saved `note` into the front
       // of `notes` so nothing is lost. Once saved, `note` no longer exists.
       var oldNote = S(x.note, 5000), body = S(x.notes, 5000);
-      // Per-project burndown snapshots: { "<Monday ISO>": steps remaining }.
-      var snaps = {};
-      if (x.actual && typeof x.actual === "object" && !Array.isArray(x.actual)) Object.keys(x.actual).slice(0, 300).forEach(function (k) { var v = x.actual[k]; if (isISO(k) && typeof v === "number" && v >= 0 && v <= 100000) snaps[k] = Math.round(v); });
       // Old saved data may still have `mult`, a multiplier on the global
       // block length instead of its own day count -- convert once on load.
       var days = (typeof x.days === "number" && x.days >= 1 && x.days <= 90) ? Math.round(x.days)
@@ -144,7 +165,7 @@ export function normalize(s) {
         status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
         start: isISO(x.start) ? x.start : "", days: days,
         due: isISO(x.due) ? x.due : "",
-        notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true, actual: snaps,
+        notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true, hist: cleanHist(x.hist),
         lastSlip: cleanSlip(x.lastSlip),
         // Validated below, once every project's real id is known -- a link
         // can only point at another project that actually exists in the final
@@ -173,8 +194,14 @@ export function normalize(s) {
         if (x && typeof x.id === "string") steps.push({ id: S(x.id, 40), text: S(x.text, 300), done: x.done === true, launch: x.launch === true });
       });
       var b = typeof t.block === "number" ? Math.round(t.block) : 1;
+      b = Math.min(5000, Math.max(0, b));
+      // Explicit dates belong only to a scheduled task, and a start after its
+      // due date is dropped. The block is re-derived from the due date on load.
+      var tdue = b > 0 && isISO(t.due) ? t.due : "", tstart = b > 0 && isISO(t.start) ? t.start : "";
+      if (tstart && tdue && tstart > tdue) tstart = "";
+      var test = typeof t.est === "number" && t.est > 0 && t.est <= 9999 ? Math.round(t.est * 100) / 100 : 0;
       ts.push({
-        id: S(t.id, 40), block: Math.min(12, Math.max(0, b)), projectId: pid, what: S(t.what, 400), done: S(t.done, 200),
+        id: S(t.id, 40), block: b, projectId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test,
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
         custom: t.custom === true, isNext: t.isNext === true,
         arch: validArch(t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : ""
@@ -182,9 +209,7 @@ export function normalize(s) {
     });
     d.tasks = ts;
   }
-  if (Array.isArray(s.actual) && s.actual.length === CHECKPOINTS) {
-    d.actual = s.actual.map(function (v) { return (typeof v === "number" && v >= 0 && v <= 1000) ? v : null; });
-  }
+  d.hist = cleanHist(s.hist);
   // A step id belonging to any live (non-archived) task, across every project --
   // used below to require a decision's step link points at something real.
   var liveStepIds = {};
@@ -293,7 +318,7 @@ export function loadFromDbIfAvailable() {
   });
 }
 
-export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchArchive: true };
+export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchArchive: true, notesH: {}, projOpen: {} };
 // Always opens on Today -- no-op.
 export function saveUI() { /* nothing to save */ }
 
@@ -308,6 +333,6 @@ export function autoArchive() {
   });
 }
 export function changed() {
-  autoArchive(); sweepProjectCompletion(); recordCurrentWeek(); recordProjectWeeks(); save(); renderAll();
+  autoArchive(); syncTaskBlocks(); sweepProjectCompletion(); recordHistory(); recordProjectHistory(); save(); renderAll();
 }
 

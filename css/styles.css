@@ -155,7 +155,11 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .tlist li.plain { padding: var(--space-12) var(--space-14); color: var(--muted); font-size: var(--text-sm); }
 .item { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; padding: var(--space-12) var(--space-14); min-height: 0; }
 .item:hover { background: var(--chip-idle); border: 0; }
-.item[aria-current="true"] { background: var(--sel); box-shadow: inset 4px 0 0 var(--planned); }
+.item[aria-current="true"], .item[aria-expanded="true"] { background: var(--sel); box-shadow: inset 4px 0 0 var(--planned); }
+/* A task opened in place on a project's page: part of the list, not a separate card. */
+.tlist li > .detail { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+.metarow { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--space-4) var(--space-12); }
+.estleft { white-space: nowrap; }
 .item .l1 { color: var(--muted); font-size: var(--text-sm); }
 .item .l1 b { color: var(--ink); font-weight: 600; }
 .item .l2 { margin-top: var(--space-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -242,22 +246,23 @@ table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; vertical-align: top; padding: var(--space-10) var(--space-12); border-bottom: 1px solid var(--line); }
 th { font-weight: 600; font-size: var(--text-sm); color: var(--muted); }
 tbody tr:last-child td { border-bottom: 0; }
-.weekly td input { width: 5.5rem; }
 
 #view > .range:first-child { margin-top: 0; }
 .range { margin-top: var(--space-12); padding: var(--space-14) var(--space-16) var(--space-10); }
 .months { position: relative; height: 22px; border-bottom: 1px solid var(--line); }
 .months span { position: absolute; top: 0; font-size: .75rem; color: var(--muted); transform: translateX(-2px); white-space: nowrap; }
 .lane { margin-top: var(--space-12); }
-.lname { font-size: var(--text-sm); font-weight: 600; }
+.lname { padding-left: var(--space-5); font-size: var(--text-sm); font-weight: 600; }
 .ldates { font-weight: 400; color: var(--muted); margin-left: var(--space-6); }
 .track { position: relative; height: 22px; margin-top: var(--space-4); background: var(--chip-idle); border-radius: var(--radius-track); }
 .bar { position: absolute; top: 2px; bottom: 2px; min-width: 6px; background: var(--planned); border-radius: var(--radius-track); }
 .bar.est { background: var(--est); border: 1px dashed var(--planned); }
+/* The block a task sits in: a pale full-height band behind its own bar. */
+.bar.blk { top: 0; bottom: 0; background: color-mix(in srgb, var(--est) 55%, transparent); }
 .bar.open { background: linear-gradient(to right, var(--est), transparent); border-left: 3px solid var(--planned); border-radius: var(--radius-track) 0 0 var(--radius-track); }
-/* Info on the left, Schedule/Timeline/Burndown on the right as one continuous flow. */
+/* Page content on the left, Schedule/Timeline/Burndown on the right as one continuous flow. */
 .projsplit { display: block; }
-.projtop, .projrest, .projcharts { min-width: 0; }
+.projmain, .projcharts { min-width: 0; }
 /* Reserves no space until there's an error, so an empty message doesn't push Timeline down. */
 .schedmsg { min-height: 0; margin-top: 0; }
 .schedmsg:not(:empty) { margin-top: var(--space-10); }
@@ -271,11 +276,7 @@ svg.chart.nofocusring { outline: none; }
 .charttip[hidden] { display: none; }
 .bar.done { background: var(--chip-done); }
 @media (min-width: 900px) {
-  /* Right column spans both rows so its own charts flow independent of the left column. */
-  .projsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: "top charts" "rest charts"; column-gap: var(--space-22); row-gap: 0; align-items: start; }
-  .projtop { grid-area: top; }
-  .projrest { grid-area: rest; }
-  .projcharts { grid-area: charts; }
+  .projsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); column-gap: var(--space-22); align-items: start; }
   .projexpand { display: inline-block; }
 }
 .ms { position: absolute; top: 4px; width: 14px; height: 14px; background: var(--burn); transform: translateX(-7px) rotate(45deg); border-radius: 2px; cursor: pointer; }
