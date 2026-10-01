@@ -6,7 +6,8 @@ import { $ } from "./dom.js";
 
 var SVG_NS = "http://www.w3.org/2000/svg";
 
-// Short, plain, low-pressure phrases. Easy to extend.
+// Short, plain, low-pressure phrases. Each must fit on one line in the splash
+// box (--q in css/styles.css, in em); longer ones are commented out below.
 export var AFFIRMATIONS = [
   "Small steps still count.",
   "Progress, not perfection.",
@@ -14,7 +15,7 @@ export var AFFIRMATIONS = [
   "Done is better than perfect.",
   "Keep the momentum.",
   "A little today adds up.",
-  "You don't have to finish, just start.",
+  // "You don't have to finish, just start.",
   "Forward is forward.",
   "Action over overthinking.",
   "Start now, figure it out later.",
@@ -29,8 +30,8 @@ export var AFFIRMATIONS = [
   "Own this hour.",
   "Laser precision, zero excuses.",
   "Deep work mode activated.",
-  "Build momentum every minute.",
-  "Consistency is your superpower.",
+  // "Build momentum every minute.",
+  // "Consistency is your superpower.",
   "Tick it off the list.",
   "You are a finishing machine.",
   "Sustained effort yields results.",

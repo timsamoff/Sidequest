@@ -307,17 +307,20 @@ svg.chart.nofocusring { outline: none; }
 .splashsvg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .splashart { transition: filter .6s ease; }
 .splash.artBlurred .splashart { filter: blur(5px); }
-/* The box is fixed: set by the wrapper, never by the text inside it. It
-   reserves two lines so a wrapping affirmation can't resize it. Title and
-   affirmation stack in one cell and only the text is masked. */
-.splashtextwrap { position: relative; z-index: 1; width: min(15rem, 82%); box-sizing: border-box; display: grid; align-items: center; padding: var(--space-12) var(--space-20); min-height: calc(2 * 1.4em + 2 * var(--space-12) + 4px); text-align: center; color: var(--surface); background: var(--planned); border: 2px solid var(--surface); border-radius: 14px; font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; line-height: 1.4; }
+/* The box is fixed and one line tall: --q is the longest affirmation's width
+   in em (measured in the wider Georgia fallback), so no quote ever wraps.
+   The font shrinks on a narrow panel to keep that true. Title and affirmation
+   stack in one cell and only the text is masked and blurred. */
+.splashpanel { container-type: inline-size; }
+.splashtextwrap { --q: 15.9; position: relative; z-index: 1; box-sizing: border-box; display: grid; align-items: center; width: calc(var(--q) * 1em + 32px); padding: var(--space-12) var(--space-14); text-align: center; white-space: nowrap; color: var(--surface); background: var(--planned); border: 2px solid var(--surface); border-radius: 14px; font-family: var(--font-serif); font-size: min(1.15rem, calc((94cqw - 32px) / var(--q))); font-weight: 600; line-height: 1.4; }
 .splashtitle, .splashaffirm { grid-area: 1 / 1; margin: 0; }
-/* --wipe moves a soft mask edge across the text, left to right. It is a
-   registered property because gradients themselves can't be transitioned. */
+/* --wipe moves a wide, soft mask edge across the text, left to right, while
+   the text blurs. Registered because gradients and calc() inside filter
+   can't be transitioned any other way. */
 @property --wipe { syntax: "<number>"; inherits: false; initial-value: 0; }
-.splashtitle, .splashaffirm { transition: --wipe .7s ease; }
-.splashtitle { -webkit-mask-image: linear-gradient(to right, transparent calc(var(--wipe) * 120% - 20%), black calc(var(--wipe) * 120%)); mask-image: linear-gradient(to right, transparent calc(var(--wipe) * 120% - 20%), black calc(var(--wipe) * 120%)); }
-.splashaffirm { -webkit-mask-image: linear-gradient(to right, black calc(var(--wipe) * 120% - 20%), transparent calc(var(--wipe) * 120%)); mask-image: linear-gradient(to right, black calc(var(--wipe) * 120% - 20%), transparent calc(var(--wipe) * 120%)); }
+.splashtitle, .splashaffirm { transition: --wipe .9s ease; }
+.splashtitle { filter: blur(calc(var(--wipe) * 6px)); -webkit-mask-image: linear-gradient(to right, transparent calc(var(--wipe) * 150% - 50%), black calc(var(--wipe) * 150%)); mask-image: linear-gradient(to right, transparent calc(var(--wipe) * 150% - 50%), black calc(var(--wipe) * 150%)); }
+.splashaffirm { filter: blur(calc((1 - var(--wipe)) * 6px)); -webkit-mask-image: linear-gradient(to right, black calc(var(--wipe) * 150% - 50%), transparent calc(var(--wipe) * 150%)); mask-image: linear-gradient(to right, black calc(var(--wipe) * 150% - 50%), transparent calc(var(--wipe) * 150%)); }
 .splash.textIn .splashtitle, .splash.textIn .splashaffirm { --wipe: 1; }
 /* Initial dasharray/dashoffset come from real SVG attributes, not a CSS var fallback. */
 #splashLines path { transition: stroke-dashoffset .65s ease; }
@@ -355,6 +358,6 @@ svg.chart.nofocusring { outline: none; }
   .menu { min-width: 220px; }
   /* Widen the floor so the panel stays legible on a small phone. */
   .splashpanel { width: min(85vw, 85vh, 420px); }
-  .splashtextwrap { font-size: var(--text-100); }
+  .splashtextwrap { font-size: min(var(--text-100), calc((94cqw - 32px) / var(--q))); }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
