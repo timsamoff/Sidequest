@@ -1098,6 +1098,10 @@ function saveBackupFile(msg, onDone) {
   function saved(note) { state.settings.lastBackup = iso(TODAY); save(); msg.textContent = note; if (onDone) onDone(); }
   downloadsReady.then(function (d) {
     if (d) return d.save({ filename: name, data: text }).then(function () { saved("Backup saved."); });
+    // Inside a published page's frame a plain download is blocked, so without the capability there is no way to save.
+    var framed = false;
+    try { framed = !!(window.claude && window.top !== window.self); } catch (e) { framed = true; }
+    if (framed) { msg.textContent = "This published copy was not given permission to save files. Publish it again with the downloads capability turned on."; return; }
     if (typeof window.showSaveFilePicker === "function") {
       return window.showSaveFilePicker({ suggestedName: name, types: [{ description: "Sidequest backup", accept: { "application/json": [".json"] } }] })
         .then(function (h) { return h.createWritable(); })

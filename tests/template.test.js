@@ -27,9 +27,10 @@ const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 register(pathToFileURL(path.join(__dirname, "isolate-loader.mjs")));
 
 let counter = 0;
-async function mk(saved) {
+async function mk(saved, claude) {
   const dom = new JSDOM(html, { url: "https://example.test/", pretendToBeVisual: true });
-  dom.window.scrollTo = () => {};
+  dom.window.scrollTo = () => {};
+  if (claude) dom.window.claude = claude;
   if (saved) dom.window.localStorage.setItem("sidequest-template-v1", JSON.stringify(saved));
   global.window = dom.window;
   global.document = dom.window.document;
@@ -943,6 +944,53 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   {
     const k = kit(await mk({ settings: { lastBackup: "yesterday", since: "long ago" } }));
     ok(k.saved().settings.lastBackup === "" && k.saved().settings.since === iso(0), "malformed dates in saved settings fall back to the defaults");
+  }
+}
+{
+  // the Claude version's db and downloads, against a stand-in that follows the platform contract
+  const fake = (initial, o) => {
+    o = o || {};
+    const store = Object.assign({}, initial), log = [], saves = [];
+    const wait = (v) => new Promise(r => setTimeout(() => r(v), 4));
+    const db = { doc: (p) => ({
+      get: () => { log.push("get"); return o.failGet ? Promise.reject({ code: "unavailable", message: "down" }) : wait({ exists: p in store, data: () => store[p], id: "main", metadata: {} }); },
+      set: (d) => { log.push("set"); return wait().then(() => { store[p] = JSON.parse(JSON.stringify(d)); }); } }) };
+    const downloads = o.noDownloads ? null : { save: (req) => { saves.push(req); return o.decline ? Promise.reject({ code: "declined", message: "no" }) : wait({ status: "saved" }); } };
+    return { claude: { use: (n) => Promise.resolve(n === "db" ? db : n === "downloads" ? downloads : null) }, store, log, saves };
+  };
+  const wait = (ms) => new Promise(r => setTimeout(r, ms || 90));
+  const base = kit(await mk()).saved();
+  base.projects.find(p => p.id === "pApp").name = "REAL DB DATA"; base.settings.hideWelcome = true;
+  const realJson = JSON.stringify(base);
+  const named = (store) => JSON.parse(store["state/main"].json).projects.find(p => p.id === "pApp").name;
+  {
+    // a fresh device (nothing in local storage) must read the db before it writes to it
+    const f = fake({ "state/main": { json: realJson } });
+    const k = kit(await mk(null, f.claude)); await wait();
+    ok(f.log[0] === "get", "nothing is written to the db before it has been read (" + f.log.join(",") + ")");
+    ok(named(f.store) === "REAL DB DATA" && [...k.d.querySelectorAll("#nav .tab")].some(t => t.textContent === "REAL DB DATA"), "a fresh device shows the db's data and leaves it intact in the db");
+    const n = f.log.filter(x => x === "set").length;
+    k.tab("settings"); k.click(k.$("saveFile")); await wait();
+    ok(f.log.filter(x => x === "set").length > n && JSON.parse(f.store["state/main"].json).settings.lastBackup, "after loading, a change is written to the db");
+    ok(f.saves.length === 1 && /^sidequest-backup-\d{4}-\d{2}-\d{2}\.json$/.test(f.saves[0].filename) && JSON.parse(f.saves[0].data).tasks.length === 18, "Save backup hands the viewer a dated .json file through the downloads capability");
+    ok(k.$("view").textContent.includes("Backup saved.") && k.$("view").textContent.includes("(today)"), "and says it saved");
+  }
+  {
+    const f = fake({});
+    const k = kit(await mk(null, f.claude)); await wait();
+    ok(f.log.join(",") === "get,set" && named(f.store) === "Sample App", "an empty db is seeded with this device's data, after reading it");
+  }
+  {
+    const f = fake({ "state/main": { json: realJson } }, { failGet: true });
+    const k = kit(await mk(null, f.claude)); await wait();
+    k.click(k.$("welcomeDismiss") || k.$("view")); k.tab("settings"); k.click(k.$("saveFile")); await wait();
+    ok(!f.log.includes("set") && named(f.store) === "REAL DB DATA", "if the db cannot be read, nothing is written to it (" + f.log.join(",") + ")");
+  }
+  {
+    const f = fake({ "state/main": { json: realJson } }, { decline: true });
+    const k = kit(await mk(null, f.claude)); await wait();
+    k.tab("settings"); k.click(k.$("saveFile")); await wait();
+    ok(k.$("view").textContent.includes("Save cancelled.") && k.$("view").textContent.includes("No backup saved yet."), "if the viewer declines, nothing is recorded as saved");
   }
 }
 {

@@ -275,8 +275,12 @@ function getDb() {
 // the LATEST state runs after it -- never a growing backlog of queued writes,
 // and never two writes racing on the same document.
 var dbWriteInFlight = null, dbWritePending = false;
+// Nothing is written to the db until it has been read once. A device with empty
+// local storage would otherwise save its own sample data over the real data
+// before loading it. A change made before then waits in dbWritePending.
+var dbReadDone = false, dbLoadTries = 0;
 function dbSave(rawState) {
-  if (dbWriteInFlight) { dbWritePending = true; return; }
+  if (!dbReadDone || dbWriteInFlight) { dbWritePending = true; return; }
   getDb().then(function (db) {
     if (!db) return; // no db in this view: localStorage (below) is already the real save
     dbWriteInFlight = db.doc("state/main").set({ json: JSON.stringify(rawState) })
@@ -309,16 +313,20 @@ export function save() {
 // to true if state was swapped (caller should re-render), false otherwise.
 export function loadFromDbIfAvailable() {
   return getDb().then(function (db) {
-    if (!db) return false;
+    if (!db) { dbReadDone = true; dbWritePending = false; return false; }
     return db.doc("state/main").get().then(function (snap) {
-      if (!snap.exists) return false;
-      var data = snap.data();
-      if (!data || typeof data.json !== "string") return false;
-      var parsed;
-      try { parsed = JSON.parse(data.json); } catch (e) { return false; }
-      state = normalize(parsed);
-      return true;
-    }).catch(function () { return false; });
+      var data = snap.exists ? snap.data() : null, parsed = null;
+      // A document that exists but cannot be parsed is treated as unreadable, never overwritten.
+      if (data && typeof data.json === "string") parsed = JSON.parse(data.json);
+      dbReadDone = true; dbWritePending = false;
+      if (parsed) { state = normalize(parsed); return true; }
+      dbSave(state); // the db holds nothing yet: this device's data seeds it
+      return false;
+    }).catch(function () {
+      // Could not read it, so what it holds is unknown: stay local-only and try again shortly.
+      if (dbLoadTries++ < 3) setTimeout(function () { loadFromDbIfAvailable().then(function (swapped) { if (swapped) { autoArchive(); save(); renderAll(); } }); }, 2500 * dbLoadTries);
+      return false;
+    });
   });
 }
 
