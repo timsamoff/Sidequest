@@ -56,6 +56,9 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
         var crow = el("label", { "class": "radiorow" }), cbx = el("input", { type: "checkbox", id: id }); cbx.checked = !!f.value;
         crow.appendChild(cbx); crow.appendChild(el("span", null, f.label)); w.appendChild(crow); body.appendChild(w); inputs[f.key] = cbx; return;
       }
+      if (f.type === "static") {
+        w.appendChild(el("span", { "class": "hint" }, f.label + ": " + f.value)); body.appendChild(w); return;
+      }
       w.appendChild(el("label", { "for": id }, f.label));
       var inp;
       if (f.type === "select") {
@@ -99,19 +102,22 @@ export function taskDialog(prefillProjectId, backlog) {
   var nt = nextTask();
   var projOpts = activeProjects().map(function (p) { return { value: p.id, label: p.name }; });
   if (!projOpts.length) { notify("Add an active project first (Projects > Choose as next project)."); return; }
-  var startId = typeof prefillProjectId === "string" ? prefillProjectId : (nt && !nt.isNext ? nt.projectId : projOpts[0].value);
+  var fixedProject = typeof prefillProjectId === "string";
+  var startId = fixedProject ? prefillProjectId : (nt && !nt.isNext ? nt.projectId : projOpts[0].value);
   var defaultDue = backlog ? "" : iso(blockEndFor(startId, nt ? nt.block : 4));
-  var fields = [
-    { key: "project", label: "Project", type: "select", options: projOpts, value: startId },
-    { key: "what", label: "Task" },
-    { key: "done", label: "How you'll know it's done (optional)" }
-  ];
+  var startProj = findProject(startId);
+  var fields = fixedProject && startProj
+    ? [{ key: "project", label: "Project", type: "static", value: startProj.name }]
+    : [{ key: "project", label: "Project", type: "select", options: projOpts, value: startId }];
+  fields.push({ key: "what", label: "Task" });
+  fields.push({ key: "done", label: "How you'll know it's done (optional)" });
   if (!backlog) {
     fields.push({ key: "start", label: "Start date (optional)", type: "date" });
     fields.push({ key: "due", label: "Due date, or leave empty for the Backlog", type: "date", value: defaultDue });
   }
   fields.push({ key: "est", label: "Estimated time in hours (optional)", type: "number", min: "0", max: "9999", step: "0.25" });
   formDialog(backlog ? "New backlog item" : "New task", fields, backlog ? "Add to Backlog" : "Add task", function (v) {
+    if (fixedProject) v.project = startId;
     if (!v.project || !v.what) return "Choose a project and enter what you do.";
     var blk = 0, start = "", due = "";
     if (v.due) {

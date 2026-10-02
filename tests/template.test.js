@@ -823,6 +823,20 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(ppts.some((p, i) => i > 0 && p[0] > ppts[i - 1][0] && p[1] < ppts[i - 1][1]), "and it ramps up where a task was added");
 }
 {
+  // New task from a project's own page names the project instead of offering a picker
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  k.click(k.btn(k.$("view"), "Add task"));
+  ok(!k.$("f-project"), "no project selector in the dialog opened from a project's own page");
+  ok(k.$("modalBody").textContent.includes("Project: Sample App"), "the project is named instead (" + k.$("modalBody").textContent.slice(0, 80) + ")");
+  k.setField("what", "Named project test"); k.click(k.btn(k.$("modalBody"), "Add task"));
+  ok(k.saved().tasks.find(t => t.what === "Named project test").projectId === "pApp", "it still saves to the right project");
+  // the Main Menu's own New task keeps the real picker
+  k.menuAct("newBtn", "newTask");
+  ok(!!k.$("f-project") && k.$("f-project").tagName === "SELECT", "the Main Menu's New task still offers a project picker");
+}
+{
   // a task added to the plan after its project started is tagged on the task itself
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
