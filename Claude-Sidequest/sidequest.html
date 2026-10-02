@@ -3586,9 +3586,7 @@ function renderSettings(root) {
   on(ps, "change", function () { state.settings.archivePurgeDays = parseInt(ps.value, 10); changed(); });
   pw.appendChild(ps); pg.appendChild(pw);
   root.appendChild(pg);
-  root.appendChild(el("p", { "class": "hint" }, state.settings.archivePurgeDays ? "Checked each time Sidequest opens. An item older than this, counted from when it was archived, is deleted permanently with no further warning." : "Items stay in the Archive until you delete them yourself."));
-  var n = archiveEntries().length;
-  root.appendChild(on(el("button", { type: "button", "class": "small", style: "margin-top:12px", title: "Go to the Archive" }, "Open the Archive (" + n + (n === 1 ? " item" : " items") + ")"), "click", function () { go("archive"); }));
+  if (state.settings.archivePurgeDays) root.appendChild(el("p", { "class": "hint" }, "Checked each time Sidequest opens. An item older than this, counted from when it was archived, is deleted permanently with no further warning."));
 
   root.appendChild(el("h2", null, "Backup and restore"));
   backupPanel(root);
