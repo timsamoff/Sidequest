@@ -1263,6 +1263,76 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(by("n3").start === "" && by("n3").due === "", "a Backlog task's dates are cleared on load");
 }
 
+// Client Export reads the bare global Blob/URL/document (same convention as
+// the existing backup-download fallback in views.js, not window.*), so Node's
+// own real Blob resolves inside it even under jsdom. Capturing the Blob's own
+// parts through a wrapped global Blob, and the anchor's download name through
+// a wrapped document.createElement, is simpler and more reliable here than
+// round-tripping through a real blob: URL, which jsdom's fetch() can't read.
+function exportClick(k, projectName) {
+  var RealBlob = Blob, parts = null, downloadName = null;
+  global.Blob = function (p, opts) { parts = p; return new RealBlob(p, opts); };
+  const origCreate = k.d.createElement.bind(k.d);
+  k.d.createElement = (tag) => { const e = origCreate(tag); if (tag === "a") e.click = () => { downloadName = e.download; }; return e; };
+  k.tab("projects"); k.click(k.btn(k.$("view"), projectName));
+  k.click(k.btn(k.$("view"), "Client Export"));
+  global.Blob = RealBlob;
+  return { html: parts ? parts.join("") : "", downloadName };
+}
+{
+  const { html } = exportClick(kit(await mk()), "Sample App");
+  ok(html.includes("<!doctype html>") && html.includes("</html>"), "produces a complete standalone HTML document");
+  ok(html.includes("Sample App") && html.includes("Sample Website"), "includes the project and its linked project");
+  ok(html.includes('id="proj-pApp"') && html.includes('id="proj-pSite"'), "each project gets its own section, addressable by id");
+  ok(html.includes('class="etoc"'), "includes a table of contents");
+  ok(html.includes("echarttip") && html.includes("svg.echart"), "embeds the chart renderer and tooltip markup");
+  ok(!html.includes("Sample Finished Project") && !html.includes("Sample Next Project"), "projects not linked from the exported one are left out entirely");
+  ok(html.includes("window.__sqExport"), "chart data is embedded as plain JSON, not live state");
+}
+{
+  // Cycle guard: A -> B -> A is not expanded a second time, and the repeat
+  // is linked back to the section that already covers it. C is a Candidate,
+  // reachable only through B, and must be skipped even though it's in the chain.
+  const saved = {
+    projects: [
+      { id: "pA", name: "Project A", status: "active", start: "2026-08-03", days: 7, linkedProjectIds: ["pB"] },
+      { id: "pB", name: "Project B", status: "active", start: "2026-08-03", days: 7, linkedProjectIds: ["pA", "pC"] },
+      { id: "pC", name: "Project C", status: "candidate", linkedProjectIds: ["pB"] }
+    ],
+    tasks: []
+  };
+  const { html } = exportClick(kit(await mk(saved)), "Project A");
+  const sectionCount = (html.match(/class="esection"/g) || []).length;
+  ok(sectionCount === 2, "A linking to B linking back to A produces exactly two sections, not an infinite chain (" + sectionCount + ")");
+  ok(html.includes("already shown above"), "the repeated link back to A points at its existing section instead of re-expanding it");
+  ok(!html.includes("Project C"), "a Candidate linked project is skipped entirely, even though it's in the link chain");
+}
+{
+  // Only Active/Complete linked projects are expanded; Archived is skipped too.
+  const saved = {
+    projects: [
+      { id: "pX", name: "Project X", status: "active", start: "2026-08-03", days: 7, linkedProjectIds: ["pY", "pZ"] },
+      { id: "pY", name: "Project Y", status: "complete", start: "2026-08-03", days: 7 },
+      { id: "pZ", name: "Project Z", status: "active", start: "2026-08-03", days: 7, arch: { at: "2026-08-01", why: "removed" } }
+    ],
+    tasks: []
+  };
+  const { html } = exportClick(kit(await mk(saved)), "Project X");
+  ok(html.includes("Project Y") && html.includes('id="proj-pY"'), "a Complete linked project is expanded into its own section");
+  ok(!html.includes("Project Z"), "an Archived linked project is skipped entirely, not even named");
+}
+{
+  // Full (unclamped) notes, and the filename shape.
+  const longNote = "N".repeat(4200);
+  const saved = {
+    projects: [{ id: "pF", name: "Full Notes Co.", status: "active", start: "2026-08-03", days: 7, notes: longNote }],
+    tasks: []
+  };
+  const { html, downloadName } = exportClick(kit(await mk(saved)), "Full Notes Co.");
+  ok(html.includes(longNote), "the full, unclamped notes field is included even past the live app's own display clamp");
+  ok(/^full-notes-co-\d{4}-\d{2}-\d{2}\.html$/.test(downloadName), "the filename is the project's name, slugged, plus today's date (" + downloadName + ")");
+}
+
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);
 
