@@ -1367,14 +1367,20 @@ async function exportClick(k, projectName) {
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.tab("settings");
-  k.$("set-contact-name").value = "Ada Lovelace"; k.fire(k.$("set-contact-name"), "blur");
-  k.$("set-contact-company").value = "Analytical Engines Co."; k.fire(k.$("set-contact-company"), "blur");
-  k.$("set-contact-email").value = "ada@example.com"; k.fire(k.$("set-contact-email"), "blur");
+  k.$("set-contact-name").value = "Ada Lovelace"; k.fire(k.$("set-contact-name"), "input");
+  k.$("set-contact-company").value = "Analytical Engines Co."; k.fire(k.$("set-contact-company"), "input");
+  k.$("set-contact-email").value = "ada@example.com"; k.fire(k.$("set-contact-email"), "input");
   const c = k.saved().settings.contact;
   ok(c.name === "Ada Lovelace" && c.company === "Analytical Engines Co." && c.email === "ada@example.com" && c.phone === "" && c.address === "" && c.website === "", "contact fields save individually, blank ones stay blank");
   const { html } = await exportClick(k, "Sample App");
   ok(html.includes("Ada Lovelace") && html.includes("Analytical Engines Co.") && html.includes("ada@example.com"), "filled-in contact fields print on the export");
   ok(!html.includes('<div class="econtactaddr">'), "an empty field (address) is not printed, even as an empty block");
+  // clearing a field saves immediately too, with no blur needed first -- the
+  // real bug the user hit: typing then exporting while still focused in the
+  // field used to leave the old value in state.
+  k.tab("settings");
+  k.$("set-contact-company").value = ""; k.fire(k.$("set-contact-company"), "input");
+  ok(k.saved().settings.contact.company === "", "clearing a field saves right away, without needing the field to lose focus first");
 }
 {
   const k = kit(await mk());

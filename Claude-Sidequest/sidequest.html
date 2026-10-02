@@ -3612,7 +3612,7 @@ function renderSettings(page) {
     var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label));
     var inp = el("input", { type: type || "text", id: id });
     inp.value = state.settings.contact[key];
-    on(inp, "blur", function () { state.settings.contact[key] = inp.value.slice(0, 200); save(); });
+    on(inp, "input", function () { state.settings.contact[key] = inp.value.slice(0, 200); save(); });
     w.appendChild(inp); cg.appendChild(w);
   }
   cfield("name", "set-contact-name", "Name");
@@ -3623,7 +3623,7 @@ function renderSettings(page) {
   contactBox.appendChild(cg);
   var aw = el("div", { "class": "field" }); aw.appendChild(el("label", { "for": "set-contact-address" }, "Address"));
   var addr = el("textarea", { id: "set-contact-address", rows: 3 }); addr.value = state.settings.contact.address;
-  on(addr, "blur", function () { state.settings.contact.address = addr.value.slice(0, 500); save(); });
+  on(addr, "input", function () { state.settings.contact.address = addr.value.slice(0, 500); save(); });
   aw.appendChild(addr); contactBox.appendChild(aw);
   side.appendChild(contactBox);
 
