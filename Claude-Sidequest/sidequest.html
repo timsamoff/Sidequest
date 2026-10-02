@@ -2186,6 +2186,10 @@ function archiveProject(p) {
     state.tasks.forEach(function (t) { if (t.projectId === p.id && !t.arch) t.arch = { at: iso(TODAY), why: "removed" }; });
   });
 }
+// Not yet implemented -- see sentinel-notes/client-project-export-design-brief.md.
+function exportProjectForClient(p) {
+  notify("Client Export isn’t built yet.");
+}
 // Offers archiving now or leaving it in Projects. Launch-critical warning is soft, never blocking.
 function completionDialog(p) {
   var warn = incompleteLaunchCriticalLinks(p);
@@ -2638,6 +2642,9 @@ function renderProjectPage(root, id) {
       var warn = incompleteLaunchCriticalLinks(p);
       if (warn.length) notify("Archiving even though " + (warn.length === 1 ? "a launch-critical linked project isn’t" : "launch-critical linked projects aren’t") + " finished: " + warn.map(function (lp) { return lp.name; }).join(", ") + ".");
       archiveProject(p);
+    }));
+    ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Export web page for client review" }, "Client Export"), "click", function () {
+      exportProjectForClient(p);
     }));
   }
   root.appendChild(ar);
