@@ -795,7 +795,7 @@ export function renderTimeline(root) {
     });
     // Added or removed work, compared with the previous point that has a count.
     var sc = ga.scope[i], diff = sc !== null && prevScope !== null ? sc - prevScope : 0, tdc = el("td");
-    tdc.appendChild(el("span", { "class": "scopechg" }, diff > 0 ? "+" + diff : diff < 0 ? "\u2212" + (-diff) : ""));
+    tdc.appendChild(el("span", { "class": "scopechg", style: "--n:" + Math.min(Math.abs(diff), 10) }, diff > 0 ? "+" + diff : diff < 0 ? "\u2212" + (-diff) : ""));
     tr.appendChild(tdc);
     if (sc !== null) prevScope = sc;
     body.appendChild(tr);
