@@ -4,23 +4,36 @@
 
 ## First-time setup
 
+### If you just want it working (recommended for most people)
+
+1. Start a new conversation with Claude.
+2. Copy this exact message and send it:
+
+   > Please fetch this file and publish it as an artifact: https://raw.githubusercontent.com/timsamoff/Sidequest/main/Claude-Sidequest/sidequest.html — it needs the `db` capability for storage and the `downloads` capability so Save backup works.
+
+3. Open the artifact Claude gives you. That link is yours. Bookmark it or pin it, since it's how you'll get back to your data.
+
+No download, no upload — Claude fetches the file itself from that link.
+
+### If fetching doesn't work, or you prefer to upload
+
 1. Download `sidequest.html` from this folder.
 2. Start a new conversation with Claude and upload the file.
 3. Ask Claude to publish it as an artifact, and mention that it needs both the `db` and `downloads` capabilities. For example:
 
    > Please publish this as an artifact. It needs the `db` capability for storage and the `downloads` capability so Save backup works.
 
-4. Open the artifact Claude gives you. That link is yours. Bookmark it or pin it, since it's how you'll get back to your data.
+4. Open the artifact Claude gives you, same as above.
 
-Without both capabilities declared at publish time, the app won't work right: no `db` means nothing saves, and no `downloads` means the Save backup button can't offer you a file.
+Either way, without both capabilities declared at publish time, the app won't work right: no `db` means nothing saves, and no `downloads` means the Save backup button can't offer you a file.
 
 ## Updating to a new version
 
 When a new `sidequest.html` is released, you can update without losing your data, but only if you republish onto your **existing** artifact rather than creating a new one.
 
-In the same conversation where your artifact already lives (or by giving Claude the link to it), upload the new file and ask Claude to update your existing Sidequest artifact with it — not to publish it as a new one. For example:
+In the same conversation where your artifact already lives (or by giving Claude the link to it), either paste the raw-file link again or upload the new file, and ask Claude to update your existing Sidequest artifact with it — not to publish it as a new one. For example:
 
-> Here's an updated version of Sidequest. Please update my existing Sidequest artifact with it, not a new one.
+> Here's an updated version of Sidequest: https://raw.githubusercontent.com/timsamoff/Sidequest/main/Claude-Sidequest/sidequest.html — please update my existing Sidequest artifact with it, not a new one.
 
 Your saved data lives with the artifact itself, not with any particular copy of the file, so an in-place update keeps it. Publishing as a brand-new artifact instead creates an empty database with no path back to your old data, so don't do that by mistake.
 
