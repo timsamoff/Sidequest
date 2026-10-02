@@ -492,6 +492,27 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!k.saved().quests.find(p => p.id === "pGame").vault, "Restore brings the quest back out of the Vault");
   ok(k.saved().tasks.filter(t => t.questId === "pGame" && !t.vault).length === tasksBefore, "restoring the quest also brings its tasks back out of the Vault");
 }
+{
+  // a vaulted candidate's read-only page shows Quest Giver info too
+  const saved = {
+    quests: [{ id: "pVC", name: "Vaulted Candidate", status: "candidate", notes: "some notes", vault: { at: "2026-08-01", why: "removed" }, client: { org: "Acme Co.", poc: "Jordan Lee", phone: "", email: "", address: "", website: "" } }],
+    tasks: []
+  };
+  const k = kit(await mk(saved));
+  k.tab("vault");
+  k.click(k.btn(k.$("view"), "Vaulted Candidate"));
+  ok(k.$("view").textContent.includes("Quest Giver") && k.$("view").textContent.includes("Acme Co.") && k.$("view").textContent.includes("Jordan Lee"), "a vaulted candidate's page shows its filled-in Quest Giver fields");
+}
+{
+  const saved = {
+    quests: [{ id: "pVC2", name: "Empty Giver", status: "candidate", vault: { at: "2026-08-01", why: "removed" } }],
+    tasks: []
+  };
+  const k = kit(await mk(saved));
+  k.tab("vault");
+  k.click(k.btn(k.$("view"), "Empty Giver"));
+  ok(k.$("view").textContent.includes("Nothing filled in."), "a vaulted candidate with no Quest Giver info says so plainly");
+}
 
 {
   // ideas are editable, and their note is a real multiline textarea
@@ -542,6 +563,13 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Renamed Extension"));
   k.setField("name", "   "); k.click(k.btn(k.$("modalBody"), "Save"));
   ok(k.$("modalBody").textContent.includes("Enter a quest name"), "a blank candidate name is rejected");
+  // Quest Giver fields live in the same dialog for a candidate
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Renamed Extension"));
+  ok(!!k.$("f-giverOrg") && !!k.$("f-giverPoc") && !!k.$("f-giverPhone") && !!k.$("f-giverEmail") && !!k.$("f-giverWebsite") && !!k.$("f-giverAddress"), "the candidate dialog has all six Quest Giver fields");
+  k.setField("giverOrg", "Acme Co."); k.setField("giverPoc", "Jordan Lee");
+  k.click(k.btn(k.$("modalBody"), "Save"));
+  const giver = k.saved().quests.find(p => p.id === "pExt").client;
+  ok(giver.org === "Acme Co." && giver.poc === "Jordan Lee" && giver.phone === "", "saving the candidate dialog saves its Quest Giver fields, blank ones stay blank");
 }
 {
   const k = kit(await mk());

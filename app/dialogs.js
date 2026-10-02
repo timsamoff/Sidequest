@@ -171,7 +171,13 @@ export function candidateDialog(p) {
     { key: "notes", label: "Notes", type: "textarea", rows: 5, value: p.notes },
     { key: "start", label: "Start date", type: "date", value: p.start },
     { key: "due", label: "Due date", type: "date", value: p.due },
-    { key: "days", label: "Days per " + wd(), type: "number", min: "1", max: "90", step: "1", value: p.days }
+    { key: "days", label: "Days per " + wd(), type: "number", min: "1", max: "90", step: "1", value: p.days },
+    { key: "giverOrg", label: "Quest Giver: Organization", value: p.client.org },
+    { key: "giverPoc", label: "Quest Giver: POC", value: p.client.poc },
+    { key: "giverPhone", label: "Quest Giver: Phone", type: "tel", value: p.client.phone },
+    { key: "giverEmail", label: "Quest Giver: Email", type: "email", value: p.client.email },
+    { key: "giverWebsite", label: "Quest Giver: Website", type: "url", value: p.client.website },
+    { key: "giverAddress", label: "Quest Giver: Address", type: "textarea", rows: 3, value: p.client.address }
   ], "Save", function (v) {
     if (!v.name) return "Enter a quest name.";
     var days = parseInt(v.days, 10);
@@ -181,6 +187,7 @@ export function candidateDialog(p) {
     p.start = isISO(v.start) ? v.start : "";
     p.due = isISO(v.due) ? v.due : "";
     p.days = days;
+    p.client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200) };
     changed();
     return { msg: "Candidate saved." };
   });

@@ -514,6 +514,9 @@ export function renderQuestPage(root, id) {
   if (p.status === "candidate") {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
+    root.appendChild(el("h2", null, "Quest Giver"));
+    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website].filter(Boolean);
+    root.appendChild(el("p", { "class": "hint notetext" }, cgLines.length ? cgLines.join("\n") : "Nothing filled in."));
     return;
   }
 
