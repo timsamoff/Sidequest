@@ -121,7 +121,7 @@ export function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, projects: d.projects, parked: d.parked,
     milestones: d.milestones, pins: ["proj:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY) }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), archivePurgeDays: 0 }
   };
 }
 
@@ -242,6 +242,7 @@ export function normalize(s) {
     if (typeof s.settings.showSplash === "boolean") d.settings.showSplash = s.settings.showSplash;
     if (isISO(s.settings.lastBackup)) d.settings.lastBackup = s.settings.lastBackup;
     if (isISO(s.settings.since)) d.settings.since = s.settings.since;
+    if ([0, 7, 30, 60, 90].indexOf(s.settings.archivePurgeDays) >= 0) d.settings.archivePurgeDays = s.settings.archivePurgeDays;
   }
   if (Array.isArray(s.pins)) d.pins = s.pins.filter(function (k) { return typeof k === "string" && k.length < 130; }).slice(0, 30);
   return d;
@@ -367,6 +368,22 @@ export function autoArchive() {
     if (t.status !== "Completed") { t.doneAt = ""; return; }
     if (!t.doneAt) t.doneAt = iso(TODAY);
   });
+}
+// Permanently deletes Archive entries older than settings.archivePurgeDays,
+// checked once at boot (not every save) since it only matters at day
+// granularity. Age is time since arch.at, so a restored-then-re-archived
+// item gets a fresh clock. 0 means Never; no confirmation is shown, since
+// the Settings control itself is the user's standing consent.
+export function purgeOldArchive() {
+  var days = state.settings.archivePurgeDays;
+  if (!days) return;
+  var cutoff = TODAY - days * DAY;
+  var old = function (item) { return item.arch && parseISO(item.arch.at) < cutoff; };
+  state.projects.filter(old).forEach(function (p) {
+    state.tasks = state.tasks.filter(function (t) { return t.projectId !== p.id; });
+  });
+  state.projects = state.projects.filter(function (p) { return !old(p); });
+  state.parked = state.parked.filter(function (p) { return !old(p); });
 }
 export function changed() {
   autoArchive(); syncTaskBlocks(); sweepProjectCompletion(); recordHistory(); recordProjectHistory(); save(); renderAll();

@@ -1327,6 +1327,38 @@ async function exportClick(k, projectName) {
   ok(html.includes(longNote), "the full, unclamped notes field is included even past the live app's own display clamp");
   ok(/^full-notes-co-\d{4}-\d{2}-\d{2}\.html$/.test(downloadName), "the filename is the project's name, slugged, plus today's date (" + downloadName + ")");
 }
+{
+  // Archive auto-purge: Never leaves everything, a threshold deletes only
+  // what's older than it, and a project's tasks go with it.
+  const d = new Date(), n = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()), iso = k => new Date(n + k * 86400000).toISOString().slice(0, 10);
+  const saved = {
+    settings: { archivePurgeDays: 30 },
+    projects: [
+      { id: "pOld", name: "Old Project", status: "active", arch: { at: iso(-40), why: "removed" } },
+      { id: "pNew", name: "New Project", status: "active", arch: { at: iso(-10), why: "removed" } }
+    ],
+    parked: [
+      { id: "iOld", text: "Old Idea", arch: { at: iso(-31), why: "removed" } },
+      { id: "iNew", text: "New Idea", arch: { at: iso(-5), why: "removed" } }
+    ],
+    tasks: [{ id: "tOld", block: 0, projectId: "pOld", what: "orphaned by purge", done: "d", status: "Not started", steps: [] }]
+  };
+  const k = kit(await mk(saved));
+  const ids = xs => xs.map(x => x.id);
+  ok(!ids(k.saved().projects).includes("pOld") && ids(k.saved().projects).includes("pNew"), "a 30-day threshold purges only the project archived more than 30 days ago");
+  ok(!ids(k.saved().parked).includes("iOld") && ids(k.saved().parked).includes("iNew"), "and the idea archived more than 30 days ago, leaving the newer one");
+  ok(!ids(k.saved().tasks).includes("tOld"), "the purged project's own tasks go with it");
+}
+{
+  const d = new Date(), n = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()), iso = k => new Date(n + k * 86400000).toISOString().slice(0, 10);
+  const saved = {
+    settings: { archivePurgeDays: 0 },
+    projects: [{ id: "pOld", name: "Old Project", status: "active", arch: { at: iso(-400), why: "removed" } }],
+    tasks: []
+  };
+  const k = kit(await mk(saved));
+  ok(k.saved().projects.some(p => p.id === "pOld"), "Never (0) leaves even a very old archived project in place");
+}
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

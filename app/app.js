@@ -1,4 +1,4 @@
-import { state, ui, save, saveUI, changed, autoArchive, APP_NAME, loadFromDbIfAvailable } from "./state.js";
+import { state, ui, save, saveUI, changed, autoArchive, purgeOldArchive, APP_NAME, loadFromDbIfAvailable } from "./state.js";
 import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findProject } from "./model.js";
 import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline } from "./dom.js";
 import { lateTasks } from "./model.js";
@@ -131,7 +131,7 @@ export function wireMenu(btnId, menuId) {
 Promise.resolve().then(function () {
   $("brand").textContent = APP_NAME;
   applyTheme();
-  autoArchive(); save();
+  autoArchive(); purgeOldArchive(); save();
   renderAll();
 
   // Decorative only -- the app has already rendered above.
@@ -140,7 +140,7 @@ Promise.resolve().then(function () {
   // Checked after first paint -- no-op on the web app, real on a published artifact with db.
   loadFromDbIfAvailable().then(function (swapped) {
     if (!swapped) return;
-    autoArchive(); save();
+    autoArchive(); purgeOldArchive(); save();
     renderAll();
   });
 

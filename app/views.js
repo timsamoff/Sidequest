@@ -986,6 +986,7 @@ export function helpTopics() {
     ["Settings, backup, and starting over", [
       "In **Settings**, set the default length of a stretch of work in days, what to call it (Block, Sprint, and so on), the date format, the theme, and whether the splash screen plays when the app opens.",
       "Everything is saved in this browser only. Under **Backup and restore**, **Save backup** lets you choose where to put a backup file, and **Restore backup** loads one back after warning you that it replaces everything. You get a few seconds to undo a restore. After two weeks without a backup, Today adds a quiet reminder.",
+      "Under **Archive**, you can set items to delete automatically after 7, 30, 60, or 90 days, counted from when each one was archived, or leave it set to Never. This is checked each time Sidequest opens, and there's no further warning once it's turned on.",
       "**Start fresh** erases everything after a warning. Save a backup first. You can begin empty or with the starting projects."]]
   ];
 }
@@ -1080,6 +1081,14 @@ export function renderSettings(root) {
 
   root.appendChild(el("h2", null, "Archive"));
   root.appendChild(el("p", { "class": "hint" }, "Removing a project or an idea sends it to the Archive. A completed task just stays visible in its project."));
+  var pg = el("div", { "class": "setgrid" });
+  var pw = el("div", { "class": "field" }); pw.appendChild(el("label", { "for": "set-purge" }, "Auto-delete items after"));
+  var ps = el("select", { id: "set-purge", "class": "plain" });
+  [[0, "Never"], [7, "7 days"], [30, "30 days"], [60, "60 days"], [90, "90 days"]].forEach(function (o) { var op = el("option", { value: String(o[0]) }, o[1]); if (o[0] === state.settings.archivePurgeDays) op.selected = true; ps.appendChild(op); });
+  on(ps, "change", function () { state.settings.archivePurgeDays = parseInt(ps.value, 10); changed(); });
+  pw.appendChild(ps); pg.appendChild(pw);
+  root.appendChild(pg);
+  root.appendChild(el("p", { "class": "hint" }, state.settings.archivePurgeDays ? "Checked each time Sidequest opens. An item older than this, counted from when it was archived, is deleted permanently with no further warning." : "Items stay in the Archive until you delete them yourself."));
   var n = archiveEntries().length;
   root.appendChild(on(el("button", { type: "button", "class": "small", style: "margin-top:12px", title: "Go to the Archive" }, "Open the Archive (" + n + (n === 1 ? " item" : " items") + ")"), "click", function () { go("archive"); }));
 
