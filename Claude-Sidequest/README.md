@@ -41,7 +41,7 @@ Your saved data lives with the artifact itself, not with any particular copy of 
 
 By default, only you can edit your artifact. If you make it public or share the link, other people can view it, but their changes won't save back to your data unless you specifically grant them edit access.
 
-If you do grant someone edit access, keep in mind this version has no conflict handling: if two people edit the same task or project at the same moment, whoever saves last wins, silently. That's fine for occasional shared use, but it isn't built for two people actively working in it at the same time.
+If you do grant someone edit access, keep in mind this version has no conflict handling: if two people edit the same task or quest at the same moment, whoever saves last wins, silently. That's fine for occasional shared use, but it isn't built for two people actively working in it at the same time.
 
 ## What doesn't carry over from the web version
 

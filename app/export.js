@@ -1,21 +1,21 @@
 import { state } from "./state.js";
 import { fmt, fmtY, iso, parseISO, TODAY } from "./dates.js";
 import {
-  wl, pset, linkedProjects, projectBurn, projectBurnTasks, isLate,
-  taskStart, taskEnd, projectEstimate, fmtHours, fmtHoursLong, live
+  wl, pset, linkedQuests, questBurn, questBurnTasks, isLate,
+  taskStart, taskEnd, questEstimate, fmtHours, fmtHoursLong, live
 } from "./model.js";
 
 /* Client export: a single, self-contained, read-only HTML file for sharing one
-   project (and its Active/Complete linked projects, recursively) outside the
+   quest (and its Active/Complete linked quests, recursively) outside the
    app. See sentinel-notes/client-project-export-design-brief.md for the
    settled shape. Chart points are precomputed here, once, from the live data
    -- the exported file never recomputes scheduling math, it only draws the
    numbers it was given. */
 
-// Tasks, steps, and the project's own fields, frozen to plain data. Does not
-// walk linked projects -- buildExportTree() does that, with the cycle guard.
+// Tasks, steps, and the quest's own fields, frozen to plain data. Does not
+// walk linked quests -- buildExportTree() does that, with the cycle guard.
 function snapshotTasks(p) {
-  return projectBurnTasksOrdered(p).map(function (t) {
+  return questBurnTasksOrdered(p).map(function (t) {
     return {
       id: t.id, what: t.what, done: t.done, status: t.status, notes: t.notes || "",
       block: t.block, start: fmtRange(t), late: isLate(t),
@@ -24,8 +24,8 @@ function snapshotTasks(p) {
     };
   });
 }
-function projectBurnTasksOrdered(p) {
-  var ts = live(state.tasks).filter(function (t) { return !t.isNext && t.projectId === p.id; });
+function questBurnTasksOrdered(p) {
+  var ts = live(state.tasks).filter(function (t) { return !t.isNext && t.questId === p.id; });
   return ts.slice().sort(function (a, b) {
     var aDone = a.status === "Completed" ? 1 : 0, bDone = b.status === "Completed" ? 1 : 0;
     return aDone - bDone || (a.block || 99) - (b.block || 99);
@@ -33,13 +33,13 @@ function projectBurnTasksOrdered(p) {
 }
 function fmtRange(t) { return t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)); }
 
-// Precomputed chart data for one project: the burndown's points (with tooltip
+// Precomputed chart data for one quest: the burndown's points (with tooltip
 // text baked in) and the timeline's lanes. No live recomputation happens in
 // the exported file -- see the design brief's leaning on this.
 function snapshotCharts(p) {
-  var bd = projectBurn(p);
+  var bd = questBurn(p);
   if (!bd) return null;
-  var milestones = live(state.milestones).filter(function (m) { return m.projectId === p.id; });
+  var milestones = live(state.milestones).filter(function (m) { return m.questId === p.id; });
   var points = bd.cps.map(function (ms, i) {
     return { date: fmtY(ms), planned: bd.planned[i], actual: bd.actual[i], scope: bd.scope[i], tip: chartTip(bd, i, ms) };
   });
@@ -72,11 +72,11 @@ function chartTip(bd, i, ms) {
 // One lane per scheduled task, as percentages of the lane's own date range --
 // the exported file draws these numbers directly, no month-grid math at export time.
 function snapshotLanes(p, bd) {
-  var ts = projectBurnTasks(p).slice().sort(function (a, b) { return taskStart(a) - taskStart(b); });
+  var ts = questBurnTasks(p).slice().sort(function (a, b) { return taskStart(a) - taskStart(b); });
   if (!ts.length) return { lanes: [], rangeStart: null, rangeEnd: null };
   var first = Infinity, last = -Infinity;
   ts.forEach(function (t) { var a = taskStart(t), b = taskEnd(t); if (a < first) first = a; if (b > last) last = b; });
-  live(state.milestones).forEach(function (m) { if (m.projectId === p.id) { var d = parseISO(m.date); if (d < first) first = d; if (d > last) last = d; } });
+  live(state.milestones).forEach(function (m) { if (m.questId === p.id) { var d = parseISO(m.date); if (d < first) first = d; if (d > last) last = d; } });
   if (TODAY > last) last = TODAY;
   var span = Math.max(1, last - first);
   function pct(ms) { return Math.max(0, Math.min(100, 100 * (ms - first) / span)); }
@@ -87,20 +87,20 @@ function snapshotLanes(p, bd) {
   return { lanes: lanes, rangeStart: first, rangeEnd: last };
 }
 
-// Walks a project and its Active/Complete linked projects, recursively, with
-// a cycle guard (a project already in the chain is not expanded again -- it's
+// Walks a quest and its Active/Complete linked quests, recursively, with
+// a cycle guard (a quest already in the chain is not expanded again -- it's
 // linked to the section that already covers it instead). Candidate and
-// Archived linked projects are skipped entirely, per the design brief.
+// Archived linked quests are skipped entirely, per the design brief.
 function buildExportTree(p, seen) {
   seen = seen || {};
   seen[p.id] = true;
   var node = {
     id: p.id, name: p.name, status: p.status, notes: p.notes || "",
-    meta: projectMetaLine(p), tasks: snapshotTasks(p), charts: snapshotCharts(p),
+    meta: questMetaLine(p), tasks: snapshotTasks(p), charts: snapshotCharts(p),
     links: [], estimate: estimateLine(p)
   };
-  linkedProjects(p).forEach(function (lp) {
-    // An archived project keeps its live status field (e.g. still "active"),
+  linkedQuests(p).forEach(function (lp) {
+    // An archived quest keeps its live status field (e.g. still "active"),
     // so archived-ness is a separate check from status -- both exclude it.
     if (lp.arch || (lp.status !== "active" && lp.status !== "complete")) return;
     if (seen[lp.id]) { node.links.push({ id: lp.id, name: lp.name, cycle: true }); return; }
@@ -109,7 +109,7 @@ function buildExportTree(p, seen) {
   });
   return node;
 }
-function projectMetaLine(p) {
+function questMetaLine(p) {
   var eff = pset(p.id);
   var parts = ["Started " + (eff.start || "unset")];
   if (p.due) parts.push("due " + fmt(parseISO(p.due)));
@@ -117,7 +117,7 @@ function projectMetaLine(p) {
   return parts.join(", ") + ".";
 }
 function estimateLine(p) {
-  var est = projectEstimate(p);
+  var est = questEstimate(p);
   return est.total > 0 ? "Est. " + fmtHoursLong(est.left) + " remaining" : "";
 }
 
@@ -130,7 +130,7 @@ function flattenSections(node, out) {
   return out;
 }
 
-// Builds the full snapshot for one project's export: the root project plus
+// Builds the full snapshot for one quest's export: the root quest plus
 // everything reachable through Active/Complete links.
 export function buildExportSnapshot(p) {
   var tree = buildExportTree(p);
@@ -187,7 +187,7 @@ function renderTasks(node) {
 function renderLinks(node) {
   var real = node.links.filter(function (l) { return !l.cycle; });
   var cycles = node.links.filter(function (l) { return l.cycle; });
-  if (!real.length && !cycles.length) return '<p class="hint">No linked projects.</p>';
+  if (!real.length && !cycles.length) return '<p class="hint">No linked quests.</p>';
   var items = real.map(function (l) { return '<li><a href="#' + sectionId(l.id) + '">' + escHtml(l.name) + "</a></li>"; })
     .concat(cycles.map(function (l) { return '<li><a href="#' + sectionId(l.id) + '">' + escHtml(l.name) + "</a> (already shown above)</li>"; }));
   return '<ul class="list">' + items.join("") + "</ul>";
@@ -210,12 +210,12 @@ function renderCharts(node) {
   return html;
 }
 
-// Every linked project gets its own full, flat section (not literally nested
+// Every linked quest gets its own full, flat section (not literally nested
 // HTML, even though the link graph that produced it is a tree), so headings
 // use one fixed level throughout rather than growing with link depth.
 function renderSection(node) {
   var html = '<section class="esection" id="' + sectionId(node.id) + '">';
-  html += "<h2>" + escHtml(node.name) + (node.status === "complete" ? ' <span class="chip projcomplete">Complete</span>' : "") + "</h2>";
+  html += "<h2>" + escHtml(node.name) + (node.status === "complete" ? ' <span class="chip questcomplete">Complete</span>' : "") + "</h2>";
   html += '<p class="hint">' + escHtml(node.meta) + (node.estimate ? " " + escHtml(node.estimate) : "") + "</p>";
   html += '<div class="esplit">';
   html += '<div class="emain">';
@@ -223,7 +223,7 @@ function renderSection(node) {
   html += renderTasks(node);
   html += "<h3>Notes</h3>";
   html += '<p class="enotes">' + (node.notes ? escHtml(node.notes).replace(/\n/g, "<br>") : "No notes.") + "</p>";
-  html += "<h3>Linked projects</h3>";
+  html += "<h3>Linked quests</h3>";
   html += renderLinks(node);
   html += "</div>";
   html += '<div class="easide">' + renderCharts(node) + "</div>";
@@ -251,7 +251,7 @@ h1, h2, h3, h4, h5 { font-weight: 700; }\
 .chip[data-v='Not started'] { background: var(--chip-new); }\
 .chip[data-v='In progress'] { background: var(--chip-work); }\
 .chip[data-v='Completed'] { background: var(--chip-done); }\
-.chip.projcomplete { background: var(--chip-done); }\
+.chip.questcomplete { background: var(--chip-done); }\
 .chip.ereadonly { background: var(--muted); color: var(--surface); vertical-align: middle; font-size: .7rem; margin-left: 8px; }\
 .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--late-bg); color: var(--late); font-size: .8rem; font-weight: 600; }\
 .etasklist, .list { list-style: none; margin: 8px 0; padding: 0; }\
@@ -396,10 +396,10 @@ export function renderExportDocument(snapshot) {
   return html;
 }
 
-// Safe-ish filename: the project's name, lowercased and slugged, plus today's
+// Safe-ish filename: the quest's name, lowercased and slugged, plus today's
 // date in plain ISO (the design brief left the date format open; ISO sorts
 // correctly in a file listing regardless of the user's own display setting).
 export function exportFileName(p) {
-  var slug = p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "project";
+  var slug = p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "quest";
   return slug + "-" + iso(TODAY) + ".html";
 }

@@ -1,22 +1,22 @@
-import { state, ui, save, changed, autoArchive, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, project as makeProject } from "./state.js";
+import { state, ui, save, changed, autoArchive, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, quest as makeQuest } from "./state.js";
 import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart } from "./dates.js";
 import {
   WORDS, wd, wl, pset, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
-  checkpoints, live, counted, liveProjects, activeProjects, candidateProjects, completeProjects,
-  findProject, findAnyProject, linkedProjects, unlinkProjects, chosen, dispProject, dispWhat,
+  checkpoints, live, counted, liveQuests, activeQuests, candidateQuests, completeQuests,
+  findQuest, findAnyQuest, linkedQuests, unlinkQuests, chosen, dispQuest, dispWhat,
   totalUnits, remainingUnits, planned, ordered, backlogTasks, sortTasks,
-  isLate, lateTasks, setStatus, syncFromSteps, nextTask, projectTasksAllDone, projectTotalUnits, projectRemainingUnits,
-  validPage, isPinned, pinPage, unpinPage, projectMeta, fmtHours, fmtHoursLong, projectEstimate, recordHist, checkpointStep, globalActual,
+  isLate, lateTasks, setStatus, syncFromSteps, nextTask, questTasksAllDone, questTotalUnits, questRemainingUnits,
+  validPage, isPinned, pinPage, unpinPage, questMeta, fmtHours, fmtHoursLong, questEstimate, recordHist, checkpointStep, globalActual,
   findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask
 } from "./model.js";
 import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline } from "./dom.js";
-import { drawChart, drawProjectChart, rangeBlock, projectRangeBlock } from "./chart.js";
+import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme } from "./app.js";
-import { stepDialog, stepEditDialog, decisionDialog, decisionEditDialog, linkProjectDialog, ideaDialog, candidateDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
+import { stepDialog, stepEditDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, candidateDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
 import { buildExportSnapshot, renderExportDocument, exportFileName } from "./export.js";
 
 /* views */
-// Added to the plan after its project started: a scope change, marked on the task itself.
+// Added to the plan after its quest started: a scope change, marked on the task itself.
 // "1 of 3 steps", then "Est 6 h" -- with a bullet between them only when both show.
 function stepsAndEst(l3, t) {
   var steps = t.steps.length ? t.steps.filter(function (x) { return x.done; }).length + " of " + t.steps.length + " steps" : "";
@@ -25,8 +25,8 @@ function stepsAndEst(l3, t) {
   if (t.est > 0) l3.appendChild(el("span", null, "Est " + fmtHours(t.est)));
 }
 function addedChip(t) {
-  if (!t.added || t.isNext || !t.projectId || t.added <= pset(t.projectId).start) return null;
-  return el("span", { "class": "chip", title: "Added to the plan after this project started" }, "Added " + fmt(parseISO(t.added)));
+  if (!t.added || t.isNext || !t.questId || t.added <= pset(t.questId).start) return null;
+  return el("span", { "class": "chip", title: "Added to the plan after this quest started" }, "Added " + fmt(parseISO(t.added)));
 }
 export function nextUpPanel() {
   var box = el("div", { "class": "panel" });
@@ -34,16 +34,16 @@ export function nextUpPanel() {
   if (!t) {
     var nb = backlogTasks().length;
     box.appendChild(el("p", { "class": "ptitle" }, nb ? "Nothing is scheduled." : (counted().length ? "Every task is done." : "No tasks yet.")));
-    box.appendChild(el("p", { "class": "pmeta" }, nb ? nb + (nb === 1 ? " item is" : " items are") + " waiting in the Backlog. Choose a " + wl() + " for one." : (counted().length ? "Add a task with the + button, or choose your next project." : "Add one with the + button.")));
+    box.appendChild(el("p", { "class": "pmeta" }, nb ? nb + (nb === 1 ? " item is" : " items are") + " waiting in the Backlog. Choose a " + wl() + " for one." : (counted().length ? "Add a task with the + button, or choose your next quest." : "Add one with the + button.")));
     if (nb) { var ba = el("div", { "class": "actions" }); ba.appendChild(on(el("button", { type: "button", "class": "primary", title: "Go to the Backlog on the Tasks page" }, "Open the Backlog"), "click", function () { go("schedule"); })); box.appendChild(ba); }
     return box;
   }
   box.appendChild(el("p", { "class": "ptitle" }, dispWhat(t)));
   var meta = el("p", { "class": "pmeta" });
-  var pname = dispProject(t);
-  if (!t.isNext && validPage("proj:" + t.projectId)) {
-    var pl = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, pname);
-    on(pl, "click", function () { go("proj:" + t.projectId); });
+  var pname = dispQuest(t);
+  if (!t.isNext && validPage("quest:" + t.questId)) {
+    var pl = el("button", { type: "button", "class": "textbtn qlink", title: "View this quest" }, pname);
+    on(pl, "click", function () { go("quest:" + t.questId); });
     meta.appendChild(pl);
   } else meta.appendChild(el("b", null, pname));
   meta.appendChild(document.createTextNode(" · " + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + " "));
@@ -54,7 +54,7 @@ export function nextUpPanel() {
   if (open && t.steps.length) box.appendChild(el("p", { "class": "pline" }, "Next step: " + open.text));
   var acts = el("div", { "class": "actions" });
   if (t.isNext && !chosen()) {
-    acts.appendChild(on(el("button", { type: "button", "class": "primary", title: "Go to Projects to choose a candidate" }, "Choose the next project"), "click", function () { go("projects"); }));
+    acts.appendChild(on(el("button", { type: "button", "class": "primary", title: "Go to Quests to choose a candidate" }, "Choose the next quest"), "click", function () { go("projects"); }));
   } else {
     if (t.status === "Not started") acts.appendChild(on(el("button", { type: "button", "class": "primary", title: "Mark in progress" }, "Start"), "click", function () { t.status = "In progress"; changed(); }));
   }
@@ -75,48 +75,48 @@ export function overduePanel() {
   var ul = el("ul", { "class": "tlist", style: "margin-top:8px" });
   late.forEach(function (t) {
     var li = el("li"); var b = el("button", { type: "button", "class": "item", title: "View this task" });
-    b.appendChild(el("div", { "class": "l1" }, dispProject(t) + " · ended " + fmt(taskEnd(t))));
+    b.appendChild(el("div", { "class": "l1" }, dispQuest(t) + " · ended " + fmt(taskEnd(t))));
     b.appendChild(el("div", { "class": "l2" }, dispWhat(t)));
     on(b, "click", function () { openTask(t.id); }); li.appendChild(b); ul.appendChild(li);
   });
   box.appendChild(ul);
   return box;
 }
-// Records the main burndown's and each project's task counts on every change
+// Records the main burndown's and each quest's task counts on every change
 // (see recordHist() in model.js for how that history is kept and read back).
 export function recordHistory() {
   if (totalUnits() > 0 || Object.keys(state.hist).length) recordHist(state.hist, totalUnits(), remainingUnits());
 }
-export function recordProjectHistory() {
-  liveProjects().forEach(function (p) {
+export function recordQuestHistory() {
+  liveQuests().forEach(function (p) {
     if (p.status !== "active" && p.status !== "complete") return;
-    var total = projectTotalUnits(p);
-    if (total > 0 || Object.keys(p.hist).length) recordHist(p.hist, total, projectRemainingUnits(p));
+    var total = questTotalUnits(p);
+    if (total > 0 || Object.keys(p.hist).length) recordHist(p.hist, total, questRemainingUnits(p));
   });
 }
 // Auto-completion only -- runs on every changed(). Manual "Mark complete" is separate.
-export function sweepProjectCompletion() {
-  activeProjects().forEach(function (p) {
-    if (projectTasksAllDone(p)) { p.status = "complete"; completionDialog(p); }
+export function sweepQuestCompletion() {
+  activeQuests().forEach(function (p) {
+    if (questTasksAllDone(p)) { p.status = "complete"; completionDialog(p); }
   });
 }
-// Launch Critical is a property of the project, not of one link.
+// Launch Critical is a property of the quest, not of one link.
 export function incompleteLaunchCriticalLinks(p) {
-  return linkedProjects(p).filter(function (lp) { return lp.launchCritical && lp.status !== "complete" && lp.status !== "archived" && !lp.arch; });
+  return linkedQuests(p).filter(function (lp) { return lp.launchCritical && lp.status !== "complete" && lp.status !== "archived" && !lp.arch; });
 }
 // Shared archive path for the Archive button, Mark complete, and the auto-sweep.
-export function archiveProject(p) {
-  removeToArchive(p, "Project", function () {
-    state.tasks.forEach(function (t) { if (t.projectId === p.id && !t.arch) t.arch = { at: iso(TODAY), why: "removed" }; });
+export function archiveQuest(p) {
+  removeToArchive(p, "Quest", function () {
+    state.tasks.forEach(function (t) { if (t.questId === p.id && !t.arch) t.arch = { at: iso(TODAY), why: "removed" }; });
   });
 }
 // Builds the standalone read-only export and offers it for saving, same
 // fallback order as saveBackupFile(): the Claude downloads capability, then a
 // real Save As dialog, then a plain download. Scoped to Active/Complete
-// projects, matching where the button itself lives (see renderProjectPage())
+// quests, matching where the button itself lives (see renderQuestPage())
 // -- Candidate and Archived export layouts are unscoped, left for a future
 // pass per the design brief.
-export function exportProjectForClient(p) {
+export function exportQuestForClient(p) {
   var snapshot = buildExportSnapshot(p);
   var html = renderExportDocument(snapshot);
   var name = exportFileName(p);
@@ -141,25 +141,25 @@ export function exportProjectForClient(p) {
     notify(err && (err.code === "declined" || err.name === "AbortError") ? "Export canceled." : "The export could not be saved.");
   });
 }
-// Offers archiving now or leaving it in Projects. Launch-critical warning is soft, never blocking.
+// Offers archiving now or leaving it in Quests. Launch-critical warning is soft, never blocking.
 export function completionDialog(p) {
   var warn = incompleteLaunchCriticalLinks(p);
-  openModal("Project complete", function (body) {
-    body.appendChild(el("p", { "class": "first" }, "“" + p.name + "” is marked complete. Archive it now, or leave it in Projects."));
-    var openTasks = projectRemainingUnits(p);
-    if (openTasks) body.appendChild(el("p", { "class": "hint" }, openTasks + (openTasks === 1 ? " open task is" : " open tasks are") + " no longer counted in the main burndown. Reopen the project to count " + (openTasks === 1 ? "it" : "them") + " again."));
-    if (warn.length) body.appendChild(el("p", { "class": "hint" }, "Launch-critical linked " + (warn.length === 1 ? "project isn’t" : "projects aren’t") + " finished yet: " + warn.map(function (lp) { return lp.name; }).join(", ") + "."));
+  openModal("Quest complete", function (body) {
+    body.appendChild(el("p", { "class": "first" }, "“" + p.name + "” is marked complete. Archive it now, or leave it in Quests."));
+    var openTasks = questRemainingUnits(p);
+    if (openTasks) body.appendChild(el("p", { "class": "hint" }, openTasks + (openTasks === 1 ? " open task is" : " open tasks are") + " no longer counted in the main burndown. Reopen the quest to count " + (openTasks === 1 ? "it" : "them") + " again."));
+    if (warn.length) body.appendChild(el("p", { "class": "hint" }, "Launch-critical linked " + (warn.length === 1 ? "quest isn’t" : "quests aren’t") + " finished yet: " + warn.map(function (lp) { return lp.name; }).join(", ") + "."));
     var acts = el("div", { "class": "actions" });
-    var leave = el("button", { type: "button", title: "Keep visible on Projects" }, "Leave in Projects");
+    var leave = el("button", { type: "button", title: "Keep visible on Quests" }, "Leave in Quests");
     var arch = el("button", { type: "button", "class": "dangerfill", title: "Archive right now" }, "Archive now");
     on(leave, "click", closeModal);
-    on(arch, "click", function () { closeModal(); archiveProject(p); });
+    on(arch, "click", function () { closeModal(); archiveQuest(p); });
     acts.appendChild(leave); acts.appendChild(arch); body.appendChild(acts);
   });
 }
 export function burnParts(o) {
   o = o || {};
-  var proj = o.project;
+  var quest = o.quest;
   var h = el(o.level || "h2", null, "Burndown");
   var cb = el("div", { "class": "chartbox" }); var host = el("div"); cb.appendChild(host);
   var lg = el("div", { "class": "legend" });
@@ -168,9 +168,9 @@ export function burnParts(o) {
   lg.appendChild(l1); lg.appendChild(l2);
   var l3 = el("span"); l3.appendChild(el("i", { "class": "s" })); l3.appendChild(document.createTextNode("Scope")); lg.appendChild(l3);
   cb.appendChild(lg);
-  if (proj) drawProjectChart(host, proj, o.wide); else drawChart(host, o.wide);
-  var rn = proj ? projectRemainingUnits(proj) : remainingUnits(), tot = proj ? projectTotalUnits(proj) : totalUnits(), rb = el("div", { "class": "box" });
-  var nbk = proj ? counted().filter(function (t) { return t.projectId === proj.id && !t.isNext && t.block === 0; }).length : backlogTasks().length;
+  if (quest) drawQuestChart(host, quest, o.wide); else drawChart(host, o.wide);
+  var rn = quest ? questRemainingUnits(quest) : remainingUnits(), tot = quest ? questTotalUnits(quest) : totalUnits(), rb = el("div", { "class": "box" });
+  var nbk = quest ? counted().filter(function (t) { return t.questId === quest.id && !t.isNext && t.block === 0; }).length : backlogTasks().length;
   rb.appendChild(el("p", { "class": "hint first remaining" }, rn + (rn === 1 ? " task" : " tasks") + " remaining, out of " + tot + (nbk ? ". " + nbk + (nbk === 1 ? " backlog task is" : " backlog tasks are") + " not counted until scheduled." : "")));
   return { h: h, chart: cb, count: rb };
 }
@@ -183,7 +183,7 @@ export function burnPanel(o) {
 export function welcomeBox() {
   var box = el("div", { "class": "box", style: "margin-bottom:22px" });
   box.appendChild(el("h2", { style: "margin-bottom:4px" }, "Welcome to Sidequest"));
-  box.appendChild(el("p", { "class": "hint first" }, "The projects here are samples, so you can see how everything fits together. Look around, change things, and press / to search. When you are ready to start your own, open Settings and choose Start fresh."));
+  box.appendChild(el("p", { "class": "hint first" }, "The quests here are samples, so you can see how everything fits together. Look around, change things, and press / to search. When you are ready to start your own, open Settings and choose Start fresh."));
   var acts = el("div", { "class": "actions" });
   acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Go to Settings" }, "Go to Settings"), "click", function () { go("settings"); }));
   acts.appendChild(on(el("button", { type: "button", id: "welcomeDismiss", title: "Hide this welcome message" }, "Dismiss"), "click", function () { state.settings.hideWelcome = true; save(); renderView(); }));
@@ -213,7 +213,7 @@ export function taskRow(t) {
   var li = el("li");
   var b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
   if (t.id === ui.sel) b.setAttribute("aria-current", "true");
-  var l1 = el("div", { "class": "l1 split" }), l1t = el("span"); l1t.appendChild(el("b", null, dispProject(t)));
+  var l1 = el("div", { "class": "l1 split" }), l1t = el("span"); l1t.appendChild(el("b", null, dispQuest(t)));
   l1t.appendChild(document.createTextNode(" · " + (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)))));
   l1.appendChild(l1t);
   var tag1 = addedChip(t); if (tag1) l1.appendChild(tag1);
@@ -229,7 +229,7 @@ export function taskRow(t) {
 }
 export function renderSchedule(root) {
   var o = ordered(), bl = backlogTasks();
-  var hiddenNote = completeProjects().length ? el("p", { "class": "hint first" }, "Tasks from Complete projects are not listed here. Open a Complete project's own page to see them.") : null;
+  var hiddenNote = completeQuests().length ? el("p", { "class": "hint first" }, "Tasks from Complete quests are not listed here. Open a Complete quest's own page to see them.") : null;
   if (!o.length && !bl.length) {
     if (hiddenNote) root.appendChild(hiddenNote);
     root.appendChild(el("p", { "class": "hint" + (hiddenNote ? "" : " first") }, counted().length ? "No open tasks. Completed tasks are in the Archive." : "No tasks yet. Use the + button to add one."));
@@ -255,13 +255,13 @@ export function renderSchedule(root) {
   split.appendChild(lp); split.appendChild(dp); root.appendChild(split);
 }
 
-// `inline` is the project page's in-place version: no heading or back button, plus an Open in Tasks link.
+// `inline` is the quest page's in-place version: no heading or back button, plus an Open in Tasks link.
 export function buildDetail(t, inline) {
   var box = el("div", { "class": "detail" });
   if (!inline) box.appendChild(on(el("button", { type: "button", "class": "small only-mobile", style: "margin-bottom:10px", title: "Back to the task list" }, "All tasks"), "click", function () { ui.detail = false; renderView(); scrollTop(); }));
   var top = el("div", { style: "display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap" });
   var lh = el("div");
-  if (!inline) lh.appendChild(el("h2", { style: "margin:0" }, dispProject(t)));
+  if (!inline) lh.appendChild(el("h2", { style: "margin:0" }, dispQuest(t)));
   var dm = el("p", { "class": "dmeta" }, (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))) + " ");
   if (isLate(t)) dm.appendChild(el("span", { "class": "badge" }, "Overdue"));
   var tag2 = addedChip(t); if (tag2) { tag2.style.marginLeft = "6px"; dm.appendChild(tag2); }
@@ -298,14 +298,14 @@ export function buildDetail(t, inline) {
     var ei = el("input", { type: "number", id: "task-est", min: "0", max: "9999", step: "0.25" });
     sd.value = shownStart(); bd.value = shownDue(); ei.value = t.est > 0 ? t.est : "";
     function resetDates() { sd.value = shownStart(); bd.value = shownDue(); }
-    var projFirst = parseISO(pset(projKey(t)).start);
+    var questFirst = parseISO(pset(projKey(t)).start);
     // "blur", not "change" -- a date input fires "change" per segment while typing.
     on(bd, "blur", function () {
       if (bd.value === shownDue()) return;
       if (bd.value === "") { t.block = 0; t.start = ""; t.due = ""; t.added = ""; changed(); notify("Moved to the Backlog."); return; }
       if (!isISO(bd.value)) { resetDates(); dmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
       var blk = blockForDate(projKey(t), parseISO(bd.value));
-      if (blk === null) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(projFirst) + ", this project's own start date."; return; }
+      if (blk === null) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(questFirst) + ", this quest's own start date."; return; }
       if (t.block > 0 && t.start && bd.value < t.start) { resetDates(); dmsg.textContent = "The due date can't be before the start date."; return; }
       dmsg.textContent = "";
       if (t.block === 0) t.added = iso(TODAY);
@@ -317,7 +317,7 @@ export function buildDetail(t, inline) {
       if (t.block === 0) { sd.value = ""; dmsg.textContent = "Add a due date first. A task with no due date is in the Backlog."; return; }
       if (sd.value === "") { dmsg.textContent = ""; t.start = ""; changed(); notify("Start date cleared. The task starts when its " + wl() + " does."); return; }
       if (!isISO(sd.value)) { resetDates(); dmsg.textContent = "Enter a valid start date, or leave it empty."; return; }
-      if (parseISO(sd.value) < projFirst) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(projFirst) + ", this project's own start date."; return; }
+      if (parseISO(sd.value) < questFirst) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(questFirst) + ", this quest's own start date."; return; }
       if (sd.value > iso(taskEnd(t))) { resetDates(); dmsg.textContent = "The start date can't be after the due date."; return; }
       dmsg.textContent = "";
       t.start = sd.value; changed(); notify("Start date saved.");
@@ -380,13 +380,13 @@ export function buildDetail(t, inline) {
 // Bidirectional link, not a subtask hierarchy. Lists p's own direct links only, one hop.
 export function linksSection(root, p) {
   var readOnly = !!p.arch;
-  var links = linkedProjects(p);
+  var links = linkedQuests(p);
   var ul = el("ul", { "class": "list" });
-  if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No linked projects."));
+  if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No linked quests."));
   links.forEach(function (lp) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
-    var nm = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, lp.name);
-    on(nm, "click", function () { go("proj:" + lp.id); });
+    var nm = el("button", { type: "button", "class": "textbtn qlink", title: "View this quest" }, lp.name);
+    on(nm, "click", function () { go("quest:" + lp.id); });
     row.appendChild(nm);
     if (lp.launchCritical) row.appendChild(el("span", { "class": "chip" }, "Launch critical"));
     if (!readOnly) {
@@ -396,32 +396,32 @@ export function linksSection(root, p) {
       on(lc, "click", function () { lp.launchCritical = !lp.launchCritical; changed(); });
       acts.appendChild(lc);
       var rm = el("button", { type: "button", "class": "small danger", title: "Remove this link" }, "Unlink");
-      on(rm, "click", function () { unlinkProjects(p.id, lp.id); changed(); });
+      on(rm, "click", function () { unlinkQuests(p.id, lp.id); changed(); });
       acts.appendChild(rm); row.appendChild(acts);
     }
     li.appendChild(row); ul.appendChild(li);
   });
   root.appendChild(ul);
   if (readOnly) return;
-  var candidates = liveProjects().filter(function (x) { return x.id !== p.id && p.linkedProjectIds.indexOf(x.id) < 0; });
+  var candidates = liveQuests().filter(function (x) { return x.id !== p.id && p.linkedQuestIds.indexOf(x.id) < 0; });
   if (candidates.length) {
     var addRow = el("div", { "class": "actions", style: "margin-top:10px" });
-    addRow.appendChild(on(el("button", { type: "button", "class": "small", title: "Link this project to another" }, "Link project"), "click", function () { linkProjectDialog(p); }));
+    addRow.appendChild(on(el("button", { type: "button", "class": "small", title: "Link this quest to another" }, "Link quest"), "click", function () { linkQuestDialog(p); }));
     root.appendChild(addRow);
   }
 }
 
-// Launch-critical items render as a section on a project's own page, scoped
-// to that project's tasks -- there's no separate standalone Launch page.
+// Launch-critical items render as a section on a quest's own page, scoped
+// to that quest's tasks -- there's no separate standalone Launch page.
 export function launchSection(root, p) {
   var readOnly = !!p.arch;
   var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h2", { "class": "sechead-h", id: "h-checks" }, "Before you launch"));
   if (!readOnly) ha.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a launch checklist item" }, "Add item"), "click", function () { stepDialog(true, p.id); }));
   root.appendChild(ha);
-  root.appendChild(el("p", { "class": "hint" }, "These are steps from this project's tasks. Tick one here or in Tasks and it stays in sync."));
+  root.appendChild(el("p", { "class": "hint" }, "These are steps from this quest's tasks. Tick one here or in Tasks and it stays in sync."));
   var prog = el("p", { "class": "progress", role: "status", "aria-live": "polite" });
   var items = launchItems(p.id);
-  var lcLinks = linkedProjects(p).filter(function (lp) { return lp.launchCritical; });
+  var lcLinks = linkedQuests(p).filter(function (lp) { return lp.launchCritical; });
   function progress() {
     var n = items.filter(function (x) { return x.s.done; }).length + lcLinks.filter(function (lp) { return lp.status === "complete" || lp.status === "archived"; }).length;
     var total = items.length + lcLinks.length;
@@ -432,11 +432,11 @@ export function launchSection(root, p) {
   items.forEach(function (x) {
     var li = el("li", { "class": x.s.done ? "done" : "" });
     var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = x.s.done; box.disabled = readOnly;
-    on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); autoArchive(); sweepProjectCompletion(); recordHistory(); recordProjectHistory(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); });
+    on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); autoArchive(); sweepQuestCompletion(); recordHistory(); recordQuestHistory(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); });
     label.appendChild(box); label.appendChild(el("span", null, x.s.text)); li.appendChild(label);
     var meta = el("div", { "class": "cnote" });
     if (x.t.arch) meta.appendChild(document.createTextNode(short(dispWhat(x.t), 48) + " (archived)"));
-    else meta.appendChild(on(el("button", { type: "button", "class": "textbtn", title: "View this task" }, short(dispWhat(x.t), 48)), "click", function () { showTaskInProject(p, x.t); }));
+    else meta.appendChild(on(el("button", { type: "button", "class": "textbtn", title: "View this task" }, short(dispWhat(x.t), 48)), "click", function () { showTaskInQuest(p, x.t); }));
     var dc = decisionFor(x.s.id);
     if (dc) meta.appendChild(document.createTextNode(" · Decision " + (dc.a ? "decided" : "open")));
     li.appendChild(meta);
@@ -447,9 +447,9 @@ export function launchSection(root, p) {
     var done = lp.status === "complete" || lp.status === "archived";
     var li = el("li", { "class": done ? "done" : "" });
     var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = done; box.disabled = true;
-    label.appendChild(box); label.appendChild(el("span", null, lp.name + " (linked project)")); li.appendChild(label);
+    label.appendChild(box); label.appendChild(el("span", null, lp.name + " (linked quest)")); li.appendChild(label);
     var meta = el("div", { "class": "cnote" });
-    meta.appendChild(on(el("button", { type: "button", "class": "textbtn", title: "View this project" }, "Launch critical · " + lp.status), "click", function () { go("proj:" + lp.id); }));
+    meta.appendChild(on(el("button", { type: "button", "class": "textbtn", title: "View this quest" }, "Launch critical · " + lp.status), "click", function () { go("quest:" + lp.id); }));
     li.appendChild(meta); ul.appendChild(li);
   });
   progress();
@@ -457,14 +457,14 @@ export function launchSection(root, p) {
 
 }
 
-// Pin/Unpin for a project, shared by In progress and the Projects list.
-function projectPinButton(key, name) {
+// Pin/Unpin for a quest, shared by In progress and the Quests list.
+function questPinButton(key, name) {
   var pinned = isPinned(key);
   return on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + name, title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
 }
 export function pagesSection(excludeIds) {
   var sec = el("div");
-  var rows = liveProjects().filter(function (p) { return p.status !== "candidate" && (!excludeIds || excludeIds.indexOf(p.id) < 0); }).map(function (p) { return { id: p.id, key: "proj:" + p.id, name: p.name, meta: projectMeta(p), complete: p.status === "complete" }; });
+  var rows = liveQuests().filter(function (p) { return p.status !== "candidate" && (!excludeIds || excludeIds.indexOf(p.id) < 0); }).map(function (p) { return { id: p.id, key: "quest:" + p.id, name: p.name, meta: questMeta(p), complete: p.status === "complete" }; });
   var hasPending = rows.some(function (r) { return !r.complete; }), hasComplete = rows.some(function (r) { return r.complete; });
   var heading = !rows.length ? "Pending & completed" : hasPending && hasComplete ? "Pending & completed" : hasComplete ? "Completed" : "Pending";
   sec.appendChild(el("h2", { style: "margin-top:28px" }, heading));
@@ -473,36 +473,36 @@ export function pagesSection(excludeIds) {
   rows.forEach(function (r) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nm = el("div", { style: "flex:1 1 200px" });
-    var link = el("button", { type: "button", "class": "textbtn plink", style: "font-weight:600", title: "View this project" }, r.name);
+    var link = el("button", { type: "button", "class": "textbtn qlink", style: "font-weight:600", title: "View this quest" }, r.name);
     on(link, "click", function () { go(r.key); });
     nm.appendChild(link);
-    if (r.complete) nm.appendChild(el("span", { "class": "chip projcomplete", style: "margin-left:8px" }, "Complete"));
+    if (r.complete) nm.appendChild(el("span", { "class": "chip questcomplete", style: "margin-left:8px" }, "Complete"));
     nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, r.meta));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
-    acts.appendChild(projectPinButton(r.key, r.name));
+    acts.appendChild(questPinButton(r.key, r.name));
     row.appendChild(acts);
     li.appendChild(row); ul.appendChild(li);
   });
   sec.appendChild(ul); return sec;
 }
-// A project's own lifecycle status decides how much of the page renders:
+// A quest's own lifecycle status decides how much of the page renders:
 // "candidate" isn't started yet, "active" has its own Tasks/Schedule/Notes/
 // Launch sections. Promotion is in-place -- the same record and id carry
 // through, never a second record.
-export function renderProjectPage(root, id) {
-  var p = findProject(id);
-  if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Project not found.")); return; }
+export function renderQuestPage(root, id) {
+  var p = findQuest(id);
+  if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Quest not found.")); return; }
   var readOnly = !!p.arch;
   // Active/complete: two columns (page content left, Schedule/Timeline/Burndown right), stacked on a phone.
   var page = root, split = null;
   var metaLine = el("p", { "class": "hint" });
-  if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip projcomplete", style: "margin-right:8px" }, "Complete"));
-  metaLine.appendChild(document.createTextNode(projectMeta(p)));
+  if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip questcomplete", style: "margin-right:8px" }, "Complete"));
+  metaLine.appendChild(document.createTextNode(questMeta(p)));
   if (!readOnly && (p.status === "active" || p.status === "complete")) {
-    split = el("div", { "class": "projsplit" });
+    split = el("div", { "class": "questsplit" });
     // Grid areas defined in styles.css.
-    root = el("div", { "class": "projmain" });
+    root = el("div", { "class": "questmain" });
     split.appendChild(root); page.appendChild(split);
   } else {
     root.appendChild(metaLine);
@@ -521,21 +521,21 @@ export function renderProjectPage(root, id) {
   if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a task" }, "Add task"), "click", function () { taskDialog(p.id); }));
   root.appendChild(hd);
   // The count line on the left, the open estimated time on the right.
-  var est = projectEstimate(p), metaRow = el("div", { "class": "metarow" });
+  var est = questEstimate(p), metaRow = el("div", { "class": "metarow" });
   metaRow.appendChild(metaLine);
   if (est.total > 0) metaRow.appendChild(el("span", { "class": "hint estleft" }, "Est. " + fmtHoursLong(est.left) + " remaining"));
   root.appendChild(metaRow);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
-  else if (p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this project is Complete. Reopen it to bring them back."));
-  // orderedAll(), not ordered()/backlogTasks() -- a project's own page must
-  // keep showing its own tasks even while Complete, when those cross-project
+  else if (p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this quest is Complete. Reopen it to bring them back."));
+  // orderedAll(), not ordered()/backlogTasks() -- a quest's own page must
+  // keep showing its own tasks even while Complete, when those cross-quest
   // lists start excluding them.
-  var ts = sortTasks(live(state.tasks).filter(function (t) { return !t.isNext && t.projectId === p.id; }));
+  var ts = sortTasks(live(state.tasks).filter(function (t) { return !t.isNext && t.questId === p.id; }));
   if (ts.length) {
     var ul = el("ul", { "class": "tlist" });
     ts.forEach(function (t) {
-      // A live project's task opens in place under its row; an archived project's goes to the Tasks page.
-      var open = !readOnly && ui.projOpen[p.id] === t.id;
+      // A live quest's task opens in place under its row; an archived quest's goes to the Tasks page.
+      var open = !readOnly && ui.questOpen[p.id] === t.id;
       var li = el("li", { id: "ptask-" + t.id }), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
       if (!readOnly) b.setAttribute("aria-expanded", open ? "true" : "false");
       var l1 = el("div", { "class": "l1 split" });
@@ -548,7 +548,7 @@ export function renderProjectPage(root, id) {
       stepsAndEst(l3, t);
       if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
       b.appendChild(l3);
-      on(b, "click", function () { if (readOnly) { openTask(t.id); return; } ui.projOpen[p.id] = open ? null : t.id; renderView(); });
+      on(b, "click", function () { if (readOnly) { openTask(t.id); return; } ui.questOpen[p.id] = open ? null : t.id; renderView(); });
       li.appendChild(b);
       if (open) li.appendChild(buildDetail(t, true));
       ul.appendChild(li);
@@ -571,12 +571,12 @@ export function renderProjectPage(root, id) {
     if (typeof ResizeObserver !== "undefined") new ResizeObserver(function () { if (ta.offsetHeight > 0) ui.notesH[p.id] = ta.offsetHeight; }).observe(ta);
   }
 
-  root.appendChild(el("h2", null, "Linked projects"));
+  root.appendChild(el("h2", null, "Linked quests"));
   linksSection(root, p);
 
   var ar = el("div", { "class": "actions", style: "margin-top:14px" });
   if (readOnly) {
-    ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Bring back to Projects" }, "Restore"), "click", function () { restoreEntry({ kind: "project", list: "projects", item: p }); }));
+    ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Bring back to Quests" }, "Restore"), "click", function () { restoreEntry({ kind: "quest", list: "quests", item: p }); }));
   } else {
     if (p.status === "active") {
       ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Mark complete" }, "Mark complete"), "click", function () {
@@ -585,27 +585,27 @@ export function renderProjectPage(root, id) {
       }));
     } else if (p.status === "complete") {
       // No auto-revert -- Reopen is the only way back to Active.
-      ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Reopen this project" }, "Reopen"), "click", function () {
+      ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Reopen this quest" }, "Reopen"), "click", function () {
         p.status = "active"; changed(); notify("Reopened.");
       }));
     }
-    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Archive this project" }, "Archive"), "click", function () {
+    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Archive this quest" }, "Archive"), "click", function () {
       var warn = incompleteLaunchCriticalLinks(p);
-      if (warn.length) notify("Archiving even though " + (warn.length === 1 ? "a launch-critical linked project isn’t" : "launch-critical linked projects aren’t") + " finished: " + warn.map(function (lp) { return lp.name; }).join(", ") + ".");
-      archiveProject(p);
+      if (warn.length) notify("Archiving even though " + (warn.length === 1 ? "a launch-critical linked quest isn’t" : "launch-critical linked quests aren’t") + " finished: " + warn.map(function (lp) { return lp.name; }).join(", ") + ".");
+      archiveQuest(p);
     }));
     ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Export web page for client review" }, "Client Export"), "click", function () {
-      exportProjectForClient(p);
+      exportQuestForClient(p);
     }));
   }
   root.appendChild(ar);
-  if (split) split.appendChild(projectChartsPanel(p));
+  if (split) split.appendChild(questChartsPanel(p));
 }
 
-// On a project's own page a task opens in place; the Tasks page is for the cross-project list.
-function showTaskInProject(p, t) {
+// On a quest's own page a task opens in place; the Tasks page is for the cross-quest list.
+function showTaskInQuest(p, t) {
   if (p.arch) { openTask(t.id); return; }
-  ui.projOpen[p.id] = t.id; renderView();
+  ui.questOpen[p.id] = t.id; renderView();
   var row = document.getElementById("ptask-" + t.id);
   if (row && row.scrollIntoView) row.scrollIntoView({ block: "nearest" });
 }
@@ -619,7 +619,7 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
   if (readOnly) {
     host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + (p.due ? ", due " + fmt(p.due) : "") + ", " + wl() + " length " + eff.days + " days" + "."));
   } else {
-    host.appendChild(el("p", { "class": "hint" }, "Set this project's own start date, due date, and " + wl() + " length."));
+    host.appendChild(el("p", { "class": "hint" }, "Set this quest's own start date, due date, and " + wl() + " length."));
     var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
     var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
@@ -640,31 +640,31 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
 }
 
 // Right column: Schedule, Timeline, Burndown, flowing continuously. Expand opens all three large.
-function projectChartsPanel(p) {
-  var side = el("aside", { "class": "projcharts", "aria-label": "Schedule, timeline, and burndown" });
-  var ex = el("button", { type: "button", "class": "small projexpand", title: "Expand the schedule, timeline, and burndown" }, "Expand");
-  on(ex, "click", function () { openModal("Timeline and burndown for " + p.name, function (body) { body.appendChild(projectCharts(p, true, null, true)); }, { full: true }); });
-  side.appendChild(projectCharts(p, false, ex, true));
+function questChartsPanel(p) {
+  var side = el("aside", { "class": "questcharts", "aria-label": "Schedule, timeline, and burndown" });
+  var ex = el("button", { type: "button", "class": "small questexpand", title: "Expand the schedule, timeline, and burndown" }, "Expand");
+  on(ex, "click", function () { openModal("Timeline and burndown for " + p.name, function (body) { body.appendChild(questCharts(p, true, null, true)); }, { full: true }); });
+  side.appendChild(questCharts(p, false, ex, true));
   return side;
 }
-function projectCharts(p, wide, expandBtn, first) {
+function questCharts(p, wide, expandBtn, first) {
   var out = el("div");
   // Schedule keeps its own single "Schedule" heading from scheduleSection() -- the
   // Expand button rides along on that same heading row, no separate heading added.
   scheduleSection(out, p, false, first, expandBtn);
-  var tl = projectRangeBlock(p);
+  var tl = questRangeBlock(p);
   if (tl.empty) {
     // Nothing to chart -- one combined heading, no Slip button.
     out.appendChild(el("h2", null, "Timeline & burndown"));
     out.appendChild(tl.node);
   } else {
     // Slip moves incomplete tasks only -- see slipDialog().
-    var slipBtn = el("button", { type: "button", "class": "small", title: "Push this project's incomplete tasks later to catch up" }, "Slip schedule");
+    var slipBtn = el("button", { type: "button", "class": "small", title: "Push this quest's incomplete tasks later to catch up" }, "Slip schedule");
     on(slipBtn, "click", function () { slipDialog(p); });
     var hd1 = el("div", { "class": "sechead" }); hd1.appendChild(el("h2", null, "Timeline")); hd1.appendChild(slipBtn);
     out.appendChild(hd1);
     out.appendChild(tl.node); wireMilestoneDiamonds(tl.node);
-    var b = burnParts({ project: p, wide: wide, level: "h2" });
+    var b = burnParts({ quest: p, wide: wide, level: "h2" });
     b.count.style.marginTop = "12px";
     out.appendChild(b.h); out.appendChild(b.chart); out.appendChild(b.count);
   }
@@ -673,7 +673,7 @@ function projectCharts(p, wide, expandBtn, first) {
 
 // Promotes in place -- same record, same id.
 export function promoteToActive(id) {
-  var p = findAnyProject(id);
+  var p = findAnyQuest(id);
   if (!p) return;
   p.status = "active";
   var t = state.tasks.filter(function (x) { return x.isNext; })[0];
@@ -683,71 +683,71 @@ export function promoteToActive(id) {
 export function standingBlock() {
   var wrap = el("div");
   wrap.appendChild(el("h2", { "class": "first" }, "In progress"));
-  wrap.appendChild(el("p", { "class": "hint" }, "Built from your open tasks, ordered by when each project's next task starts. Pin a project to the sidebar for quick access."));
+  wrap.appendChild(el("p", { "class": "hint" }, "Built from your open tasks, ordered by when each quest's next task starts. Pin a quest to the sidebar for quick access."));
   var box = el("div", { "class": "box", style: "margin-top:10px" });
   var groups = {}, order = [];
   ordered().forEach(function (t) {
     if (t.isNext || t.status === "Completed") return;
-    var proj = findProject(t.projectId);
-    if (proj && proj.status === "complete") return;
-    var g = groups[t.projectId]; if (!g) { g = groups[t.projectId] = { projectId: t.projectId, name: dispProject(t), open: 0, first: t }; order.push(g); }
+    var quest = findQuest(t.questId);
+    if (quest && quest.status === "complete") return;
+    var g = groups[t.questId]; if (!g) { g = groups[t.questId] = { questId: t.questId, name: dispQuest(t), open: 0, first: t }; order.push(g); }
     g.open++;
   });
   order.sort(function (a, b) { return taskStart(a.first) - taskStart(b.first); });
-  var projectIds = order.map(function (g) { return g.projectId; });
+  var questIds = order.map(function (g) { return g.questId; });
   var ul = el("ul", { "class": "standing" });
   if (!order.length) ul.appendChild(el("li", null, "No open tasks."));
   order.forEach(function (g) {
     var li = el("li"), row = el("div", { "class": "srow" }), textWrap = el("div", { style: "flex:1 1 200px" });
-    var nm = el("button", { type: "button", "class": "textbtn plink", title: "View this project" }, g.name);
-    on(nm, "click", function () { go(validPage("proj:" + g.projectId) ? "proj:" + g.projectId : "projects"); });
+    var nm = el("button", { type: "button", "class": "textbtn qlink", title: "View this quest" }, g.name);
+    on(nm, "click", function () { go(validPage("quest:" + g.questId) ? "quest:" + g.questId : "projects"); });
     textWrap.appendChild(nm);
     var nx = el("div", { "class": "snext" }); nx.appendChild(document.createTextNode("Next up: "));
     var tl = el("button", { type: "button", "class": "textbtn", title: "View this task" }, short(g.first.what, 90));
     on(tl, "click", function () { openTask(g.first.id); });
     nx.appendChild(tl); nx.appendChild(document.createTextNode(" · " + fmt(taskStart(g.first)) + " · " + g.open + " open " + (g.open === 1 ? "task" : "tasks")));
     textWrap.appendChild(nx);
-    row.appendChild(textWrap); row.appendChild(projectPinButton("proj:" + g.projectId, g.name));
+    row.appendChild(textWrap); row.appendChild(questPinButton("quest:" + g.questId, g.name));
     li.appendChild(row); ul.appendChild(li);
   });
   box.appendChild(ul); wrap.appendChild(box);
-  return { node: wrap, projectIds: projectIds };
+  return { node: wrap, questIds: questIds };
 }
 export function candidatesSection() {
   var sec = el("div");
   var hd = el("div", { "class": "sechead", style: "margin-top:28px" }); hd.appendChild(el("h2", null, "Candidates")); sec.appendChild(hd);
-  sec.appendChild(el("p", { "class": "hint" }, "Choose which project gets the next slot. Use New project in the menu, or make an idea in the Parking lot a candidate."));
+  sec.appendChild(el("p", { "class": "hint" }, "Choose which quest gets the next slot. Use New quest in the menu, or make an idea in the Parking lot a candidate."));
   var list = el("ul", { "class": "list" });
-  var cs = candidateProjects();
+  var cs = candidateQuests();
   if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a candidate."));
   cs.forEach(function (cd) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nmWrap = el("div", { style: "flex:1 1 200px" });
-    var nm = el("button", { type: "button", "class": "textbtn plink", title: "Edit this candidate" }, cd.name);
+    var nm = el("button", { type: "button", "class": "textbtn qlink", title: "Edit this candidate" }, cd.name);
     on(nm, "click", function () { candidateDialog(cd); });
     nmWrap.appendChild(nm);
     if (cd.notes) nmWrap.appendChild(el("p", { "class": "cnote notetext noteclamp", style: "margin-left:0" }, cd.notes));
     row.appendChild(nmWrap);
     var acts = el("div", { "class": "li-actions" });
-    var pr = el("button", { type: "button", "class": "small", title: "Promote to project" }, "Promote");
+    var pr = el("button", { type: "button", "class": "small", title: "Promote to quest" }, "Promote");
     on(pr, "click", function () { promoteToActive(cd.id); });
     acts.appendChild(pr);
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Move to the Parking lot" }, "Park it"), "click", function () {
-      state.projects = state.projects.filter(function (x) { return x.id !== cd.id; });
+      state.quests = state.quests.filter(function (x) { return x.id !== cd.id; });
       state.parked.push({ id: uid(), text: cd.name, note: cd.notes }); changed();
     }));
     var rm = el("button", { type: "button", "class": "small danger", title: "Archive this candidate" }, "Archive");
-    on(rm, "click", function () { removeToArchive(cd, "Project"); });
+    on(rm, "click", function () { removeToArchive(cd, "Quest"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row);
     list.appendChild(li);
   });
   sec.appendChild(list);
   return sec;
 }
-export function renderProjects(root) {
+export function renderQuests(root) {
   var standing = standingBlock();
   root.appendChild(standing.node);
-  root.appendChild(pagesSection(standing.projectIds));
+  root.appendChild(pagesSection(standing.questIds));
   root.appendChild(candidatesSection());
 }
 export function renderParkingLot(root) {
@@ -760,15 +760,15 @@ export function renderParkingLot(root) {
   ps.forEach(function (p) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nm = el("div", { style: "flex:1 1 200px" });
-    var link = el("button", { type: "button", "class": "textbtn plink", style: "font-weight:600", title: "Open this idea" }, p.text);
+    var link = el("button", { type: "button", "class": "textbtn qlink", style: "font-weight:600", title: "Open this idea" }, p.text);
     on(link, "click", function () { ideaDialog(p); });
     nm.appendChild(link);
     if (p.note) nm.appendChild(el("p", { "class": "hint notetext noteclamp", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
-    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make this a candidate project" }, "Make candidate"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make this a candidate quest" }, "Make candidate"), "click", function () {
       state.parked = state.parked.filter(function (x) { return x.id !== p.id; });
-      state.projects.push(makeProject(uid(), p.text, "candidate", { notes: p.note })); changed();
+      state.quests.push(makeQuest(uid(), p.text, "candidate", { notes: p.note })); changed();
     }));
     var rm = el("button", { type: "button", "class": "small danger", title: "Archive this idea" }, "Archive");
     on(rm, "click", function () { removeToArchive(p, "Idea"); });
@@ -802,7 +802,7 @@ export function renderTimeline(root) {
     var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date)));
     var mtext = el("span", { style: "flex:1 1 auto" });
     if (m.auto) mtext.appendChild(document.createTextNode(m.text));
-    else { var ml = el("button", { type: "button", "class": "textbtn plink", title: "Open this milestone" }, m.text); on(ml, "click", function () { editMilestone(m.id); }); mtext.appendChild(ml); }
+    else { var ml = el("button", { type: "button", "class": "textbtn qlink", title: "Open this milestone" }, m.text); on(ml, "click", function () { editMilestone(m.id); }); mtext.appendChild(ml); }
     li.appendChild(mtext);
     if (!m.auto) {
       var rm = el("button", { type: "button", "class": "small danger", title: "Remove this milestone (can be undone)" }, "Remove");
@@ -838,7 +838,7 @@ export function renderTimeline(root) {
   table.appendChild(body); wrap.appendChild(table); root.appendChild(wrap);
 }
 
-// Only Projects and Ideas archive independently -- see removeNow() for the rest.
+// Only Quests and Ideas archive independently -- see removeNow() for the rest.
 export function removeToArchive(item, label, before) {
   if (before) before();
   item.arch = { at: iso(TODAY), why: "removed" };
@@ -854,20 +854,20 @@ export function removeNow(item, list, label) {
 }
 
 /* archive */
-export var KIND_LABEL = { project: "Project", idea: "Idea" };
-export var KIND_FILTERS = [["all", "All"], ["project", "Projects"], ["idea", "Ideas"]];
+export var KIND_LABEL = { quest: "Quest", idea: "Idea" };
+export var KIND_FILTERS = [["all", "All"], ["quest", "Quests"], ["idea", "Ideas"]];
 export function archiveEntries() {
   var out = [];
-  state.projects.forEach(function (p) { if (p.arch) out.push({ kind: "project", list: "projects", item: p, title: p.name }); });
+  state.quests.forEach(function (p) { if (p.arch) out.push({ kind: "quest", list: "quests", item: p, title: p.name }); });
   state.parked.forEach(function (p) { if (p.arch) out.push({ kind: "idea", list: "parked", item: p, title: p.text }); });
   return out.sort(function (a, b) { return a.item.arch.at < b.item.arch.at ? 1 : (a.item.arch.at > b.item.arch.at ? -1 : 0); });
 }
 export function dropEntry(e) { state[e.list] = state[e.list].filter(function (x) { return x !== e.item; }); }
 export function restoreEntry(e) {
   e.item.arch = null;
-  // Reverses archiveProject()'s task cascade, or the project comes back empty.
-  if (e.kind === "project") {
-    state.tasks.forEach(function (t) { if (t.projectId === e.item.id && t.arch) t.arch = null; });
+  // Reverses archiveQuest()'s task cascade, or the quest comes back empty.
+  if (e.kind === "quest") {
+    state.tasks.forEach(function (t) { if (t.questId === e.item.id && t.arch) t.arch = null; });
   }
   changed(); notify(KIND_LABEL[e.kind] + " restored.");
 }
@@ -900,10 +900,10 @@ export function renderArchive(root) {
   shown.forEach(function (e) {
     var li = el("li"), row = el("div", { "class": "crow", style: "align-items:center" });
     var info = el("div", { style: "flex:1 1 220px" });
-    // Projects link to their read-only archived page; Ideas have no page.
-    if (e.kind === "project") {
-      var tl = el("button", { type: "button", "class": "textbtn plink", style: "font-weight:600", title: "View this project" }, e.title);
-      on(tl, "click", function () { go("proj:" + e.item.id); });
+    // Quests link to their read-only archived page; Ideas have no page.
+    if (e.kind === "quest") {
+      var tl = el("button", { type: "button", "class": "textbtn qlink", style: "font-weight:600", title: "View this quest" }, e.title);
+      on(tl, "click", function () { go("quest:" + e.item.id); });
       info.appendChild(tl);
     } else info.appendChild(el("span", { style: "font-weight:600" }, e.title));
     info.appendChild(el("span", { "class": "chip", style: "margin-left:8px" }, KIND_LABEL[e.kind]));
@@ -935,59 +935,60 @@ export function helpTopics() {
     ["Find your way around", [
       "On a computer, use the sidebar on the left. On a phone, use the tabs along the bottom.",
       "The menu button (three lines, top right) lists every page.",
-      "The **+** button adds things: a task, backlog item, step, project, idea, decision, or milestone.",
+      "The **+** button adds things: a task, backlog item, step, quest, idea, decision, or milestone.",
       "Search: press [[/]] on a computer, or tap the magnifier on a phone. Press [[Enter]] to open the first result and [[Esc]] to clear it. On a phone, tap the **X** where the magnifier was to cancel."]],
     ["Work through your day (Today)", [
       "**Next up** shows the task to do now. **Start** marks it in progress, and **Open task** takes you to it in Tasks.",
-      "Anything past its end date appears below it. If you are running behind, open that project's own page and use **Slip schedule** there.",
-      "The burndown counts tasks, one each, and shows how many are still open against the plan. The app records the counts itself whenever you make a change, so nothing is typed in, and a day you did not open the app keeps the last count. An orange line shows how many tasks are in scope, ramping up when tasks are added and down when they are removed. A task added after its project started carries an Added tag with its date, on the project's page and in Tasks. A project marked Complete takes its open tasks off the main chart. Scope changes are also called out in the tooltip and the table. Point at a day or week, tap it, or focus the chart and use the arrow keys to see its counts and tasks."]],
+      "Anything past its end date appears below it. If you are running behind, open that quest's own page and use **Slip schedule** there.",
+      "The burndown counts tasks, one each, and shows how many are still open against the plan. The app records the counts itself whenever you make a change, so nothing is typed in, and a day you did not open the app keeps the last count. An orange line shows how many tasks are in scope, ramping up when tasks are added and down when they are removed. A task added after its quest started carries an Added tag with its date, on the quest's page and in Tasks. A quest marked Complete takes its open tasks off the main chart. Scope changes are also called out in the tooltip and the table. Point at a day or week, tap it, or focus the chart and use the arrow keys to see its counts and tasks."]],
     ["Add and schedule tasks", [
-      "Tap **+**, then **New task**. Enter the project, what you do, and how you will know it is done.",
+      "Tap **+**, then **New task**. Enter the quest, what you do, and how you will know it is done.",
       "Pick a due date and the task lands in the " + w + " that contains it. Add a start date if it begins later than that " + w + " does, and an estimated time in hours if you want one. Leave the due date empty to put the task in the Backlog.",
-      "Open a task in **Tasks**, or select it on its project's page where it opens right in place, to change its status, add steps and notes, or edit its start date, due date, and estimated time. A start date can't be after the due date. Use the pencil beside its name to rename it.",
-      "A project's page shows the estimated time still open beside its task count, like \"Est. 12 hours remaining\". It drops as you complete tasks.",
-      "A task is Not started, In progress, or Completed. Not started shows in blue, In progress in yellow, and Completed in green, on the status menu, on the task's row, and on its bar in a project's Timeline.",
+      "Open a task in **Tasks**, or select it on its quest's page where it opens right in place, to change its status, add steps and notes, or edit its start date, due date, and estimated time. A start date can't be after the due date. Use the pencil beside its name to rename it.",
+      "A quest's page shows the estimated time still open beside its task count, like \"Est. 12 hours remaining\". It drops as you complete tasks.",
+      "A task is Not started, In progress, or Completed. Not started shows in blue, In progress in yellow, and Completed in green, on the status menu, on the task's row, and on its bar in a quest's Timeline.",
       "Finishing every step marks the task done, and adding a step to a finished task reopens it."]],
     ["Use the Backlog", [
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
       "To schedule it, open the item and set a due date. Backlog items stay out of the burndown until you do. Clearing a task's due date sends it back to the Backlog and clears its start date. An estimated time is kept either way."]],
-    ["Manage projects", [
-      "Each active project has its own page. Open **Projects** and select the project's name. Use the pencil beside its title to rename it, and edit its notes there. Down the page you will find its Tasks, Before you launch checklist, Notes, and Linked projects, in that order. Select a task to open it right there. Beside that (below it on a phone) are its Schedule, where you set its start date, due date, and block length, and its own Timeline and Burndown, which redraw as you change the schedule. On the Timeline, a pale band behind each task's bar shows the block it sits in. On a wide screen, **Expand** shows them large.",
-      "**Candidates** are projects that could take the next slot. Select one to edit its notes, start date, due date, and block length in a dialog, then use **Promote** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
-      "**In progress** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there.",
-      "Below it, the Projects page lists any project that is complete or has no tasks yet, under the heading Pending, Completed, or Pending & completed.",
-      "**Client Export**, on an active or complete project's page, downloads a single read-only web page with that project's tasks, notes, and an interactive schedule and burndown, for sharing outside the app. A linked project that is active or complete comes along too, with its own section."]],
-    ["Finish or archive a project", [
-      "**Mark complete** on a project's page marks it done, even with tasks still open. A project also completes by itself once all its tasks are done. Either way, you can archive it right away or leave it in Projects.",
-      "A completed project shows a **Complete** badge and drops out of In progress. Its tasks also leave Tasks, the main Timeline, Today, and the main burndown, though its own page still lists them. **Reopen** makes it active again and brings them back.",
-      "**Archive** puts a project and its open tasks in the Archive. **Restore** brings all of it back."]],
-    ["Link projects", [
-      "**Linked projects**, on a project's page, connects it to related projects. Choose **Link project** and pick one. A link goes both ways.",
-      "**Mark launch critical** flags a linked project that has to finish first. It shows on the other project's Launch checklist, and counts as done once it is complete or archived. Completing or archiving a project with an unfinished launch-critical link only warns you."]],
+    ["Manage quests", [
+      "A quest is what used to be called a project here. Same thing, new name -- nothing about your existing quests changed.",
+      "Each active quest has its own page. Open **Quests** and select the quest's name. Use the pencil beside its title to rename it, and edit its notes there. Down the page you will find its Tasks, Before you launch checklist, Notes, and Linked quests, in that order. Select a task to open it right there. Beside that (below it on a phone) are its Schedule, where you set its start date, due date, and block length, and its own Timeline and Burndown, which redraw as you change the schedule. On the Timeline, a pale band behind each task's bar shows the block it sits in. On a wide screen, **Expand** shows them large.",
+      "**Candidates** are quests that could take the next slot. Select one to edit its notes, start date, due date, and block length in a dialog, then use **Promote** to start it. Add a candidate with **New quest** in the **+** menu, or turn an idea into one with **Make candidate**.",
+      "**In progress** lists each active quest with its next task. Use **Pin** on a quest for quick access from the sidebar. Unpinning only hides it there.",
+      "Below it, the Quests page lists any quest that is complete or has no tasks yet, under the heading Pending, Completed, or Pending & completed.",
+      "**Client Export**, on an active or complete quest's page, downloads a single read-only web page with that quest's tasks, notes, and an interactive schedule and burndown, for sharing outside the app. A linked quest that is active or complete comes along too, with its own section."]],
+    ["Finish or archive a quest", [
+      "**Mark complete** on a quest's page marks it done, even with tasks still open. A quest also completes by itself once all its tasks are done. Either way, you can archive it right away or leave it in Quests.",
+      "A completed quest shows a **Complete** badge and drops out of In progress. Its tasks also leave Tasks, the main Timeline, Today, and the main burndown, though its own page still lists them. **Reopen** makes it active again and brings them back.",
+      "**Archive** puts a quest and its open tasks in the Archive. **Restore** brings all of it back."]],
+    ["Link quests", [
+      "**Linked quests**, on a quest's page, connects it to related quests. Choose **Link quest** and pick one. A link goes both ways.",
+      "**Mark launch critical** flags a linked quest that has to finish first. It shows on the other quest's Launch checklist, and counts as done once it is complete or archived. Completing or archiving a quest with an unfinished launch-critical link only warns you."]],
     ["Use the Parking lot", [
       "Ideas that are not ready yet live on the **Parking lot**. Add one with **Add idea**. Select an idea's title to open it and change its text or note.",
-      "**Make candidate** turns an idea into a project candidate, and its note becomes the project's **Notes**. **Park it** on a candidate sends the notes back. **Archive** sends an idea to the Archive."]],
+      "**Make candidate** turns an idea into a quest candidate, and its note becomes the quest's **Notes**. **Park it** on a candidate sends the notes back. **Archive** sends an idea to the Archive."]],
     ["Read the Timeline", [
-      "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
-      "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline. Select a diamond, or a milestone's text in the list, to change its project, text, or date, or to remove it.",
-      "A project's own page has a Timeline with a lane for each scheduled task, and its own Burndown. Point at a week on a burndown, tap it, or focus it and use the left and right arrow keys, to see its counts and which tasks finish or were completed. The full-width burndown and a table of the counts are further down this page. The counts are recorded automatically from your tasks and can't be edited.",
-      "On a project's own Timeline, each task's bar takes its status color: blue for Not started, yellow for In progress, green for Completed."]],
+      "Every quest gets a lane. A light bar is an estimate you set on the quest's page. It is not a promise.",
+      "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline. Select a diamond, or a milestone's text in the list, to change its quest, text, or date, or to remove it.",
+      "A quest's own page has a Timeline with a lane for each scheduled task, and its own Burndown. Point at a week on a burndown, tap it, or focus it and use the left and right arrow keys, to see its counts and which tasks finish or were completed. The full-width burndown and a table of the counts are further down this page. The counts are recorded automatically from your tasks and can't be edited.",
+      "On a quest's own Timeline, each task's bar takes its status color: blue for Not started, yellow for In progress, green for Completed."]],
     ["Launch checklist and decisions", [
-      "On any task, use the pencil beside a step to rename it, put it on that project's own **Launch** section, or remove it. A step on the checklist shows a **Launch** tag. Ticking it there or in **Tasks** keeps both in sync.",
+      "On any task, use the pencil beside a step to rename it, put it on that quest's own **Launch** section, or remove it. A step on the checklist shows a **Launch** tag. Ticking it there or in **Tasks** keeps both in sync.",
       "A decision belongs to one step. Select **Add decision** beside a step to write down what you need to settle. Select the decision tag to answer it, change it, or remove it. Answering it ticks the step, and clearing the answer unticks it.",
-      "Use **Add item** on a project's Launch section to create a new step for the list."]],
+      "Use **Add item** on a quest's Launch section to create a new step for the list."]],
     ["Archive and undo", [
-      "Only **Projects** and **Ideas** go to the **Archive**, using their **Archive** button. A completed task just stays visible in its project, marked done.",
+      "Only **Quests** and **Ideas** go to the **Archive**, using their **Archive** button. A completed task just stays visible in its quest, marked done.",
       "**Delete** on a task, or **Remove** on a decision or milestone, deletes it right away, with a short **Undo** in case you didn't mean to.",
-      "In the Archive, select a project's name to look at it. **Restore** puts a project or idea back, and a project's tasks with it. **Delete forever** always asks first, and it cannot be undone."]],
-    ["Slip a project's schedule", [
-      "On a project's own page, above the Timeline, choose **Slip schedule**. Pick the number of days and choose **Push dates later**, and its still-incomplete tasks move later by that many days. Completed tasks and the Backlog are not affected.",
+      "In the Archive, select a quest's name to look at it. **Restore** puts a quest or idea back, and a quest's tasks with it. **Delete forever** always asks first, and it cannot be undone."]],
+    ["Slip a quest's schedule", [
+      "On a quest's own page, above the Timeline, choose **Slip schedule**. Pick the number of days and choose **Push dates later**, and its still-incomplete tasks move later by that many days. Completed tasks and the Backlog are not affected.",
       "**Undo last slip** in the same dialog reverses it."]],
     ["Settings, backup, and starting over", [
       "In **Settings**, set the default length of a stretch of work in days, what to call it (Block, Sprint, and so on), the date format, the theme, and whether the splash screen plays when the app opens.",
       "Everything is saved in this browser only. Under **Backup and restore**, **Save backup** lets you choose where to put a backup file, and **Restore backup** loads one back after warning you that it replaces everything. You get a few seconds to undo a restore. After two weeks without a backup, Today adds a quiet reminder.",
       "Under **Archive**, you can set items to delete automatically after 7, 30, 60, or 90 days, counted from when each one was archived, or leave it set to Never. This is checked each time Sidequest opens, and there's no further warning once it's turned on.",
-      "**Start fresh** erases everything after a warning. Save a backup first. You can begin empty or with the starting projects."]]
+      "**Start fresh** erases everything after a warning. Save a backup first. You can begin empty or with the starting quests."]]
   ];
 }
 export function renderHelp(root) {
@@ -1009,18 +1010,18 @@ export function renderHelp(root) {
 /* settings */
 export function blankState() {
   var d = defaults();
-  d.tasks = []; d.decisions = []; d.projects = []; d.parked = []; d.milestones = []; d.pins = []; d.lastSlip = null;
+  d.tasks = []; d.decisions = []; d.quests = []; d.parked = []; d.milestones = []; d.pins = []; d.lastSlip = null;
   d.start = iso(TODAY); d.days = state.days; d.settings = state.settings;
   return d;
 }
 export function startFreshDialog() {
   openModal("Start fresh", function (body) {
-    body.appendChild(el("p", { "class": "first" }, "Start fresh erases every task, project, decision, note, milestone, and everything in the Archive stored in this browser. This cannot be undone."));
+    body.appendChild(el("p", { "class": "first" }, "Start fresh erases every task, quest, decision, note, milestone, and everything in the Archive stored in this browser. This cannot be undone."));
     body.appendChild(el("p", { "class": "hint" }, "Save a backup first if you might want anything back."));
     var msg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
     backupControls(body, msg); body.appendChild(msg);
     body.appendChild(el("h3", null, "Start with"));
-    var choices = [["empty", "An empty planner"], ["original", "The sample projects"]], picked = "empty";
+    var choices = [["empty", "An empty planner"], ["original", "The sample quests"]], picked = "empty";
     choices.forEach(function (c) {
       var lab = el("label", { "class": "radiorow" }); var rb = el("input", { type: "radio", name: "fresh", value: c[0] }); rb.checked = c[0] === picked;
       on(rb, "change", function () { picked = c[0]; });
@@ -1042,7 +1043,7 @@ export function startFreshDialog() {
 export function renderSettings(root) {
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   root.appendChild(el("h2", { "class": "first" }, "Schedule defaults"));
-  root.appendChild(el("p", { "class": "hint" }, "Each project sets its own start date on its page. This is the default " + wl() + " length for any project that hasn't set its own."));
+  root.appendChild(el("p", { "class": "hint" }, "Each quest sets its own start date on its page. This is the default " + wl() + " length for any quest that hasn't set its own."));
   var grid = el("div", { "class": "setgrid" });
   function fieldOf(id, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); grid.appendChild(w); }
   var da = el("input", { type: "number", id: "set-days", min: "1", max: "30", step: "1" }); da.value = state.days;
@@ -1080,7 +1081,7 @@ export function renderSettings(root) {
   root.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device's own format. Nothing here uses a time of day yet."));
 
   root.appendChild(el("h2", null, "Archive"));
-  root.appendChild(el("p", { "class": "hint" }, "Removing a project or an idea sends it to the Archive. A completed task just stays visible in its project."));
+  root.appendChild(el("p", { "class": "hint" }, "Removing a quest or an idea sends it to the Archive. A completed task just stays visible in its quest."));
   var pg = el("div", { "class": "setgrid" });
   var pw = el("div", { "class": "field" }); pw.appendChild(el("label", { "for": "set-purge" }, "Auto-delete items after"));
   var ps = el("select", { id: "set-purge", "class": "plain" });
@@ -1171,9 +1172,9 @@ function restoreBackupFile(file, msg) {
     try { obj = JSON.parse(String(r.result || "")); } catch (e) { obj = null; }
     if (!obj || typeof obj !== "object" || !Array.isArray(obj.tasks)) { msg.textContent = "That is not a Sidequest backup file."; return; }
     msg.textContent = "";
-    var next = normalize(obj), np = next.projects.length, nt = next.tasks.length;
+    var next = normalize(obj), np = next.quests.length, nt = next.tasks.length;
     confirmDialog("Restore this backup?",
-      "This backup holds " + np + (np === 1 ? " project" : " projects") + " and " + nt + (nt === 1 ? " task" : " tasks") + ". Restoring replaces everything in Sidequest on this device: all current projects, tasks, notes, history, and settings. You will have a few seconds to undo it.",
+      "This backup holds " + np + (np === 1 ? " quest" : " quests") + " and " + nt + (nt === 1 ? " task" : " tasks") + ". Restoring replaces everything in Sidequest on this device: all current quests, tasks, notes, history, and settings. You will have a few seconds to undo it.",
       "Restore backup", function () {
         var before = JSON.stringify(state);
         setState(next); ui.sel = null; ui.detail = false; applyTheme(); save(); renderAll();

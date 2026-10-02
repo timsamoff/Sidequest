@@ -2,90 +2,91 @@ import { state, changed, CHECKPOINTS } from "./state.js";
 import { notify } from "./dom.js";
 import { DAY, iso, addDays, parseISO, TODAY, weekStart } from "./dates.js";
 
-export var CORE = [["today", "Today"], ["projects", "Projects"], ["schedule", "Tasks"], ["timeline", "Timeline"]];
+export var CORE = [["today", "Today"], ["projects", "Quests"], ["schedule", "Tasks"], ["timeline", "Timeline"]];
 export var BOTTOM = [["parking", "Parking lot"], ["archive", "Archive"], ["help", "Help"], ["settings", "Settings"]];
 export var WORDS = { Block: ["block", "blocks"], Sprint: ["sprint", "sprints"], Iteration: ["iteration", "iterations"], Phase: ["phase", "phases"], Week: ["week", "weeks"] };
 export function wd() { return state.settings.blockWord in WORDS ? state.settings.blockWord : "Block"; }
 export function wl() { return WORDS[wd()][0]; }
 export function wpC() { var w = WORDS[wd()][1]; return w.charAt(0).toUpperCase() + w.slice(1); }
-/* project helpers -- Project is the top-tier entity every task/decision/
-   milestone attaches to by id. A project is promoted in place from candidate
-   to active, one id for its whole life, so "the active project named X" and
-   "the candidate named X" are never two different records. */
+/* quest helpers -- Quest (formerly called Project) is the top-tier entity every
+   task/decision/milestone attaches to by id. A quest is promoted in place from
+   candidate to active, one id for its whole life, so "the active quest named X"
+   and "the candidate named X" are never two different records. The "projects"
+   page key stays unchanged -- it's an internal routing id, not shown to the user. */
 export function live(a) { return a.filter(function (x) { return !x.arch; }); }
-export function liveProjects() { return live(state.projects); }
-export function activeProjects() { return liveProjects().filter(function (p) { return p.status === "active"; }); }
-export function candidateProjects() { return liveProjects().filter(function (p) { return p.status === "candidate"; }); }
-export function completeProjects() { return liveProjects().filter(function (p) { return p.status === "complete"; }); }
-// A Complete-but-not-archived project's tasks stay in the project itself but
-// drop out of every cross-project surface (Tasks, Today, the global burndown
-// and Timeline) -- reversible the instant the project's status changes back,
-// since this reads the project's live status rather than a stored flag.
-export function isHiddenComplete(t) { var p = findProject(t.projectId); return !!p && p.status === "complete" && !p.arch; }
-// Searches every project, archived or not -- an archived project's own page
+export function liveQuests() { return live(state.quests); }
+export function activeQuests() { return liveQuests().filter(function (p) { return p.status === "active"; }); }
+export function candidateQuests() { return liveQuests().filter(function (p) { return p.status === "candidate"; }); }
+export function completeQuests() { return liveQuests().filter(function (p) { return p.status === "complete"; }); }
+// A Complete-but-not-archived quest's tasks stay in the quest itself but
+// drop out of every cross-quest surface (Tasks, Today, the global burndown
+// and Timeline) -- reversible the instant the quest's status changes back,
+// since this reads the quest's live status rather than a stored flag.
+export function isHiddenComplete(t) { var p = findQuest(t.questId); return !!p && p.status === "complete" && !p.arch; }
+// Searches every quest, archived or not -- an archived quest's own page
 // must stay reachable, read-only, until restored. Safe to search past
-// liveProjects() here because every caller either wants an archived match
-// right now, or already filters to live projects one level up.
-export function findProject(id) { for (var i = 0; i < state.projects.length; i++) if (state.projects[i].id === id) return state.projects[i]; return null; }
-export function findAnyProject(id) { return findProject(id); }
-// True only when the project has at least one counted task and every one of
+// liveQuests() here because every caller either wants an archived match
+// right now, or already filters to live quests one level up.
+export function findQuest(id) { for (var i = 0; i < state.quests.length; i++) if (state.quests[i].id === id) return state.quests[i]; return null; }
+export function findAnyQuest(id) { return findQuest(id); }
+// True only when the quest has at least one counted task and every one of
 // them is Completed -- an empty task list must never read as "done."
-export function projectTasksAllDone(p) {
-  var ts = counted().filter(function (t) { return !t.isNext && t.projectId === p.id; });
+export function questTasksAllDone(p) {
+  var ts = counted().filter(function (t) { return !t.isNext && t.questId === p.id; });
   return ts.length > 0 && ts.every(function (t) { return t.status === "Completed"; });
 }
-// Direct links only, one hop -- a linked project may itself have further
+// Direct links only, one hop -- a linked quest may itself have further
 // links, but this never walks past the first one.
-export function linkedProjects(p) { return (p.linkedProjectIds || []).map(findProject).filter(Boolean); }
+export function linkedQuests(p) { return (p.linkedQuestIds || []).map(findQuest).filter(Boolean); }
 // A link is bidirectional -- one fact shared by both records, so linking
 // writes the id to both sides' arrays, and unlinking removes it from both.
-export function linkProjects(aId, bId) {
-  var a = findAnyProject(aId), b = findAnyProject(bId);
+export function linkQuests(aId, bId) {
+  var a = findAnyQuest(aId), b = findAnyQuest(bId);
   if (!a || !b || a === b) return;
-  if (a.linkedProjectIds.indexOf(bId) < 0) a.linkedProjectIds.push(bId);
-  if (b.linkedProjectIds.indexOf(aId) < 0) b.linkedProjectIds.push(aId);
+  if (a.linkedQuestIds.indexOf(bId) < 0) a.linkedQuestIds.push(bId);
+  if (b.linkedQuestIds.indexOf(aId) < 0) b.linkedQuestIds.push(aId);
 }
-export function unlinkProjects(aId, bId) {
-  var a = findAnyProject(aId), b = findAnyProject(bId);
-  if (a) a.linkedProjectIds = a.linkedProjectIds.filter(function (id) { return id !== bId; });
-  if (b) b.linkedProjectIds = b.linkedProjectIds.filter(function (id) { return id !== aId; });
+export function unlinkQuests(aId, bId) {
+  var a = findAnyQuest(aId), b = findAnyQuest(bId);
+  if (a) a.linkedQuestIds = a.linkedQuestIds.filter(function (id) { return id !== bId; });
+  if (b) b.linkedQuestIds = b.linkedQuestIds.filter(function (id) { return id !== aId; });
 }
-export function pset(projectId) { var p = findProject(projectId); return { start: (p && p.start) || state.start, days: (p && p.days) || state.days }; }
-export function offsetFor(projectId, n) { return n * pset(projectId).days; }
-export function blockStartFor(projectId, b) { return addDays(parseISO(pset(projectId).start), offsetFor(projectId, b - 1)); }
-export function blockEndFor(projectId, b) { return addDays(parseISO(pset(projectId).start), offsetFor(projectId, b) - 1); }
+export function pset(questId) { var p = findQuest(questId); return { start: (p && p.start) || state.start, days: (p && p.days) || state.days }; }
+export function offsetFor(questId, n) { return n * pset(questId).days; }
+export function blockStartFor(questId, b) { return addDays(parseISO(pset(questId).start), offsetFor(questId, b - 1)); }
+export function blockEndFor(questId, b) { return addDays(parseISO(pset(questId).start), offsetFor(questId, b) - 1); }
 // The inverse of blockStartFor/blockEndFor: which block a given date falls
 // in, so a task can be scheduled by picking a due date instead of having to
 // know or look up a block number. Returns null for a date before the
-// project's own start (there's no block before Block 1 to place it in).
-export function blockForDate(projectId, dateMs) {
-  var eff = pset(projectId), start = parseISO(eff.start);
+// quest's own start (there's no block before Block 1 to place it in).
+export function blockForDate(questId, dateMs) {
+  var eff = pset(questId), start = parseISO(eff.start);
   if (dateMs < start) return null;
   return Math.floor((dateMs - start) / (eff.days * DAY)) + 1;
 }
-export function projKey(t) { return t.isNext ? null : t.projectId; }
+export function projKey(t) { return t.isNext ? null : t.questId; }
 // A task's own start/due dates, when set, are the truth; otherwise it fills its
 // block. Its block is always the one containing its due date (see syncTaskBlocks).
 export function taskStart(t) { return t.start ? parseISO(t.start) : blockStartFor(projKey(t), t.block); }
 export function taskEnd(t) { return t.due ? parseISO(t.due) : blockEndFor(projKey(t), t.block); }
 // Re-derives the block of every scheduled task that has its own due date, so a
-// change to a project's start or block length can't leave a stale block behind.
+// change to a quest's start or block length can't leave a stale block behind.
 export function syncTaskBlocks() {
   state.tasks.forEach(function (t) {
     if (t.isNext || t.block === 0 || !t.due) return;
-    var b = blockForDate(t.projectId, parseISO(t.due));
+    var b = blockForDate(t.questId, parseISO(t.due));
     t.block = b === null ? 1 : b;
   });
 }
 // Estimated time is hours, shown as "3 h" or "1.5 h".
 export function fmtHours(h) { return (Math.round(h * 100) / 100) + " h"; }
 export function fmtHoursLong(h) { var r = Math.round(h * 100) / 100; return r + (r === 1 ? " hour" : " hours"); }
-// Total and still-open estimated hours across every task of one project,
+// Total and still-open estimated hours across every task of one quest,
 // Backlog included.
-export function projectEstimate(p) {
+export function questEstimate(p) {
   var total = 0, left = 0;
   counted().forEach(function (t) {
-    if (t.isNext || t.projectId !== p.id || !(t.est > 0)) return;
+    if (t.isNext || t.questId !== p.id || !(t.est > 0)) return;
     total += t.est; if (t.status !== "Completed") left += t.est;
   });
   return { total: total, left: left };
@@ -138,15 +139,15 @@ export function globalActual(cps) {
 
 /* task helpers */
 export function counted() { return state.tasks.filter(function (t) { return !t.arch || t.arch.why === "done"; }); }
-// The "chosen" project is just the first active one with no tasks yet -- a
-// project's own status carries this, so there's no separate pointer to keep
+// The "chosen" quest is just the first active one with no tasks yet -- a
+// quest's own status carries this, so there's no separate pointer to keep
 // in sync. If two are both task-less, whichever was promoted first wins.
-export function chosen() { var a = activeProjects(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.projectId === a[i].id; })) return a[i]; return null; }
-export function dispProject(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next project"; } var p = findProject(t.projectId); return p ? p.name : ""; }
-export function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next project. Add its first tasks with the + button."; return t.what; }
+export function chosen() { var a = activeQuests(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.questId === a[i].id; })) return a[i]; return null; }
+export function dispQuest(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next quest"; } var p = findQuest(t.questId); return p ? p.name : ""; }
+export function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next quest. Add its first tasks with the + button."; return t.what; }
 export function weight(t) { return Math.max(1, t.steps.length); }
 export function doneUnits(t) { return t.status === "Completed" ? weight(t) : t.steps.filter(function (s) { return s.done; }).length; }
-// The burndown counts tasks, one each. weight()/doneUnits() above are step counts, used only by projectMeta().
+// The burndown counts tasks, one each. weight()/doneUnits() above are step counts, used only by questMeta().
 function isOpen(t) { return t.status !== "Completed"; }
 export function totalUnits() { return burnTasks().length; }
 export function remainingUnits() { return burnTasks().filter(isOpen).length; }
@@ -163,22 +164,22 @@ export function ordered() { return sortTasks(live(state.tasks).filter(function (
 export function orderedAll() { return sortTasks(live(state.tasks)); }
 export function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0 && !isHiddenComplete(t); })); }
 export function burnTasks() { return counted().filter(function (t) { return t.block > 0 && !isHiddenComplete(t); }); }
-// --- One project's own burndown ---
-// From counted(), not burnTasks() -- a Complete-but-kept project's own page
+// --- One quest's own burndown ---
+// From counted(), not burnTasks() -- a Complete-but-kept quest's own page
 // must keep showing its own burndown even while its tasks are hidden from
-// every cross-project surface that burnTasks() feeds.
-export function projectBurnTasks(p) { return counted().filter(function (t) { return t.block > 0 && t.projectId === p.id; }); }
-export function projectTotalUnits(p) { return projectBurnTasks(p).length; }
-export function projectRemainingUnits(p) { return projectBurnTasks(p).filter(isOpen).length; }
-// Points are days when the project's schedule is 21 days or shorter (and today is within
+// every cross-quest surface that burnTasks() feeds.
+export function questBurnTasks(p) { return counted().filter(function (t) { return t.block > 0 && t.questId === p.id; }); }
+export function questTotalUnits(p) { return questBurnTasks(p).length; }
+export function questRemainingUnits(p) { return questBurnTasks(p).filter(isOpen).length; }
+// Points are days when the quest's schedule is 21 days or shorter (and today is within
 // 45 days of its start), otherwise
 // Mondays from the week of its first task to the week after its last (stretched
 // to include today if it has overrun). Planned is exact, like the global
-// chart's. Actual is read from the project's own recorded history, except the
+// chart's. Actual is read from the quest's own recorded history, except the
 // point covering today, which is always computed live. Returns null if nothing
 // is scheduled.
-export function projectBurn(p) {
-  var ts = projectBurnTasks(p);
+export function questBurn(p) {
+  var ts = questBurnTasks(p);
   if (!ts.length) return null;
   var total = ts.length, first = Infinity, last = -Infinity;
   ts.forEach(function (t) { first = Math.min(first, taskStart(t)); last = Math.max(last, taskEnd(t)); });
@@ -190,7 +191,7 @@ export function projectBurn(p) {
   for (var m = startPt; m < endPt; m = addDays(m, unit * step)) cps.push(m);
   cps.push(endPt);
   var planned = cps.map(function (ms) { var d = 0; ts.forEach(function (t) { if (taskEnd(t) <= ms) d++; }); return total - d; });
-  var live = projectRemainingUnits(p), actual = [], scope = [];
+  var live = questRemainingUnits(p), actual = [], scope = [];
   cps.forEach(function (ms, i) {
     var next = i < cps.length - 1 ? cps[i + 1] : Infinity;
     if (ms <= base && base < next) { actual.push(live); scope.push(total); return; }
@@ -212,28 +213,28 @@ export function syncFromSteps(t) {
 }
 export function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Completed") return o[i]; return null; }
 export function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
-// "proj:" + id routes to a project's own page -- id-based, not name-based, so
-// renaming a project never breaks its pin or an in-flight link to it. A live
+// "quest:" + id routes to a quest's own page -- id-based, not name-based, so
+// renaming a quest never breaks its pin or an in-flight link to it. A live
 // candidate has no page of its own (edited via candidateDialog() instead,
 // like an Idea) -- only an archived candidate's page is reachable, as the one
 // remaining read-only view of its notes from the Archive list.
 export function validPage(key) {
-  if (typeof key !== "string" || key.indexOf("proj:") !== 0) return false;
-  var p = findProject(key.slice(5));
+  if (typeof key !== "string" || key.indexOf("quest:") !== 0) return false;
+  var p = findQuest(key.slice(6));
   return !!p && (p.status !== "candidate" || !!p.arch);
 }
 export function pageTitle(key) {
   if (key === "search") return "Search";
-  if (typeof key === "string" && key.indexOf("proj:") === 0) { var p = findProject(key.slice(5)); return p ? p.name : ""; }
+  if (typeof key === "string" && key.indexOf("quest:") === 0) { var p = findQuest(key.slice(6)); return p ? p.name : ""; }
   for (var i = 0; i < CORE.length; i++) if (CORE[i][0] === key) return CORE[i][1];
   for (var j = 0; j < BOTTOM.length; j++) if (BOTTOM[j][0] === key) return BOTTOM[j][1];
   return "";
 }
 export function isPinned(key) { return state.pins.indexOf(key) >= 0; }
 export function pinPage(key) { if (!isPinned(key)) state.pins.push(key); changed(); notify(pageTitle(key) + " pinned to the sidebar."); }
-export function unpinPage(key) { state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); notify(pageTitle(key) + " removed from the sidebar. It is still listed under Projects."); }
-export function projectMeta(p) {
-  var ts = counted().filter(function (t) { return !t.isNext && t.projectId === p.id; });
+export function unpinPage(key) { state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); notify(pageTitle(key) + " removed from the sidebar. It is still listed under Quests."); }
+export function questMeta(p) {
+  var ts = counted().filter(function (t) { return !t.isNext && t.questId === p.id; });
   var parts = [];
   if (ts.length) {
     var tot = 0, dn = 0, bk = ts.filter(function (t) { return t.block === 0; }).length; ts.forEach(function (t) { tot += weight(t); dn += doneUnits(t); });
@@ -251,27 +252,27 @@ export function findStep(id) {
 }
 export function decisionFor(stepId) { var ds = live(state.decisions); for (var i = 0; i < ds.length; i++) if (ds[i].step === stepId) return ds[i]; return null; }
 export function short(str, n) { return str.length > n ? str.slice(0, n - 1) + "…" : str; }
-// Launch-critical steps, scoped to one project -- renders as a section on
-// that project's own page (no separate global Launch page anymore).
-export function launchItems(projectId) {
+// Launch-critical steps, scoped to one quest -- renders as a section on
+// that quest's own page (no separate global Launch page anymore).
+export function launchItems(questId) {
   var out = [];
-  orderedCounted().forEach(function (t) { if (t.projectId !== projectId) return; t.steps.forEach(function (s) { if (s.launch) out.push({ t: t, s: s }); }); });
+  orderedCounted().forEach(function (t) { if (t.questId !== questId) return; t.steps.forEach(function (s) { if (s.launch) out.push({ t: t, s: s }); }); });
   return out;
 }
-// A decision must link to a real step -- no "None" option. If projectId is
-// given, only that project's steps are offered.
-export function stepOptions(projectId) {
+// A decision must link to a real step -- no "None" option. If questId is
+// given, only that quest's steps are offered.
+export function stepOptions(questId) {
   var o = [];
   orderedCounted().forEach(function (t) {
-    if (projectId && t.projectId !== projectId) return;
-    t.steps.forEach(function (s) { o.push({ value: s.id, label: dispProject(t) + ": " + short(s.text, 60) }); });
+    if (questId && t.questId !== questId) return;
+    t.steps.forEach(function (s) { o.push({ value: s.id, label: dispQuest(t) + ": " + short(s.text, 60) }); });
   });
   return o;
 }
-export function taskOptions(projectId) {
+export function taskOptions(questId) {
   var ts = orderedAll();
-  if (projectId) ts = ts.filter(function (t) { return t.projectId === projectId; });
-  return ts.map(function (t) { return { value: t.id, label: dispProject(t) + ": " + short(dispWhat(t), 60) }; });
+  if (questId) ts = ts.filter(function (t) { return t.questId === questId; });
+  return ts.map(function (t) { return { value: t.id, label: dispQuest(t) + ": " + short(dispWhat(t), 60) }; });
 }
 export function findTask(id) { var a = live(state.tasks); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
 export function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (state.tasks[i].id === id) return state.tasks[i]; return null; }

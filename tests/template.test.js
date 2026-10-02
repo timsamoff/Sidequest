@@ -67,7 +67,7 @@ function kit(dom) {
     setField: (k, v) => { d.getElementById("f-" + k).value = v; },
     type: function (q) { const b = $("searchBox"); b.value = q; this.fire(b, "input"); },
     saved: () => JSON.parse(w.localStorage.getItem("sidequest-template-v1")) || {},
-    stand: () => [...d.querySelectorAll("#view .standing li")].map(li => (li.querySelector(".plink") || {}).textContent) };
+    stand: () => [...d.querySelectorAll("#view .standing li")].map(li => (li.querySelector(".qlink") || {}).textContent) };
 }
 
 async function main() {
@@ -98,8 +98,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk());
   ok(k.$("viewTitle").textContent === "Today" && k.d.title.includes("Sidequest"), "opens on Today");
   ok(k.$("view").textContent.includes("Welcome to Sidequest") && k.$("view").textContent.includes("samples") && !!k.$("welcomeSettings") && !!k.$("welcomeDismiss"), "welcome box explains the samples");
-  ok(k.d.querySelector('.tab[data-view="proj:pApp"]').textContent.trim() === "Sample App" && k.d.querySelector("#nav").textContent.includes("Pinned"), "Sample App is the pinned project");
-  ok([...k.d.querySelectorAll("#nav .tab")].map(t => t.dataset.view).join() === "today,projects,schedule,timeline,proj:pApp", "sidebar: core pages + one pinned project");
+  ok(k.d.querySelector('.tab[data-view="quest:pApp"]').textContent.trim() === "Sample App" && k.d.querySelector("#nav").textContent.includes("Pinned"), "Sample App is the pinned quest");
+  ok([...k.d.querySelectorAll("#nav .tab")].map(t => t.dataset.view).join() === "today,projects,schedule,timeline,quest:pApp", "sidebar: core pages + one pinned quest");
   // dismiss
   k.click(k.$("welcomeDismiss")); ok(!k.$("view").textContent.includes("Welcome to Sidequest") && k.saved().settings.hideWelcome === true, "dismissing hides it and remembers");
   // Today content
@@ -108,15 +108,15 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(next === "Write the page copy", "Next up is the lowest-block open sample task: " + next);
   ok(/1 task is overdue/.test(k.$("view").textContent) && k.$("view").textContent.includes("Build the sign-in flow") && /11 tasks remaining, out of 12/.test(k.$("view").textContent), "the samples include one overdue task, so the burndown sits above the plan");
   const projLink = k.btn(k.d.querySelector("#view .panel"), "Sample Website");
-  ok(!!projLink && projLink.classList.contains("plink"), "Next up names the project as a link");
+  ok(!!projLink && projLink.classList.contains("qlink"), "Next up names the quest as a link");
   k.click(projLink);
-  ok(k.$("viewTitle").textContent === "Sample Website", "clicking the project link opens that project's page");
+  ok(k.$("viewTitle").textContent === "Sample Website", "clicking the quest link opens that quest's page");
 }
 
-/* ---- sample projects ---- */
+/* ---- sample quests ---- */
 {
   const k = kit(await mk()); k.tab("projects");
-  ok(k.stand().join() === "Sample App,Sample Website,Sample Game", "In progress lists the three sample projects, earliest next task first (" + k.stand().join() + ")");
+  ok(k.stand().join() === "Sample App,Sample Website,Sample Game", "In progress lists the three sample quests, earliest next task first (" + k.stand().join() + ")");
   const pagesList = [...k.d.querySelectorAll("#view .list")][0].textContent;
   ok(!pagesList.includes("Sample App") && !pagesList.includes("Sample Website") && !pagesList.includes("Sample Game"), "the Projects list excludes the projects already shown in In progress");
   ok(k.$("view").textContent.includes("Sample Browser Extension") && k.$("view").textContent.includes("Sample Command-Line Tool"), "two sample candidates listed");
@@ -124,13 +124,13 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("view").textContent.includes("Try a new game engine") && k.$("view").textContent.includes("Write up lessons learned") && !k.$("view").textContent.includes("Redesign the logo"), "parking lot samples (removed one is in the Archive)");
   k.tab("schedule");
   const rows = [...k.d.querySelectorAll(".listpane .tlist")[0].querySelectorAll(".item")].map(b => b.textContent);
-  ok(rows.length === 12, "12 scheduled tasks (Sample Finished Project's tasks are hidden while it's Complete) (got " + rows.length + ")");
+  ok(rows.length === 12, "12 scheduled tasks (Sample Finished Quest's tasks are hidden while it's Complete) (got " + rows.length + ")");
   ok(k.$("view").textContent.includes("Backlog (2)") && k.$("view").textContent.includes("Add a dark mode") && k.$("view").textContent.includes("Add a level editor"), "backlog has two samples");
   ok(k.d.querySelector('label[for="task-due"]').textContent.includes("Due date"), "the task's schedule field is a due date");
   // per-project schedules
   k.tab("timeline");
   const lanes = [...k.d.querySelectorAll("#view .lane .lname")].map(l => l.textContent);
-  ok(lanes.filter(l => l.startsWith("Sample")).length === 3, "timeline has a lane for each non-Complete sample project (Sample Finished Project is hidden while Complete)");
+  ok(lanes.filter(l => l.startsWith("Sample")).length === 3, "timeline has a lane for each non-Complete sample quest (Sample Finished Quest is hidden while Complete)");
   const game = [...k.d.querySelectorAll("#view .lane")].find(l => l.querySelector(".lname").textContent.startsWith("Sample Game"));
   ok(game.querySelectorAll(".bar").length === 2 && game.querySelector(".ldates").textContent.includes("due "), "Sample Game shows an estimate bar");
   const mil = k.d.querySelector("#view .mslist").textContent;
@@ -148,7 +148,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("viewTitle").textContent === "Sample App" && k.$("view").textContent.includes("Before you launch") && k.$("view").textContent.includes("Launch"), "project page has a Launch section, scoped to this project");
   const lb = k.d.querySelector("#view .listbox");
   ok(/^\d+ of \d+ done$/.test(lb.querySelector(".progress").textContent) && lb.querySelectorAll("ul.list.check li").length === 6, "Sample App's checklist is its own 5 launch-flagged steps plus 1 launch-critical linked project (" + lb.querySelectorAll("ul.list.check li").length + ")");
-  ok(lb.textContent.includes("Sample Website (linked project)") && lb.textContent.includes("Launch critical"), "the launch-critical linked project appears as a read-only checklist line");
+  ok(lb.textContent.includes("Sample Website (linked quest)") && lb.textContent.includes("Launch critical"), "the launch-critical linked quest appears as a read-only checklist line");
   ok(!k.d.querySelector("#view .decision") && ![...k.d.querySelectorAll("#view h3")].some(h => h.textContent === "Decisions") && !k.btn(k.$("view"), "Add decision"), "the project page no longer has a Decisions section (decisions live on steps in Tasks)");
   ok(k.d.querySelector("#view .list.check li.done") && k.d.querySelector("#view .list.check").textContent.includes("Choose the first app store"), "answered decision's step is already ticked");
   // sync
@@ -253,7 +253,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const coveredHelp = ["Save backup", "Restore backup", "Est. 12 hours remaining", "Added tag", "Not started shows in blue", "Pending, Completed", "leave Tasks, the main Timeline, Today, and the main burndown", "orange line", "Slip schedule", "default length of a stretch of work"];
   ok(coveredHelp.every(ph => helpText.includes(ph)), "Help covers the features that changed recently (missing: " + coveredHelp.filter(ph => !helpText.includes(ph)).join(", ") + ")");
   ok(!/\u2014/.test(helpText), "Help has no em dashes");
-  ok(["Finish or archive a project", "Link projects", "Use the Parking lot"].every(t => titles.includes(t)) && helpText.includes("Reopen") && helpText.includes("splash screen"), "Help covers Complete/Reopen, linking, the Parking lot, and the splash setting");
+  ok(["Finish or archive a quest", "Link quests", "Use the Parking lot"].every(t => titles.includes(t)) && helpText.includes("Reopen") && helpText.includes("splash screen"), "Help covers Complete/Reopen, linking, the Parking lot, and the splash setting");
   ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Parking lot,Archive,Help,Settings", "Help sits between Archive and Settings");
 }
 
@@ -264,7 +264,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(t.includes("Redesign the logo") && t.includes("All (1)"), "Archive shows just the one archived sample idea (" + t.match(/All \(\d+\)/) + ")");
   ok(!t.includes("Sketch the main screens") && !t.includes("Should the site use a page builder?"), "completed tasks and decisions no longer appear in the Archive -- they live in their project instead");
   const filters = [...k.d.querySelectorAll("#view .chipbtn")].map(b => b.textContent.trim());
-  ok(filters.join() === "All (1),Projects (0),Ideas (1)", "Archive filters are just All/Projects/Ideas now (" + filters.join() + ")");
+  ok(filters.join() === "All (1),Quests (0),Ideas (1)", "Archive filters are just All/Quests/Ideas now (" + filters.join() + ")");
 }
 /* ---- completed tasks stay visible, sorted to the bottom ---- */
 {
@@ -287,19 +287,19 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk()); k.tab("settings");
   ok(k.$("view").textContent.includes("Start fresh"), "Start fresh is in Settings");
-  k.click(k.$("startFresh")); ok(k.$("modalBody").textContent.includes("The sample projects") && k.$("modalBody").textContent.includes("An empty planner"), "offers empty or sample projects");
+  k.click(k.$("startFresh")); ok(k.$("modalBody").textContent.includes("The sample quests") && k.$("modalBody").textContent.includes("An empty planner"), "offers empty or sample quests");
   const a = k.$("freshAck"); a.checked = true; k.fire(a); k.click(k.$("freshGo"));
   ok(k.$("view").textContent.includes("No tasks yet") && k.saved().tasks.length === 0 && k.saved().settings.hideWelcome === true, "empty planner: nothing left, welcome stays hidden");
-  ok(k.saved().projects.length === 0 && k.saved().pins.length === 0, "no projects and no pins after a fresh start");
-  // add own project from scratch: a task needs an active project to attach to
-  k.menuAct("newBtn", "newProject"); k.setField("name", "My App"); k.click(k.btn(k.$("modalBody"), "Add project"));
+  ok(k.saved().quests.length === 0 && k.saved().pins.length === 0, "no quests and no pins after a fresh start");
+  // add own quest from scratch: a task needs an active quest to attach to
+  k.menuAct("newBtn", "newQuest"); k.setField("name", "My App"); k.click(k.btn(k.$("modalBody"), "Add quest"));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Promote"));
   k.menuAct("newBtn", "newTask"); k.setField("what", "First task"); k.click(k.btn(k.$("modalBody"), "Add task"));
-  k.tab("today"); ok(k.$("view").textContent.includes("First task"), "can start working right away, once a project exists");
+  k.tab("today"); ok(k.$("view").textContent.includes("First task"), "can start working right away, once a quest exists");
   // reload samples
   k.tab("settings"); k.click(k.$("startFresh")); const r = [...k.d.querySelectorAll('#modalBody input[name=fresh]')]; r[1].checked = true; k.fire(r[1]);
   const a2 = k.$("freshAck"); a2.checked = true; k.fire(a2); k.click(k.$("freshGo"));
-  ok(k.saved().tasks.length === 18 && k.saved().pins.includes("proj:pApp"), "the samples can be reloaded");
+  ok(k.saved().tasks.length === 18 && k.saved().pins.includes("quest:pApp"), "the samples can be reloaded");
 }
 
 /* ---- core behavior still intact ---- */
@@ -324,7 +324,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.w.showSaveFilePicker = (opts) => { asked = opts; return Promise.resolve({ createWritable: () => Promise.resolve({ write: (t) => { written = t; return Promise.resolve(); }, close: () => Promise.resolve() }) }); };
   k.click(k.$("saveFile")); await new Promise(r => setTimeout(r, 30));
   const j = JSON.parse(written);
-  ok(j.tasks.length === 18 && j.projects.find(p => p.name === "Sample Game").days === 14, "Save backup writes the sample data");
+  ok(j.tasks.length === 18 && j.quests.find(p => p.name === "Sample Game").days === 14, "Save backup writes the sample data");
   ok(/^sidequest-backup-\d{4}-\d{2}-\d{2}\.json$/.test(asked.suggestedName), "and suggests a dated .json file name (" + asked.suggestedName + ")");
   ok(k.$("view").textContent.includes("Backup saved."), "and says it saved");
   ok(!k.$("showText") && !k.$("backupText") && !k.$("restoreText"), "there is no backup text box and no paste box any more");
@@ -333,107 +333,107 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k2 = kit(await mk(k.saved())); ok(k2.$("viewTitle").textContent === "Today" && !k2.$("view").textContent.includes("Welcome to Sidequest") || k2.saved !== undefined, "reload opens on Today");
 }
 
-/* ---- new step: project filter ---- */
+/* ---- new step: quest filter ---- */
 {
   const k = kit(await mk());
   k.menuAct("newBtn", "newStep");
-  const projSel = k.$("f-project"), taskSel = k.$("f-task");
-  ok(!!projSel && !!taskSel, "New step form has a project filter and a task select");
-  ok(projSel.value === "", "with nothing selected in Schedule, the project filter starts on All projects");
+  const questSel = k.$("f-quest"), taskSel = k.$("f-task");
+  ok(!!questSel && !!taskSel, "New step form has a quest filter and a task select");
+  ok(questSel.value === "", "with nothing selected in Schedule, the quest filter starts on All quests");
   ok(taskSel.selectedOptions[0].label === "Sample Website: Write the page copy", "the task select still defaults to the next-up task");
-  const allProjects = [...taskSel.options].map(o => o.label);
-  ok(allProjects.some(l => l.startsWith("Sample App:")) && allProjects.some(l => l.startsWith("Sample Game:")), "All projects shows every project's tasks");
-  k.setField("project", "pGame"); k.fire(projSel);
+  const allQuests = [...taskSel.options].map(o => o.label);
+  ok(allQuests.some(l => l.startsWith("Sample App:")) && allQuests.some(l => l.startsWith("Sample Game:")), "All quests shows every quest's tasks");
+  k.setField("quest", "pGame"); k.fire(questSel);
   const afterGame = [...taskSel.options].map(o => o.label);
-  ok(afterGame.length > 0 && afterGame.every(l => l.startsWith("Sample Game:")), "choosing a project narrows the task list to only that project's tasks");
+  ok(afterGame.length > 0 && afterGame.every(l => l.startsWith("Sample Game:")), "choosing a quest narrows the task list to only that quest's tasks");
   k.setField("text", "A step added via the filtered picker");
   k.click(k.btn(k.$("modalBody"), "Add step"));
   ok(k.$("toast").textContent.includes("Sample Game"), "step is added to the task chosen after filtering");
-  // opening a task first changes the default filter to that task's project
+  // opening a task first changes the default filter to that task's quest
   k.tab("schedule"); k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Build the layout")));
   k.menuAct("newBtn", "newStep");
-  ok(k.$("f-project").value === "pSite", "with a task open in Schedule, defaults the filter to that task's project");
+  ok(k.$("f-quest").value === "pSite", "with a task open in Schedule, defaults the filter to that task's quest");
 }
 
-/* ---- linked projects: bidirectional, one-hop rendering ---- */
+/* ---- linked quests: bidirectional, one-hop rendering ---- */
 {
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  ok([...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Linked projects"), "project page has a Linked projects section");
+  ok([...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Linked quests"), "quest page has a Linked quests section");
   ok(k.$("view").textContent.includes("Sample Website"), "Sample App already links to Sample Website (sample data)");
   // bidirectional: the other side shows the link back
   k.click(k.btn(k.$("view"), "Sample Website"));
   ok(k.$("viewTitle").textContent === "Sample Website" && k.$("view").textContent.includes("Sample App"), "the link is bidirectional -- Sample Website shows Sample App back");
   // link Sample Website to Sample Game using the picker, confirm it appears and is bidirectional
   ok(!k.$("proj-link-pick"), "the old inline link dropdown is gone from the page");
-  k.click(k.btn(k.$("view"), "Link project"));
-  ok(k.$("modalTitle").textContent === "Link project", "Link project opens a dialog");
-  const sel = k.$("f-project");
-  ok(![...sel.options].some(o => o.textContent === "Sample Website" || o.textContent === "Sample App"), "the dialog only offers projects that are not already linked, and not this one");
+  k.click(k.btn(k.$("view"), "Link quest"));
+  ok(k.$("modalTitle").textContent === "Link quest", "Link quest opens a dialog");
+  const sel = k.$("f-quest");
+  ok(![...sel.options].some(o => o.textContent === "Sample Website" || o.textContent === "Sample App"), "the dialog only offers quests that are not already linked, and not this one");
   sel.value = [...sel.options].find(o => o.textContent === "Sample Game").value;
-  k.click(k.btn(k.$("modalBody"), "Link project"));
+  k.click(k.btn(k.$("modalBody"), "Link quest"));
   ok(k.$("overlay").hidden && k.$("view").textContent.includes("Sample Game"), "linking Sample Game from the dialog closes it and shows the link in the list");
   k.click(k.btn(k.$("view"), "Sample Game"));
   ok(k.$("viewTitle").textContent === "Sample Game" && k.$("view").textContent.includes("Sample Website"), "the new link is bidirectional too -- Sample Game shows Sample Website back");
   // unlink and confirm it's gone from the current page -- check the picker's
   // own <select> options too (Sample Website legitimately reappears THERE
   // once unlinked, since it's available to re-link; that's not the same as
-  // still showing as a linked project).
+  // still showing as a linked quest).
   const unlinkBtn = [...k.d.querySelectorAll("#view button")].find(b => b.textContent.trim() === "Unlink");
   k.click(unlinkBtn);
-  ok(k.$("view").textContent.includes("No linked projects"), "unlinking removes the linked-project row (Sample Website may still appear in the re-link picker, which is correct)");
+  ok(k.$("view").textContent.includes("No linked quests"), "unlinking removes the linked-quest row (Sample Website may still appear in the re-link picker, which is correct)");
 }
 
-/* ---- project Complete status, Launch-critical links, archived viewing ---- */
+/* ---- quest Complete status, Launch-critical links, archived viewing ---- */
 {
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   // manual Complete, independent of task status -- Sample App has open tasks
-  ok(!!k.btn(k.$("view"), "Mark complete"), "Active project offers Mark complete regardless of task status");
+  ok(!!k.btn(k.$("view"), "Mark complete"), "Active quest offers Mark complete regardless of task status");
   k.click(k.btn(k.$("view"), "Mark complete"));
-  ok(k.$("modalTitle").textContent === "Project complete" && k.$("modalBody").textContent.includes("leave it in Projects"), "marking complete with open tasks left triggers the completion dialog, no block");
-  k.click(k.btn(k.$("modalBody"), "Leave in Projects"));
-  ok(k.$("overlay").hidden, "Leave in Projects closes the dialog");
-  ok(k.$("view").textContent.includes("Restore") === false && !k.btn(k.$("view"), "Mark complete") && !k.btn(k.$("view"), "Archive") === false, "project stays Complete, not archived, after Leave in Projects");
-  ok(k.saved().projects.find(p => p.id === "pApp").status === "complete", "status persisted as complete");
+  ok(k.$("modalTitle").textContent === "Quest complete" && k.$("modalBody").textContent.includes("leave it in Quests"), "marking complete with open tasks left triggers the completion dialog, no block");
+  k.click(k.btn(k.$("modalBody"), "Leave in Quests"));
+  ok(k.$("overlay").hidden, "Leave in Quests closes the dialog");
+  ok(k.$("view").textContent.includes("Restore") === false && !k.btn(k.$("view"), "Mark complete") && !k.btn(k.$("view"), "Archive") === false, "quest stays Complete, not archived, after Leave in Quests");
+  ok(k.saved().quests.find(p => p.id === "pApp").status === "complete", "status persisted as complete");
   // set apart visually, and can be reopened
-  ok(!!k.d.querySelector("#view .chip.projcomplete"), "a Complete project shows a Complete badge on its own page");
-  ok(!!k.btn(k.$("view"), "Reopen") && !k.btn(k.$("view"), "Mark complete"), "Complete project offers Reopen in place of Mark complete");
+  ok(!!k.d.querySelector("#view .chip.questcomplete"), "a Complete quest shows a Complete badge on its own page");
+  ok(!!k.btn(k.$("view"), "Reopen") && !k.btn(k.$("view"), "Mark complete"), "Complete quest offers Reopen in place of Mark complete");
   k.tab("projects");
-  ok(!k.stand().includes("Sample App"), "a Complete project drops out of In progress");
+  ok(!k.stand().includes("Sample App"), "a Complete quest drops out of In progress");
   const appRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample App"));
-  ok(!!appRow, "a Complete project (no longer in In progress) appears in the Projects section instead");
-  ok(!!appRow.querySelector(".chip.projcomplete"), "the Projects section also shows the Complete badge");
-  ok(!k.btn(appRow, "View"), "Projects rows have no separate View button, the title is the link");
+  ok(!!appRow, "a Complete quest (no longer in In progress) appears in the Quests section instead");
+  ok(!!appRow.querySelector(".chip.questcomplete"), "the Quests section also shows the Complete badge");
+  ok(!k.btn(appRow, "View"), "Quests rows have no separate View button, the title is the link");
   k.click(k.btn(appRow, "Sample App"));
   ok(k.$("viewTitle").textContent === "Sample App", "View navigated to Sample App's own page");
   k.click(k.btn(k.$("view"), "Reopen"));
-  ok(k.saved().projects.find(p => p.id === "pApp").status === "active", "Reopen sets the project back to active");
-  ok(!k.d.querySelector("#view .chip.projcomplete"), "reopened project loses the Complete badge");
-  ok(!!k.btn(k.$("view"), "Mark complete"), "reopened project offers Mark complete again");
+  ok(k.saved().quests.find(p => p.id === "pApp").status === "active", "Reopen sets the quest back to active");
+  ok(!k.d.querySelector("#view .chip.questcomplete"), "reopened quest loses the Complete badge");
+  ok(!!k.btn(k.$("view"), "Mark complete"), "reopened quest offers Mark complete again");
   // sticky: reopening a task does not revert Complete
   k.click(k.btn(k.$("view"), "Mark complete"));
-  k.click(k.btn(k.$("modalBody"), "Leave in Projects"));
+  k.click(k.btn(k.$("modalBody"), "Leave in Quests"));
   // Complete-but-kept: its tasks drop out of the Tasks list and the global
-  // Timeline, but stay visible on the project's own page.
+  // Timeline, but stay visible on the quest's own page.
   k.tab("schedule");
-  ok(!k.$("view").textContent.includes("Sketch the main screens"), "a Complete-but-kept project's tasks are hidden from the Tasks list");
-  ok(k.$("view").textContent.includes("Tasks from Complete projects are not listed here"), "the Tasks page explains why");
+  ok(!k.$("view").textContent.includes("Sketch the main screens"), "a Complete-but-kept quest's tasks are hidden from the Tasks list");
+  ok(k.$("view").textContent.includes("Tasks from Complete quests are not listed here"), "the Tasks page explains why");
   k.tab("timeline");
-  ok(![...k.d.querySelectorAll("#view .lane .lname")].some(l => l.textContent === "Sample App"), "a Complete-but-kept project's lane is hidden from the global Timeline");
+  ok(![...k.d.querySelectorAll("#view .lane .lname")].some(l => l.textContent === "Sample App"), "a Complete-but-kept quest's lane is hidden from the global Timeline");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  ok(k.$("view").textContent.includes("Its tasks are not included in Tasks, Timeline, or Today"), "the project's own page explains the hiding");
-  k.click([...k.d.querySelectorAll(".projmain .tlist .item")].find(b => b.textContent.includes("Sketch the main screens")));
-  const statusSel = k.d.querySelector(".projmain .detail .status"); statusSel.value = "In progress"; k.fire(statusSel);
-  ok(k.saved().projects.find(p => p.id === "pApp").status === "complete", "reopening a task does not auto-revert a Complete project");
-  // reopening the project brings its tasks straight back, no separate restore
+  ok(k.$("view").textContent.includes("Its tasks are not included in Tasks, Timeline, or Today"), "the quest's own page explains the hiding");
+  k.click([...k.d.querySelectorAll(".questmain .tlist .item")].find(b => b.textContent.includes("Sketch the main screens")));
+  const statusSel = k.d.querySelector(".questmain .detail .status"); statusSel.value = "In progress"; k.fire(statusSel);
+  ok(k.saved().quests.find(p => p.id === "pApp").status === "complete", "reopening a task does not auto-revert a Complete quest");
+  // reopening the quest brings its tasks straight back, no separate restore
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   k.click(k.btn(k.$("view"), "Reopen"));
   k.tab("schedule");
-  ok(k.$("view").textContent.includes("Sketch the main screens"), "reopening the project brings its tasks back into the Tasks list immediately");
+  ok(k.$("view").textContent.includes("Sketch the main screens"), "reopening the quest brings its tasks back into the Tasks list immediately");
 }
 {
-  // auto-trigger: complete every counted task on a project with no open tasks left
+  // auto-trigger: complete every counted task on a quest with no open tasks left
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   k.tab("schedule");
@@ -448,9 +448,9 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     const sel = k.d.querySelector(".detailpane .status");
     if (sel.value !== "Completed") { sel.value = "Completed"; k.fire(sel); }
   }
-  ok(k.$("modalTitle").textContent === "Project complete", "all-tasks-Completed auto-triggers the completion dialog");
+  ok(k.$("modalTitle").textContent === "Quest complete", "all-tasks-Completed auto-triggers the completion dialog");
   k.click(k.btn(k.$("modalBody"), "Archive now"));
-  ok(k.saved().projects.find(p => p.id === "pApp").arch, "Archive now from the dialog archives the project");
+  ok(k.saved().quests.find(p => p.id === "pApp").arch, "Archive now from the dialog archives the quest");
 }
 {
   // empty-task-set guard: a candidate with zero tasks must never auto-complete
@@ -458,39 +458,39 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.tab("projects");
   const extRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Browser Extension") && k.btn(li, "Promote"));
   k.click(k.btn(extRow, "Promote"));
-  ok(k.saved().projects.find(p => p.id === "pExt").status === "active" && k.$("overlay").hidden, "promoting a task-less project to Active does not trigger completion");
+  ok(k.saved().quests.find(p => p.id === "pExt").status === "active" && k.$("overlay").hidden, "promoting a task-less quest to Active does not trigger completion");
 }
 {
   // Launch-critical: badge, checklist derivation, soft-gate warning (not a block)
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  ok([...k.d.querySelectorAll("#view .list li")].some(li => li.textContent.includes("Sample Website") && li.textContent.includes("Launch critical")), "Linked Projects shows a Launch critical badge for Sample Website");
+  ok([...k.d.querySelectorAll("#view .list li")].some(li => li.textContent.includes("Sample Website") && li.textContent.includes("Launch critical")), "Linked Quests shows a Launch critical badge for Sample Website");
   ok(!!k.btn(k.$("view"), "Unmark launch critical"), "the toggle button reflects Sample Website's launch-critical state from Sample App's own page");
   // archiving Sample App warns (soft gate) since Sample Website (launch-critical) is not complete/archived, but does not block
   k.click(k.btn(k.$("view"), "Archive"));
-  ok(k.saved().projects.find(p => p.id === "pApp").arch, "archiving proceeds even with an incomplete launch-critical link (soft gate only, never a hard block)");
+  ok(k.saved().quests.find(p => p.id === "pApp").arch, "archiving proceeds even with an incomplete launch-critical link (soft gate only, never a hard block)");
 }
 {
-  // archived project pages are genuinely viewable, read-only, until restored
+  // archived quest pages are genuinely viewable, read-only, until restored
   const k = kit(await mk());
-  const tasksBefore = k.saved().tasks.filter(t => t.projectId === "pGame" && !t.arch).length;
+  const tasksBefore = k.saved().tasks.filter(t => t.questId === "pGame" && !t.arch).length;
   k.tab("projects");
   k.click(k.btn(k.d.querySelector("#view .standing"), "Sample Game"));
   ok(k.$("viewTitle").textContent === "Sample Game", "navigated to Sample Game via Where things stand");
   k.click(k.btn(k.$("view"), "Archive"));
   ok(k.$("viewTitle").textContent !== "Sample Game" || k.$("view").textContent.includes("Archived"), "archiving navigates away or shows an archived notice");
-  ok(k.saved().tasks.filter(t => t.projectId === "pGame" && !t.arch).length === 0 && tasksBefore > 0, "archiving a project cascades to archive its own tasks");
+  ok(k.saved().tasks.filter(t => t.questId === "pGame" && !t.arch).length === 0 && tasksBefore > 0, "archiving a quest cascades to archive its own tasks");
   k.tab("archive");
   const gameArchRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Game"));
   ok(!k.btn(gameArchRow, "View") && gameArchRow.querySelector(".chip").previousElementSibling === k.btn(gameArchRow, "Sample Game"), "Archive rows have no View button, the title is the link, and the kind chip follows it");
   k.click(k.btn(gameArchRow, "Sample Game"));
-  ok(k.$("viewTitle").textContent === "Sample Game", "an archived project's own page is now reachable (previously invisible)");
-  ok(k.$("view").textContent.includes("Archived. Restore it to make changes."), "archived project page states it's read-only");
-  ok(!k.btn(k.$("view"), "Add task") && !k.d.querySelector("#proj-start") && !k.d.querySelector("#view textarea"), "no mutating controls (Add task, schedule inputs, notes textarea) on an archived project page");
-  ok(!!k.btn(k.$("view"), "Restore"), "archived project page offers Restore instead of Archive/Mark complete");
+  ok(k.$("viewTitle").textContent === "Sample Game", "an archived quest's own page is now reachable (previously invisible)");
+  ok(k.$("view").textContent.includes("Archived. Restore it to make changes."), "archived quest page states it's read-only");
+  ok(!k.btn(k.$("view"), "Add task") && !k.d.querySelector("#proj-start") && !k.d.querySelector("#view textarea"), "no mutating controls (Add task, schedule inputs, notes textarea) on an archived quest page");
+  ok(!!k.btn(k.$("view"), "Restore"), "archived quest page offers Restore instead of Archive/Mark complete");
   k.click(k.btn(k.$("view"), "Restore"));
-  ok(!k.saved().projects.find(p => p.id === "pGame").arch, "Restore un-archives the project");
-  ok(k.saved().tasks.filter(t => t.projectId === "pGame" && !t.arch).length === tasksBefore, "restoring the project also un-archives the tasks the archive cascade archived");
+  ok(!k.saved().quests.find(p => p.id === "pGame").arch, "Restore un-archives the quest");
+  ok(k.saved().tasks.filter(t => t.questId === "pGame" && !t.arch).length === tasksBefore, "restoring the quest also un-archives the tasks the archive cascade archived");
 }
 
 {
@@ -517,7 +517,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 }
 
 {
-  // a project has one Notes field, and saved data with the old separate short note still loads
+  // a quest has one Notes field, and saved data with the old separate short note
+  // still loads -- this also exercises the pre-rename "projects" field shape.
   const saved = { projects: [
     { id: "pOld", name: "Old shape", status: "candidate", note: "short", notes: "long" },
     { id: "pOnly", name: "Only short", status: "candidate", note: "just this", notes: "" }
@@ -527,7 +528,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!k.$("f-notes") && k.$("f-notes").value === "short\n\nlong", "an old short note is folded into the front of Notes when both exist");
   k.click(k.btn(k.$("modalBody"), "Cancel"));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Only short"));
-  ok(!!k.$("f-notes") && k.$("f-notes").value === "just this", "an old short note alone becomes the project's Notes");
+  ok(!!k.$("f-notes") && k.$("f-notes").value === "just this", "an old short note alone becomes the quest's Notes");
 }
 {
   // a candidate is edited entirely through candidateDialog(), same pattern as an Idea
@@ -537,19 +538,19 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("f-name").value === "Sample Browser Extension", "the candidate dialog shows its name");
   k.setField("notes", "Edited notes"); k.setField("name", "Renamed Extension");
   k.click(k.btn(k.$("modalBody"), "Save"));
-  ok(k.saved().projects.find(p => p.id === "pExt").notes === "Edited notes" && k.saved().projects.find(p => p.id === "pExt").name === "Renamed Extension", "saving the candidate dialog saves its name and Notes");
+  ok(k.saved().quests.find(p => p.id === "pExt").notes === "Edited notes" && k.saved().quests.find(p => p.id === "pExt").name === "Renamed Extension", "saving the candidate dialog saves its name and Notes");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Renamed Extension"));
   k.setField("name", "   "); k.click(k.btn(k.$("modalBody"), "Save"));
-  ok(k.$("modalBody").textContent.includes("Enter a project name"), "a blank candidate name is rejected");
+  ok(k.$("modalBody").textContent.includes("Enter a quest name"), "a blank candidate name is rejected");
 }
 {
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   editTitle(k, "Habit App");
-  ok(!!k.btn(k.d.querySelector("#nav"), "Habit App") && !k.btn(k.d.querySelector("#nav"), "Sample App"), "renaming a pinned project updates its name in the sidebar");
-  ok(!k.$("renameBtn").hidden && !!k.d.querySelector("#view textarea"), "an active project keeps its pencil and its editable Notes");
+  ok(!!k.btn(k.d.querySelector("#nav"), "Habit App") && !k.btn(k.d.querySelector("#nav"), "Sample App"), "renaming a pinned quest updates its name in the sidebar");
+  ok(!k.$("renameBtn").hidden && !!k.d.querySelector("#view textarea"), "an active quest keeps its pencil and its editable Notes");
   k.tab("today");
-  ok(k.$("renameBtn").hidden, "the pencil is only on project pages");
+  ok(k.$("renameBtn").hidden, "the pencil is only on quest pages");
 }
 {
   // notes travel between ideas and candidates, and list rows clamp them
@@ -559,23 +560,23 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!candRow().querySelector(".noteclamp"), "a candidate's note in the list is clamped to two lines");
   k.click(k.btn(candRow(), "Park it"));
   const idea = k.saved().parked.find(p => p.text === "Sample Browser Extension");
-  ok(idea && idea.note === "A small tool that could ship in a month", "Park it carries the project's Notes back to the idea's note");
+  ok(idea && idea.note === "A small tool that could ship in a month", "Park it carries the quest's Notes back to the idea's note");
   k.tab("parking");
   const irow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Browser Extension"));
   ok(!!irow.querySelector(".noteclamp"), "a parked idea's note is clamped to two lines");
   k.click(k.btn(irow, "Make candidate"));
-  const proj = k.saved().projects.find(p => p.name === "Sample Browser Extension" && p.status === "candidate");
-  ok(proj && proj.notes === "A small tool that could ship in a month" && !("note" in proj), "Make candidate puts the idea's note in the project's Notes, with no separate note field");
+  const quest = k.saved().quests.find(p => p.name === "Sample Browser Extension" && p.status === "candidate");
+  ok(quest && quest.notes === "A small tool that could ship in a month" && !("note" in quest), "Make candidate puts the idea's note in the quest's Notes, with no separate note field");
 }
 {
-  // an archived candidate's page is read-only like any archived project's
+  // an archived candidate's page is read-only like any archived quest's
   const k = kit(await mk());
   k.tab("projects");
   const candRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.querySelector('button[title="Move to the Parking lot"]'));
   k.click(k.btn(candRow, "Archive"));
   k.tab("archive");
   k.click(k.btn(k.$("view"), "Sample Browser Extension"));
-  ok(!k.btn(k.$("view"), "Choose as next project") && k.$("renameBtn").hidden && !k.d.querySelector("#view textarea"), "an archived candidate's page has no pencil, editable fields, or promote button");
+  ok(!k.btn(k.$("view"), "Choose as next quest") && k.$("renameBtn").hidden && !k.d.querySelector("#view textarea"), "an archived candidate's page has no pencil, editable fields, or promote button");
 }
 
 {
@@ -587,10 +588,10 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!k.btn(webRow(), "Pin") && !webRow().querySelector(".scount"), "a Where things stand row has a Pin button and no separate open-task count");
   ok(/Next up: .* · Sep [0-9]+ · 3 open tasks/.test(webRow().querySelector(".snext").textContent), "the open-task count is on the Next up line (" + webRow().querySelector(".snext").textContent + ")");
   k.click(k.btn(webRow(), "Pin"));
-  ok(k.saved().pins.includes("proj:pSite") && !!k.btn(webRow(), "Unpin"), "Pin in Where things stand pins the project and the button flips to Unpin");
-  ok(!!k.btn(k.d.querySelector("#nav"), "Sample Website"), "the pinned project appears in the sidebar");
+  ok(k.saved().pins.includes("quest:pSite") && !!k.btn(webRow(), "Unpin"), "Pin in Where things stand pins the quest and the button flips to Unpin");
+  ok(!!k.btn(k.d.querySelector("#nav"), "Sample Website"), "the pinned quest appears in the sidebar");
   k.click(k.btn(webRow(), "Unpin"));
-  ok(!k.saved().pins.includes("proj:pSite"), "Unpin in Where things stand removes the pin");
+  ok(!k.saved().pins.includes("quest:pSite"), "Unpin in Where things stand removes the pin");
 }
 
 {
@@ -602,7 +603,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(diamonds()[0]);
   ok(k.$("modalTitle").textContent === "Edit milestone", "clicking a diamond opens the edit dialog");
   const first = k.saved().milestones.find(m => m.id === "m1");
-  ok(k.$("f-text").value === first.text && k.$("f-date").value === first.date && k.$("f-project").value === first.projectId, "the dialog is pre-filled with the milestone");
+  ok(k.$("f-text").value === first.text && k.$("f-date").value === first.date && k.$("f-quest").value === first.questId, "the dialog is pre-filled with the milestone");
   k.setField("text", "Beta opens (moved)"); k.setField("date", "2026-11-20");
   k.click(k.btn(k.$("modalBody"), "Save milestone"));
   const after = k.saved().milestones.find(m => m.id === "m1");
@@ -627,28 +628,28 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 }
 
 {
-  // a project's page: its content on the left, its own Timeline and Burndown on the right
+  // a quest's page: its content on the left, its own Timeline and Burndown on the right
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  const split = k.d.querySelector("#view .projsplit");
-  ok(!!split && !!split.querySelector(".projmain") && !split.querySelector(".projtop") && !split.querySelector(".projrest") && !!split.querySelector(".projcharts"), "an active project's page has one content column and a Schedule/Timeline/Burndown column");
-  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".projmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Notes,Linked projects", "the left column runs Tasks, Before you launch, Notes, then Linked projects (" + [...split.querySelectorAll(".projmain h2")].map(h => h.textContent).join() + ")");
-  ok(!split.querySelector(".pintoggle") && !split.querySelector(".pinbar"), "there is no Pin button on a project's own page");
-  ok(split.querySelector(".projmain").textContent.includes("6 tasks (1 in the Backlog). 6 of 17 steps complete."), "the task-count line sits under the Tasks heading");
-  const side = split.querySelector(".projcharts");
+  const split = k.d.querySelector("#view .questsplit");
+  ok(!!split && !!split.querySelector(".questmain") && !split.querySelector(".questtop") && !split.querySelector(".questrest") && !!split.querySelector(".questcharts"), "an active quest's page has one content column and a Schedule/Timeline/Burndown column");
+  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Notes,Linked quests", "the left column runs Tasks, Before you launch, Notes, then Linked quests (" + [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() + ")");
+  ok(!split.querySelector(".pintoggle") && !split.querySelector(".pinbar"), "there is no Pin button on a quest's own page");
+  ok(split.querySelector(".questmain").textContent.includes("6 tasks (1 in the Backlog). 6 of 17 steps complete."), "the task-count line sits under the Tasks heading");
+  const side = split.querySelector(".questcharts");
   ok([...side.querySelectorAll("h2")].map(h => h.textContent).join() === "Schedule,Timeline,Burndown", "the right column flows Schedule, then Timeline, then Burndown, as one column");
-  ok([...split.children].map(c => c.className).join() === "projmain,projcharts", "the page is ordered content, then the Schedule/Timeline/Burndown column, which is also the reading and phone order");
-  ok(!!side.querySelector("#proj-start") && !!side.querySelector("#proj-days") && !split.querySelector(".projmain #proj-start") && ![...split.querySelectorAll(".projmain h2")].some(h => h.textContent === "Schedule"), "the Schedule heading and fields are in the right column, not the left");
+  ok([...split.children].map(c => c.className).join() === "questmain,questcharts", "the page is ordered content, then the Schedule/Timeline/Burndown column, which is also the reading and phone order");
+  ok(!!side.querySelector("#proj-start") && !!side.querySelector("#proj-days") && !split.querySelector(".questmain #proj-start") && ![...split.querySelectorAll(".questmain h2")].some(h => h.textContent === "Schedule"), "the Schedule heading and fields are in the right column, not the left");
   ok(!!k.btn(side, "Expand"), "the right column has an Expand button");
   ok(side.querySelectorAll(".lane").length === 6, "one timeline lane per scheduled task, plus the milestones lane (" + side.querySelectorAll(".lane").length + ")");
   ok(side.textContent.includes("1 backlog task is not shown until scheduled"), "an unscheduled Backlog task is counted, not drawn");
-  ok(side.querySelectorAll(".ms").length === 1 && /Sample App beta opens/.test(side.querySelector(".ms").getAttribute("aria-label")), "the timeline shows only this project's milestone");
+  ok(side.querySelectorAll(".ms").length === 1 && /Sample App beta opens/.test(side.querySelector(".ms").getAttribute("aria-label")), "the timeline shows only this quest's milestone");
   const svg = side.querySelector("svg.chart");
-  ok(/^Burndown chart for Sample App\./.test(svg.getAttribute("aria-label")), "the burndown is this project's own");
+  ok(/^Burndown chart for Sample App\./.test(svg.getAttribute("aria-label")), "the burndown is this quest's own");
   ok(svg.querySelectorAll(".dot").length === 3, "the actual line has its recorded weeks plus this week (" + svg.querySelectorAll(".dot").length + ")");
   ok(svg.querySelectorAll(".mark").length === 1 && svg.querySelectorAll("rect.hit").length >= 4, "a milestone marker and a hover column for each week are drawn");
   ok(!svg.querySelector("title"), "the chart has no native tooltips, which would double up with the new one and never reach a phone or keyboard");
-  ok(/4 tasks remaining, out of 5/.test(side.textContent), "the count line is this project's own tasks");
+  ok(/4 tasks remaining, out of 5/.test(side.textContent), "the count line is this quest's own tasks");
   // Expand opens both charts in a full-size dialog, and closing restores normal dialogs
   k.click(k.btn(side, "Expand"));
   const modal = k.d.querySelector("#overlay .modal");
@@ -662,24 +663,25 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.$("modalClose"));
 }
 {
-  // a project's own history is recorded as it changes, and its chart reads it
+  // a quest's own history is recorded as it changes, and its chart reads it
   const k = kit(await mk());
   const d = new Date(), todayKey = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
   k.tab("schedule");
   k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Build the home screen")));
   const sel = k.d.querySelector(".detailpane .status"); sel.value = "Completed"; k.fire(sel);
-  const app = k.saved().projects.find(p => p.id === "pApp");
-  ok(JSON.stringify(app.hist[todayKey]) === "[5,3]", "finishing a task records the project's tasks in scope and still open for today (" + JSON.stringify(app.hist[todayKey]) + ")");
+  const app = k.saved().quests.find(p => p.id === "pApp");
+  ok(JSON.stringify(app.hist[todayKey]) === "[5,3]", "finishing a task records the quest's tasks in scope and still open for today (" + JSON.stringify(app.hist[todayKey]) + ")");
   ok(Object.keys(app.hist).length >= 3, "the earlier records are kept");
   // a second change that nets out to the same counts leaves no extra record
   const sel2 = k.d.querySelector(".detailpane .status"); sel2.value = "In progress"; k.fire(sel2);
   sel2.value = "Completed"; k.fire(sel2);
-  ok(JSON.stringify(k.saved().projects.find(p => p.id === "pApp").hist[todayKey]) === "[5,3]", "changing a task back and forth keeps the day's record at its final counts");
+  ok(JSON.stringify(k.saved().quests.find(p => p.id === "pApp").hist[todayKey]) === "[5,3]", "changing a task back and forth keeps the day's record at its final counts");
 }
 {
-  // a Complete project's burndown never leaves a gap for a week nothing was
+  // a Complete quest's burndown never leaves a gap for a week nothing was
   // recorded -- its remaining count is unambiguously 0 from completion on,
-  // unlike an active project's genuinely-unknown unrecorded past
+  // unlike an active quest's genuinely-unknown unrecorded past. Also exercises
+  // the pre-rename "projects"/"projectId" saved-data shape.
   const saved = {
     projects: [{ id: "pDoneGap", name: "Finished Long Ago", status: "complete", start: "2026-08-03", days: 7, hist: { "2026-08-10": [2, 1] } }],
     tasks: [
@@ -695,28 +697,28 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(svg.querySelectorAll("polyline.actual").length === 1, "the actual line is one unbroken polyline, not split by an unrecorded gap week (" + svg.querySelectorAll("polyline.actual").length + " segments)");
 }
 {
-  // the open estimate drops as tasks complete; tasks open in place on a project's page
+  // the open estimate drops as tasks complete; tasks open in place on a quest's page
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
   const before = k.d.querySelector("#view .estleft").textContent;
-  const row = [...k.d.querySelectorAll("#view .projmain .tlist li")].find(li => li.textContent.includes("Run a beta with five friends"));
+  const row = [...k.d.querySelectorAll("#view .questmain .tlist li")].find(li => li.textContent.includes("Run a beta with five friends"));
   k.click(row.querySelector("button.item"));
-  ok(k.$("viewTitle").textContent === "Sample App" && !!k.d.querySelector("#view .projmain .tlist .detail"), "clicking a task on a project's page opens it in place, not on the Tasks page");
+  ok(k.$("viewTitle").textContent === "Sample App" && !!k.d.querySelector("#view .questmain .tlist .detail"), "clicking a task on a quest's page opens it in place, not on the Tasks page");
   ok(k.d.querySelector("#ptask-" + row.id.slice(6) + " button.item").getAttribute("aria-expanded") === "true", "the open row is marked expanded");
-  ok(k.d.querySelectorAll("#view .projmain .tlist .detail").length === 1 && !k.d.querySelector("#view .projmain .detail h2"), "one task is open at a time, with no project heading repeated inside it");
-  ok(!!k.btn(k.d.querySelector("#view .projmain .detail"), "Open in Tasks"), "an Open in Tasks link is offered");
-  const sel = k.d.querySelector("#view .projmain .detail .status"); sel.value = "Completed"; k.fire(sel);
-  ok(k.d.querySelectorAll("#view .projmain .tlist .detail").length === 1, "the task stays open after an edit");
+  ok(k.d.querySelectorAll("#view .questmain .tlist .detail").length === 1 && !k.d.querySelector("#view .questmain .detail h2"), "one task is open at a time, with no quest heading repeated inside it");
+  ok(!!k.btn(k.d.querySelector("#view .questmain .detail"), "Open in Tasks"), "an Open in Tasks link is offered");
+  const sel = k.d.querySelector("#view .questmain .detail .status"); sel.value = "Completed"; k.fire(sel);
+  ok(k.d.querySelectorAll("#view .questmain .tlist .detail").length === 1, "the task stays open after an edit");
   const after = k.d.querySelector("#view .estleft").textContent;
   ok(before === "Est. 27 hours remaining" && after === "Est. 23 hours remaining", "completing a 4 h task lowers the open estimate (" + before + " -> " + after + ")");
-  k.click(k.d.querySelector("#view .projmain .tlist button.item[aria-expanded='true']"));
-  ok(!k.d.querySelector("#view .projmain .tlist .detail"), "clicking the open task again closes it");
+  k.click(k.d.querySelector("#view .questmain .tlist button.item[aria-expanded='true']"));
+  ok(!k.d.querySelector("#view .questmain .tlist .detail"), "clicking the open task again closes it");
   // the launch checklist's task link opens the task in place too
-  const launchLink = [...k.d.querySelectorAll("#view .projmain .textbtn")].find(b => b.title === "View this task");
+  const launchLink = [...k.d.querySelectorAll("#view .questmain .textbtn")].find(b => b.title === "View this task");
   k.click(launchLink);
-  ok(k.$("viewTitle").textContent === "Sample App" && !!k.d.querySelector("#view .projmain .tlist .detail"), "a task link in Before you launch opens that task in place");
-  k.click(k.btn(k.d.querySelector("#view .projmain .detail"), "Open in Tasks"));
+  ok(k.$("viewTitle").textContent === "Sample App" && !!k.d.querySelector("#view .questmain .tlist .detail"), "a task link in Before you launch opens that task in place");
+  k.click(k.btn(k.d.querySelector("#view .questmain .detail"), "Open in Tasks"));
   ok(k.$("viewTitle").textContent === "Tasks", "Open in Tasks goes to the Tasks page");
 }
 {
@@ -724,7 +726,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Game"));
-  const lane = [...k.d.querySelectorAll("#view .projcharts .lane")].find(l => l.textContent.includes("Prototype the core mechanic"));
+  const lane = [...k.d.querySelectorAll("#view .questcharts .lane")].find(l => l.textContent.includes("Prototype the core mechanic"));
   const bars = [...lane.querySelectorAll(".bar")];
   ok(bars.length === 2 && bars[0].classList.contains("blk") && !bars[1].classList.contains("blk"), "each task lane has a block band behind its own bar");
   const w = b => parseFloat(b.style.width);
@@ -760,12 +762,12 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(rows[0][2] === "4" && rows[1][2] === "4" && rows[2][2] === "3" && rows[3][2] === "3", "a day with no record carries the last one forward (" + rows.slice(0, 4).map(r => r[2]).join(",") + ")");
   k.click(k.btn(k.d.querySelector("#nav"), "Projects") || k.d.querySelector('.tab[data-view="projects"]'));
   k.click(k.btn(k.$("view"), "Quick"));
-  const svg = k.d.querySelector("#view .projcharts svg.chart");
+  const svg = k.d.querySelector("#view .questcharts svg.chart");
   const hits = svg.querySelectorAll("rect.hit").length;
-  ok(hits >= 5 && hits <= 7, "the project's own chart is daily too (" + hits + " points for a 4-day schedule)");
+  ok(hits >= 5 && hits <= 7, "the quest's own chart is daily too (" + hits + " points for a 4-day schedule)");
 }
 {
-  // ticking a step from the launch checklist counts like any other change: history is recorded and the project can complete
+  // ticking a step from the launch checklist counts like any other change: history is recorded and the quest can complete
   const d = new Date(), n = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()), iso = k => new Date(n + k * 86400000).toISOString().slice(0, 10);
   const saved = {
     projects: [{ id: "pL", name: "Launchy", status: "active", start: iso(-1), days: 7 }],
@@ -776,8 +778,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const box = [...k.d.querySelectorAll("#view .list.check input[type=checkbox]")][0];
   box.checked = true; k.fire(box);
   const sv = k.saved();
-  ok(sv.tasks[0].status === "Completed" && JSON.stringify(sv.projects[0].hist[iso(0)]) === "[1,0]", "ticking the last step in Before you launch completes the task and records the project's counts");
-  ok(sv.projects[0].status === "complete" && k.$("modalTitle").textContent === "Project complete", "and the project completes from there too");
+  ok(sv.tasks[0].status === "Completed" && JSON.stringify(sv.quests[0].hist[iso(0)]) === "[1,0]", "ticking the last step in Before you launch completes the task and records the quest's counts");
+  ok(sv.quests[0].status === "complete" && k.$("modalTitle").textContent === "Quest complete", "and the quest completes from there too");
 }
 {
   // scope changes are called out, Jira-style, in the table, the tooltip, and when completing a project
@@ -818,30 +820,30 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const slope = pts.some((p, i) => i > 0 && p[0] !== pts[i - 1][0] && p[1] !== pts[i - 1][1]);
   ok(!vertical && slope, "it ramps where scope changed (a slope, never a vertical step) and is level everywhere else");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  ok(!!k.d.querySelector("#view .projcharts polyline.scope") && [...k.d.querySelectorAll("#view .projcharts .legend span")].some(s => s.textContent === "Scope"), "a project's own burndown draws its own In scope line too");
-  const ppts = k.d.querySelector("#view .projcharts polyline.scope").getAttribute("points").split(" ").map(p => p.split(",").map(Number));
+  ok(!!k.d.querySelector("#view .questcharts polyline.scope") && [...k.d.querySelectorAll("#view .questcharts .legend span")].some(s => s.textContent === "Scope"), "a quest's own burndown draws its own In scope line too");
+  const ppts = k.d.querySelector("#view .questcharts polyline.scope").getAttribute("points").split(" ").map(p => p.split(",").map(Number));
   ok(ppts.some((p, i) => i > 0 && p[0] > ppts[i - 1][0] && p[1] < ppts[i - 1][1]), "and it ramps up where a task was added");
 }
 {
-  // New task from a project's own page names the project instead of offering a picker
+  // New task from a quest's own page names the quest instead of offering a picker
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   k.click(k.btn(k.$("view"), "Add task"));
-  ok(!k.$("f-project"), "no project selector in the dialog opened from a project's own page");
-  ok(k.$("modalBody").textContent.includes("Project: Sample App"), "the project is named instead (" + k.$("modalBody").textContent.slice(0, 80) + ")");
-  k.setField("what", "Named project test"); k.click(k.btn(k.$("modalBody"), "Add task"));
-  ok(k.saved().tasks.find(t => t.what === "Named project test").projectId === "pApp", "it still saves to the right project");
+  ok(!k.$("f-quest"), "no quest selector in the dialog opened from a quest's own page");
+  ok(k.$("modalBody").textContent.includes("Quest: Sample App"), "the quest is named instead (" + k.$("modalBody").textContent.slice(0, 80) + ")");
+  k.setField("what", "Named quest test"); k.click(k.btn(k.$("modalBody"), "Add task"));
+  ok(k.saved().tasks.find(t => t.what === "Named quest test").questId === "pApp", "it still saves to the right quest");
   // the Main Menu's own New task keeps the real picker
   k.menuAct("newBtn", "newTask");
-  ok(!!k.$("f-project") && k.$("f-project").tagName === "SELECT", "the Main Menu's New task still offers a project picker");
+  ok(!!k.$("f-quest") && k.$("f-quest").tagName === "SELECT", "the Main Menu's New task still offers a quest picker");
 }
 {
-  // a task added to the plan after its project started is tagged on the task itself
+  // a task added to the plan after its quest started is tagged on the task itself
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  const rowOf = (txt) => [...k.d.querySelectorAll("#view .projmain .tlist li")].find(li => li.textContent.includes(txt));
+  const rowOf = (txt) => [...k.d.querySelectorAll("#view .questmain .tlist li")].find(li => li.textContent.includes(txt));
   const chip = (li) => [...li.querySelectorAll(".chip")].map(c => c.textContent).find(t => /^Added /.test(t));
   ok(!!chip(rowOf("Submit to the app store")) && !chip(rowOf("Sketch the main screens")) && !chip(rowOf("Run a beta with five friends")), "only the sample's late-added task carries an Added tag (" + chip(rowOf("Submit to the app store")) + ")");
   const tagged = [...rowOf("Submit to the app store").querySelectorAll(".chip")].find(c => /^Added /.test(c.textContent));
@@ -879,7 +881,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  const l3of = (txt) => [...k.d.querySelectorAll("#view .projmain .tlist li")].find(li => li.textContent.includes(txt)).querySelector(".l3");
+  const l3of = (txt) => [...k.d.querySelectorAll("#view .questmain .tlist li")].find(li => li.textContent.includes(txt)).querySelector(".l3");
   const bits = (l3) => [...l3.children].map(c => c.textContent);
   ok(bits(l3of("Run a beta with five friends")).join("|").includes("0 of 3 steps|\u00b7|Est 4 h"), "steps and an estimate are separated by a bullet (" + bits(l3of("Run a beta with five friends")).join("|") + ")");
   ok(!bits(l3of("Add a dark mode")).includes("\u00b7"), "a task with an estimate but no steps has no bullet (" + bits(l3of("Add a dark mode")).join("|") + ")");
@@ -903,23 +905,23 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   await pick(JSON.stringify({ hello: "world" }));
   ok(k.$("overlay").hidden && k.saved().tasks.length === before, "JSON that is not a backup is refused and nothing changes");
   await pick(JSON.stringify(backup));
-  ok(k.$("modalTitle").textContent === "Restore this backup?" && /1 project and 2 tasks/.test(k.$("modalBody").textContent) && /replaces everything/.test(k.$("modalBody").textContent), "a real backup asks first, saying what it holds and what will happen (" + k.$("modalBody").textContent.slice(0, 90) + ")");
+  ok(k.$("modalTitle").textContent === "Restore this backup?" && /1 quest and 2 tasks/.test(k.$("modalBody").textContent) && /replaces everything/.test(k.$("modalBody").textContent), "a real backup asks first, saying what it holds and what will happen (" + k.$("modalBody").textContent.slice(0, 90) + ")");
   ok(k.saved().tasks.length === before, "and nothing has changed yet");
   k.click(k.btn(k.$("modalBody"), "Cancel"));
   ok(k.saved().tasks.length === before, "Cancel leaves everything as it was");
   await pick(JSON.stringify(backup));
   k.click(k.btn(k.$("modalBody"), "Restore backup"));
-  ok(k.saved().tasks.length === 2 && k.saved().projects[0].name === "Restored", "Restore backup replaces everything with the file");
+  ok(k.saved().tasks.length === 2 && k.saved().quests[0].name === "Restored", "Restore backup replaces everything with the file");
   ok(k.$("toast").textContent.includes("Backup restored.") && !!k.btn(k.$("toast"), "Undo"), "and offers Undo for a few seconds");
   k.click(k.btn(k.$("toast"), "Undo"));
-  ok(k.saved().tasks.length === before && k.saved().projects.some(p => p.name === "Sample Game"), "Undo puts the previous data back");
+  ok(k.saved().tasks.length === before && k.saved().quests.some(p => p.name === "Sample Game"), "Undo puts the previous data back");
 }
 {
   // a task's Timeline bar takes its status: Not started, In progress, Completed
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  const barOf = (txt) => [...k.d.querySelectorAll("#view .projcharts .lane")].find(l => l.textContent.includes(txt)).querySelectorAll(".bar")[1];
+  const barOf = (txt) => [...k.d.querySelectorAll("#view .questcharts .lane")].find(l => l.textContent.includes(txt)).querySelectorAll(".bar")[1];
   ok(barOf("Sketch the main screens").classList.contains("done") && barOf("Build the sign-in flow").classList.contains("work") && barOf("Run a beta with five friends").classList.contains("new"), "Completed is green, In progress is yellow, Not started is pale blue on the Timeline");
   k.tab("schedule");
   k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Run a beta with five friends")));
@@ -980,9 +982,9 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   };
   const wait = (ms) => new Promise(r => setTimeout(r, ms || 90));
   const base = kit(await mk()).saved();
-  base.projects.find(p => p.id === "pApp").name = "REAL DB DATA"; base.settings.hideWelcome = true;
+  base.quests.find(p => p.id === "pApp").name = "REAL DB DATA"; base.settings.hideWelcome = true;
   const realJson = JSON.stringify(base);
-  const named = (store) => JSON.parse(store["state/main"].json).projects.find(p => p.id === "pApp").name;
+  const named = (store) => JSON.parse(store["state/main"].json).quests.find(p => p.id === "pApp").name;
   {
     // a fresh device (nothing in local storage) must read the db before it writes to it
     const f = fake({ "state/main": { json: realJson } });
@@ -1014,7 +1016,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   }
   // newest save wins when the db and this device disagree
   const T1 = "2026-10-01T10:00:00.000Z", T2 = "2026-10-01T12:00:00.000Z";
-  const withName = (nm) => { const o = JSON.parse(JSON.stringify(base)); o.projects.find(p => p.id === "pApp").name = nm; return o; };
+  const withName = (nm) => { const o = JSON.parse(JSON.stringify(base)); o.quests.find(p => p.id === "pApp").name = nm; return o; };
   const shown = (k, nm) => [...k.d.querySelectorAll("#nav .tab")].some(t => t.textContent === nm);
   {
     // this device saved later but its db writes failed: keep the local copy and push it up
@@ -1052,9 +1054,9 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // saved history is validated on load, and the old step-count snapshots are not carried over
   const saved = { actual: [34, 31, 25, null, null, null, null], hist: { "2026-09-14": [12, 5], bad: [1, 1], "2026-09-21": [3, 9], "2026-09-28": "x", "2026-09-29": [5, -1] }, projects: [{ id: "pV", name: "Snap", status: "active", actual: { "2026-09-14": 12 }, hist: { "2026-09-14": [12, 5], bad: [1, 1], "2026-09-21": [3, 9], "2026-09-28": "x", "2026-09-29": [5, -1] } }], tasks: [] };
   const k = kit(await mk(saved));
-  const a = k.saved().projects[0].hist, g = k.saved().hist;
+  const a = k.saved().quests[0].hist, g = k.saved().hist;
   ok(Object.keys(a).join() === "2026-09-14" && a["2026-09-14"].join() === "12,5", "only well-formed history entries are kept on a project");
-  ok(Object.keys(g).join() === "2026-09-14" && !("actual" in k.saved()) && !("actual" in k.saved().projects[0]), "the same goes for the main burndown, and the old step-count fields are gone");
+  ok(Object.keys(g).join() === "2026-09-14" && !("actual" in k.saved()) && !("actual" in k.saved().quests[0]), "the same goes for the main burndown, and the old step-count fields are gone");
 }
 {
   // Slip schedule moves only a project's incomplete tasks, leaves Completed
@@ -1090,29 +1092,29 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.saved().tasks.find(t => t.id === "s2").block === 2, "undo restores the task's original block");
 }
 {
-  // an active project with nothing scheduled still has the panel, and says so
+  // an active quest with nothing scheduled still has the panel, and says so
   const k = kit(await mk({ projects: [{ id: "pX", name: "Empty", status: "active" }], tasks: [] }));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Empty"));
-  const side = k.d.querySelector("#view .projcharts");
-  ok(!!side && side.textContent.includes("Nothing is scheduled yet") && ![...side.querySelectorAll("h2")].some(h => h.textContent === "Burndown"), "a project with no scheduled tasks says so and draws no burndown");
+  const side = k.d.querySelector("#view .questcharts");
+  ok(!!side && side.textContent.includes("Nothing is scheduled yet") && ![...side.querySelectorAll("h2")].some(h => h.textContent === "Burndown"), "a quest with no scheduled tasks says so and draws no burndown");
 }
 {
-  // candidates and archived projects stay single-column
+  // candidates and archived quests stay single-column
   const k = kit(await mk());
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Browser Extension"));
-  ok(!k.d.querySelector("#view .projsplit"), "a candidate's page has no charts column");
+  ok(!k.d.querySelector("#view .questsplit"), "a candidate's page has no charts column");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Game"));
   k.click(k.btn(k.$("view"), "Archive"));
   k.tab("archive"); k.click(k.btn(k.$("view"), "Sample Game"));
-  ok(!k.d.querySelector("#view .projsplit"), "an archived project's page has no charts column");
-  ok([...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Schedule") && !k.$("proj-start"), "an archived project still shows its Schedule, read only, in the single column");
+  ok(!k.d.querySelector("#view .questsplit"), "an archived quest's page has no charts column");
+  ok([...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Schedule") && !k.$("proj-start"), "an archived quest still shows its Schedule, read only, in the single column");
 }
 
 {
   // the burndown tooltip works on hover, tap, and keyboard, on both charts
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  const side = k.d.querySelector("#view .projcharts");
+  const side = k.d.querySelector("#view .questcharts");
   const svg = side.querySelector("svg.chart");
   const tip = () => side.querySelector(".charttip");
   const hits = [...svg.querySelectorAll("rect.hit")];
@@ -1161,24 +1163,24 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 }
 
 {
-  // estimates, explicit start/due dates, and the project page order
+  // estimates, explicit start/due dates, and the quest page order
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   const sv = k.saved().tasks;
-  const appTasks = sv.filter(t => t.projectId === "pApp");
+  const appTasks = sv.filter(t => t.questId === "pApp");
   const total = appTasks.reduce((n, t) => n + t.est, 0), left = appTasks.filter(t => t.status !== "Completed").reduce((n, t) => n + t.est, 0);
   ok(total === 30, "Sample App's estimates add up to 30 h (" + total + ")");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
   const est = k.d.querySelector("#view .metarow .estleft");
-  ok(!!est && est.textContent === "Est. " + left + " hours remaining", "the project page shows the open estimate at the right of the count line (" + (est && est.textContent) + ")");
+  ok(!!est && est.textContent === "Est. " + left + " hours remaining", "the quest page shows the open estimate at the right of the count line (" + (est && est.textContent) + ")");
   ok(!k.d.querySelector("#view .estline"), "the old estimate line under the list is gone");
-  const chips = [...k.d.querySelectorAll("#view .projmain .l3 span")].map(s => s.textContent);
-  ok(chips.includes("Est 3 h") && chips.includes("Est 6 h"), "task rows on the project page show their estimate as Est N h");
-  const heads = [...k.d.querySelectorAll("#view .projmain h2")].map(h => h.textContent);
-  ok(heads.join() === "Tasks,Before you launch,Notes,Linked projects", "the project page order is Tasks, Before you launch, Notes, Linked projects (" + heads.join() + ")");
+  const chips = [...k.d.querySelectorAll("#view .questmain .l3 span")].map(s => s.textContent);
+  ok(chips.includes("Est 3 h") && chips.includes("Est 6 h"), "task rows on the quest page show their estimate as Est N h");
+  const heads = [...k.d.querySelectorAll("#view .questmain h2")].map(h => h.textContent);
+  ok(heads.join() === "Tasks,Before you launch,Notes,Linked quests", "the quest page order is Tasks, Before you launch, Notes, Linked quests (" + heads.join() + ")");
   const g1 = sv.find(t => t.id === "g1");
   ok(g1.block === 1 && g1.start && g1.due && g1.start < g1.due, "Sample Game's first task keeps block 1 with its own start and due");
-  const gp = k.saved().projects.find(p => p.id === "pGame");
+  const gp = k.saved().quests.find(p => p.id === "pGame");
   ok(g1.start > gp.start && (Date.parse(g1.due) - Date.parse(g1.start)) / 864e5 === 7, "and its dates are shorter than its two-week block");
   k.tab("schedule");
   ok([...k.d.querySelectorAll(".listpane .item .l3 span")].some(s => s.textContent === "Est 12 h"), "the Tasks list shows an estimate chip");
@@ -1281,7 +1283,7 @@ async function exportClick(k, projectName) {
   ok(html.includes('id="proj-pApp"') && html.includes('id="proj-pSite"'), "each project gets its own section, addressable by id");
   ok(html.includes('class="etoc"'), "includes a table of contents");
   ok(html.includes("echarttip") && html.includes("svg.echart"), "embeds the chart renderer and tooltip markup");
-  ok(!html.includes("Sample Finished Project") && !html.includes("Sample Next Project"), "projects not linked from the exported one are left out entirely");
+  ok(!html.includes("Sample Finished Quest") && !html.includes("Sample Next Quest"), "quests not linked from the exported one are left out entirely");
   ok(html.includes("window.__sqExport"), "chart data is embedded as plain JSON, not live state");
 }
 {
@@ -1345,7 +1347,7 @@ async function exportClick(k, projectName) {
   };
   const k = kit(await mk(saved));
   const ids = xs => xs.map(x => x.id);
-  ok(!ids(k.saved().projects).includes("pOld") && ids(k.saved().projects).includes("pNew"), "a 30-day threshold purges only the project archived more than 30 days ago");
+  ok(!ids(k.saved().quests).includes("pOld") && ids(k.saved().quests).includes("pNew"), "a 30-day threshold purges only the project archived more than 30 days ago");
   ok(!ids(k.saved().parked).includes("iOld") && ids(k.saved().parked).includes("iNew"), "and the idea archived more than 30 days ago, leaving the newer one");
   ok(!ids(k.saved().tasks).includes("tOld"), "the purged project's own tasks go with it");
 }
@@ -1357,7 +1359,7 @@ async function exportClick(k, projectName) {
     tasks: []
   };
   const k = kit(await mk(saved));
-  ok(k.saved().projects.some(p => p.id === "pOld"), "Never (0) leaves even a very old archived project in place");
+  ok(k.saved().quests.some(p => p.id === "pOld"), "Never (0) leaves even a very old archived project in place");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

@@ -1,7 +1,7 @@
 import { DAY, iso, parseISO, TODAY } from "./dates.js";
 import { findAnyTask, syncTaskBlocks } from "./model.js";
 import { notify } from "./dom.js";
-import { recordHistory, recordProjectHistory, sweepProjectCompletion } from "./views.js";
+import { recordHistory, recordQuestHistory, sweepQuestCompletion } from "./views.js";
 import { renderAll } from "./app.js";
 
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
@@ -12,17 +12,17 @@ export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
 export function st(id, text, launch, done) { return { id: id, text: text, done: done === true, launch: launch === true }; }
-export function task(id, block, projectId, what, done, steps, extra) {
-  var t = { id: id, block: block, projectId: projectId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0, added: "" };
+export function task(id, block, questId, what, done, steps, extra) {
+  var t = { id: id, block: block, questId: questId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0, added: "" };
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
   return t;
 }
-// A project's own lifecycle: "candidate" (competing for the next slot, not yet
+// A quest's own lifecycle: "candidate" (competing for the next slot, not yet
 // started) or "active" (chosen, has tasks). Promoted in place -- the same
 // record and id carry through candidate -> active -> archived, never a second
 // record.
-export function project(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", arch: null, linkedProjectIds: [], launchCritical: false, hist: {}, lastSlip: null };
+export function quest(id, name, status, extra) {
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", arch: null, linkedQuestIds: [], launchCritical: false, hist: {}, lastSlip: null };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -37,27 +37,27 @@ export function sampleData() {
   // day recorded. Sample App started two Mondays ago with four scheduled tasks and gained a fifth; its
   // second one is running late, so the burndown sits above the plan.
   var appHistory = {}; appHistory[day(0)] = [4, 4]; appHistory[day(5)] = [4, 3]; appHistory[day(9)] = [5, 4];
-  // Sample Finished Project runs a little late, then ahead, then lands on time,
-  // so its full-project Burndown crosses the planned line instead of tracking it.
+  // Sample Finished Quest runs a little late, then ahead, then lands on time,
+  // so its full-quest Burndown crosses the planned line instead of tracking it.
   var doneHistory = {}; doneHistory[day(-28)] = [4, 4]; doneHistory[day(-20)] = [4, 3]; doneHistory[day(-15)] = [4, 2]; doneHistory[day(-12)] = [4, 1]; doneHistory[day(-1)] = [4, 0];
-  // The main burndown counts every scheduled task that isn't hidden with a Complete project;
+  // The main burndown counts every scheduled task that isn't hidden with a Complete quest;
   // a twelfth task was added on day 9, so its line steps up once.
   var allHistory = {}; allHistory[day(0)] = [11, 11]; allHistory[day(5)] = [11, 10]; allHistory[day(9)] = [12, 11];
-  var projects = [
-    // pApp <-> pSite demonstrates a bidirectional project link.
-    project("pApp", "Sample App", "active", { hist: appHistory, notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedProjectIds: ["pSite"] }),
+  var quests = [
+    // pApp <-> pSite demonstrates a bidirectional quest link.
+    quest("pApp", "Sample App", "active", { hist: appHistory, notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedQuestIds: ["pSite"] }),
     // launchCritical: the app's launch checklist shows the site's own status.
-    project("pSite", "Sample Website", "active", { start: day(14), linkedProjectIds: ["pApp"], launchCritical: true }),
-    project("pGame", "Sample Game", "active", { start: day(21), days: 14, due: day(21 + 122) }),
-    project("pExt", "Sample Browser Extension", "candidate", { notes: "A small tool that could ship in a month" }),
-    project("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own projects" }),
-    // Demonstrates a Complete project: drops out of In progress but still
-    // shows in the plain Projects list with its Complete badge.
-    project("pDone", "Sample Finished Project", "complete", { start: day(-28), notes: "Shipped and wrapped up.", hist: doneHistory }),
-    // Demonstrates a promoted-but-task-less Active project: since In progress
+    quest("pSite", "Sample Website", "active", { start: day(14), linkedQuestIds: ["pApp"], launchCritical: true }),
+    quest("pGame", "Sample Game", "active", { start: day(21), days: 14, due: day(21 + 122) }),
+    quest("pExt", "Sample Browser Extension", "candidate", { notes: "A small tool that could ship in a month" }),
+    quest("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own quests" }),
+    // Demonstrates a Complete quest: drops out of In progress but still
+    // shows in the plain Quests list with its Complete badge.
+    quest("pDone", "Sample Finished Quest", "complete", { start: day(-28), notes: "Shipped and wrapped up.", hist: doneHistory }),
+    // Demonstrates a promoted-but-task-less Active quest: since In progress
     // is built entirely from tasks, this one never appears there and lands in
-    // the plain Projects list under Pending instead -- no start date needed.
-    project("pNext", "Sample Next Project", "active", { notes: "Chosen, but nothing scheduled yet." })
+    // the plain Quests list under Pending instead -- no start date needed.
+    quest("pNext", "Sample Next Quest", "active", { notes: "Chosen, but nothing scheduled yet." })
   ];
   var tasks = [
     task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Completed", doneAt: lastWeek }),
@@ -74,7 +74,7 @@ export function sampleData() {
     task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid", true), st("g3c", "Record a trailer", true)]),
     task("g4", 0, "pGame", "Add a level editor", "Players can make their own levels"),
     task("n1", 6, null, "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true }),
-    // pDone's own tasks, all finished -- a Complete project keeps its task
+    // pDone's own tasks, all finished -- a Complete quest keeps its task
     // history rather than clearing it out. Four weekly tasks at weight 2 each
     // give an even planned line, which doneHistory above then zig-zags around.
     task("d1", 1, "pDone", "Design the feature", "The design is agreed", [st("d1a", "Sketch the approach", false, true), st("d1b", "Get sign-off", false, true)], { status: "Completed", doneAt: day(-22) }),
@@ -84,16 +84,16 @@ export function sampleData() {
   ];
   var EST = { a1: 3, a2: 6, a3: 8, a4: 4, a5: 5, a6: 4, w1: 3, w2: 10, w3: 2, g1: 12, g2: 20, g3: 8, g4: 16, d1: 6, d2: 12, d3: 8, d4: 3 };
   tasks.forEach(function (t) { if (EST[t.id]) t.est = EST[t.id]; });
-  // When the finished tasks were completed (Sample Finished Project's are a bit late, early, then on time).
+  // When the finished tasks were completed (Sample Finished Quest's are a bit late, early, then on time).
   var DONE = { a1: day(5), d1: day(-20), d2: day(-15), d3: day(-12), d4: day(-1) };
   tasks.forEach(function (t) { if (DONE[t.id]) t.doneAt = DONE[t.id]; });
   // Shorter than its two-week block: starts two days in, due a week later.
   tasks.forEach(function (t) { if (t.id === "g1") { t.start = day(23); t.due = day(30); } });
-  // Sample App's last task joined the plan after the project started: a scope change.
+  // Sample App's last task joined the plan after the quest started: a scope change.
   tasks.forEach(function (t) { if (t.id === "a5") t.added = day(9); });
   return {
     tasks: tasks,
-    projects: projects,
+    quests: quests,
     parked: [
       { id: "p1", text: "Try a new game engine", note: "Not competing for the next slot" },
       { id: "p2", text: "Write up lessons learned", note: "After the website launches" },
@@ -105,10 +105,10 @@ export function sampleData() {
       { id: "d2", q: "Will the game be free, paid, or free with a paid upgrade?", a: "", step: "g3d" },
       { id: "d3", q: "Should the site use a page builder?", a: "No, plain pages are enough.", step: "w3a" }
     ],
-    // Milestones now require a direct project link (no step/task chain to derive it from).
+    // Milestones now require a direct quest link (no step/task chain to derive it from).
     milestones: [
-      { id: "m1", text: "Sample App beta opens", date: day(21), projectId: "pApp" },
-      { id: "m2", text: "Sample Game demo day", date: day(63), projectId: "pGame" }
+      { id: "m1", text: "Sample App beta opens", date: day(21), questId: "pApp" },
+      { id: "m2", text: "Sample Game demo day", date: day(63), questId: "pGame" }
     ],
     hist: allHistory,
     start: day(0)
@@ -119,8 +119,8 @@ export function defaults() {
   return {
     v: 5, start: d.start, days: 7,
     tasks: d.tasks, hist: d.hist,
-    decisions: d.decisions, projects: d.projects, parked: d.parked,
-    milestones: d.milestones, pins: ["proj:pApp"],
+    decisions: d.decisions, quests: d.quests, parked: d.parked,
+    milestones: d.milestones, pins: ["quest:pApp"],
     settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), archivePurgeDays: 0 }
   };
 }
@@ -152,9 +152,14 @@ export function normalize(s) {
   if (!s || typeof s !== "object") return d;
   if (isISO(s.start)) d.start = s.start;
   if (typeof s.days === "number" && s.days >= 1 && s.days <= 30) d.days = Math.round(s.days);
-  if (Array.isArray(s.projects)) {
-    d.projects = s.projects.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) {
-      // A project used to have a separate short description (`note`) as well
+  // Quests used to be called Projects. Saved data from before the rename has
+  // state.projects (not state.quests), p.linkedProjectIds (not linkedQuestIds),
+  // and pins/task/milestone links spelled "proj:"/projectId. Read whichever
+  // shape is present so nobody's existing save is silently dropped.
+  var rawQuests = Array.isArray(s.quests) ? s.quests : s.projects;
+  if (Array.isArray(rawQuests)) {
+    d.quests = rawQuests.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) {
+      // A quest used to have a separate short description (`note`) as well
       // as `notes`. They are one field now: fold a saved `note` into the front
       // of `notes` so nothing is lost. Once saved, `note` no longer exists.
       var oldNote = S(x.note, 5000), body = S(x.notes, 5000);
@@ -162,6 +167,7 @@ export function normalize(s) {
       // block length instead of its own day count -- convert once on load.
       var days = (typeof x.days === "number" && x.days >= 1 && x.days <= 90) ? Math.round(x.days)
         : (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? Math.max(1, Math.round(d.days * x.mult)) : d.days;
+      var linked = Array.isArray(x.linkedQuestIds) ? x.linkedQuestIds : x.linkedProjectIds;
       return {
         id: S(x.id, 40), name: S(x.name, 120),
         status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
@@ -169,27 +175,28 @@ export function normalize(s) {
         due: isISO(x.due) ? x.due : "",
         notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true, hist: cleanHist(x.hist),
         lastSlip: cleanSlip(x.lastSlip),
-        // Validated below, once every project's real id is known -- a link
-        // can only point at another project that actually exists in the final
+        // Validated below, once every quest's real id is known -- a link
+        // can only point at another quest that actually exists in the final
         // set. Arbitrary depth or cycles are fine; each side of a link is just
         // an id in this array, and nothing here ever traverses the graph.
-        linkedProjectIds: Array.isArray(x.linkedProjectIds) ? x.linkedProjectIds.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : []
+        linkedQuestIds: Array.isArray(linked) ? linked.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : []
       };
     });
   }
-  var projectIds = {}; d.projects.forEach(function (p) { projectIds[p.id] = true; });
-  d.projects.forEach(function (p) {
-    p.linkedProjectIds = p.linkedProjectIds.filter(function (id) { return id !== p.id && projectIds[id]; });
+  var questIds = {}; d.quests.forEach(function (p) { questIds[p.id] = true; });
+  d.quests.forEach(function (p) {
+    p.linkedQuestIds = p.linkedQuestIds.filter(function (id) { return id !== p.id && questIds[id]; });
   });
   if (Array.isArray(s.tasks)) {
     var ts = [];
     s.tasks.forEach(function (t) {
       if (!t || typeof t !== "object" || typeof t.id !== "string") return;
-      // A task's projectId must match a real project, or (for the "Next
-      // project" placeholder only) be null/absent. An orphaned projectId --
+      // A task's questId must match a real quest, or (for the "Next
+      // quest" placeholder only) be null/absent. An orphaned questId --
       // pointing at nothing -- drops the task rather than keeping it around
-      // unreachable.
-      var pid = (typeof t.projectId === "string" && projectIds[t.projectId]) ? t.projectId : null;
+      // unreachable. Saved data from before the rename has projectId instead.
+      var rawId = typeof t.questId === "string" ? t.questId : t.projectId;
+      var pid = (typeof rawId === "string" && questIds[rawId]) ? rawId : null;
       if (!pid && !t.isNext) return;
       var steps = [];
       if (Array.isArray(t.steps)) t.steps.forEach(function (x) {
@@ -203,7 +210,7 @@ export function normalize(s) {
       if (tstart && tdue && tstart > tdue) tstart = "";
       var test = typeof t.est === "number" && t.est > 0 && t.est <= 9999 ? Math.round(t.est * 100) / 100 : 0;
       ts.push({
-        id: S(t.id, 40), block: b, projectId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
+        id: S(t.id, 40), block: b, questId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
         custom: t.custom === true, isNext: t.isNext === true,
         arch: validArch(t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : ""
@@ -212,14 +219,14 @@ export function normalize(s) {
     d.tasks = ts;
   }
   d.hist = cleanHist(s.hist);
-  // A step id belonging to any live (non-archived) task, across every project --
+  // A step id belonging to any live (non-archived) task, across every quest --
   // used below to require a decision's step link points at something real.
   var liveStepIds = {};
   d.tasks.forEach(function (t) { if (!t.arch) t.steps.forEach(function (x) { liveStepIds[x.id] = true; }); });
-  // Decisions require a real step link (Project -> Task -> Step -> Decision) --
+  // Decisions require a real step link (Quest -> Task -> Step -> Decision) --
   // a decision with no step, or one pointing at a step that doesn't exist, is
   // dropped rather than kept in a state the UI can't render meaningfully.
-  // Only Projects and Ideas archive independently, so there's no "archived,
+  // Only Quests and Ideas archive independently, so there's no "archived,
   // exempt from this rule" case: every decision must resolve to a real, live step.
   if (Array.isArray(s.decisions)) {
     d.decisions = s.decisions.filter(function (x) {
@@ -227,12 +234,14 @@ export function normalize(s) {
     }).map(function (x) { return { id: S(x.id, 40), q: S(x.q, 300), a: S(x.a, 1000), step: S(x.step, 40) }; });
   }
   if (Array.isArray(s.parked)) d.parked = s.parked.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 5000), arch: validArch(x.arch) }; });
-  // Milestones require a direct project link (no task/step chain to derive it
-  // from) -- one pointing at a project that no longer exists is dropped.
+  // Milestones require a direct quest link (no task/step chain to derive it
+  // from) -- one pointing at a quest that no longer exists is dropped. Saved
+  // data from before the rename has projectId instead of questId.
   if (Array.isArray(s.milestones)) {
     d.milestones = s.milestones.filter(function (x) {
-      return x && typeof x.id === "string" && isISO(x.date) && typeof x.projectId === "string" && projectIds[x.projectId];
-    }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), date: x.date, projectId: x.projectId }; });
+      var mid = typeof x.questId === "string" ? x.questId : x.projectId;
+      return x && typeof x.id === "string" && isISO(x.date) && typeof mid === "string" && questIds[mid];
+    }).map(function (x) { var mid = typeof x.questId === "string" ? x.questId : x.projectId; return { id: S(x.id, 40), text: S(x.text, 200), date: x.date, questId: mid }; });
   }
   if (s.settings && typeof s.settings === "object") {
     if (["auto", "light", "dark"].indexOf(s.settings.theme) >= 0) d.settings.theme = s.settings.theme;
@@ -244,7 +253,9 @@ export function normalize(s) {
     if (isISO(s.settings.since)) d.settings.since = s.settings.since;
     if ([0, 7, 30, 60, 90].indexOf(s.settings.archivePurgeDays) >= 0) d.settings.archivePurgeDays = s.settings.archivePurgeDays;
   }
-  if (Array.isArray(s.pins)) d.pins = s.pins.filter(function (k) { return typeof k === "string" && k.length < 130; }).slice(0, 30);
+  // Pins used to route to a quest's page via "proj:" + id; migrate any saved
+  // pin to "quest:" + id so an old sidebar pin keeps working after the rename.
+  if (Array.isArray(s.pins)) d.pins = s.pins.filter(function (k) { return typeof k === "string" && k.length < 130; }).map(function (k) { return k.indexOf("proj:") === 0 ? "quest:" + k.slice(5) : k; }).slice(0, 30);
   return d;
 }
 // Storage adapter: localStorage (web app) is synchronous and always available;
@@ -355,14 +366,14 @@ export function loadFromDbIfAvailable() {
   });
 }
 
-export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchArchive: true, notesH: {}, projOpen: {} };
+export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchArchive: true, notesH: {}, questOpen: {} };
 // Always opens on Today -- no-op.
 export function saveUI() { /* nothing to save */ }
 
 // Stamps a task's completion date the moment its status becomes Done, and
-// clears it if the task is reopened. Only Projects and Ideas archive
+// clears it if the task is reopened. Only Quests and Ideas archive
 // independently -- a completed task just stays visible, marked Done, inside
-// its live project; this function never moves anything to the Archive itself.
+// its live quest; this function never moves anything to the Archive itself.
 export function autoArchive() {
   state.tasks.forEach(function (t) {
     if (t.status !== "Completed") { t.doneAt = ""; return; }
@@ -379,13 +390,13 @@ export function purgeOldArchive() {
   if (!days) return;
   var cutoff = TODAY - days * DAY;
   var old = function (item) { return item.arch && parseISO(item.arch.at) < cutoff; };
-  state.projects.filter(old).forEach(function (p) {
-    state.tasks = state.tasks.filter(function (t) { return t.projectId !== p.id; });
+  state.quests.filter(old).forEach(function (p) {
+    state.tasks = state.tasks.filter(function (t) { return t.questId !== p.id; });
   });
-  state.projects = state.projects.filter(function (p) { return !old(p); });
+  state.quests = state.quests.filter(function (p) { return !old(p); });
   state.parked = state.parked.filter(function (p) { return !old(p); });
 }
 export function changed() {
-  autoArchive(); syncTaskBlocks(); sweepProjectCompletion(); recordHistory(); recordProjectHistory(); save(); renderAll();
+  autoArchive(); syncTaskBlocks(); sweepQuestCompletion(); recordHistory(); recordQuestHistory(); save(); renderAll();
 }
 

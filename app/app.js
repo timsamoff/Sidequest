@@ -1,14 +1,14 @@
 import { state, ui, save, saveUI, changed, autoArchive, purgeOldArchive, APP_NAME, loadFromDbIfAvailable } from "./state.js";
-import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findProject } from "./model.js";
+import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest } from "./model.js";
 import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline } from "./dom.js";
 import { lateTasks } from "./model.js";
 import {
-  renderToday, renderSchedule, renderProjects, renderParkingLot,
-  renderArchive, renderSettings, renderHelp, renderProjectPage, renderTimeline
+  renderToday, renderSchedule, renderQuests, renderParkingLot,
+  renderArchive, renderSettings, renderHelp, renderQuestPage, renderTimeline
 } from "./views.js";
 import { renderSearch, openSearch, closeSearch, wireSearchInput, focusSearch } from "./search.js";
 import {
-  taskDialog, projectDialog, ideaDialog, decisionDialog, milestoneDialog, stepDialog
+  taskDialog, questDialog, ideaDialog, decisionDialog, milestoneDialog, stepDialog
 } from "./dialogs.js";
 import { playSplash } from "./splash.js";
 
@@ -56,39 +56,39 @@ export function renderChrome() {
   buildMoreMenu(pinned);
   var title = pageTitle(ui.view) || "Today";
   $("viewTitle").textContent = title;
-  // The pencil next to the title renames the project (not shown for an archived one).
-  var cur = ui.view.indexOf("proj:") === 0 ? findProject(ui.view.slice(5)) : null;
+  // The pencil next to the title renames the quest (not shown for an archived one).
+  var cur = ui.view.indexOf("quest:") === 0 ? findQuest(ui.view.slice(6)) : null;
   $("renameBtn").hidden = !(cur && !cur.arch);
   document.title = title + " · " + APP_NAME;
 }
 // Names are edited in place: safe to change because tasks, pins, links, and
-// milestones all point at the project id, never its name.
-function renameCurrentProject() {
-  var p = ui.view.indexOf("proj:") === 0 ? findProject(ui.view.slice(5)) : null;
+// milestones all point at the quest id, never its name.
+function renameCurrentQuest() {
+  var p = ui.view.indexOf("quest:") === 0 ? findQuest(ui.view.slice(6)) : null;
   if (!p || p.arch) return;
   $("renameBtn").hidden = true;
   editInline($("viewTitle"), {
-    label: "Project name", max: 120, value: function () { return p.name; },
+    label: "Quest name", max: 120, value: function () { return p.name; },
     onSave: function (v) { p.name = v.slice(0, 120); changed(); },
-    onEmpty: function () { notify("A project needs a name."); },
+    onEmpty: function () { notify("A quest needs a name."); },
     onDone: function () { $("renameBtn").hidden = false; }
   });
 }
-on($("renameBtn"), "click", renameCurrentProject);
+on($("renameBtn"), "click", renameCurrentQuest);
 
 export function renderView() {
   var root = $("view"); root.innerHTML = "";
-  if (ui.view.indexOf("proj:") === 0 && !validPage(ui.view)) ui.view = "projects";
+  if (ui.view.indexOf("quest:") === 0 && !validPage(ui.view)) ui.view = "projects";
   root.className = "content";
   if (ui.view === "today") renderToday(root);
   else if (ui.view === "schedule") renderSchedule(root);
-  else if (ui.view === "projects") renderProjects(root);
+  else if (ui.view === "projects") renderQuests(root);
   else if (ui.view === "parking") renderParkingLot(root);
   else if (ui.view === "search") renderSearch(root);
   else if (ui.view === "archive") renderArchive(root);
   else if (ui.view === "settings") renderSettings(root);
   else if (ui.view === "help") renderHelp(root);
-  else if (ui.view.indexOf("proj:") === 0) renderProjectPage(root, ui.view.slice(5));
+  else if (ui.view.indexOf("quest:") === 0) renderQuestPage(root, ui.view.slice(6));
   else renderTimeline(root);
   renderChrome();
   if (focusKey) { var f = document.querySelector('[data-focus="' + focusKey + '"]'); if (f) f.focus(); setFocusKey(null); }
@@ -118,7 +118,7 @@ export function wireMenu(btnId, menuId) {
     closeMenus(false);
     if (t.getAttribute("data-view")) { go(t.getAttribute("data-view")); return; }
     var act = t.getAttribute("data-act");
-    ({ newTask: taskDialog, newBacklog: function () { taskDialog(undefined, true); }, newStep: function () { stepDialog(false); }, newProject: projectDialog, newIdea: ideaDialog, newDecision: decisionDialog, newMilestone: milestoneDialog, archive: function () { go("archive"); }, settings: function () { go("settings"); } })[act]();
+    ({ newTask: taskDialog, newBacklog: function () { taskDialog(undefined, true); }, newStep: function () { stepDialog(false); }, newQuest: questDialog, newIdea: ideaDialog, newDecision: decisionDialog, newMilestone: milestoneDialog, archive: function () { go("archive"); }, settings: function () { go("settings"); } })[act]();
   });
   on(m, "keydown", function (e) {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;

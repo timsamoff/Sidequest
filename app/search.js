@@ -1,13 +1,13 @@
 import { state, ui } from "./state.js";
 import { parseISO, fmt, fmtY } from "./dates.js";
-import { taskStart, taskEnd, dispProject, liveProjects, projectMeta, short, validPage, findStep } from "./model.js";
+import { taskStart, taskEnd, dispQuest, liveQuests, questMeta, short, validPage, findStep } from "./model.js";
 import { $, el, on, scrollTop } from "./dom.js";
 import { go, openTask, renderAll } from "./app.js";
 import { candidateDialog } from "./dialogs.js";
 
 /* search */
-export var SEARCH_LABELS = { task: "Tasks", step: "Steps", project: "Projects", idea: "Ideas", decision: "Decisions", milestone: "Milestones" };
-export var SEARCH_ORDER = ["task", "step", "project", "idea", "decision", "milestone"];
+export var SEARCH_LABELS = { task: "Tasks", step: "Steps", quest: "Quests", idea: "Ideas", decision: "Decisions", milestone: "Milestones" };
+export var SEARCH_ORDER = ["task", "step", "quest", "idea", "decision", "milestone"];
 export var searchFlat = [];
 export function escRe(t) { return t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 export function searchTerms(q) { return q.toLowerCase().split(/\s+/).filter(Boolean); }
@@ -43,22 +43,22 @@ export function searchAll(q, includeArchive) {
   }
   state.tasks.forEach(function (t) {
     var when = t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t));
-    consider("task", t.what, [t.notes, t.done, dispProject(t)], dispProject(t) + " · " + when + " · " + t.status, function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch, ["Notes", "Done when", ""]);
+    consider("task", t.what, [t.notes, t.done, dispQuest(t)], dispQuest(t) + " · " + when + " · " + t.status, function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch, ["Notes", "Done when", ""]);
     t.steps.forEach(function (st) {
-      consider("step", st.text, [], "Step of " + dispProject(t) + ": " + short(t.what, 50) + (st.done ? " · done" : ""), function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch);
+      consider("step", st.text, [], "Step of " + dispQuest(t) + ": " + short(t.what, 50) + (st.done ? " · done" : ""), function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch);
     });
   });
-  liveProjects().forEach(function (p) {
-    consider("project", p.name, [p.notes], projectMeta(p), function () { if (p.status === "candidate") candidateDialog(p); else go(validPage("proj:" + p.id) ? "proj:" + p.id : "projects"); }, false, ["Notes"]);
+  liveQuests().forEach(function (p) {
+    consider("quest", p.name, [p.notes], questMeta(p), function () { if (p.status === "candidate") candidateDialog(p); else go(validPage("quest:" + p.id) ? "quest:" + p.id : "projects"); }, false, ["Notes"]);
   });
-  state.projects.forEach(function (p) { if (p.arch) consider("project", p.name, [p.notes], "Archived project", function () { go("archive"); }, true, ["Notes"]); });
+  state.quests.forEach(function (p) { if (p.arch) consider("quest", p.name, [p.notes], "Archived quest", function () { go("archive"); }, true, ["Notes"]); });
   state.parked.forEach(function (p) { consider("idea", p.text, [p.note], "Parking lot", function () { go(p.arch ? "archive" : "parking"); }, !!p.arch, ["Note"]); });
-  // Project comes from following Decision -> Step -> Task -> Project.
+  // Quest comes from following Decision -> Step -> Task -> Quest.
   state.decisions.forEach(function (d) {
     var ls = findStep(d.step);
     consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { if (d.arch) go("archive"); else if (ls) openTask(ls.t.id); else go("projects"); }, !!d.arch, ["Answer"]);
   });
-  state.milestones.forEach(function (m) { consider("milestone", m.text, [fmtY(parseISO(m.date)), m.date], fmtY(parseISO(m.date)), function () { go(m.arch ? "archive" : ("proj:" + m.projectId)); }, !!m.arch); });
+  state.milestones.forEach(function (m) { consider("milestone", m.text, [fmtY(parseISO(m.date)), m.date], fmtY(parseISO(m.date)), function () { go(m.arch ? "archive" : ("quest:" + m.questId)); }, !!m.arch); });
   SEARCH_ORDER.forEach(function (k) { groups[k].sort(function (a, b) { return b.score - a.score || a.idx - b.idx; }); });
   return { terms: terms, groups: groups };
 }

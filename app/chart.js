@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { fmt, fmtY, addDays, addMonths, parseISO, TODAY } from "./dates.js";
-import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, live, dispProject, findProject, projectBurn, projectBurnTasks, burnTasks, short, isHiddenComplete, blockStartFor, blockEndFor, blockForDate, checkpointStep, globalActual, histAt } from "./model.js";
+import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, live, dispQuest, findQuest, questBurn, questBurnTasks, burnTasks, short, isHiddenComplete, blockStartFor, blockEndFor, blockForDate, checkpointStep, globalActual, histAt } from "./model.js";
 import { el, on } from "./dom.js";
 
 export function svgEl(tag, attrs, text) {
@@ -122,11 +122,11 @@ function renderBurn(host, wide, cfg) {
 
 // Planned is exact (names finishing tasks). Actual comes from recorded history,
 // so it can say which tasks were completed in a period, and how many were in scope.
-function nameList(ts, withProject) {
-  var names = ts.slice(0, 6).map(function (t) { return (withProject ? dispProject(t) + ": " : "") + t.what; });
+function nameList(ts, withQuest) {
+  var names = ts.slice(0, 6).map(function (t) { return (withQuest ? dispQuest(t) + ": " : "") + t.what; });
   return names.join(", ") + (ts.length > 6 ? ", and " + (ts.length - 6) + " more" : "");
 }
-function weekTip(cps, i, pl, act, scopes, tasks, span, withProject) {
+function weekTip(cps, i, pl, act, scopes, tasks, span, withQuest) {
   var days = Math.round(span / 86400000), unit = days === 1 ? "day" : days === 7 ? "week" : "period";
   var lines = [(days === 1 ? "" : days === 7 ? "Week of " : "From ") + fmtY(cps[i]), "Planned: " + pl[i] + " remaining"];
   if (act[i] !== null) lines.push("Actual: " + act[i] + " remaining" + (scopes[i] !== null ? " of " + scopes[i] + " in scope" : ""));
@@ -135,9 +135,9 @@ function weekTip(cps, i, pl, act, scopes, tasks, span, withProject) {
   for (var j = i - 1; j >= 0 && prev === null; j--) if (scopes[j] !== null) prev = scopes[j];
   if (scopes[i] !== null && prev !== null && scopes[i] !== prev) lines.push(scopes[i] > prev ? "Scope grew from " + prev + " to " + scopes[i] : "Scope fell from " + prev + " to " + scopes[i]);
   var fin = tasks.filter(function (t) { var e = taskEnd(t); return e <= cps[i] && (i === 0 || e > cps[i - 1]); });
-  if (fin.length) lines.push("Finishing: " + nameList(fin, withProject));
+  if (fin.length) lines.push("Finishing: " + nameList(fin, withQuest));
   var done = tasks.filter(function (t) { if (!t.doneAt) return false; var d = parseISO(t.doneAt); return d >= cps[i] && d < cps[i] + span; });
-  if (done.length) lines.push((days === 1 ? "Completed that day: " : "Completed this " + unit + ": ") + nameList(done, withProject));
+  if (done.length) lines.push((days === 1 ? "Completed that day: " : "Completed this " + unit + ": ") + nameList(done, withQuest));
   return lines.join("\n");
 }
 
@@ -162,12 +162,12 @@ export function drawChart(host, wide) {
   });
 }
 
-// One project's own burndown.
-export function drawProjectChart(host, p, wide) {
-  var bd = projectBurn(p);
+// One quest's own burndown.
+export function drawQuestChart(host, p, wide) {
+  var bd = questBurn(p);
   if (!bd) { host.innerHTML = ""; return false; }
   var cps = bd.cps, n = cps.length, pl = bd.planned, span = bd.stepDays * 86400000;
-  var marks = live(state.milestones).filter(function (m) { return m.projectId === p.id; }).map(function (m) { return { ms: parseISO(m.date), text: m.text }; });
+  var marks = live(state.milestones).filter(function (m) { return m.questId === p.id; }).map(function (m) { return { ms: parseISO(m.date), text: m.text }; });
   var sc = scopeSteps(cps, p.hist, bd.total);
   renderBurn(host, wide, {
     cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks, scopeSteps: sc.steps, scopeEnd: sc.end,
@@ -178,7 +178,7 @@ export function drawProjectChart(host, p, wide) {
 }
 
 // Draws a timeline: the month header, one lane per entry, the milestones lane,
-// and the today line. Shared by the all-projects Timeline and a project's own.
+// and the today line. Shared by the all-quests Timeline and a quest's own.
 function timelineNode(lanes, mss, rs, maxEnd, hint) {
   var wrap = el("div", { "class": "range" });
   mss.forEach(function (m) { if (m.date > maxEnd) maxEnd = m.date; });
@@ -224,14 +224,14 @@ export function rangeBlock() {
   var lanes = [], groups = {}, order = [];
   counted().forEach(function (t) {
     if (t.isNext || t.block === 0 || isHiddenComplete(t)) return;
-    var g = groups[t.projectId], a = taskStart(t), b = taskEnd(t);
-    if (!g) { g = groups[t.projectId] = { projectId: t.projectId, name: dispProject(t), a: a, b: b }; order.push(t.projectId); }
+    var g = groups[t.questId], a = taskStart(t), b = taskEnd(t);
+    if (!g) { g = groups[t.questId] = { questId: t.questId, name: dispQuest(t), a: a, b: b }; order.push(t.questId); }
     if (a < g.a) g.a = a;
     if (b > g.b) g.b = b;
   });
   var maxEnd = addDays(s0, 400);
   order.forEach(function (pid) {
-    var g = groups[pid], p = findProject(pid), bars = [{ a: g.a, b: g.b, cls: "" }], dates = fmt(g.a) + " to " + fmt(g.b), due = p && p.due ? parseISO(p.due) : null;
+    var g = groups[pid], p = findQuest(pid), bars = [{ a: g.a, b: g.b, cls: "" }], dates = fmt(g.a) + " to " + fmt(g.b), due = p && p.due ? parseISO(p.due) : null;
     if (due && due > g.b) { bars.push({ a: addDays(g.b, 1), b: due, cls: "est" }); dates += ", due " + fmtY(due); if (due > maxEnd) maxEnd = due; }
     lanes.push({ name: g.name, bars: bars, dates: dates });
   });
@@ -241,20 +241,20 @@ export function rangeBlock() {
     if (c.due) { cb = parseISO(c.due); lanes.push({ name: c.name, bars: [{ a: ca, b: cb, cls: "" }], dates: fmt(ca) + " to " + fmtY(cb) }); if (cb > maxEnd) maxEnd = cb; }
     else { openEnded = true; lanes.push({ name: c.name, bars: [{ a: ca, b: null, cls: "open" }], dates: "from " + fmtY(ca) }); }
   }
-  // Labeled by project name since the Timeline shows every project's milestones together.
+  // Labeled by quest name since the Timeline shows every quest's milestones together.
   var mss = [];
-  live(state.milestones).forEach(function (m) { var p = findProject(m.projectId); mss.push({ id: m.id, text: (p ? p.name + ": " : "") + m.text, date: parseISO(m.date) }); });
-  var wrap = timelineNode(lanes, mss, rs, maxEnd, "The red line marks today." + (openEnded ? " The chosen project has no length set, so its bar runs open-ended." : ""));
+  live(state.milestones).forEach(function (m) { var p = findQuest(m.questId); mss.push({ id: m.id, text: (p ? p.name + ": " : "") + m.text, date: parseISO(m.date) }); });
+  var wrap = timelineNode(lanes, mss, rs, maxEnd, "The red line marks today." + (openEnded ? " The chosen quest has no length set, so its bar runs open-ended." : ""));
   return { node: wrap, milestones: mss };
 }
 
-// A project's own timeline: a lane per scheduled task plus that project's
+// A quest's own timeline: a lane per scheduled task plus that quest's
 // milestones. Backlog tasks have no dates, so they are counted, not drawn.
-export function projectRangeBlock(p) {
-  var ts = projectBurnTasks(p).slice().sort(function (x, y) { return taskStart(x) - taskStart(y); });
+export function questRangeBlock(p) {
+  var ts = questBurnTasks(p).slice().sort(function (x, y) { return taskStart(x) - taskStart(y); });
   var mss = [];
-  live(state.milestones).forEach(function (m) { if (m.projectId === p.id) mss.push({ id: m.id, text: m.text, date: parseISO(m.date) }); });
-  var nb = counted().filter(function (t) { return t.projectId === p.id && !t.isNext && t.block === 0; }).length;
+  live(state.milestones).forEach(function (m) { if (m.questId === p.id) mss.push({ id: m.id, text: m.text, date: parseISO(m.date) }); });
+  var nb = counted().filter(function (t) { return t.questId === p.id && !t.isNext && t.block === 0; }).length;
   var backlog = nb ? " " + nb + (nb === 1 ? " backlog task is" : " backlog tasks are") + " not shown until scheduled." : "";
   if (!ts.length) return { node: el("p", { "class": "hint" }, "Nothing is scheduled yet. Create a task with a due date to see them here." + backlog), milestones: mss, empty: true };
   var first = Infinity, maxEnd = -Infinity;

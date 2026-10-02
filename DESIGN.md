@@ -2,6 +2,8 @@
 
 Status: draft, actively being developed. This document describes a planned architectural and product direction, not the current shipped state. Where it diverges from what exists in `index.html` today, the current code is the v1 baseline and this document is where v2 is being decided before implementation starts.
 
+**Naming note:** the entity this document calls "Project" throughout was later renamed to "Quest" in the app itself (code, UI, and Help). This is a historical record of decisions made while the entity was still called "Project" and is left as written rather than mechanically updated -- read "Project" below as the thing now called "Quest."
+
 ## Why this document exists
 
 Sidequest is changing in two ways at once: how it's built (single self-contained file to a multi-file static site) and what it is (a plain planner to a planner with a gamification layer). Both changes are substantial enough to warrant deciding the shape of things before writing code, rather than discovering the shape through implementation. This document is that record.

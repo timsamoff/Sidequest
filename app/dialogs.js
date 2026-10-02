@@ -1,9 +1,9 @@
-import { state, ui, changed, isISO, task, project as makeProject } from "./state.js";
+import { state, ui, changed, isISO, task, quest as makeQuest } from "./state.js";
 import { iso, addDays, parseISO, fmt, fmtY, TODAY } from "./dates.js";
 import {
-  wd, wl, wpC, counted, activeProjects, liveProjects, findProject, dispProject, nextTask, findTask,
+  wd, wl, wpC, counted, activeQuests, liveQuests, findQuest, dispQuest, nextTask, findTask,
   orderedAll, taskOptions, stepOptions, syncFromSteps, findStep, decisionFor,
-  pset, blockStartFor, blockEndFor, blockForDate, taskStart, taskEnd, linkProjects
+  pset, blockStartFor, blockEndFor, blockForDate, taskStart, taskEnd, linkQuests
 } from "./model.js";
 import { $, el, on, uid, notify } from "./dom.js";
 import { closeMenus } from "./app.js";
@@ -98,17 +98,17 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
   });
 }
 
-export function taskDialog(prefillProjectId, backlog) {
+export function taskDialog(prefillQuestId, backlog) {
   var nt = nextTask();
-  var projOpts = activeProjects().map(function (p) { return { value: p.id, label: p.name }; });
-  if (!projOpts.length) { notify("Add an active project first (Projects > Choose as next project)."); return; }
-  var fixedProject = typeof prefillProjectId === "string";
-  var startId = fixedProject ? prefillProjectId : (nt && !nt.isNext ? nt.projectId : projOpts[0].value);
+  var questOpts = activeQuests().map(function (p) { return { value: p.id, label: p.name }; });
+  if (!questOpts.length) { notify("Add an active quest first (Quests > Choose as next quest)."); return; }
+  var fixedQuest = typeof prefillQuestId === "string";
+  var startId = fixedQuest ? prefillQuestId : (nt && !nt.isNext ? nt.questId : questOpts[0].value);
   var defaultDue = backlog ? "" : iso(blockEndFor(startId, nt ? nt.block : 4));
-  var startProj = findProject(startId);
-  var fields = fixedProject && startProj
-    ? [{ key: "project", label: "Project", type: "static", value: startProj.name }]
-    : [{ key: "project", label: "Project", type: "select", options: projOpts, value: startId }];
+  var startQuest = findQuest(startId);
+  var fields = fixedQuest && startQuest
+    ? [{ key: "quest", label: "Quest", type: "static", value: startQuest.name }]
+    : [{ key: "quest", label: "Quest", type: "select", options: questOpts, value: startId }];
   fields.push({ key: "what", label: "Task" });
   fields.push({ key: "done", label: "How you'll know it's done (optional)" });
   if (!backlog) {
@@ -117,63 +117,63 @@ export function taskDialog(prefillProjectId, backlog) {
   }
   fields.push({ key: "est", label: "Estimated time in hours (optional)", type: "number", min: "0", max: "9999", step: "0.25" });
   formDialog(backlog ? "New backlog item" : "New task", fields, backlog ? "Add to Backlog" : "Add task", function (v) {
-    if (fixedProject) v.project = startId;
-    if (!v.project || !v.what) return "Choose a project and enter what you do.";
+    if (fixedQuest) v.quest = startId;
+    if (!v.quest || !v.what) return "Choose a quest and enter what you do.";
     var blk = 0, start = "", due = "";
     if (v.due) {
       if (!isISO(v.due)) return "Enter a valid due date, or leave it empty for the Backlog.";
-      var first = parseISO(pset(v.project).start);
-      blk = blockForDate(v.project, parseISO(v.due));
-      if (blk === null) return "Pick a due date on or after " + fmtY(first) + ", this project's own start date.";
+      var first = parseISO(pset(v.quest).start);
+      blk = blockForDate(v.quest, parseISO(v.due));
+      if (blk === null) return "Pick a due date on or after " + fmtY(first) + ", this quest's own start date.";
       due = v.due;
       if (v.start) {
         if (!isISO(v.start)) return "Enter a valid start date, or leave it empty.";
-        if (parseISO(v.start) < first) return "Pick a start date on or after " + fmtY(first) + ", this project's own start date.";
+        if (parseISO(v.start) < first) return "Pick a start date on or after " + fmtY(first) + ", this quest's own start date.";
         if (v.start > due) return "The start date can't be after the due date.";
         start = v.start;
       }
     } else if (v.start) return "Add a due date too, or clear the start date. A task with no due date goes to the Backlog.";
     var est = v.est === "" ? 0 : parseFloat(v.est);
     if (isNaN(est) || est < 0 || est > 9999) return "Enter the estimated time as hours from 0 to 9999, or leave it empty.";
-    var t = task("c" + uid(), blk, v.project, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
+    var t = task("c" + uid(), blk, v.quest, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
     state.tasks.push(t); ui.sel = t.id; changed();
     return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ")." };
   }, "Pick when this should be done and it's placed in the right " + wl() + " automatically. Leave the due date empty to put the task in the Backlog.");
 }
-export function projectDialog() {
-  formDialog("New project", [{ key: "name", label: "Project name" }, { key: "notes", label: "Notes (optional)", type: "textarea", rows: 5 }], "Add project", function (v) {
-    if (!v.name) return "Enter a project name.";
-    state.projects.push(makeProject(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000) })); changed();
+export function questDialog() {
+  formDialog("New quest", [{ key: "name", label: "Quest name" }, { key: "notes", label: "Notes (optional)", type: "textarea", rows: 5 }], "Add quest", function (v) {
+    if (!v.name) return "Enter a quest name.";
+    state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000) })); changed();
     return { msg: v.name + " added as a candidate for the next slot." };
   }, "It joins the candidates for the next slot. You can park it later.");
 }
 // With an idea passed in, edits it in place (same record, same id); with none,
 // adds a new one.
-// Links are bidirectional (see linkProjects()), so the chosen project shows
-// this one too. Only projects not already linked are offered.
-export function linkProjectDialog(p) {
-  var opts = liveProjects().filter(function (x) { return x.id !== p.id && p.linkedProjectIds.indexOf(x.id) < 0; }).map(function (x) { return { value: x.id, label: x.name }; });
-  if (!opts.length) { notify("Every other project is already linked."); return; }
-  formDialog("Link project", [{ key: "project", label: "Project to link", type: "select", options: opts, value: opts[0].value }], "Link project", function (v) {
-    var other = findProject(v.project);
-    if (!other) return "Choose a project to link.";
-    linkProjects(p.id, other.id); changed();
+// Links are bidirectional (see linkQuests()), so the chosen quest shows
+// this one too. Only quests not already linked are offered.
+export function linkQuestDialog(p) {
+  var opts = liveQuests().filter(function (x) { return x.id !== p.id && p.linkedQuestIds.indexOf(x.id) < 0; }).map(function (x) { return { value: x.id, label: x.name }; });
+  if (!opts.length) { notify("Every other quest is already linked."); return; }
+  formDialog("Link quest", [{ key: "quest", label: "Quest to link", type: "select", options: opts, value: opts[0].value }], "Link quest", function (v) {
+    var other = findQuest(v.quest);
+    if (!other) return "Choose a quest to link.";
+    linkQuests(p.id, other.id); changed();
     return { msg: "Linked to " + other.name + "." };
-  }, "The link goes both ways: that project will show this one too.");
+  }, "The link goes both ways: that quest will show this one too.");
 }
-// Edits a candidate project's own fields in place: Notes, Start date, Due
+// Edits a candidate quest's own fields in place: Notes, Start date, Due
 // date, and its own block/sprint length. Promotion (Candidate -> Active) is a
 // separate row action on the Candidates list, not a button in this dialog --
 // this dialog only saves, matching ideaDialog's own Edit/Save pattern.
 export function candidateDialog(p) {
   formDialog("Edit candidate", [
-    { key: "name", label: "Project name", value: p.name },
+    { key: "name", label: "Quest name", value: p.name },
     { key: "notes", label: "Notes", type: "textarea", rows: 5, value: p.notes },
     { key: "start", label: "Start date", type: "date", value: p.start },
     { key: "due", label: "Due date", type: "date", value: p.due },
     { key: "days", label: "Days per " + wd(), type: "number", min: "1", max: "90", step: "1", value: p.days }
   ], "Save", function (v) {
-    if (!v.name) return "Enter a project name.";
+    if (!v.name) return "Enter a quest name.";
     var days = parseInt(v.days, 10);
     if (isNaN(days) || days < 1 || days > 90) return wd() + " length must be from 1 to 90 days.";
     p.name = v.name.slice(0, 120);
@@ -196,12 +196,12 @@ export function ideaDialog(idea) {
     return { msg: "Added to the parking lot." };
   });
 }
-// prefill is a project id or { step } (already chosen). A decision must
-// belong to a step (Project -> Task -> Step -> Decision), at most one.
+// prefill is a quest id or { step } (already chosen). A decision must
+// belong to a step (Quest -> Task -> Step -> Decision), at most one.
 export function decisionDialog(prefill) {
   var stepId = prefill && typeof prefill === "object" ? prefill.step : null;
-  var projectId = typeof prefill === "string" ? prefill : undefined;
-  var opts = stepOptions(projectId).filter(function (o) { return !decisionFor(o.value); });
+  var questId = typeof prefill === "string" ? prefill : undefined;
+  var opts = stepOptions(questId).filter(function (o) { return !decisionFor(o.value); });
   if (stepId) { var fixed = findStep(stepId); opts = fixed ? [{ value: stepId, label: fixed.s.text }] : []; }
   if (!opts.length) { notify(stepId ? "That step is gone." : "Every step already has a decision. Add a step first (open a task and add one), then add the decision."); return; }
   var fields = [{ key: "q", label: "Decision" }];
@@ -252,14 +252,14 @@ export function stepEditDialog(t, s) {
     syncFromSteps(t); changed();
   } });
 }
-export function stepDialog(launchItem, prefillProjectId) {
+export function stepDialog(launchItem, prefillQuestId) {
   if (!orderedAll().length) { notify("Add a task first."); return; }
   var selTask = ui.sel && findTask(ui.sel);
-  var startId = prefillProjectId || (selTask ? selTask.projectId : "");
-  var projOpts = [{ value: "", label: "All projects" }].concat(liveProjects().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; }));
+  var startId = prefillQuestId || (selTask ? selTask.questId : "");
+  var questOpts = [{ value: "", label: "All quests" }].concat(liveQuests().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; }));
   var pick = selTask ? selTask.id : ((nextTask() || orderedAll()[0]).id);
   formDialog(launchItem ? "New launch item" : "New step", [
-    { key: "project", label: "Project", type: "select", options: projOpts, value: startId },
+    { key: "quest", label: "Quest", type: "select", options: questOpts, value: startId },
     { key: "task", label: "Task", type: "select", options: taskOptions(startId), value: pick },
     { key: "text", label: launchItem ? "What needs doing before you launch?" : "Step" }
   ], "Add step", function (v) {
@@ -267,12 +267,12 @@ export function stepDialog(launchItem, prefillProjectId) {
     if (!v.text) return "Enter the step.";
     if (!t) return "Choose a task.";
     t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false, launch: !!launchItem }); syncFromSteps(t); changed();
-    return { msg: "Step added to " + dispProject(t) + (launchItem ? " and the launch checklist." : ".") };
-  }, launchItem ? "The step lives in a task and also shows on this project's launch checklist." : "");
-  var projSel = $("f-project"), taskSel = $("f-task");
-  if (projSel && taskSel) {
-    on(projSel, "change", function () {
-      var opts = taskOptions(projSel.value);
+    return { msg: "Step added to " + dispQuest(t) + (launchItem ? " and the launch checklist." : ".") };
+  }, launchItem ? "The step lives in a task and also shows on this quest's launch checklist." : "");
+  var questSel = $("f-quest"), taskSel = $("f-task");
+  if (questSel && taskSel) {
+    on(questSel, "change", function () {
+      var opts = taskOptions(questSel.value);
       taskSel.innerHTML = "";
       opts.forEach(function (o) { taskSel.appendChild(el("option", { value: o.value }, o.label)); });
     });
@@ -281,25 +281,25 @@ export function stepDialog(launchItem, prefillProjectId) {
 // With a milestone passed in, edits it in place and offers Remove (onRemove is
 // supplied by the caller, since removal lives in views.js); with none, adds one.
 export function milestoneDialog(m, onRemove) {
-  var projOpts = activeProjects().map(function (p) { return { value: p.id, label: p.name }; });
-  // A milestone can belong to a project that is no longer Active (Complete, say).
-  if (m) { var cur = findProject(m.projectId); if (cur && !projOpts.some(function (o) { return o.value === cur.id; })) projOpts.unshift({ value: cur.id, label: cur.name }); }
-  if (!projOpts.length) { notify("Add an active project first."); return; }
+  var questOpts = activeQuests().map(function (p) { return { value: p.id, label: p.name }; });
+  // A milestone can belong to a quest that is no longer Active (Complete, say).
+  if (m) { var cur = findQuest(m.questId); if (cur && !questOpts.some(function (o) { return o.value === cur.id; })) questOpts.unshift({ value: cur.id, label: cur.name }); }
+  if (!questOpts.length) { notify("Add an active quest first."); return; }
   formDialog(m ? "Edit milestone" : "New milestone", [
-    { key: "project", label: "Project", type: "select", options: projOpts, value: m ? m.projectId : projOpts[0].value },
+    { key: "quest", label: "Quest", type: "select", options: questOpts, value: m ? m.questId : questOpts[0].value },
     { key: "text", label: "Milestone", value: m ? m.text : undefined },
     { key: "date", label: "Date", type: "date", value: m ? m.date : undefined }
   ], m ? "Save milestone" : "Add milestone", function (v) {
-    if (!v.project || !v.text || !isISO(v.date)) return "Choose a project, and enter a milestone and a date.";
-    if (m) { m.projectId = v.project; m.text = v.text.slice(0, 200); m.date = v.date; changed(); return { msg: "Milestone saved." }; }
-    state.milestones.push({ id: uid(), text: v.text.slice(0, 200), date: v.date, projectId: v.project }); changed();
+    if (!v.quest || !v.text || !isISO(v.date)) return "Choose a quest, and enter a milestone and a date.";
+    if (m) { m.questId = v.quest; m.text = v.text.slice(0, 200); m.date = v.date; changed(); return { msg: "Milestone saved." }; }
+    state.milestones.push({ id: uid(), text: v.text.slice(0, 200), date: v.date, questId: v.quest }); changed();
     return { msg: "Milestone added to the Timeline." };
   }, undefined, m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
 }
-// Slips one project's incomplete tasks later by N days each: start and due
+// Slips one quest's incomplete tasks later by N days each: start and due
 // both move, and each task's block is re-derived from its new due date. Completed tasks
 // and Backlog items have no date to shift, so they're left untouched, and the
-// project's own start date is never touched either -- shifting that would
+// quest's own start date is never touched either -- shifting that would
 // move already-finished work too, which isn't really "catching up."
 export function slipDialog(p) {
   openModal("Slip " + p.name + "'s schedule", function (body) {
@@ -311,7 +311,7 @@ export function slipDialog(p) {
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push dates later" }, "Push dates later"), "click", function () {
       var n = parseInt(inp.value, 10);
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
-      var targets = state.tasks.filter(function (t) { return t.projectId === p.id && !t.isNext && t.block > 0 && t.status !== "Completed" && !t.arch; });
+      var targets = state.tasks.filter(function (t) { return t.questId === p.id && !t.isNext && t.block > 0 && t.status !== "Completed" && !t.arch; });
       if (!targets.length) { err.textContent = "Nothing incomplete is scheduled to slip."; return; }
       var snap = targets.map(function (t) { return { id: t.id, block: t.block, start: t.start, due: t.due }; });
       targets.forEach(function (t) {

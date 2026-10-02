@@ -34,7 +34,7 @@ function serve() {
 // needing to fabricate state.
 const PAGES = [
   { name: "Today", tab: "today" },
-  { name: "Projects", tab: "projects" },
+  { name: "Quests", tab: "projects" },
   { name: "Tasks", tab: "schedule" },
   { name: "Timeline", tab: "timeline" },
   { name: "Parking lot", tab: "parking" },
@@ -64,11 +64,11 @@ async function main() {
     ok(results.violations.length === 0, p.name + " page has no axe violations" + (results.violations.length ? ":\n     " + results.violations.map(v => v.id + " (" + v.nodes.length + ")").join(", ") : ""));
   }
 
-  // One project's own page (a distinct template from the plain list pages above)
-  await page.click('.tab[data-view="proj:pApp"]');
+  // One quest's own page (a distinct template from the plain list pages above)
+  await page.click('.tab[data-view="quest:pApp"]');
   await page.waitForTimeout(150);
   const projResults = await new AxeBuilder({ page }).include("#view").analyze();
-  ok(projResults.violations.length === 0, "a project's own page has no axe violations" + (projResults.violations.length ? ":\n     " + projResults.violations.map(v => v.id + " (" + v.nodes.length + ")").join(", ") : ""));
+  ok(projResults.violations.length === 0, "a quest's own page has no axe violations" + (projResults.violations.length ? ":\n     " + projResults.violations.map(v => v.id + " (" + v.nodes.length + ")").join(", ") : ""));
 
   await browser.close();
   server.close();
