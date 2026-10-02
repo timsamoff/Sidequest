@@ -100,7 +100,9 @@ export var AFFIRMATIONS = [
   "Uphold transparency.",
   "Be open to experimentation.",
   "You are the actionable item.",
-  "Look for feedback loops."
+  "Look for feedback loops.",
+  "Be adaptable.",
+  "Open to change."
 ];
 
 function svgEl(tag, attrs) {
