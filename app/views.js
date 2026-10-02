@@ -1050,6 +1050,7 @@ export function renderSettings(page) {
   split.appendChild(side); split.appendChild(root); page.appendChild(split);
   side.appendChild(el("h2", { "class": "first" }, "Your contact info"));
   side.appendChild(el("p", { "class": "hint" }, "Optional. Anything filled in here prints on a Client Export."));
+  var contactBox = el("div", { "class": "box", style: "margin-top:10px" });
   var cg = el("div", { "class": "setgrid" });
   function cfield(key, id, label, type) {
     var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label));
@@ -1063,15 +1064,17 @@ export function renderSettings(page) {
   cfield("phone", "set-contact-phone", "Phone", "tel");
   cfield("email", "set-contact-email", "Email", "email");
   cfield("website", "set-contact-website", "Website", "url");
-  side.appendChild(cg);
+  contactBox.appendChild(cg);
   var aw = el("div", { "class": "field" }); aw.appendChild(el("label", { "for": "set-contact-address" }, "Address"));
   var addr = el("textarea", { id: "set-contact-address", rows: 3 }); addr.value = state.settings.contact.address;
   on(addr, "blur", function () { state.settings.contact.address = addr.value.slice(0, 500); save(); });
-  aw.appendChild(addr); side.appendChild(aw);
+  aw.appendChild(addr); contactBox.appendChild(aw);
+  side.appendChild(contactBox);
 
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   root.appendChild(el("h2", { "class": "first" }, "Schedule defaults"));
   root.appendChild(el("p", { "class": "hint" }, "Each quest sets its own start date on its page. This is the default " + wl() + " length for any quest that hasn't set its own."));
+  var scheduleBox = el("div", { "class": "box", style: "margin-top:10px" });
   var grid = el("div", { "class": "setgrid" });
   function fieldOf(id, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); grid.appendChild(w); }
   var da = el("input", { type: "number", id: "set-days", min: "1", max: "30", step: "1" }); da.value = state.days;
@@ -1081,9 +1084,10 @@ export function renderSettings(page) {
   Object.keys(WORDS).forEach(function (k) { var op = el("option", { value: k }, k); if (k === wd()) op.selected = true; bwSel.appendChild(op); });
   on(bwSel, "change", function () { state.settings.blockWord = bwSel.value; changed(); });
   fieldOf("set-word", "Name for each stretch of work", bwSel);
-  root.appendChild(grid); root.appendChild(msg);
+  scheduleBox.appendChild(grid); scheduleBox.appendChild(msg); root.appendChild(scheduleBox);
 
   root.appendChild(el("h2", null, "Appearance and formats"));
+  var appearanceBox = el("div", { "class": "box", style: "margin-top:10px" });
   var ag = el("div", { "class": "setgrid" });
   var tw = el("div", { "class": "field" }); tw.appendChild(el("label", { "for": "set-theme" }, "Theme"));
   var th = el("select", { id: "set-theme", "class": "plain" });
@@ -1105,22 +1109,27 @@ export function renderSettings(page) {
   [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.showSplash) op.selected = true; ss.appendChild(op); });
   on(ss, "change", function () { state.settings.showSplash = ss.value === "on"; save(); });
   sw.appendChild(ss); ag.appendChild(sw);
-  root.appendChild(ag);
-  root.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device's own format. Nothing here uses a time of day yet."));
+  appearanceBox.appendChild(ag);
+  appearanceBox.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device's own format. Nothing here uses a time of day yet."));
+  root.appendChild(appearanceBox);
 
   root.appendChild(el("h2", null, "Vault"));
   root.appendChild(el("p", { "class": "hint" }, "Removing a quest or an idea sends it to the Vault. A completed task just stays visible in its quest."));
+  var vaultBox = el("div", { "class": "box", style: "margin-top:10px" });
   var pg = el("div", { "class": "setgrid" });
   var pw = el("div", { "class": "field" }); pw.appendChild(el("label", { "for": "set-purge" }, "Auto-delete items after"));
   var ps = el("select", { id: "set-purge", "class": "plain" });
   [[0, "Never"], [7, "7 days"], [30, "30 days"], [60, "60 days"], [90, "90 days"]].forEach(function (o) { var op = el("option", { value: String(o[0]) }, o[1]); if (o[0] === state.settings.vaultPurgeDays) op.selected = true; ps.appendChild(op); });
   on(ps, "change", function () { state.settings.vaultPurgeDays = parseInt(ps.value, 10); changed(); });
   pw.appendChild(ps); pg.appendChild(pw);
-  root.appendChild(pg);
-  if (state.settings.vaultPurgeDays) root.appendChild(el("p", { "class": "hint" }, "Checked each time Sidequest opens. An item older than this, counted from when it was vaulted, is deleted permanently with no further warning."));
+  vaultBox.appendChild(pg);
+  if (state.settings.vaultPurgeDays) vaultBox.appendChild(el("p", { "class": "hint" }, "Checked each time Sidequest opens. An item older than this, counted from when it was vaulted, is deleted permanently with no further warning."));
+  root.appendChild(vaultBox);
 
   root.appendChild(el("h2", null, "Backup and restore"));
-  backupPanel(root);
+  var backupBox = el("div", { "class": "box", style: "margin-top:10px" });
+  backupPanel(backupBox, root);
+  root.appendChild(backupBox);
 
   root.appendChild(el("h2", null, "Start fresh"));
   var box = el("div", { "class": "dangerbox" });
@@ -1218,8 +1227,11 @@ export function backupControls(host, msg, onDone) {
   host.appendChild(acts);
   return acts;
 }
-export function backupPanel(root) {
-  root.appendChild(el("p", { "class": "hint" }, "Everything is saved in this browser on this device only. Save a backup now and then, and keep the file somewhere safe."));
+// `hintHost`, if given, is where the leading description sentence goes instead
+// of `root` -- lets a caller keep that sentence outside a card wrapper around
+// the rest, matching this page's own heading/hint-outside-the-box convention.
+export function backupPanel(root, hintHost) {
+  (hintHost || root).appendChild(el("p", { "class": "hint" }, "Everything is saved in this browser on this device only. Save a backup now and then, and keep the file somewhere safe."));
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   var last = el("p", { "class": "hint" }, lastBackupText());
   var acts = backupControls(root, msg, function () { last.textContent = lastBackupText(); });
