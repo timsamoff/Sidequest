@@ -33,7 +33,7 @@ Everything is saved in your own browser with `localStorage`. Nothing is sent any
 
 - Data does not sync between devices or browsers.
 - Clearing your browser data clears your planner.
-- **Settings, Backup and restore** shows your data as text you can copy and paste back in later. Do this now and then.
+- **Settings, Backup and restore:** **Save backup** writes your data to a file wherever you choose, and **Restore backup** loads one back after a warning that it replaces everything. Do this now and then.
 
 ## Tests
 

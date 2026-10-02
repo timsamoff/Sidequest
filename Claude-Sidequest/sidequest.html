@@ -2959,7 +2959,7 @@ function helpTopics() {
       "**Undo last slip** in the same dialog reverses it."]],
     ["Settings, backup, and starting over", [
       "In **Settings**, set the default start date and pace, what to call a stretch of work (Block, Sprint, and so on), the date format, the theme, and whether the splash screen plays when the app opens.",
-      "Everything is saved in this browser only. Under **Backup and restore**, copy your data as text, or save a file if your browser offers it. Restore from a file or pasted text later.",
+      "Everything is saved in this browser only. Under **Backup and restore**, **Save backup** lets you choose where to put a backup file, and **Restore backup** loads one back after warning you that it replaces everything. You get a few seconds to undo a restore.",
       "**Start fresh** erases everything after a warning. Save a backup first. You can begin empty or with the starting projects."]]
   ];
 }
@@ -3013,7 +3013,6 @@ function startFreshDialog() {
   });
 }
 function renderSettings(root) {
-  dlWaiters.length = 0;
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   root.appendChild(el("h2", { "class": "first" }, "Schedule defaults"));
   root.appendChild(el("p", { "class": "hint" }, "Each project sets its own start date on its page. This is the default " + wl() + " length for any project that hasn't set its own."));
@@ -3077,55 +3076,72 @@ function renderSettings(root) {
 }
 
 /* backup */
-var downloads = null, dlWaiters = [];
+// The Claude version saves through its own downloads capability. Elsewhere the
+// browser's Save As dialog is used where it exists, and a plain download where not.
+var downloads = null;
+var downloadsReady = Promise.resolve(null);
 try {
   if (window.claude && typeof window.claude.use === "function") {
-    window.claude.use("downloads").then(function (d) { downloads = d; dlWaiters.forEach(function (fn) { fn(); }); }).catch(function () { /* unavailable */ });
+    downloadsReady = window.claude.use("downloads").then(function (d) { downloads = d; return d; }).catch(function () { return null; });
   }
 } catch (e) { /* unavailable */ }
 function backupJSON() { return JSON.stringify(state, null, 2); }
+function saveBackupFile(msg) {
+  var name = "sidequest-backup-" + iso(TODAY) + ".json", text = backupJSON();
+  downloadsReady.then(function (d) {
+    if (d) return d.save({ filename: name, data: text }).then(function () { msg.textContent = "Backup saved."; });
+    if (typeof window.showSaveFilePicker === "function") {
+      return window.showSaveFilePicker({ suggestedName: name, types: [{ description: "Sidequest backup", accept: { "application/json": [".json"] } }] })
+        .then(function (h) { return h.createWritable(); })
+        .then(function (w) { return w.write(text).then(function () { return w.close(); }); })
+        .then(function () { msg.textContent = "Backup saved."; });
+    }
+    var a = document.createElement("a"), url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    msg.textContent = "Backup downloaded.";
+  }).catch(function (err) {
+    msg.textContent = err && (err.code === "declined" || err.name === "AbortError") ? "Save cancelled." : "The backup could not be saved.";
+  });
+}
+// Reads the chosen file, then asks before replacing everything with it.
+function restoreBackupFile(file, msg) {
+  var r = new FileReader();
+  r.onerror = function () { msg.textContent = "The file could not be read."; };
+  r.onload = function () {
+    var obj = null;
+    try { obj = JSON.parse(String(r.result || "")); } catch (e) { obj = null; }
+    if (!obj || typeof obj !== "object" || !Array.isArray(obj.tasks)) { msg.textContent = "That is not a Sidequest backup file."; return; }
+    msg.textContent = "";
+    var next = normalize(obj), np = next.projects.length, nt = next.tasks.length;
+    confirmDialog("Restore this backup?",
+      "This backup holds " + np + (np === 1 ? " project" : " projects") + " and " + nt + (nt === 1 ? " task" : " tasks") + ". Restoring replaces everything in Sidequest on this device: all current projects, tasks, notes, history, and settings. You will have a few seconds to undo it.",
+      "Restore backup", function () {
+        var before = JSON.stringify(state);
+        setState(next); ui.sel = null; ui.detail = false; applyTheme(); save(); renderAll();
+        notify("Backup restored.", function () { setState(normalize(JSON.parse(before))); ui.sel = null; ui.detail = false; applyTheme(); save(); renderAll(); });
+      });
+  };
+  r.readAsText(file);
+}
+// The Save backup button, alone (the Start fresh dialog uses it); returns its row of buttons.
 function backupControls(host, msg) {
   var acts = el("div", { "class": "actions" });
-  var saveBtn = el("button", { type: "button", "class": "primary", id: "saveFile", title: "Save a backup file to your device" }, "Save backup file"); saveBtn.hidden = !downloads;
-  dlWaiters.push(function () { saveBtn.hidden = !downloads; });
-  on(saveBtn, "click", function () {
-    if (!downloads) return;
-    downloads.save({ filename: "sidequest-backup-" + iso(TODAY) + ".json", data: backupJSON() })
-      .then(function () { msg.textContent = "Backup saved."; })
-      .catch(function (err) { msg.textContent = (err && err.code === "declined") ? "Save cancelled." : "The file could not be saved. Use the backup text instead."; });
-  });
-  acts.appendChild(saveBtn);
-  var tbox = el("div", { style: "margin-top:12px" }); tbox.hidden = true;
-  tbox.appendChild(el("label", { "for": "backupText", "class": "hint" }, "Copy this text and keep it somewhere safe."));
-  var bt = el("textarea", { id: "backupText", readonly: "readonly" }); tbox.appendChild(bt);
-  acts.appendChild(on(el("button", { type: "button", id: "showText", title: "Show your backup as plain text to copy" }, "Show backup text"), "click", function () { bt.value = backupJSON(); tbox.hidden = false; bt.focus(); bt.select(); }));
-  host.appendChild(acts); host.appendChild(tbox);
+  acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "saveFile", title: "Choose where to save a backup file" }, "Save backup"), "click", function () { saveBackupFile(msg); }));
+  host.appendChild(acts);
+  return acts;
 }
 function backupPanel(root) {
-  root.appendChild(el("p", { "class": "hint" }, "Everything is saved in this browser on this device only. Save a backup now and then."));
+  root.appendChild(el("p", { "class": "hint" }, "Everything is saved in this browser on this device only. Save a backup now and then, and keep the file somewhere safe."));
   var msg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
-  backupControls(root, msg);
-  root.appendChild(el("h3", null, "Restore"));
-  var ff = el("div", { "class": "field" }); ff.appendChild(el("label", { "for": "restoreFile" }, "Choose a backup file"));
-  var file = el("input", { type: "file", id: "restoreFile", accept: ".json,application/json" }); ff.appendChild(file); root.appendChild(ff);
-  var tf = el("div", { "class": "field" }); tf.appendChild(el("label", { "for": "restoreText" }, "Or paste backup text"));
-  var rt = el("textarea", { id: "restoreText" }); tf.appendChild(rt); root.appendChild(tf);
-  function restoreFrom(text) {
-    try {
-      var obj = JSON.parse(text);
-      if (!obj || typeof obj !== "object" || !Array.isArray(obj.tasks)) { msg.textContent = "That does not look like a schedule backup."; return; }
-      setState(normalize(obj)); ui.sel = null; ui.detail = false; applyTheme(); save(); renderAll();
-      var m2 = $("restoreMsg"); if (m2) m2.textContent = "Restored. " + state.tasks.length + " tasks loaded.";
-    } catch (e) { msg.textContent = "That text could not be read. Paste the full backup text."; }
-  }
+  var acts = backupControls(root, msg);
+  var file = el("input", { type: "file", id: "restoreFile", accept: ".json,application/json", hidden: "hidden", "aria-label": "Choose a backup file to restore" });
+  acts.appendChild(on(el("button", { type: "button", id: "restoreBtn", title: "Choose a backup file to restore" }, "Restore backup"), "click", function () { file.click(); }));
   on(file, "change", function () {
     var f = file.files && file.files[0]; if (!f) return;
-    var r = new FileReader(); r.onload = function () { restoreFrom(String(r.result || "")); }; r.onerror = function () { msg.textContent = "The file could not be read."; }; r.readAsText(f);
+    restoreBackupFile(f, msg); file.value = "";
   });
-  var a2 = el("div", { "class": "actions" });
-  a2.appendChild(on(el("button", { type: "button", id: "restoreBtn", title: "Restore from the pasted backup text" }, "Restore from text"), "click", function () { restoreFrom(rt.value); }));
-  root.appendChild(a2); root.appendChild(msg);
-  root.appendChild(el("p", { "class": "msg", id: "restoreMsg", role: "status", "aria-live": "polite" }));
+  root.appendChild(file); root.appendChild(msg);
 }
 
 

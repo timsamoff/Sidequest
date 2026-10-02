@@ -311,9 +311,17 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.tab("schedule");
   const completedRow = [...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes(nextTaskTitle));
   ok(completedRow && completedRow.classList.contains("done"), "the task shows as completed in Tasks, not moved anywhere");
-  // backup text
-  k.tab("settings"); k.click(k.$("showText")); const j = JSON.parse(k.$("backupText").value);
-  ok(j.tasks.length === 18 && j.projects.find(p => p.name === "Sample Game").days === 14, "backup export contains the sample data");
+  // backup file: Save backup writes through the browser's Save As dialog
+  k.tab("settings");
+  let written = null, asked = null;
+  k.w.showSaveFilePicker = (opts) => { asked = opts; return Promise.resolve({ createWritable: () => Promise.resolve({ write: (t) => { written = t; return Promise.resolve(); }, close: () => Promise.resolve() }) }); };
+  k.click(k.$("saveFile")); await new Promise(r => setTimeout(r, 30));
+  const j = JSON.parse(written);
+  ok(j.tasks.length === 18 && j.projects.find(p => p.name === "Sample Game").days === 14, "Save backup writes the sample data");
+  ok(/^sidequest-backup-\d{4}-\d{2}-\d{2}\.json$/.test(asked.suggestedName), "and suggests a dated .json file name (" + asked.suggestedName + ")");
+  ok(k.$("view").textContent.includes("Backup saved."), "and says it saved");
+  ok(!k.$("showText") && !k.$("backupText") && !k.$("restoreText"), "there is no backup text box and no paste box any more");
+  ok(k.btn(k.$("view"), "Save backup") && k.btn(k.$("view"), "Restore backup"), "the buttons are named Save backup and Restore backup");
   // reload keeps changes and skips the welcome
   const k2 = kit(await mk(k.saved())); ok(k2.$("viewTitle").textContent === "Today" && !k2.$("view").textContent.includes("Welcome to Sidequest") || k2.saved !== undefined, "reload opens on Today");
 }
@@ -854,6 +862,36 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const bits = (l3) => [...l3.children].map(c => c.textContent);
   ok(bits(l3of("Run a beta with five friends")).join("|").includes("0 of 3 steps|\u00b7|Est 4 h"), "steps and an estimate are separated by a bullet (" + bits(l3of("Run a beta with five friends")).join("|") + ")");
   ok(!bits(l3of("Add a dark mode")).includes("\u00b7"), "a task with an estimate but no steps has no bullet (" + bits(l3of("Add a dark mode")).join("|") + ")");
+}
+{
+  // Restore backup: choose a file, get a warning, then everything is replaced; Undo puts it back
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.tab("settings");
+  const before = k.saved().tasks.length;
+  const backup = { projects: [{ id: "pR", name: "Restored", status: "active", start: "2026-09-01" }], tasks: [
+    { id: "r1", block: 1, projectId: "pR", what: "Only task", done: "d", status: "Not started", steps: [] },
+    { id: "r2", block: 2, projectId: "pR", what: "Second task", done: "d", status: "Not started", steps: [] }] };
+  const pick = async (text) => {
+    const input = k.$("restoreFile");
+    Object.defineProperty(input, "files", { value: [new k.w.File([text], "b.json")], configurable: true });
+    k.fire(input, "change"); await new Promise(r => setTimeout(r, 40));
+  };
+  await pick("this is not json");
+  ok(k.$("overlay").hidden && k.$("view").textContent.includes("That is not a Sidequest backup file."), "a file that is not a backup is refused without a warning dialog");
+  await pick(JSON.stringify({ hello: "world" }));
+  ok(k.$("overlay").hidden && k.saved().tasks.length === before, "JSON that is not a backup is refused and nothing changes");
+  await pick(JSON.stringify(backup));
+  ok(k.$("modalTitle").textContent === "Restore this backup?" && /1 project and 2 tasks/.test(k.$("modalBody").textContent) && /replaces everything/.test(k.$("modalBody").textContent), "a real backup asks first, saying what it holds and what will happen (" + k.$("modalBody").textContent.slice(0, 90) + ")");
+  ok(k.saved().tasks.length === before, "and nothing has changed yet");
+  k.click(k.btn(k.$("modalBody"), "Cancel"));
+  ok(k.saved().tasks.length === before, "Cancel leaves everything as it was");
+  await pick(JSON.stringify(backup));
+  k.click(k.btn(k.$("modalBody"), "Restore backup"));
+  ok(k.saved().tasks.length === 2 && k.saved().projects[0].name === "Restored", "Restore backup replaces everything with the file");
+  ok(k.$("toast").textContent.includes("Backup restored.") && !!k.btn(k.$("toast"), "Undo"), "and offers Undo for a few seconds");
+  k.click(k.btn(k.$("toast"), "Undo"));
+  ok(k.saved().tasks.length === before && k.saved().projects.some(p => p.name === "Sample Game"), "Undo puts the previous data back");
 }
 {
   // saved history is validated on load, and the old step-count snapshots are not carried over
