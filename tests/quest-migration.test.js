@@ -68,7 +68,7 @@ async function main() {
   const q3 = s.quests.find(q => q.id === "p3");
   ok(!!q1 && q1.name === "Old Project One", "quest p1 kept its name");
   ok(!!q2 && q2.name === "Old Project Two", "quest p2 kept its name");
-  ok(!!q3 && q3.name === "Archived Project" && !!q3.arch, "archived quest p3 survived with its arch intact");
+  ok(!!q3 && q3.name === "Archived Project" && !!q3.vault, "archived quest p3 survived with its vault marker intact");
 
   ok(Array.isArray(q1.linkedQuestIds) && q1.linkedQuestIds.indexOf("p2") >= 0, "p1's linkedProjectIds migrated to linkedQuestIds (" + JSON.stringify(q1.linkedQuestIds) + ")");
   ok(Array.isArray(q2.linkedQuestIds) && q2.linkedQuestIds.indexOf("p1") >= 0, "p2's linkedProjectIds migrated to linkedQuestIds");

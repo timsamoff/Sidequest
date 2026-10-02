@@ -94,7 +94,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .sgroup { margin-top: var(--space-22); }
 .sgroup h3 { margin-top: 0; }
 .sgroup .item .snip { margin-top: var(--space-4); color: var(--muted); font-size: var(--text-sm); }
-.chip.arch { background: var(--late-bg); color: var(--late); }
+.chip.vault { background: var(--late-bg); color: var(--late); }
 .tab { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); width: 100%; text-align: left; border: 0; background: transparent; border-radius: var(--radius-control); padding: var(--space-10) var(--space-12); min-height: 44px; color: var(--muted); font-weight: 500; }
 .tab:hover { background: var(--chip-idle); border: 0; }
 .tab[aria-current="page"] { background: var(--sel); color: var(--ink); font-weight: 600; box-shadow: inset 3px 0 0 var(--planned); }

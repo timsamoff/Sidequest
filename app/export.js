@@ -90,7 +90,7 @@ function snapshotLanes(p, bd) {
 // Walks a quest and its Active/Complete linked quests, recursively, with
 // a cycle guard (a quest already in the chain is not expanded again -- it's
 // linked to the section that already covers it instead). Candidate and
-// Archived linked quests are skipped entirely, per the design brief.
+// vaulted linked quests are skipped entirely, per the design brief.
 function buildExportTree(p, seen) {
   seen = seen || {};
   seen[p.id] = true;
@@ -100,9 +100,9 @@ function buildExportTree(p, seen) {
     links: [], estimate: estimateLine(p)
   };
   linkedQuests(p).forEach(function (lp) {
-    // An archived quest keeps its live status field (e.g. still "active"),
-    // so archived-ness is a separate check from status -- both exclude it.
-    if (lp.arch || (lp.status !== "active" && lp.status !== "complete")) return;
+    // A vaulted quest keeps its live status field (e.g. still "active"),
+    // so being in the Vault is a separate check from status -- both exclude it.
+    if (lp.vault || (lp.status !== "active" && lp.status !== "complete")) return;
     if (seen[lp.id]) { node.links.push({ id: lp.id, name: lp.name, cycle: true }); return; }
     var child = buildExportTree(lp, seen);
     node.links.push({ id: lp.id, name: lp.name, cycle: false, node: child });

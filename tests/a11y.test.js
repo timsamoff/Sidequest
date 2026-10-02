@@ -30,15 +30,15 @@ function serve() {
 
 // Pages reachable straight from a fresh load, exercised via the nav tabs
 // already present in the sample data -- covers every CORE/BOTTOM page kind
-// (a plain list page, a project's own page, the archive, settings) without
+// (a plain list page, a project's own page, the vault, settings) without
 // needing to fabricate state.
 const PAGES = [
   { name: "Today", tab: "today" },
   { name: "Quests", tab: "projects" },
   { name: "Tasks", tab: "schedule" },
   { name: "Timeline", tab: "timeline" },
-  { name: "Parking lot", tab: "parking" },
-  { name: "Archive", tab: "archive" },
+  { name: "Workshop", tab: "workshop" },
+  { name: "Vault", tab: "vault" },
   { name: "Settings", tab: "settings" },
   { name: "Help", tab: "help" }
 ];

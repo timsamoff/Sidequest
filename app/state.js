@@ -19,10 +19,10 @@ export function task(id, block, questId, what, done, steps, extra) {
 }
 // A quest's own lifecycle: "candidate" (competing for the next slot, not yet
 // started) or "active" (chosen, has tasks). Promoted in place -- the same
-// record and id carry through candidate -> active -> archived, never a second
+// record and id carry through candidate -> active -> vaulted, never a second
 // record.
 export function quest(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", arch: null, linkedQuestIds: [], launchCritical: false, hist: {}, lastSlip: null };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], launchCritical: false, hist: {}, lastSlip: null };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -94,12 +94,12 @@ export function sampleData() {
   return {
     tasks: tasks,
     quests: quests,
-    parked: [
+    workshop: [
       { id: "p1", text: "Try a new game engine", note: "Not competing for the next slot" },
       { id: "p2", text: "Write up lessons learned", note: "After the website launches" },
-      { id: "p3", text: "Redesign the logo", note: "", arch: { at: yest, why: "removed" } }
+      { id: "p3", text: "Redesign the logo", note: "", vault: { at: yest, why: "removed" } }
     ],
-    // Decisions attach through a required step link. d3 is an archived example.
+    // Decisions attach through a required step link. d3 is a vaulted example.
     decisions: [
       { id: "d1", q: "Which app store should you launch on first?", a: "Start with one store, then add the other.", step: "a5z" },
       { id: "d2", q: "Will the game be free, paid, or free with a paid upgrade?", a: "", step: "g3d" },
@@ -119,13 +119,13 @@ export function defaults() {
   return {
     v: 5, start: d.start, days: 7,
     tasks: d.tasks, hist: d.hist,
-    decisions: d.decisions, quests: d.quests, parked: d.parked,
+    decisions: d.decisions, quests: d.quests, workshop: d.workshop,
     milestones: d.milestones, pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), archivePurgeDays: 0 }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0 }
   };
 }
 
-export function validArch(a) { return (a && typeof a === "object" && isISO(a.at) && (a.why === "done" || a.why === "removed")) ? { at: a.at, why: a.why } : null; }
+export function validVault(a) { return (a && typeof a === "object" && isISO(a.at) && (a.why === "done" || a.why === "removed")) ? { at: a.at, why: a.why } : null; }
 export function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
 // A slip's own undo snapshot: each affected task's own block number right
 // before the slip, so Undo can put every one of them back exactly where it was.
@@ -173,7 +173,7 @@ export function normalize(s) {
         status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
         start: isISO(x.start) ? x.start : "", days: days,
         due: isISO(x.due) ? x.due : "",
-        notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), arch: validArch(x.arch), launchCritical: x.launchCritical === true, hist: cleanHist(x.hist),
+        notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), vault: validVault(x.vault || x.arch), launchCritical: x.launchCritical === true, hist: cleanHist(x.hist),
         lastSlip: cleanSlip(x.lastSlip),
         // Validated below, once every quest's real id is known -- a link
         // can only point at another quest that actually exists in the final
@@ -213,27 +213,29 @@ export function normalize(s) {
         id: S(t.id, 40), block: b, questId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
         custom: t.custom === true, isNext: t.isNext === true,
-        arch: validArch(t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : ""
+        vault: validVault(t.vault || t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : ""
       });
     });
     d.tasks = ts;
   }
   d.hist = cleanHist(s.hist);
-  // A step id belonging to any live (non-archived) task, across every quest --
+  // A step id belonging to any live (not in the Vault) task, across every quest --
   // used below to require a decision's step link points at something real.
   var liveStepIds = {};
-  d.tasks.forEach(function (t) { if (!t.arch) t.steps.forEach(function (x) { liveStepIds[x.id] = true; }); });
+  d.tasks.forEach(function (t) { if (!t.vault) t.steps.forEach(function (x) { liveStepIds[x.id] = true; }); });
   // Decisions require a real step link (Quest -> Task -> Step -> Decision) --
   // a decision with no step, or one pointing at a step that doesn't exist, is
   // dropped rather than kept in a state the UI can't render meaningfully.
-  // Only Quests and Ideas archive independently, so there's no "archived,
+  // Only Quests and Ideas go to the Vault independently, so there's no "vaulted,
   // exempt from this rule" case: every decision must resolve to a real, live step.
   if (Array.isArray(s.decisions)) {
     d.decisions = s.decisions.filter(function (x) {
       return x && typeof x.id === "string" && typeof x.step === "string" && liveStepIds[x.step];
     }).map(function (x) { return { id: S(x.id, 40), q: S(x.q, 300), a: S(x.a, 1000), step: S(x.step, 40) }; });
   }
-  if (Array.isArray(s.parked)) d.parked = s.parked.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 5000), arch: validArch(x.arch) }; });
+  // The Workshop array used to be called `parked`; read whichever is present.
+  var rawWorkshop = Array.isArray(s.workshop) ? s.workshop : s.parked;
+  if (Array.isArray(rawWorkshop)) d.workshop = rawWorkshop.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 5000), vault: validVault(x.vault || x.arch) }; });
   // Milestones require a direct quest link (no task/step chain to derive it
   // from) -- one pointing at a quest that no longer exists is dropped. Saved
   // data from before the rename has projectId instead of questId.
@@ -251,7 +253,9 @@ export function normalize(s) {
     if (typeof s.settings.showSplash === "boolean") d.settings.showSplash = s.settings.showSplash;
     if (isISO(s.settings.lastBackup)) d.settings.lastBackup = s.settings.lastBackup;
     if (isISO(s.settings.since)) d.settings.since = s.settings.since;
-    if ([0, 7, 30, 60, 90].indexOf(s.settings.archivePurgeDays) >= 0) d.settings.archivePurgeDays = s.settings.archivePurgeDays;
+    // vaultPurgeDays used to be called archivePurgeDays; read whichever is present.
+    var rawPurge = [0, 7, 30, 60, 90].indexOf(s.settings.vaultPurgeDays) >= 0 ? s.settings.vaultPurgeDays : s.settings.archivePurgeDays;
+    if ([0, 7, 30, 60, 90].indexOf(rawPurge) >= 0) d.settings.vaultPurgeDays = rawPurge;
   }
   // Pins used to route to a quest's page via "proj:" + id; migrate any saved
   // pin to "quest:" + id so an old sidebar pin keeps working after the rename.
@@ -360,43 +364,43 @@ export function loadFromDbIfAvailable() {
       return true;
     }).catch(function () {
       // Could not read it, so what it holds is unknown: stay local-only and try again shortly.
-      if (dbLoadTries++ < 3) setTimeout(function () { loadFromDbIfAvailable().then(function (swapped) { if (swapped) { autoArchive(); save(); renderAll(); } }); }, 2500 * dbLoadTries);
+      if (dbLoadTries++ < 3) setTimeout(function () { loadFromDbIfAvailable().then(function (swapped) { if (swapped) { autoVault(); save(); renderAll(); } }); }, 2500 * dbLoadTries);
       return false;
     });
   });
 }
 
-export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchArchive: true, notesH: {}, questOpen: {} };
+export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchVault: true, notesH: {}, questOpen: {} };
 // Always opens on Today -- no-op.
 export function saveUI() { /* nothing to save */ }
 
 // Stamps a task's completion date the moment its status becomes Done, and
-// clears it if the task is reopened. Only Quests and Ideas archive
+// clears it if the task is reopened. Only Quests and Ideas go to the Vault
 // independently -- a completed task just stays visible, marked Done, inside
-// its live quest; this function never moves anything to the Archive itself.
-export function autoArchive() {
+// its live quest; this function never moves anything to the Vault itself.
+export function autoVault() {
   state.tasks.forEach(function (t) {
     if (t.status !== "Completed") { t.doneAt = ""; return; }
     if (!t.doneAt) t.doneAt = iso(TODAY);
   });
 }
-// Permanently deletes Archive entries older than settings.archivePurgeDays,
+// Permanently deletes Vault entries older than settings.vaultPurgeDays,
 // checked once at boot (not every save) since it only matters at day
-// granularity. Age is time since arch.at, so a restored-then-re-archived
+// granularity. Age is time since vault.at, so a restored-then-re-vaulted
 // item gets a fresh clock. 0 means Never; no confirmation is shown, since
 // the Settings control itself is the user's standing consent.
-export function purgeOldArchive() {
-  var days = state.settings.archivePurgeDays;
+export function purgeOldVault() {
+  var days = state.settings.vaultPurgeDays;
   if (!days) return;
   var cutoff = TODAY - days * DAY;
-  var old = function (item) { return item.arch && parseISO(item.arch.at) < cutoff; };
+  var old = function (item) { return item.vault && parseISO(item.vault.at) < cutoff; };
   state.quests.filter(old).forEach(function (p) {
     state.tasks = state.tasks.filter(function (t) { return t.questId !== p.id; });
   });
   state.quests = state.quests.filter(function (p) { return !old(p); });
-  state.parked = state.parked.filter(function (p) { return !old(p); });
+  state.workshop = state.workshop.filter(function (p) { return !old(p); });
 }
 export function changed() {
-  autoArchive(); syncTaskBlocks(); sweepQuestCompletion(); recordHistory(); recordQuestHistory(); save(); renderAll();
+  autoVault(); syncTaskBlocks(); sweepQuestCompletion(); recordHistory(); recordQuestHistory(); save(); renderAll();
 }
 

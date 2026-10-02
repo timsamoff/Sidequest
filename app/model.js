@@ -3,7 +3,7 @@ import { notify } from "./dom.js";
 import { DAY, iso, addDays, parseISO, TODAY, weekStart } from "./dates.js";
 
 export var CORE = [["today", "Today"], ["projects", "Quests"], ["schedule", "Tasks"], ["timeline", "Timeline"]];
-export var BOTTOM = [["parking", "Parking lot"], ["archive", "Archive"], ["help", "Help"], ["settings", "Settings"]];
+export var BOTTOM = [["workshop", "Workshop"], ["vault", "Vault"], ["help", "Help"], ["settings", "Settings"]];
 export var WORDS = { Block: ["block", "blocks"], Sprint: ["sprint", "sprints"], Iteration: ["iteration", "iterations"], Phase: ["phase", "phases"], Week: ["week", "weeks"] };
 export function wd() { return state.settings.blockWord in WORDS ? state.settings.blockWord : "Block"; }
 export function wl() { return WORDS[wd()][0]; }
@@ -13,19 +13,19 @@ export function wpC() { var w = WORDS[wd()][1]; return w.charAt(0).toUpperCase()
    candidate to active, one id for its whole life, so "the active quest named X"
    and "the candidate named X" are never two different records. The "projects"
    page key stays unchanged -- it's an internal routing id, not shown to the user. */
-export function live(a) { return a.filter(function (x) { return !x.arch; }); }
+export function live(a) { return a.filter(function (x) { return !x.vault; }); }
 export function liveQuests() { return live(state.quests); }
 export function activeQuests() { return liveQuests().filter(function (p) { return p.status === "active"; }); }
 export function candidateQuests() { return liveQuests().filter(function (p) { return p.status === "candidate"; }); }
 export function completeQuests() { return liveQuests().filter(function (p) { return p.status === "complete"; }); }
-// A Complete-but-not-archived quest's tasks stay in the quest itself but
+// A Complete-but-not-vaulted quest's tasks stay in the quest itself but
 // drop out of every cross-quest surface (Tasks, Today, the global burndown
 // and Timeline) -- reversible the instant the quest's status changes back,
 // since this reads the quest's live status rather than a stored flag.
-export function isHiddenComplete(t) { var p = findQuest(t.questId); return !!p && p.status === "complete" && !p.arch; }
-// Searches every quest, archived or not -- an archived quest's own page
+export function isHiddenComplete(t) { var p = findQuest(t.questId); return !!p && p.status === "complete" && !p.vault; }
+// Searches every quest, vaulted or not -- a vaulted quest's own page
 // must stay reachable, read-only, until restored. Safe to search past
-// liveQuests() here because every caller either wants an archived match
+// liveQuests() here because every caller either wants a vaulted match
 // right now, or already filters to live quests one level up.
 export function findQuest(id) { for (var i = 0; i < state.quests.length; i++) if (state.quests[i].id === id) return state.quests[i]; return null; }
 export function findAnyQuest(id) { return findQuest(id); }
@@ -93,7 +93,7 @@ export function questEstimate(p) {
 }
 export function chartStart() {
   var min = null;
-  state.tasks.forEach(function (t) { if ((t.arch && t.arch.why !== "done") || t.block === 0 || isHiddenComplete(t)) return; var v = parseISO(pset(projKey(t)).start); if (min === null || v < min) min = v; });
+  state.tasks.forEach(function (t) { if ((t.vault && t.vault.why !== "done") || t.block === 0 || isHiddenComplete(t)) return; var v = parseISO(pset(projKey(t)).start); if (min === null || v < min) min = v; });
   return min === null ? parseISO(state.start) : min;
 }
 // Days between points on the main burndown: daily or every few days when the
@@ -138,7 +138,7 @@ export function globalActual(cps) {
 }
 
 /* task helpers */
-export function counted() { return state.tasks.filter(function (t) { return !t.arch || t.arch.why === "done"; }); }
+export function counted() { return state.tasks.filter(function (t) { return !t.vault || t.vault.why === "done"; }); }
 // The "chosen" quest is just the first active one with no tasks yet -- a
 // quest's own status carries this, so there's no separate pointer to keep
 // in sync. If two are both task-less, whichever was promoted first wins.
@@ -216,12 +216,12 @@ export function isCore(v) { return CORE.some(function (c) { return c[0] === v; }
 // "quest:" + id routes to a quest's own page -- id-based, not name-based, so
 // renaming a quest never breaks its pin or an in-flight link to it. A live
 // candidate has no page of its own (edited via candidateDialog() instead,
-// like an Idea) -- only an archived candidate's page is reachable, as the one
-// remaining read-only view of its notes from the Archive list.
+// like an Idea) -- only a vaulted candidate's page is reachable, as the one
+// remaining read-only view of its notes from the Vault list.
 export function validPage(key) {
   if (typeof key !== "string" || key.indexOf("quest:") !== 0) return false;
   var p = findQuest(key.slice(6));
-  return !!p && (p.status !== "candidate" || !!p.arch);
+  return !!p && (p.status !== "candidate" || !!p.vault);
 }
 export function pageTitle(key) {
   if (key === "search") return "Search";

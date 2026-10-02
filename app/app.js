@@ -1,10 +1,10 @@
-import { state, ui, save, saveUI, changed, autoArchive, purgeOldArchive, APP_NAME, loadFromDbIfAvailable } from "./state.js";
+import { state, ui, save, saveUI, changed, autoVault, purgeOldVault, APP_NAME, loadFromDbIfAvailable } from "./state.js";
 import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest } from "./model.js";
 import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline } from "./dom.js";
 import { lateTasks } from "./model.js";
 import {
-  renderToday, renderSchedule, renderQuests, renderParkingLot,
-  renderArchive, renderSettings, renderHelp, renderQuestPage, renderTimeline
+  renderToday, renderSchedule, renderQuests, renderWorkshop,
+  renderVault, renderSettings, renderHelp, renderQuestPage, renderTimeline
 } from "./views.js";
 import { renderSearch, openSearch, closeSearch, wireSearchInput, focusSearch } from "./search.js";
 import {
@@ -17,7 +17,7 @@ export function leaveSearch() { if (ui.view === "search") { ui.query = ""; var b
 export function go(view) { leaveSearch(); ui.view = view; ui.detail = false; saveUI(); renderAll(); scrollTop(); }
 export function openTask(id) {
   var at = findAnyTask(id);
-  if (at && at.arch) { go("archive"); notify("That task is in the Archive. Restore it to work on it."); return; }
+  if (at && at.vault) { go("vault"); notify("That task is in the Vault. Restore it to work on it."); return; }
   leaveSearch(); ui.view = "schedule"; ui.sel = id; ui.detail = true; saveUI(); renderAll(); scrollTop();
 }
 export var ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>';
@@ -56,16 +56,16 @@ export function renderChrome() {
   buildMoreMenu(pinned);
   var title = pageTitle(ui.view) || "Today";
   $("viewTitle").textContent = title;
-  // The pencil next to the title renames the quest (not shown for an archived one).
+  // The pencil next to the title renames the quest (not shown for a vaulted one).
   var cur = ui.view.indexOf("quest:") === 0 ? findQuest(ui.view.slice(6)) : null;
-  $("renameBtn").hidden = !(cur && !cur.arch);
+  $("renameBtn").hidden = !(cur && !cur.vault);
   document.title = title + " · " + APP_NAME;
 }
 // Names are edited in place: safe to change because tasks, pins, links, and
 // milestones all point at the quest id, never its name.
 function renameCurrentQuest() {
   var p = ui.view.indexOf("quest:") === 0 ? findQuest(ui.view.slice(6)) : null;
-  if (!p || p.arch) return;
+  if (!p || p.vault) return;
   $("renameBtn").hidden = true;
   editInline($("viewTitle"), {
     label: "Quest name", max: 120, value: function () { return p.name; },
@@ -83,9 +83,9 @@ export function renderView() {
   if (ui.view === "today") renderToday(root);
   else if (ui.view === "schedule") renderSchedule(root);
   else if (ui.view === "projects") renderQuests(root);
-  else if (ui.view === "parking") renderParkingLot(root);
+  else if (ui.view === "workshop") renderWorkshop(root);
   else if (ui.view === "search") renderSearch(root);
-  else if (ui.view === "archive") renderArchive(root);
+  else if (ui.view === "vault") renderVault(root);
   else if (ui.view === "settings") renderSettings(root);
   else if (ui.view === "help") renderHelp(root);
   else if (ui.view.indexOf("quest:") === 0) renderQuestPage(root, ui.view.slice(6));
@@ -118,7 +118,7 @@ export function wireMenu(btnId, menuId) {
     closeMenus(false);
     if (t.getAttribute("data-view")) { go(t.getAttribute("data-view")); return; }
     var act = t.getAttribute("data-act");
-    ({ newTask: taskDialog, newBacklog: function () { taskDialog(undefined, true); }, newStep: function () { stepDialog(false); }, newQuest: questDialog, newIdea: ideaDialog, newDecision: decisionDialog, newMilestone: milestoneDialog, archive: function () { go("archive"); }, settings: function () { go("settings"); } })[act]();
+    ({ newTask: taskDialog, newBacklog: function () { taskDialog(undefined, true); }, newStep: function () { stepDialog(false); }, newQuest: questDialog, newIdea: ideaDialog, newDecision: decisionDialog, newMilestone: milestoneDialog, vault: function () { go("vault"); }, settings: function () { go("settings"); } })[act]();
   });
   on(m, "keydown", function (e) {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
@@ -131,7 +131,7 @@ export function wireMenu(btnId, menuId) {
 Promise.resolve().then(function () {
   $("brand").textContent = APP_NAME;
   applyTheme();
-  autoArchive(); purgeOldArchive(); save();
+  autoVault(); purgeOldVault(); save();
   renderAll();
 
   // Decorative only -- the app has already rendered above.
@@ -140,7 +140,7 @@ Promise.resolve().then(function () {
   // Checked after first paint -- no-op on the web app, real on a published artifact with db.
   loadFromDbIfAvailable().then(function (swapped) {
     if (!swapped) return;
-    autoArchive(); purgeOldArchive(); save();
+    autoVault(); purgeOldVault(); save();
     renderAll();
   });
 

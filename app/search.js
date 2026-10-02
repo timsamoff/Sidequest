@@ -25,11 +25,11 @@ export function snippetOf(text, terms) {
   var a = Math.max(0, at - 40), b = Math.min(flat.length, at + 110);
   return (a > 0 ? "…" : "") + flat.slice(a, b) + (b < flat.length ? "…" : "");
 }
-export function searchAll(q, includeArchive) {
+export function searchAll(q, includeVault) {
   var terms = searchTerms(q), groups = {};
   SEARCH_ORDER.forEach(function (k) { groups[k] = []; });
-  function consider(kind, title, fields, sub, open, arch, fieldLabels) {
-    if (arch && !includeArchive) return;
+  function consider(kind, title, fields, sub, open, vault, fieldLabels) {
+    if (vault && !includeVault) return;
     var hay = [title].concat(fields).filter(Boolean).join("\n").toLowerCase();
     for (var i = 0; i < terms.length; i++) if (hay.indexOf(terms[i]) < 0) return;
     var tl = title.toLowerCase(), inTitle = terms.every(function (t) { return tl.indexOf(t) >= 0; });
@@ -39,26 +39,26 @@ export function searchAll(q, includeArchive) {
       if (!fields[j] || !lbl) continue;
       var sn = snippetOf(fields[j], terms); if (sn) { snip = { label: lbl, text: sn }; break; }
     }
-    groups[kind].push({ kind: kind, title: title, sub: sub, snip: snip, arch: !!arch, score: inTitle ? 2 : 0, idx: groups[kind].length, open: open });
+    groups[kind].push({ kind: kind, title: title, sub: sub, snip: snip, vault: !!vault, score: inTitle ? 2 : 0, idx: groups[kind].length, open: open });
   }
   state.tasks.forEach(function (t) {
     var when = t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t));
-    consider("task", t.what, [t.notes, t.done, dispQuest(t)], dispQuest(t) + " · " + when + " · " + t.status, function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch, ["Notes", "Done when", ""]);
+    consider("task", t.what, [t.notes, t.done, dispQuest(t)], dispQuest(t) + " · " + when + " · " + t.status, function () { if (t.vault) go("vault"); else openTask(t.id); }, !!t.vault, ["Notes", "Done when", ""]);
     t.steps.forEach(function (st) {
-      consider("step", st.text, [], "Step of " + dispQuest(t) + ": " + short(t.what, 50) + (st.done ? " · done" : ""), function () { if (t.arch) go("archive"); else openTask(t.id); }, !!t.arch);
+      consider("step", st.text, [], "Step of " + dispQuest(t) + ": " + short(t.what, 50) + (st.done ? " · done" : ""), function () { if (t.vault) go("vault"); else openTask(t.id); }, !!t.vault);
     });
   });
   liveQuests().forEach(function (p) {
     consider("quest", p.name, [p.notes], questMeta(p), function () { if (p.status === "candidate") candidateDialog(p); else go(validPage("quest:" + p.id) ? "quest:" + p.id : "projects"); }, false, ["Notes"]);
   });
-  state.quests.forEach(function (p) { if (p.arch) consider("quest", p.name, [p.notes], "Archived quest", function () { go("archive"); }, true, ["Notes"]); });
-  state.parked.forEach(function (p) { consider("idea", p.text, [p.note], "Parking lot", function () { go(p.arch ? "archive" : "parking"); }, !!p.arch, ["Note"]); });
+  state.quests.forEach(function (p) { if (p.vault) consider("quest", p.name, [p.notes], "Vaulted quest", function () { go("vault"); }, true, ["Notes"]); });
+  state.workshop.forEach(function (p) { consider("idea", p.text, [p.note], "Workshop", function () { go(p.vault ? "vault" : "workshop"); }, !!p.vault, ["Note"]); });
   // Quest comes from following Decision -> Step -> Task -> Quest.
   state.decisions.forEach(function (d) {
     var ls = findStep(d.step);
-    consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { if (d.arch) go("archive"); else if (ls) openTask(ls.t.id); else go("projects"); }, !!d.arch, ["Answer"]);
+    consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { if (d.vault) go("vault"); else if (ls) openTask(ls.t.id); else go("projects"); }, !!d.vault, ["Answer"]);
   });
-  state.milestones.forEach(function (m) { consider("milestone", m.text, [fmtY(parseISO(m.date)), m.date], fmtY(parseISO(m.date)), function () { go(m.arch ? "archive" : ("quest:" + m.questId)); }, !!m.arch); });
+  state.milestones.forEach(function (m) { consider("milestone", m.text, [fmtY(parseISO(m.date)), m.date], fmtY(parseISO(m.date)), function () { go(m.vault ? "vault" : ("quest:" + m.questId)); }, !!m.vault); });
   SEARCH_ORDER.forEach(function (k) { groups[k].sort(function (a, b) { return b.score - a.score || a.idx - b.idx; }); });
   return { terms: terms, groups: groups };
 }
@@ -67,11 +67,11 @@ export function updateSearchResults() {
   box.innerHTML = ""; searchFlat.length = 0;
   var status = $("searchStatus"), q = ui.query.trim();
   if (!q) { if (status) status.textContent = ""; box.appendChild(el("p", { "class": "hint" }, "Type to search tasks, steps, notes, projects, ideas, decisions, and milestones. Enter opens the first result.")); return; }
-  var res = searchAll(q, ui.searchArchive), total = 0;
+  var res = searchAll(q, ui.searchVault), total = 0;
   SEARCH_ORDER.forEach(function (k) { total += res.groups[k].length; });
   if (status) status.textContent = total + (total === 1 ? " result" : " results");
   if (!total) {
-    box.appendChild(el("p", { "class": "hint" }, "No matches for “" + q + "”." + (ui.searchArchive ? "" : " Try including the Archive.")));
+    box.appendChild(el("p", { "class": "hint" }, "No matches for “" + q + "”." + (ui.searchVault ? "" : " Try including the Vault.")));
     return;
   }
   var CAP = 30;
@@ -83,7 +83,7 @@ export function updateSearchResults() {
     list.slice(0, CAP).forEach(function (r) {
       searchFlat.push(r);
       var li = el("li"), b = el("button", { type: "button", "class": "item", title: "Open this result" });
-      var l1 = el("div", { "class": "l1" }); l1.appendChild(document.createTextNode(r.sub)); if (r.arch) { l1.appendChild(document.createTextNode(" ")); l1.appendChild(el("span", { "class": "chip arch" }, "Archived")); }
+      var l1 = el("div", { "class": "l1" }); l1.appendChild(document.createTextNode(r.sub)); if (r.vault) { l1.appendChild(document.createTextNode(" ")); l1.appendChild(el("span", { "class": "chip vault" }, "Vaulted")); }
       b.appendChild(l1);
       var l2 = el("div", { "class": "l2" }); l2.appendChild(highlight(r.title, res.terms)); b.appendChild(l2);
       if (r.snip) { var sn = el("div", { "class": "snip" }); if (r.snip.label) sn.appendChild(document.createTextNode(r.snip.label + ": ")); sn.appendChild(highlight(r.snip.text, res.terms)); b.appendChild(sn); }
@@ -127,9 +127,9 @@ export function renderSearch(root) {
   var bar = el("div", { "class": "searchbar" });
   var inp = el("input", { type: "search", id: "searchMain", placeholder: "Search tasks, steps, notes, projects, decisions", "aria-label": "Search", autocomplete: "off" }); inp.value = ui.query;
   wireSearchInput(inp, "main"); bar.appendChild(inp);
-  var lab = el("label"), cb = el("input", { type: "checkbox", id: "searchArch" }); cb.checked = ui.searchArchive;
-  on(cb, "change", function () { ui.searchArchive = cb.checked; updateSearchResults(); });
-  lab.appendChild(cb); lab.appendChild(document.createTextNode("Include the Archive")); bar.appendChild(lab);
+  var lab = el("label"), cb = el("input", { type: "checkbox", id: "searchVault" }); cb.checked = ui.searchVault;
+  on(cb, "change", function () { ui.searchVault = cb.checked; updateSearchResults(); });
+  lab.appendChild(cb); lab.appendChild(document.createTextNode("Include the Vault")); bar.appendChild(lab);
   root.appendChild(bar);
   root.appendChild(el("p", { "class": "msg", id: "searchStatus", role: "status", "aria-live": "polite" }));
   root.appendChild(el("div", { id: "searchResults" }));

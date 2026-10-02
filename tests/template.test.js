@@ -120,8 +120,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const pagesList = [...k.d.querySelectorAll("#view .list")][0].textContent;
   ok(!pagesList.includes("Sample App") && !pagesList.includes("Sample Website") && !pagesList.includes("Sample Game"), "the Projects list excludes the projects already shown in In progress");
   ok(k.$("view").textContent.includes("Sample Browser Extension") && k.$("view").textContent.includes("Sample Command-Line Tool"), "two sample candidates listed");
-  k.tab("parking");
-  ok(k.$("view").textContent.includes("Try a new game engine") && k.$("view").textContent.includes("Write up lessons learned") && !k.$("view").textContent.includes("Redesign the logo"), "parking lot samples (removed one is in the Archive)");
+  k.tab("workshop");
+  ok(k.$("view").textContent.includes("Try a new game engine") && k.$("view").textContent.includes("Write up lessons learned") && !k.$("view").textContent.includes("Redesign the logo"), "Workshop samples (removed one is in the Vault)");
   k.tab("schedule");
   const rows = [...k.d.querySelectorAll(".listpane .tlist")[0].querySelectorAll(".item")].map(b => b.textContent);
   ok(rows.length === 12, "12 scheduled tasks (Sample Finished Quest's tasks are hidden while it's Complete) (got " + rows.length + ")");
@@ -253,18 +253,18 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const coveredHelp = ["Save backup", "Restore backup", "Est. 12 hours remaining", "Added tag", "Not started shows in blue", "Pending, Completed", "leave Tasks, the main Timeline, Today, and the main burndown", "orange line", "Slip schedule", "default length of a stretch of work"];
   ok(coveredHelp.every(ph => helpText.includes(ph)), "Help covers the features that changed recently (missing: " + coveredHelp.filter(ph => !helpText.includes(ph)).join(", ") + ")");
   ok(!/\u2014/.test(helpText), "Help has no em dashes");
-  ok(["Finish or archive a quest", "Link quests", "Use the Parking lot"].every(t => titles.includes(t)) && helpText.includes("Reopen") && helpText.includes("splash screen"), "Help covers Complete/Reopen, linking, the Parking lot, and the splash setting");
-  ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Parking lot,Archive,Help,Settings", "Help sits between Archive and Settings");
+  ok(["Finish or vault a quest", "Link quests", "Use the Workshop"].every(t => titles.includes(t)) && helpText.includes("Reopen") && helpText.includes("splash screen"), "Help covers Complete/Reopen, linking, the Workshop, and the splash setting");
+  ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Workshop,Vault,Help,Settings", "Help sits between Vault and Settings");
 }
 
-/* ---- archive samples: only Projects and Ideas archive now ---- */
+/* ---- vault samples: only Quests and Ideas go to the Vault now ---- */
 {
-  const k = kit(await mk()); k.tab("archive");
+  const k = kit(await mk()); k.tab("vault");
   const t = k.$("view").textContent;
-  ok(t.includes("Redesign the logo") && t.includes("All (1)"), "Archive shows just the one archived sample idea (" + t.match(/All \(\d+\)/) + ")");
-  ok(!t.includes("Sketch the main screens") && !t.includes("Should the site use a page builder?"), "completed tasks and decisions no longer appear in the Archive -- they live in their project instead");
+  ok(t.includes("Redesign the logo") && t.includes("All (1)"), "Vault shows just the one vaulted sample idea (" + t.match(/All \(\d+\)/) + ")");
+  ok(!t.includes("Sketch the main screens") && !t.includes("Should the site use a page builder?"), "completed tasks and decisions no longer appear in the Vault -- they live in their project instead");
   const filters = [...k.d.querySelectorAll("#view .chipbtn")].map(b => b.textContent.trim());
-  ok(filters.join() === "All (1),Quests (0),Ideas (1)", "Archive filters are just All/Quests/Ideas now (" + filters.join() + ")");
+  ok(filters.join() === "All (1),Quests (0),Ideas (1)", "Vault filters are just All/Quests/Ideas now (" + filters.join() + ")");
 }
 /* ---- completed tasks stay visible, sorted to the bottom ---- */
 {
@@ -273,14 +273,14 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const statuses = rows.map(b => b.classList.contains("done"));
   const firstDone = statuses.indexOf(true);
   ok(firstDone === -1 || statuses.slice(firstDone).every(Boolean), "once a completed task appears, every task after it in the list is also completed (sunk to the bottom)");
-  ok(rows.length === 12, "completed tasks (Sketch the main screens, Build the sign-in flow) stay in the Tasks list, not moved to the Archive (" + rows.length + ")");
+  ok(rows.length === 12, "completed tasks (Sketch the main screens, Build the sign-in flow) stay in the Tasks list, not moved to the Vault (" + rows.length + ")");
 }
 
 /* ---- search works on samples ---- */
 {
   const k = kit(await mk()); k.type("beta");
   ok(k.d.querySelectorAll("#searchResults .sgroup").length >= 2 && k.$("searchStatus").textContent.match(/\d+ results?/), "search finds the beta tasks and milestone");
-  k.type("logo"); ok(k.d.querySelector("#searchResults .chip.arch"), "search finds archived samples");
+  k.type("logo"); ok(k.d.querySelector("#searchResults .chip.vault"), "search finds vaulted samples");
 }
 
 /* ---- Start fresh and reload samples ---- */
@@ -394,7 +394,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("modalTitle").textContent === "Quest complete" && k.$("modalBody").textContent.includes("leave it in Quests"), "marking complete with open tasks left triggers the completion dialog, no block");
   k.click(k.btn(k.$("modalBody"), "Leave in Quests"));
   ok(k.$("overlay").hidden, "Leave in Quests closes the dialog");
-  ok(k.$("view").textContent.includes("Restore") === false && !k.btn(k.$("view"), "Mark complete") && !k.btn(k.$("view"), "Archive") === false, "quest stays Complete, not archived, after Leave in Quests");
+  ok(k.$("view").textContent.includes("Restore") === false && !k.btn(k.$("view"), "Mark complete") && !k.btn(k.$("view"), "Vault") === false, "quest stays Complete, not vaulted, after Leave in Quests");
   ok(k.saved().quests.find(p => p.id === "pApp").status === "complete", "status persisted as complete");
   // set apart visually, and can be reopened
   ok(!!k.d.querySelector("#view .chip.questcomplete"), "a Complete quest shows a Complete badge on its own page");
@@ -449,8 +449,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     if (sel.value !== "Completed") { sel.value = "Completed"; k.fire(sel); }
   }
   ok(k.$("modalTitle").textContent === "Quest complete", "all-tasks-Completed auto-triggers the completion dialog");
-  k.click(k.btn(k.$("modalBody"), "Archive now"));
-  ok(k.saved().quests.find(p => p.id === "pApp").arch, "Archive now from the dialog archives the quest");
+  k.click(k.btn(k.$("modalBody"), "Vault now"));
+  ok(k.saved().quests.find(p => p.id === "pApp").vault, "Vault now from the dialog sends the quest to the Vault");
 }
 {
   // empty-task-set guard: a candidate with zero tasks must never auto-complete
@@ -466,37 +466,37 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   ok([...k.d.querySelectorAll("#view .list li")].some(li => li.textContent.includes("Sample Website") && li.textContent.includes("Launch critical")), "Linked Quests shows a Launch critical badge for Sample Website");
   ok(!!k.btn(k.$("view"), "Unmark launch critical"), "the toggle button reflects Sample Website's launch-critical state from Sample App's own page");
-  // archiving Sample App warns (soft gate) since Sample Website (launch-critical) is not complete/archived, but does not block
-  k.click(k.btn(k.$("view"), "Archive"));
-  ok(k.saved().quests.find(p => p.id === "pApp").arch, "archiving proceeds even with an incomplete launch-critical link (soft gate only, never a hard block)");
+  // sending Sample App to the Vault warns (soft gate) since Sample Website (launch-critical) is not complete/vaulted, but does not block
+  k.click(k.btn(k.$("view"), "Vault"));
+  ok(k.saved().quests.find(p => p.id === "pApp").vault, "sending to the Vault proceeds even with an incomplete launch-critical link (soft gate only, never a hard block)");
 }
 {
-  // archived quest pages are genuinely viewable, read-only, until restored
+  // vaulted quest pages are genuinely viewable, read-only, until restored
   const k = kit(await mk());
-  const tasksBefore = k.saved().tasks.filter(t => t.questId === "pGame" && !t.arch).length;
+  const tasksBefore = k.saved().tasks.filter(t => t.questId === "pGame" && !t.vault).length;
   k.tab("projects");
   k.click(k.btn(k.d.querySelector("#view .standing"), "Sample Game"));
   ok(k.$("viewTitle").textContent === "Sample Game", "navigated to Sample Game via Where things stand");
-  k.click(k.btn(k.$("view"), "Archive"));
-  ok(k.$("viewTitle").textContent !== "Sample Game" || k.$("view").textContent.includes("Archived"), "archiving navigates away or shows an archived notice");
-  ok(k.saved().tasks.filter(t => t.questId === "pGame" && !t.arch).length === 0 && tasksBefore > 0, "archiving a quest cascades to archive its own tasks");
-  k.tab("archive");
-  const gameArchRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Game"));
-  ok(!k.btn(gameArchRow, "View") && gameArchRow.querySelector(".chip").previousElementSibling === k.btn(gameArchRow, "Sample Game"), "Archive rows have no View button, the title is the link, and the kind chip follows it");
-  k.click(k.btn(gameArchRow, "Sample Game"));
-  ok(k.$("viewTitle").textContent === "Sample Game", "an archived quest's own page is now reachable (previously invisible)");
-  ok(k.$("view").textContent.includes("Archived. Restore it to make changes."), "archived quest page states it's read-only");
-  ok(!k.btn(k.$("view"), "Add task") && !k.d.querySelector("#proj-start") && !k.d.querySelector("#view textarea"), "no mutating controls (Add task, schedule inputs, notes textarea) on an archived quest page");
-  ok(!!k.btn(k.$("view"), "Restore"), "archived quest page offers Restore instead of Archive/Mark complete");
+  k.click(k.btn(k.$("view"), "Vault"));
+  ok(k.$("viewTitle").textContent !== "Sample Game" || k.$("view").textContent.includes("In the Vault"), "sending to the Vault navigates away or shows a vaulted notice");
+  ok(k.saved().tasks.filter(t => t.questId === "pGame" && !t.vault).length === 0 && tasksBefore > 0, "sending a quest to the Vault cascades to vault its own tasks");
+  k.tab("vault");
+  const gameVaultRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Game"));
+  ok(!k.btn(gameVaultRow, "View") && gameVaultRow.querySelector(".chip").previousElementSibling === k.btn(gameVaultRow, "Sample Game"), "Vault rows have no View button, the title is the link, and the kind chip follows it");
+  k.click(k.btn(gameVaultRow, "Sample Game"));
+  ok(k.$("viewTitle").textContent === "Sample Game", "a vaulted quest's own page is now reachable (previously invisible)");
+  ok(k.$("view").textContent.includes("In the Vault. Restore it to make changes."), "vaulted quest page states it's read-only");
+  ok(!k.btn(k.$("view"), "Add task") && !k.d.querySelector("#proj-start") && !k.d.querySelector("#view textarea"), "no mutating controls (Add task, schedule inputs, notes textarea) on a vaulted quest page");
+  ok(!!k.btn(k.$("view"), "Restore"), "vaulted quest page offers Restore instead of Vault/Mark complete");
   k.click(k.btn(k.$("view"), "Restore"));
-  ok(!k.saved().quests.find(p => p.id === "pGame").arch, "Restore un-archives the quest");
-  ok(k.saved().tasks.filter(t => t.questId === "pGame" && !t.arch).length === tasksBefore, "restoring the quest also un-archives the tasks the archive cascade archived");
+  ok(!k.saved().quests.find(p => p.id === "pGame").vault, "Restore brings the quest back out of the Vault");
+  ok(k.saved().tasks.filter(t => t.questId === "pGame" && !t.vault).length === tasksBefore, "restoring the quest also brings its tasks back out of the Vault");
 }
 
 {
   // ideas are editable, and their note is a real multiline textarea
   const k = kit(await mk());
-  k.tab("parking");
+  k.tab("workshop");
   const row = () => [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Try a new game engine"));
   ok(!k.btn(row(), "Edit"), "an idea row has no separate Edit button, the title is the link");
   k.click(k.btn(row(), "Try a new game engine"));
@@ -505,15 +505,15 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("f-note").tagName === "TEXTAREA", "the note field is a multiline textarea");
   k.setField("text", "Try Godot"); k.setField("note", "Line one\nLine two");
   k.click(k.btn(k.$("modalBody"), "Save idea"));
-  const saved = k.saved().parked.find(p => p.id === "p1");
+  const saved = k.saved().workshop.find(p => p.id === "p1");
   ok(saved && saved.text === "Try Godot" && saved.note === "Line one\nLine two", "Save updates the same idea in place, keeping line breaks");
-  ok(k.saved().parked.filter(p => !p.arch).length === 2, "editing does not add or remove ideas");
-  ok(row() === undefined && !!k.$("view").textContent.includes("Try Godot"), "the Parking lot shows the edited text");
+  ok(k.saved().workshop.filter(p => !p.vault).length === 2, "editing does not add or remove ideas");
+  ok(row() === undefined && !!k.$("view").textContent.includes("Try Godot"), "the Workshop shows the edited text");
   k.menuAct("newBtn", "newIdea");
   ok(k.$("modalTitle").textContent === "New idea" && k.$("f-note").tagName === "TEXTAREA", "adding a new idea also uses the textarea note");
   k.setField("text", "Long note idea"); k.setField("note", "x".repeat(1500));
-  k.click(k.btn(k.$("modalBody"), "Add to parking lot"));
-  ok(k.saved().parked.find(p => p.text === "Long note idea").note.length === 1500, "a note longer than the old 300-character cap is kept");
+  k.click(k.btn(k.$("modalBody"), "Add to Workshop"));
+  ok(k.saved().workshop.find(p => p.text === "Long note idea").note.length === 1500, "a note longer than the old 300-character cap is kept");
 }
 
 {
@@ -556,27 +556,27 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // notes travel between ideas and candidates, and list rows clamp them
   const k = kit(await mk());
   k.tab("projects");
-  const candRow = () => [...k.d.querySelectorAll("#view .list li")].find(li => li.querySelector('button[title="Move to the Parking lot"]'));
+  const candRow = () => [...k.d.querySelectorAll("#view .list li")].find(li => li.querySelector('button[title="Move to the Workshop"]'));
   ok(!!candRow().querySelector(".noteclamp"), "a candidate's note in the list is clamped to two lines");
   k.click(k.btn(candRow(), "Park it"));
-  const idea = k.saved().parked.find(p => p.text === "Sample Browser Extension");
+  const idea = k.saved().workshop.find(p => p.text === "Sample Browser Extension");
   ok(idea && idea.note === "A small tool that could ship in a month", "Park it carries the quest's Notes back to the idea's note");
-  k.tab("parking");
+  k.tab("workshop");
   const irow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Browser Extension"));
-  ok(!!irow.querySelector(".noteclamp"), "a parked idea's note is clamped to two lines");
+  ok(!!irow.querySelector(".noteclamp"), "an idea's note in the Workshop is clamped to two lines");
   k.click(k.btn(irow, "Make candidate"));
   const quest = k.saved().quests.find(p => p.name === "Sample Browser Extension" && p.status === "candidate");
   ok(quest && quest.notes === "A small tool that could ship in a month" && !("note" in quest), "Make candidate puts the idea's note in the quest's Notes, with no separate note field");
 }
 {
-  // an archived candidate's page is read-only like any archived quest's
+  // a vaulted candidate's page is read-only like any vaulted quest's
   const k = kit(await mk());
   k.tab("projects");
-  const candRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.querySelector('button[title="Move to the Parking lot"]'));
-  k.click(k.btn(candRow, "Archive"));
-  k.tab("archive");
+  const candRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.querySelector('button[title="Move to the Workshop"]'));
+  k.click(k.btn(candRow, "Vault"));
+  k.tab("vault");
   k.click(k.btn(k.$("view"), "Sample Browser Extension"));
-  ok(!k.btn(k.$("view"), "Choose as next quest") && k.$("renameBtn").hidden && !k.d.querySelector("#view textarea"), "an archived candidate's page has no pencil, editable fields, or promote button");
+  ok(!k.btn(k.$("view"), "Choose as next quest") && k.$("renameBtn").hidden && !k.d.querySelector("#view textarea"), "a vaulted candidate's page has no pencil, editable fields, or promote button");
 }
 
 {
@@ -1099,15 +1099,15 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!side && side.textContent.includes("Nothing is scheduled yet") && ![...side.querySelectorAll("h2")].some(h => h.textContent === "Burndown"), "a quest with no scheduled tasks says so and draws no burndown");
 }
 {
-  // candidates and archived quests stay single-column
+  // candidates and vaulted quests stay single-column
   const k = kit(await mk());
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Browser Extension"));
   ok(!k.d.querySelector("#view .questsplit"), "a candidate's page has no charts column");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Game"));
-  k.click(k.btn(k.$("view"), "Archive"));
-  k.tab("archive"); k.click(k.btn(k.$("view"), "Sample Game"));
-  ok(!k.d.querySelector("#view .questsplit"), "an archived quest's page has no charts column");
-  ok([...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Schedule") && !k.$("proj-start"), "an archived quest still shows its Schedule, read only, in the single column");
+  k.click(k.btn(k.$("view"), "Vault"));
+  k.tab("vault"); k.click(k.btn(k.$("view"), "Sample Game"));
+  ok(!k.d.querySelector("#view .questsplit"), "a vaulted quest's page has no charts column");
+  ok([...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Schedule") && !k.$("proj-start"), "a vaulted quest still shows its Schedule, read only, in the single column");
 }
 
 {
@@ -1305,7 +1305,7 @@ async function exportClick(k, projectName) {
   ok(!html.includes("Project C"), "a Candidate linked project is skipped entirely, even though it's in the link chain");
 }
 {
-  // Only Active/Complete linked projects are expanded; Archived is skipped too.
+  // Only Active/Complete linked projects are expanded; one in the Vault is skipped too.
   const saved = {
     projects: [
       { id: "pX", name: "Project X", status: "active", start: "2026-08-03", days: 7, linkedProjectIds: ["pY", "pZ"] },
@@ -1316,7 +1316,7 @@ async function exportClick(k, projectName) {
   };
   const { html } = await exportClick(kit(await mk(saved)), "Project X");
   ok(html.includes("Project Y") && html.includes('id="proj-pY"'), "a Complete linked project is expanded into its own section");
-  ok(!html.includes("Project Z"), "an Archived linked project is skipped entirely, not even named");
+  ok(!html.includes("Project Z"), "a linked project in the Vault is skipped entirely, not even named");
 }
 {
   // Full (unclamped) notes, and the filename shape.
@@ -1330,7 +1330,7 @@ async function exportClick(k, projectName) {
   ok(/^full-notes-co-\d{4}-\d{2}-\d{2}\.html$/.test(downloadName), "the filename is the project's name, slugged, plus today's date (" + downloadName + ")");
 }
 {
-  // Archive auto-purge: Never leaves everything, a threshold deletes only
+  // Vault auto-purge: Never leaves everything, a threshold deletes only
   // what's older than it, and a project's tasks go with it.
   const d = new Date(), n = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()), iso = k => new Date(n + k * 86400000).toISOString().slice(0, 10);
   const saved = {
@@ -1347,8 +1347,8 @@ async function exportClick(k, projectName) {
   };
   const k = kit(await mk(saved));
   const ids = xs => xs.map(x => x.id);
-  ok(!ids(k.saved().quests).includes("pOld") && ids(k.saved().quests).includes("pNew"), "a 30-day threshold purges only the project archived more than 30 days ago");
-  ok(!ids(k.saved().parked).includes("iOld") && ids(k.saved().parked).includes("iNew"), "and the idea archived more than 30 days ago, leaving the newer one");
+  ok(!ids(k.saved().quests).includes("pOld") && ids(k.saved().quests).includes("pNew"), "a 30-day threshold purges only the project vaulted more than 30 days ago");
+  ok(!ids(k.saved().workshop).includes("iOld") && ids(k.saved().workshop).includes("iNew"), "and the idea vaulted more than 30 days ago, leaving the newer one");
   ok(!ids(k.saved().tasks).includes("tOld"), "the purged project's own tasks go with it");
 }
 {

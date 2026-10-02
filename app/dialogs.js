@@ -189,11 +189,11 @@ export function ideaDialog(idea) {
   formDialog(idea ? "Edit idea" : "New idea", [
     { key: "text", label: "Idea", value: idea ? idea.text : undefined },
     { key: "note", label: "Note (optional)", type: "textarea", rows: 5, value: idea ? idea.note : undefined }
-  ], idea ? "Save idea" : "Add to parking lot", function (v) {
+  ], idea ? "Save idea" : "Add to Workshop", function (v) {
     if (!v.text) return "Enter the idea.";
     if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 5000); changed(); return { msg: "Idea saved." }; }
-    state.parked.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000) }); changed();
-    return { msg: "Added to the parking lot." };
+    state.workshop.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000) }); changed();
+    return { msg: "Added to the Workshop." };
   });
 }
 // prefill is a quest id or { step } (already chosen). A decision must
@@ -311,7 +311,7 @@ export function slipDialog(p) {
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push dates later" }, "Push dates later"), "click", function () {
       var n = parseInt(inp.value, 10);
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
-      var targets = state.tasks.filter(function (t) { return t.questId === p.id && !t.isNext && t.block > 0 && t.status !== "Completed" && !t.arch; });
+      var targets = state.tasks.filter(function (t) { return t.questId === p.id && !t.isNext && t.block > 0 && t.status !== "Completed" && !t.vault; });
       if (!targets.length) { err.textContent = "Nothing incomplete is scheduled to slip."; return; }
       var snap = targets.map(function (t) { return { id: t.id, block: t.block, start: t.start, due: t.due }; });
       targets.forEach(function (t) {

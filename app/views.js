@@ -1,4 +1,4 @@
-import { state, ui, save, changed, autoArchive, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, quest as makeQuest } from "./state.js";
+import { state, ui, save, changed, autoVault, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, quest as makeQuest } from "./state.js";
 import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart } from "./dates.js";
 import {
   WORDS, wd, wl, pset, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
@@ -102,19 +102,19 @@ export function sweepQuestCompletion() {
 }
 // Launch Critical is a property of the quest, not of one link.
 export function incompleteLaunchCriticalLinks(p) {
-  return linkedQuests(p).filter(function (lp) { return lp.launchCritical && lp.status !== "complete" && lp.status !== "archived" && !lp.arch; });
+  return linkedQuests(p).filter(function (lp) { return lp.launchCritical && lp.status !== "complete" && lp.status !== "archived" && !lp.vault; });
 }
-// Shared archive path for the Archive button, Mark complete, and the auto-sweep.
-export function archiveQuest(p) {
-  removeToArchive(p, "Quest", function () {
-    state.tasks.forEach(function (t) { if (t.questId === p.id && !t.arch) t.arch = { at: iso(TODAY), why: "removed" }; });
+// Shared vault path for the Vault button, Mark complete, and the auto-sweep.
+export function vaultQuest(p) {
+  removeToVault(p, "Quest", function () {
+    state.tasks.forEach(function (t) { if (t.questId === p.id && !t.vault) t.vault = { at: iso(TODAY), why: "removed" }; });
   });
 }
 // Builds the standalone read-only export and offers it for saving, same
 // fallback order as saveBackupFile(): the Claude downloads capability, then a
 // real Save As dialog, then a plain download. Scoped to Active/Complete
 // quests, matching where the button itself lives (see renderQuestPage())
-// -- Candidate and Archived export layouts are unscoped, left for a future
+// -- Candidate and vaulted export layouts are unscoped, left for a future
 // pass per the design brief.
 export function exportQuestForClient(p) {
   var snapshot = buildExportSnapshot(p);
@@ -141,20 +141,20 @@ export function exportQuestForClient(p) {
     notify(err && (err.code === "declined" || err.name === "AbortError") ? "Export canceled." : "The export could not be saved.");
   });
 }
-// Offers archiving now or leaving it in Quests. Launch-critical warning is soft, never blocking.
+// Offers vaulting now or leaving it in Quests. Launch-critical warning is soft, never blocking.
 export function completionDialog(p) {
   var warn = incompleteLaunchCriticalLinks(p);
   openModal("Quest complete", function (body) {
-    body.appendChild(el("p", { "class": "first" }, "“" + p.name + "” is marked complete. Archive it now, or leave it in Quests."));
+    body.appendChild(el("p", { "class": "first" }, "“" + p.name + "” is marked complete. Send it to the Vault now, or leave it in Quests."));
     var openTasks = questRemainingUnits(p);
     if (openTasks) body.appendChild(el("p", { "class": "hint" }, openTasks + (openTasks === 1 ? " open task is" : " open tasks are") + " no longer counted in the main burndown. Reopen the quest to count " + (openTasks === 1 ? "it" : "them") + " again."));
     if (warn.length) body.appendChild(el("p", { "class": "hint" }, "Launch-critical linked " + (warn.length === 1 ? "quest isn’t" : "quests aren’t") + " finished yet: " + warn.map(function (lp) { return lp.name; }).join(", ") + "."));
     var acts = el("div", { "class": "actions" });
     var leave = el("button", { type: "button", title: "Keep visible on Quests" }, "Leave in Quests");
-    var arch = el("button", { type: "button", "class": "dangerfill", title: "Archive right now" }, "Archive now");
+    var vault = el("button", { type: "button", "class": "dangerfill", title: "Send to the Vault right now" }, "Vault now");
     on(leave, "click", closeModal);
-    on(arch, "click", function () { closeModal(); archiveQuest(p); });
-    acts.appendChild(leave); acts.appendChild(arch); body.appendChild(acts);
+    on(vault, "click", function () { closeModal(); vaultQuest(p); });
+    acts.appendChild(leave); acts.appendChild(vault); body.appendChild(acts);
   });
 }
 export function burnParts(o) {
@@ -232,7 +232,7 @@ export function renderSchedule(root) {
   var hiddenNote = completeQuests().length ? el("p", { "class": "hint first" }, "Tasks from Complete quests are not listed here. Open a Complete quest's own page to see them.") : null;
   if (!o.length && !bl.length) {
     if (hiddenNote) root.appendChild(hiddenNote);
-    root.appendChild(el("p", { "class": "hint" + (hiddenNote ? "" : " first") }, counted().length ? "No open tasks. Completed tasks are in the Archive." : "No tasks yet. Use the + button to add one."));
+    root.appendChild(el("p", { "class": "hint" + (hiddenNote ? "" : " first") }, counted().length ? "No open tasks. Completed tasks are in the Vault." : "No tasks yet. Use the + button to add one."));
     return;
   }
   if (!ui.sel || !findTask(ui.sel)) { var nt = nextTask() || o[0] || bl[0]; ui.sel = nt.id; }
@@ -379,7 +379,7 @@ export function buildDetail(t, inline) {
 
 // Bidirectional link, not a subtask hierarchy. Lists p's own direct links only, one hop.
 export function linksSection(root, p) {
-  var readOnly = !!p.arch;
+  var readOnly = !!p.vault;
   var links = linkedQuests(p);
   var ul = el("ul", { "class": "list" });
   if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No linked quests."));
@@ -414,7 +414,7 @@ export function linksSection(root, p) {
 // Launch-critical items render as a section on a quest's own page, scoped
 // to that quest's tasks -- there's no separate standalone Launch page.
 export function launchSection(root, p) {
-  var readOnly = !!p.arch;
+  var readOnly = !!p.vault;
   var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h2", { "class": "sechead-h", id: "h-checks" }, "Before you launch"));
   if (!readOnly) ha.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a launch checklist item" }, "Add item"), "click", function () { stepDialog(true, p.id); }));
   root.appendChild(ha);
@@ -432,10 +432,10 @@ export function launchSection(root, p) {
   items.forEach(function (x) {
     var li = el("li", { "class": x.s.done ? "done" : "" });
     var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = x.s.done; box.disabled = readOnly;
-    on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); autoArchive(); sweepQuestCompletion(); recordHistory(); recordQuestHistory(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); });
+    on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); autoVault(); sweepQuestCompletion(); recordHistory(); recordQuestHistory(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); });
     label.appendChild(box); label.appendChild(el("span", null, x.s.text)); li.appendChild(label);
     var meta = el("div", { "class": "cnote" });
-    if (x.t.arch) meta.appendChild(document.createTextNode(short(dispWhat(x.t), 48) + " (archived)"));
+    if (x.t.vault) meta.appendChild(document.createTextNode(short(dispWhat(x.t), 48) + " (in the Vault)"));
     else meta.appendChild(on(el("button", { type: "button", "class": "textbtn", title: "View this task" }, short(dispWhat(x.t), 48)), "click", function () { showTaskInQuest(p, x.t); }));
     var dc = decisionFor(x.s.id);
     if (dc) meta.appendChild(document.createTextNode(" · Decision " + (dc.a ? "decided" : "open")));
@@ -493,7 +493,7 @@ export function pagesSection(excludeIds) {
 export function renderQuestPage(root, id) {
   var p = findQuest(id);
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Quest not found.")); return; }
-  var readOnly = !!p.arch;
+  var readOnly = !!p.vault;
   // Active/complete: two columns (page content left, Schedule/Timeline/Burndown right), stacked on a phone.
   var page = root, split = null;
   var metaLine = el("p", { "class": "hint" });
@@ -506,11 +506,11 @@ export function renderQuestPage(root, id) {
     split.appendChild(root); page.appendChild(split);
   } else {
     root.appendChild(metaLine);
-    if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
+    if (readOnly) root.appendChild(el("p", { "class": "hint" }, "In the Vault. Restore it to make changes."));
   }
 
   // A live candidate has no page -- edited via candidateDialog() instead.
-  // Archived candidates keep this read-only view (reachable from the Archive).
+  // Vaulted candidates keep this read-only view (reachable from the Vault).
   if (p.status === "candidate") {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
@@ -525,7 +525,7 @@ export function renderQuestPage(root, id) {
   metaRow.appendChild(metaLine);
   if (est.total > 0) metaRow.appendChild(el("span", { "class": "hint estleft" }, "Est. " + fmtHoursLong(est.left) + " remaining"));
   root.appendChild(metaRow);
-  if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
+  if (readOnly) root.appendChild(el("p", { "class": "hint" }, "In the Vault. Restore it to make changes."));
   else if (p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this quest is Complete. Reopen it to bring them back."));
   // orderedAll(), not ordered()/backlogTasks() -- a quest's own page must
   // keep showing its own tasks even while Complete, when those cross-quest
@@ -534,7 +534,7 @@ export function renderQuestPage(root, id) {
   if (ts.length) {
     var ul = el("ul", { "class": "tlist" });
     ts.forEach(function (t) {
-      // A live quest's task opens in place under its row; an archived quest's goes to the Tasks page.
+      // A live quest's task opens in place under its row; a vaulted quest's goes to the Tasks page.
       var open = !readOnly && ui.questOpen[p.id] === t.id;
       var li = el("li", { id: "ptask-" + t.id }), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
       if (!readOnly) b.setAttribute("aria-expanded", open ? "true" : "false");
@@ -589,10 +589,10 @@ export function renderQuestPage(root, id) {
         p.status = "active"; changed(); notify("Reopened.");
       }));
     }
-    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Archive this quest" }, "Archive"), "click", function () {
+    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Send this quest to the Vault" }, "Vault"), "click", function () {
       var warn = incompleteLaunchCriticalLinks(p);
-      if (warn.length) notify("Archiving even though " + (warn.length === 1 ? "a launch-critical linked quest isn’t" : "launch-critical linked quests aren’t") + " finished: " + warn.map(function (lp) { return lp.name; }).join(", ") + ".");
-      archiveQuest(p);
+      if (warn.length) notify("Sending to the Vault even though " + (warn.length === 1 ? "a launch-critical linked quest isn’t" : "launch-critical linked quests aren’t") + " finished: " + warn.map(function (lp) { return lp.name; }).join(", ") + ".");
+      vaultQuest(p);
     }));
     ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Export web page for client review" }, "Client Export"), "click", function () {
       exportQuestForClient(p);
@@ -604,7 +604,7 @@ export function renderQuestPage(root, id) {
 
 // On a quest's own page a task opens in place; the Tasks page is for the cross-quest list.
 function showTaskInQuest(p, t) {
-  if (p.arch) { openTask(t.id); return; }
+  if (p.vault) { openTask(t.id); return; }
   ui.questOpen[p.id] = t.id; renderView();
   var row = document.getElementById("ptask-" + t.id);
   if (row && row.scrollIntoView) row.scrollIntoView({ block: "nearest" });
@@ -716,7 +716,7 @@ export function standingBlock() {
 export function candidatesSection() {
   var sec = el("div");
   var hd = el("div", { "class": "sechead", style: "margin-top:28px" }); hd.appendChild(el("h2", null, "Candidates")); sec.appendChild(hd);
-  sec.appendChild(el("p", { "class": "hint" }, "Choose which quest gets the next slot. Use New quest in the menu, or make an idea in the Parking lot a candidate."));
+  sec.appendChild(el("p", { "class": "hint" }, "Choose which quest gets the next slot. Use New quest in the menu, or make an idea in the Workshop a candidate."));
   var list = el("ul", { "class": "list" });
   var cs = candidateQuests();
   if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a candidate."));
@@ -732,12 +732,12 @@ export function candidatesSection() {
     var pr = el("button", { type: "button", "class": "small", title: "Promote to quest" }, "Promote");
     on(pr, "click", function () { promoteToActive(cd.id); });
     acts.appendChild(pr);
-    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Move to the Parking lot" }, "Park it"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Move to the Workshop" }, "Park it"), "click", function () {
       state.quests = state.quests.filter(function (x) { return x.id !== cd.id; });
-      state.parked.push({ id: uid(), text: cd.name, note: cd.notes }); changed();
+      state.workshop.push({ id: uid(), text: cd.name, note: cd.notes }); changed();
     }));
-    var rm = el("button", { type: "button", "class": "small danger", title: "Archive this candidate" }, "Archive");
-    on(rm, "click", function () { removeToArchive(cd, "Quest"); });
+    var rm = el("button", { type: "button", "class": "small danger", title: "Send this candidate to the Vault" }, "Vault");
+    on(rm, "click", function () { removeToVault(cd, "Quest"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row);
     list.appendChild(li);
   });
@@ -750,13 +750,13 @@ export function renderQuests(root) {
   root.appendChild(pagesSection(standing.questIds));
   root.appendChild(candidatesSection());
 }
-export function renderParkingLot(root) {
+export function renderWorkshop(root) {
   root.appendChild(el("p", { "class": "hint first" }, "Ideas and waiting items that are not competing for the next slot."));
   var hd = el("div", { "class": "sechead" });
   hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add new idea" }, "Add idea"), "click", function () { ideaDialog(); })); root.appendChild(hd);
   var pl = el("ul", { "class": "list", style: "margin-top:12px" });
-  var ps = live(state.parked);
-  if (!ps.length) pl.appendChild(el("li", { "class": "hint" }, "Nothing parked."));
+  var ps = live(state.workshop);
+  if (!ps.length) pl.appendChild(el("li", { "class": "hint" }, "Nothing here."));
   ps.forEach(function (p) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nm = el("div", { style: "flex:1 1 200px" });
@@ -767,11 +767,11 @@ export function renderParkingLot(root) {
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make this a candidate quest" }, "Make candidate"), "click", function () {
-      state.parked = state.parked.filter(function (x) { return x.id !== p.id; });
+      state.workshop = state.workshop.filter(function (x) { return x.id !== p.id; });
       state.quests.push(makeQuest(uid(), p.text, "candidate", { notes: p.note })); changed();
     }));
-    var rm = el("button", { type: "button", "class": "small danger", title: "Archive this idea" }, "Archive");
-    on(rm, "click", function () { removeToArchive(p, "Idea"); });
+    var rm = el("button", { type: "button", "class": "small danger", title: "Send this idea to the Vault" }, "Vault");
+    on(rm, "click", function () { removeToVault(p, "Idea"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row); pl.appendChild(li);
   });
   root.appendChild(pl);
@@ -838,14 +838,14 @@ export function renderTimeline(root) {
   table.appendChild(body); wrap.appendChild(table); root.appendChild(wrap);
 }
 
-// Only Quests and Ideas archive independently -- see removeNow() for the rest.
-export function removeToArchive(item, label, before) {
+// Only Quests and Ideas go to the Vault independently -- see removeNow() for the rest.
+export function removeToVault(item, label, before) {
   if (before) before();
-  item.arch = { at: iso(TODAY), why: "removed" };
+  item.vault = { at: iso(TODAY), why: "removed" };
   changed();
-  notify(label + " moved to the Archive.", function () { item.arch = null; changed(); });
+  notify(label + " moved to the Vault.", function () { item.vault = null; changed(); });
 }
-// Immediate delete with a short-lived Undo toast, no Archive entry.
+// Immediate delete with a short-lived Undo toast, no Vault entry.
 export function removeNow(item, list, label) {
   var arr = state[list], idx = arr.indexOf(item);
   if (idx < 0) return;
@@ -853,21 +853,21 @@ export function removeNow(item, list, label) {
   notify(label + " removed.", function () { arr.splice(idx, 0, item); changed(); });
 }
 
-/* archive */
+/* vault */
 export var KIND_LABEL = { quest: "Quest", idea: "Idea" };
 export var KIND_FILTERS = [["all", "All"], ["quest", "Quests"], ["idea", "Ideas"]];
-export function archiveEntries() {
+export function vaultEntries() {
   var out = [];
-  state.quests.forEach(function (p) { if (p.arch) out.push({ kind: "quest", list: "quests", item: p, title: p.name }); });
-  state.parked.forEach(function (p) { if (p.arch) out.push({ kind: "idea", list: "parked", item: p, title: p.text }); });
-  return out.sort(function (a, b) { return a.item.arch.at < b.item.arch.at ? 1 : (a.item.arch.at > b.item.arch.at ? -1 : 0); });
+  state.quests.forEach(function (p) { if (p.vault) out.push({ kind: "quest", list: "quests", item: p, title: p.name }); });
+  state.workshop.forEach(function (p) { if (p.vault) out.push({ kind: "idea", list: "workshop", item: p, title: p.text }); });
+  return out.sort(function (a, b) { return a.item.vault.at < b.item.vault.at ? 1 : (a.item.vault.at > b.item.vault.at ? -1 : 0); });
 }
 export function dropEntry(e) { state[e.list] = state[e.list].filter(function (x) { return x !== e.item; }); }
 export function restoreEntry(e) {
-  e.item.arch = null;
-  // Reverses archiveQuest()'s task cascade, or the quest comes back empty.
+  e.item.vault = null;
+  // Reverses vaultQuest()'s task cascade, or the quest comes back empty.
   if (e.kind === "quest") {
-    state.tasks.forEach(function (t) { if (t.questId === e.item.id && t.arch) t.arch = null; });
+    state.tasks.forEach(function (t) { if (t.questId === e.item.id && t.vault) t.vault = null; });
   }
   changed(); notify(KIND_LABEL[e.kind] + " restored.");
 }
@@ -877,37 +877,37 @@ export function deleteForever(e) {
     dropEntry(e); save(); renderAll(); notify("Deleted.");
   });
 }
-export function emptyArchive() {
-  var all = archiveEntries();
-  confirmDialog("Empty the Archive?", all.length + (all.length === 1 ? " item" : " items") + " will be permanently deleted. This cannot be undone.", "Delete everything in the Archive", function () {
-    all.forEach(dropEntry); save(); renderAll(); notify("Archive emptied.");
+export function emptyVault() {
+  var all = vaultEntries();
+  confirmDialog("Empty the Vault?", all.length + (all.length === 1 ? " item" : " items") + " will be permanently deleted. This cannot be undone.", "Delete everything in the Vault", function () {
+    all.forEach(dropEntry); save(); renderAll(); notify("Vault emptied.");
   });
 }
-export function renderArchive(root) {
-  var all = archiveEntries(), filter = ui.archFilter || "all";
-  root.appendChild(el("p", { "class": "hint first" }, "Completed tasks and removed items live here. Restore puts an item back where it was. Deleting from the Archive is permanent."));
+export function renderVault(root) {
+  var all = vaultEntries(), filter = ui.vaultFilter || "all";
+  root.appendChild(el("p", { "class": "hint first" }, "Completed tasks and removed items live here. Restore puts an item back where it was. Deleting from the Vault is permanent."));
   var counts = { all: all.length }; all.forEach(function (e) { counts[e.kind] = (counts[e.kind] || 0) + 1; });
-  var chips = el("div", { "class": "chips", role: "group", "aria-label": "Filter the Archive" });
+  var chips = el("div", { "class": "chips", role: "group", "aria-label": "Filter the Vault" });
   KIND_FILTERS.forEach(function (f) {
     var b = el("button", { type: "button", "class": "chipbtn", "aria-pressed": filter === f[0] ? "true" : "false" }, f[1] + " (" + (counts[f[0]] || 0) + ")");
-    on(b, "click", function () { ui.archFilter = f[0]; renderView(); });
+    on(b, "click", function () { ui.vaultFilter = f[0]; renderView(); });
     chips.appendChild(b);
   });
   root.appendChild(chips);
   var shown = all.filter(function (e) { return filter === "all" || e.kind === filter; });
-  if (!shown.length) { root.appendChild(el("p", { "class": "hint" }, all.length ? "Nothing of that kind in the Archive." : "The Archive is empty. Completed tasks and removed items appear here.")); return; }
+  if (!shown.length) { root.appendChild(el("p", { "class": "hint" }, all.length ? "Nothing of that kind in the Vault." : "The Vault is empty. Completed tasks and removed items appear here.")); return; }
   var ul = el("ul", { "class": "list" });
   shown.forEach(function (e) {
     var li = el("li"), row = el("div", { "class": "crow", style: "align-items:center" });
     var info = el("div", { style: "flex:1 1 220px" });
-    // Quests link to their read-only archived page; Ideas have no page.
+    // Quests link to their read-only vaulted page; Ideas have no page.
     if (e.kind === "quest") {
       var tl = el("button", { type: "button", "class": "textbtn qlink", style: "font-weight:600", title: "View this quest" }, e.title);
       on(tl, "click", function () { go("quest:" + e.item.id); });
       info.appendChild(tl);
     } else info.appendChild(el("span", { style: "font-weight:600" }, e.title));
     info.appendChild(el("span", { "class": "chip", style: "margin-left:8px" }, KIND_LABEL[e.kind]));
-    info.appendChild(el("p", { "class": "hint", style: "margin-top:4px" }, (e.item.arch.why === "done" ? "Completed " : "Removed ") + fmtY(parseISO(e.item.arch.at))));
+    info.appendChild(el("p", { "class": "hint", style: "margin-top:4px" }, (e.item.vault.why === "done" ? "Completed " : "Removed ") + fmtY(parseISO(e.item.vault.at))));
     row.appendChild(info);
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Restore this " + e.kind }, "Restore"), "click", function () { restoreEntry(e); }));
@@ -915,7 +915,7 @@ export function renderArchive(root) {
     row.appendChild(acts); li.appendChild(row); ul.appendChild(li);
   });
   root.appendChild(ul);
-  root.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:16px" }, "Empty archive"), "click", emptyArchive));
+  root.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:16px" }, "Empty vault"), "click", emptyVault));
 }
 
 /* help */
@@ -958,16 +958,16 @@ export function helpTopics() {
       "**In progress** lists each active quest with its next task. Use **Pin** on a quest for quick access from the sidebar. Unpinning only hides it there.",
       "Below it, the Quests page lists any quest that is complete or has no tasks yet, under the heading Pending, Completed, or Pending & completed.",
       "**Client Export**, on an active or complete quest's page, downloads a single read-only web page with that quest's tasks, notes, and an interactive schedule and burndown, for sharing outside the app. A linked quest that is active or complete comes along too, with its own section."]],
-    ["Finish or archive a quest", [
-      "**Mark complete** on a quest's page marks it done, even with tasks still open. A quest also completes by itself once all its tasks are done. Either way, you can archive it right away or leave it in Quests.",
+    ["Finish or vault a quest", [
+      "**Mark complete** on a quest's page marks it done, even with tasks still open. A quest also completes by itself once all its tasks are done. Either way, you can send it to the Vault right away or leave it in Quests.",
       "A completed quest shows a **Complete** badge and drops out of In progress. Its tasks also leave Tasks, the main Timeline, Today, and the main burndown, though its own page still lists them. **Reopen** makes it active again and brings them back.",
-      "**Archive** puts a quest and its open tasks in the Archive. **Restore** brings all of it back."]],
+      "**Vault** puts a quest and its open tasks in the Vault. **Restore** brings all of it back."]],
     ["Link quests", [
       "**Linked quests**, on a quest's page, connects it to related quests. Choose **Link quest** and pick one. A link goes both ways.",
-      "**Mark launch critical** flags a linked quest that has to finish first. It shows on the other quest's Launch checklist, and counts as done once it is complete or archived. Completing or archiving a quest with an unfinished launch-critical link only warns you."]],
-    ["Use the Parking lot", [
-      "Ideas that are not ready yet live on the **Parking lot**. Add one with **Add idea**. Select an idea's title to open it and change its text or note.",
-      "**Make candidate** turns an idea into a quest candidate, and its note becomes the quest's **Notes**. **Park it** on a candidate sends the notes back. **Archive** sends an idea to the Archive."]],
+      "**Mark launch critical** flags a linked quest that has to finish first. It shows on the other quest's Launch checklist, and counts as done once it is complete or in the Vault. Completing a quest or sending it to the Vault with an unfinished launch-critical link only warns you."]],
+    ["Use the Workshop", [
+      "Ideas that are not ready yet live in the **Workshop**. Add one with **Add idea**. Select an idea's title to open it and change its text or note.",
+      "**Make candidate** turns an idea into a quest candidate, and its note becomes the quest's **Notes**. **Park it** on a candidate sends the notes back. **Vault** sends an idea to the Vault."]],
     ["Read the Timeline", [
       "Every quest gets a lane. A light bar is an estimate you set on the quest's page. It is not a promise.",
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline. Select a diamond, or a milestone's text in the list, to change its quest, text, or date, or to remove it.",
@@ -977,17 +977,17 @@ export function helpTopics() {
       "On any task, use the pencil beside a step to rename it, put it on that quest's own **Launch** section, or remove it. A step on the checklist shows a **Launch** tag. Ticking it there or in **Tasks** keeps both in sync.",
       "A decision belongs to one step. Select **Add decision** beside a step to write down what you need to settle. Select the decision tag to answer it, change it, or remove it. Answering it ticks the step, and clearing the answer unticks it.",
       "Use **Add item** on a quest's Launch section to create a new step for the list."]],
-    ["Archive and undo", [
-      "Only **Quests** and **Ideas** go to the **Archive**, using their **Archive** button. A completed task just stays visible in its quest, marked done.",
+    ["The Vault and undo", [
+      "Only **Quests** and **Ideas** go to the **Vault**, using their **Vault** button. A completed task just stays visible in its quest, marked done.",
       "**Delete** on a task, or **Remove** on a decision or milestone, deletes it right away, with a short **Undo** in case you didn't mean to.",
-      "In the Archive, select a quest's name to look at it. **Restore** puts a quest or idea back, and a quest's tasks with it. **Delete forever** always asks first, and it cannot be undone."]],
+      "In the Vault, select a quest's name to look at it. **Restore** puts a quest or idea back, and a quest's tasks with it. **Delete forever** always asks first, and it cannot be undone."]],
     ["Slip a quest's schedule", [
       "On a quest's own page, above the Timeline, choose **Slip schedule**. Pick the number of days and choose **Push dates later**, and its still-incomplete tasks move later by that many days. Completed tasks and the Backlog are not affected.",
       "**Undo last slip** in the same dialog reverses it."]],
     ["Settings, backup, and starting over", [
       "In **Settings**, set the default length of a stretch of work in days, what to call it (Block, Sprint, and so on), the date format, the theme, and whether the splash screen plays when the app opens.",
       "Everything is saved in this browser only. Under **Backup and restore**, **Save backup** lets you choose where to put a backup file, and **Restore backup** loads one back after warning you that it replaces everything. You get a few seconds to undo a restore. After two weeks without a backup, Today adds a quiet reminder.",
-      "Under **Archive**, you can set items to delete automatically after 7, 30, 60, or 90 days, counted from when each one was archived, or leave it set to Never. This is checked each time Sidequest opens, and there's no further warning once it's turned on.",
+      "Under **Vault**, you can set items to delete automatically after 7, 30, 60, or 90 days, counted from when each one was vaulted, or leave it set to Never. This is checked each time Sidequest opens, and there's no further warning once it's turned on.",
       "**Start fresh** erases everything after a warning. Save a backup first. You can begin empty or with the starting quests."]]
   ];
 }
@@ -1010,13 +1010,13 @@ export function renderHelp(root) {
 /* settings */
 export function blankState() {
   var d = defaults();
-  d.tasks = []; d.decisions = []; d.quests = []; d.parked = []; d.milestones = []; d.pins = []; d.lastSlip = null;
+  d.tasks = []; d.decisions = []; d.quests = []; d.workshop = []; d.milestones = []; d.pins = []; d.lastSlip = null;
   d.start = iso(TODAY); d.days = state.days; d.settings = state.settings;
   return d;
 }
 export function startFreshDialog() {
   openModal("Start fresh", function (body) {
-    body.appendChild(el("p", { "class": "first" }, "Start fresh erases every task, quest, decision, note, milestone, and everything in the Archive stored in this browser. This cannot be undone."));
+    body.appendChild(el("p", { "class": "first" }, "Start fresh erases every task, quest, decision, note, milestone, and everything in the Vault stored in this browser. This cannot be undone."));
     body.appendChild(el("p", { "class": "hint" }, "Save a backup first if you might want anything back."));
     var msg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
     backupControls(body, msg); body.appendChild(msg);
@@ -1035,7 +1035,7 @@ export function startFreshDialog() {
     on(go1, "click", function () {
       var keep = state.settings; keep.hideWelcome = true;
       if (picked === "original") { setState(defaults()); state.settings = keep; } else { setState(blankState()); }
-      ui.sel = null; ui.detail = false; ui.archFilter = "all"; applyTheme(); save(); closeModal(); go("today"); notify("Started fresh.");
+      ui.sel = null; ui.detail = false; ui.vaultFilter = "all"; applyTheme(); save(); closeModal(); go("today"); notify("Started fresh.");
     });
     acts.appendChild(on(el("button", { type: "button", title: "Cancel" }, "Cancel"), "click", closeModal)); acts.appendChild(go1); body.appendChild(acts);
   });
@@ -1080,16 +1080,16 @@ export function renderSettings(root) {
   root.appendChild(ag);
   root.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device's own format. Nothing here uses a time of day yet."));
 
-  root.appendChild(el("h2", null, "Archive"));
-  root.appendChild(el("p", { "class": "hint" }, "Removing a quest or an idea sends it to the Archive. A completed task just stays visible in its quest."));
+  root.appendChild(el("h2", null, "Vault"));
+  root.appendChild(el("p", { "class": "hint" }, "Removing a quest or an idea sends it to the Vault. A completed task just stays visible in its quest."));
   var pg = el("div", { "class": "setgrid" });
   var pw = el("div", { "class": "field" }); pw.appendChild(el("label", { "for": "set-purge" }, "Auto-delete items after"));
   var ps = el("select", { id: "set-purge", "class": "plain" });
-  [[0, "Never"], [7, "7 days"], [30, "30 days"], [60, "60 days"], [90, "90 days"]].forEach(function (o) { var op = el("option", { value: String(o[0]) }, o[1]); if (o[0] === state.settings.archivePurgeDays) op.selected = true; ps.appendChild(op); });
-  on(ps, "change", function () { state.settings.archivePurgeDays = parseInt(ps.value, 10); changed(); });
+  [[0, "Never"], [7, "7 days"], [30, "30 days"], [60, "60 days"], [90, "90 days"]].forEach(function (o) { var op = el("option", { value: String(o[0]) }, o[1]); if (o[0] === state.settings.vaultPurgeDays) op.selected = true; ps.appendChild(op); });
+  on(ps, "change", function () { state.settings.vaultPurgeDays = parseInt(ps.value, 10); changed(); });
   pw.appendChild(ps); pg.appendChild(pw);
   root.appendChild(pg);
-  if (state.settings.archivePurgeDays) root.appendChild(el("p", { "class": "hint" }, "Checked each time Sidequest opens. An item older than this, counted from when it was archived, is deleted permanently with no further warning."));
+  if (state.settings.vaultPurgeDays) root.appendChild(el("p", { "class": "hint" }, "Checked each time Sidequest opens. An item older than this, counted from when it was vaulted, is deleted permanently with no further warning."));
 
   root.appendChild(el("h2", null, "Backup and restore"));
   backupPanel(root);
