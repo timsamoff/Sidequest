@@ -164,6 +164,17 @@ export function renderToday(root) {
   g.put(el("h2", null, "Next up"), 1, 1); g.put(nextUpPanel(), 1, 2); g.put(overduePanel(), 1, 3);
   g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(b.count, 2, 3);
   root.appendChild(g);
+  if (backupReminderDue()) root.appendChild(backupReminder());
+}
+// A quiet note once it has been two weeks without a backup, with the button right there.
+function backupReminder() {
+  var n = daysSinceBackup(), box = el("div", { "class": "box", style: "margin-top:22px" });
+  box.appendChild(el("p", { "class": "first" }, state.settings.lastBackup ? "It has been " + n + " days since your last backup." : "You have used Sidequest for " + n + " days without saving a backup."));
+  box.appendChild(el("p", { "class": "hint" }, "Your data lives only in this browser on this device. A backup file protects it if the browser's data is ever cleared."));
+  var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
+  backupControls(box, msg, function () { box.remove(); notify("Backup saved."); });
+  box.appendChild(msg);
+  return box;
 }
 
 export function taskRow(t) {
@@ -935,7 +946,7 @@ export function helpTopics() {
       "**Undo last slip** in the same dialog reverses it."]],
     ["Settings, backup, and starting over", [
       "In **Settings**, set the default start date and pace, what to call a stretch of work (Block, Sprint, and so on), the date format, the theme, and whether the splash screen plays when the app opens.",
-      "Everything is saved in this browser only. Under **Backup and restore**, **Save backup** lets you choose where to put a backup file, and **Restore backup** loads one back after warning you that it replaces everything. You get a few seconds to undo a restore.",
+      "Everything is saved in this browser only. Under **Backup and restore**, **Save backup** lets you choose where to put a backup file, and **Restore backup** loads one back after warning you that it replaces everything. You get a few seconds to undo a restore. After two weeks without a backup, Today adds a quiet reminder.",
       "**Start fresh** erases everything after a warning. Save a backup first. You can begin empty or with the starting projects."]]
   ];
 }
@@ -1061,21 +1072,42 @@ try {
     downloadsReady = window.claude.use("downloads").then(function (d) { downloads = d; return d; }).catch(function () { return null; });
   }
 } catch (e) { /* unavailable */ }
-export function backupJSON() { return JSON.stringify(state, null, 2); }
-function saveBackupFile(msg) {
+// The file records today as its own backup date, so restoring from it starts the reminder fresh.
+export function backupJSON() {
+  return JSON.stringify(Object.assign({}, state, { settings: Object.assign({}, state.settings, { lastBackup: iso(TODAY) }) }), null, 2);
+}
+var BACKUP_REMIND_DAYS = 14;
+// Whole days since the last backup, or since this browser started using Sidequest if there has been none.
+function daysSinceBackup() {
+  return Math.max(0, Math.round((TODAY - parseISO(state.settings.lastBackup || state.settings.since)) / DAY));
+}
+// The Claude version keeps its data in its own db, so only the web app nags.
+function backupReminderDue() {
+  var inClaude = false;
+  try { inClaude = !!(window.claude && typeof window.claude.use === "function"); } catch (e) { inClaude = false; }
+  return !inClaude && daysSinceBackup() >= BACKUP_REMIND_DAYS;
+}
+function lastBackupText() {
+  var lb = state.settings.lastBackup;
+  if (!lb) return "No backup saved yet.";
+  var n = Math.max(0, Math.round((TODAY - parseISO(lb)) / DAY));
+  return "Last backup: " + fmtY(parseISO(lb)) + " (" + (n === 0 ? "today" : n === 1 ? "yesterday" : n + " days ago") + ").";
+}
+function saveBackupFile(msg, onDone) {
   var name = "sidequest-backup-" + iso(TODAY) + ".json", text = backupJSON();
+  function saved(note) { state.settings.lastBackup = iso(TODAY); save(); msg.textContent = note; if (onDone) onDone(); }
   downloadsReady.then(function (d) {
-    if (d) return d.save({ filename: name, data: text }).then(function () { msg.textContent = "Backup saved."; });
+    if (d) return d.save({ filename: name, data: text }).then(function () { saved("Backup saved."); });
     if (typeof window.showSaveFilePicker === "function") {
       return window.showSaveFilePicker({ suggestedName: name, types: [{ description: "Sidequest backup", accept: { "application/json": [".json"] } }] })
         .then(function (h) { return h.createWritable(); })
         .then(function (w) { return w.write(text).then(function () { return w.close(); }); })
-        .then(function () { msg.textContent = "Backup saved."; });
+        .then(function () { saved("Backup saved."); });
     }
     var a = document.createElement("a"), url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
     a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-    msg.textContent = "Backup downloaded.";
+    saved("Backup downloaded.");
   }).catch(function (err) {
     msg.textContent = err && (err.code === "declined" || err.name === "AbortError") ? "Save cancelled." : "The backup could not be saved.";
   });
@@ -1101,21 +1133,22 @@ function restoreBackupFile(file, msg) {
   r.readAsText(file);
 }
 // The Save backup button, alone (the Start fresh dialog uses it); returns its row of buttons.
-export function backupControls(host, msg) {
+export function backupControls(host, msg, onDone) {
   var acts = el("div", { "class": "actions" });
-  acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "saveFile", title: "Choose where to save a backup file" }, "Save backup"), "click", function () { saveBackupFile(msg); }));
+  acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "saveFile", title: "Choose where to save a backup file" }, "Save backup"), "click", function () { saveBackupFile(msg, onDone); }));
   host.appendChild(acts);
   return acts;
 }
 export function backupPanel(root) {
   root.appendChild(el("p", { "class": "hint" }, "Everything is saved in this browser on this device only. Save a backup now and then, and keep the file somewhere safe."));
-  var msg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
-  var acts = backupControls(root, msg);
+  var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
+  var last = el("p", { "class": "hint" }, lastBackupText());
+  var acts = backupControls(root, msg, function () { last.textContent = lastBackupText(); });
   var file = el("input", { type: "file", id: "restoreFile", accept: ".json,application/json", hidden: "hidden", "aria-label": "Choose a backup file to restore" });
   acts.appendChild(on(el("button", { type: "button", id: "restoreBtn", title: "Choose a backup file to restore" }, "Restore backup"), "click", function () { file.click(); }));
   on(file, "change", function () {
     var f = file.files && file.files[0]; if (!f) return;
     restoreBackupFile(f, msg); file.value = "";
   });
-  root.appendChild(file); root.appendChild(msg);
+  root.appendChild(last); root.appendChild(file); root.appendChild(msg);
 }

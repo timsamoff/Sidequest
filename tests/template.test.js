@@ -905,6 +905,47 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.d.querySelector(".detailpane select.status").getAttribute("data-v") === "Not started" && [...k.d.querySelectorAll(".listpane .chip")].some(c => c.getAttribute("data-v") === "Not started"), "the status pull-down and chips carry the status the colours key off");
 }
 {
+  // the backup reminder: remembered in settings, quiet until two weeks have passed, web app only
+  const dd = new Date(), n0 = Date.UTC(dd.getFullYear(), dd.getMonth(), dd.getDate()), iso = k => new Date(n0 + k * 86400000).toISOString().slice(0, 10);
+  const stub = (k) => { let written = null; k.w.showSaveFilePicker = () => Promise.resolve({ createWritable: () => Promise.resolve({ write: (t) => { written = t; return Promise.resolve(); }, close: () => Promise.resolve() }) }); return () => written; };
+  const wait = () => new Promise(r => setTimeout(r, 30));
+  {
+    const k = kit(await mk());
+    ok(k.saved().settings.since === iso(0) && k.saved().settings.lastBackup === "", "a fresh browser records when it started and has no backup yet");
+    ok(!k.$("view").textContent.includes("without saving a backup") && !k.$("view").textContent.includes("since your last backup"), "and Today stays quiet");
+    k.click(k.$("welcomeDismiss"));
+    k.tab("settings");
+    ok(k.$("view").textContent.includes("No backup saved yet."), "Settings says no backup has been saved");
+    const got = stub(k);
+    k.click(k.$("saveFile")); await wait();
+    ok(k.saved().settings.lastBackup === iso(0) && JSON.parse(got()).settings.lastBackup === iso(0), "Save backup records today, in the saved data and in the file itself");
+    ok(k.$("view").textContent.includes("(today)"), "and the Settings line updates at once");
+  }
+  {
+    const k = kit(await mk({ settings: { hideWelcome: true, since: iso(-20) } }));
+    ok(k.$("view").textContent.includes("You have used Sidequest for 20 days without saving a backup."), "with no backup after 20 days, Today says so");
+    const got = stub(k);
+    k.click(k.btn(k.$("view"), "Save backup")); await wait();
+    ok(!k.$("view").textContent.includes("without saving a backup") && k.saved().settings.lastBackup === iso(0) && !!got(), "its Save backup button saves right there and the note goes away");
+  }
+  {
+    const k = kit(await mk({ settings: { hideWelcome: true, since: iso(-100), lastBackup: iso(-15) } }));
+    ok(k.$("view").textContent.includes("It has been 15 days since your last backup."), "a backup 15 days old is reminded about");
+    global.window.claude = { use: () => Promise.resolve(null) };
+    k.tab("projects"); k.tab("today");
+    ok(k.$("viewTitle").textContent === "Today" && !k.$("view").textContent.includes("since your last backup"), "the Claude version never shows the reminder");
+    delete global.window.claude;
+  }
+  {
+    const k = kit(await mk({ settings: { hideWelcome: true, since: iso(-100), lastBackup: iso(-3) } }));
+    ok(!k.$("view").textContent.includes("since your last backup"), "a backup 3 days old is not reminded about");
+  }
+  {
+    const k = kit(await mk({ settings: { lastBackup: "yesterday", since: "long ago" } }));
+    ok(k.saved().settings.lastBackup === "" && k.saved().settings.since === iso(0), "malformed dates in saved settings fall back to the defaults");
+  }
+}
+{
   // saved history is validated on load, and the old step-count snapshots are not carried over
   const saved = { actual: [34, 31, 25, null, null, null, null], hist: { "2026-09-14": [12, 5], bad: [1, 1], "2026-09-21": [3, 9], "2026-09-28": "x", "2026-09-29": [5, -1] }, projects: [{ id: "pV", name: "Snap", status: "active", actual: { "2026-09-14": 12 }, hist: { "2026-09-14": [12, 5], bad: [1, 1], "2026-09-21": [3, 9], "2026-09-28": "x", "2026-09-29": [5, -1] } }], tasks: [] };
   const k = kit(await mk(saved));

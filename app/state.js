@@ -121,7 +121,7 @@ export function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, projects: d.projects, parked: d.parked,
     milestones: d.milestones, pins: ["proj:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY) }
   };
 }
 
@@ -240,6 +240,8 @@ export function normalize(s) {
     if (["Block", "Sprint", "Iteration", "Phase", "Week"].indexOf(s.settings.blockWord) >= 0) d.settings.blockWord = s.settings.blockWord;
     if (typeof s.settings.hideWelcome === "boolean") d.settings.hideWelcome = s.settings.hideWelcome;
     if (typeof s.settings.showSplash === "boolean") d.settings.showSplash = s.settings.showSplash;
+    if (isISO(s.settings.lastBackup)) d.settings.lastBackup = s.settings.lastBackup;
+    if (isISO(s.settings.since)) d.settings.since = s.settings.since;
   }
   if (Array.isArray(s.pins)) d.pins = s.pins.filter(function (k) { return typeof k === "string" && k.length < 130; }).slice(0, 30);
   return d;
