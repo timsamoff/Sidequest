@@ -27,10 +27,11 @@ const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 register(pathToFileURL(path.join(__dirname, "isolate-loader.mjs")));
 
 let counter = 0;
-async function mk(saved, claude) {
+async function mk(saved, claude, stamp) {
   const dom = new JSDOM(html, { url: "https://example.test/", pretendToBeVisual: true });
   dom.window.scrollTo = () => {};
-  if (claude) dom.window.claude = claude;
+  if (claude) dom.window.claude = claude;
+  if (stamp) dom.window.localStorage.setItem("sidequest-template-v1-saved-at", stamp);
   if (saved) dom.window.localStorage.setItem("sidequest-template-v1", JSON.stringify(saved));
   global.window = dom.window;
   global.document = dom.window.document;
@@ -991,6 +992,41 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     const k = kit(await mk(null, f.claude)); await wait();
     k.tab("settings"); k.click(k.$("saveFile")); await wait();
     ok(k.$("view").textContent.includes("Save cancelled.") && k.$("view").textContent.includes("No backup saved yet."), "if the viewer declines, nothing is recorded as saved");
+  }
+  // newest save wins when the db and this device disagree
+  const T1 = "2026-10-01T10:00:00.000Z", T2 = "2026-10-01T12:00:00.000Z";
+  const withName = (nm) => { const o = JSON.parse(JSON.stringify(base)); o.projects.find(p => p.id === "pApp").name = nm; return o; };
+  const shown = (k, nm) => [...k.d.querySelectorAll("#nav .tab")].some(t => t.textContent === nm);
+  {
+    // this device saved later but its db writes failed: keep the local copy and push it up
+    const f = fake({ "state/main": { json: JSON.stringify(withName("OLD DB")), savedAt: T1 } });
+    const k = kit(await mk(withName("LOCAL EDIT"), f.claude, T2)); await wait();
+    ok(shown(k, "LOCAL EDIT") && named(f.store) === "LOCAL EDIT" && f.store["state/main"].savedAt >= T2, "a newer local copy is kept and pushed to the db instead of being replaced by the db's older one");
+  }
+  {
+    // the db was saved later (another device): it wins, and this device adopts its stamp
+    const f = fake({ "state/main": { json: JSON.stringify(withName("DB EDIT")), savedAt: T2 } });
+    const k = kit(await mk(withName("OLD LOCAL"), f.claude, T1)); await wait();
+    ok(shown(k, "DB EDIT") && named(f.store) === "DB EDIT" && k.w.localStorage.getItem("sidequest-template-v1-saved-at") === T2, "a newer db copy replaces an older local one, and the stamp is adopted");
+  }
+  {
+    // the very same save on both sides: nothing to read back and nothing to write
+    const f = fake({ "state/main": { json: JSON.stringify(withName("SAME")), savedAt: T2 } });
+    const k = kit(await mk(withName("SAME"), f.claude, T2)); await wait();
+    ok(f.log.join(",") === "get" && shown(k, "SAME"), "the same save on both sides causes no swap and no write (" + f.log.join(",") + ")");
+  }
+  {
+    // an ordinary edit after loading moves the db's stamp forward
+    const f = fake({ "state/main": { json: JSON.stringify(withName("DB EDIT")), savedAt: T1 } });
+    const k = kit(await mk(null, f.claude)); await wait();
+    k.tab("settings"); k.click(k.$("saveFile")); await wait();
+    ok(f.store["state/main"].savedAt > T1 && JSON.parse(f.store["state/main"].json).settings.lastBackup, "an edit after loading is written with a newer stamp");
+  }
+  {
+    // an old db document with no stamp at all: the db still wins, as before
+    const f = fake({ "state/main": { json: JSON.stringify(withName("UNSTAMPED DB")) } });
+    const k = kit(await mk(withName("LOCAL"), f.claude, T2)); await wait();
+    ok(shown(k, "UNSTAMPED DB"), "a db document from before stamps existed is trusted, as it always was");
   }
 }
 {

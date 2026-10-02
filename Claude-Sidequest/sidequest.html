@@ -1229,7 +1229,7 @@ function dbSave(rawState) {
   if (!dbReadDone || dbWriteInFlight) { dbWritePending = true; return; }
   getDb().then(function (db) {
     if (!db) return; // no db in this view: localStorage (below) is already the real save
-    dbWriteInFlight = db.doc("state/main").set({ json: JSON.stringify(rawState) })
+    dbWriteInFlight = db.doc("state/main").set({ json: JSON.stringify(rawState), savedAt: localSavedAt })
       .catch(function () { /* transient store error: localStorage already has this save; next change retries */ })
       .then(function () {
         dbWriteInFlight = null;
@@ -1246,9 +1246,25 @@ function load() {
   return defaults();
 }
 var state = load();
+// When this device's data last really changed, kept beside the state (not in it, so backups
+// are unchanged). bootSavedAt is what an earlier session left, read before this boot saves
+// anything: it is what gets compared with the db's stamp, so a fresh device (no stamp)
+// can never look newer than the db, and a boot that changes nothing never refreshes it.
+var SAVED_AT_KEY = KEY2 + "-saved-at";
+function readSavedAt() { try { return window.localStorage.getItem(SAVED_AT_KEY) || ""; } catch (e) { return ""; } }
+var bootSavedAt = readSavedAt(), localSavedAt = bootSavedAt, savesSeen = 0, editedAfterBoot = false;
+function writeLocal(json, stamp) {
+  try { window.localStorage.setItem(KEY2, json); window.localStorage.setItem(SAVED_AT_KEY, stamp); } catch (e) { /* ignore */ }
+}
 function setState(newState) { state = newState; }
 function save() {
-  try { window.localStorage.setItem(KEY2, JSON.stringify(state)); } catch (e) { /* ignore */ }
+  var json = JSON.stringify(state), prev = null;
+  try { prev = window.localStorage.getItem(KEY2); } catch (e) { prev = null; }
+  var changed = json !== prev;
+  if (changed || !localSavedAt) localSavedAt = new Date().toISOString(); // only a real change moves the stamp
+  if (changed && savesSeen > 0) editedAfterBoot = true; // the first save is the boot's own, not an edit
+  savesSeen++;
+  writeLocal(json, localSavedAt);
   dbSave(state);
 }
 
@@ -1265,9 +1281,17 @@ function loadFromDbIfAvailable() {
       // A document that exists but cannot be parsed is treated as unreadable, never overwritten.
       if (data && typeof data.json === "string") parsed = JSON.parse(data.json);
       dbReadDone = true; dbWritePending = false;
-      if (parsed) { state = normalize(parsed); return true; }
-      dbSave(state); // the db holds nothing yet: this device's data seeds it
-      return false;
+      if (!parsed) { dbSave(state); return false; } // the db holds nothing yet: this device's data seeds it
+      var dbAt = typeof data.savedAt === "string" ? data.savedAt : "";
+      var mine = editedAfterBoot ? localSavedAt : bootSavedAt; // edits since boot (a retry after a failed read) count
+      // Newest save wins. This device's writes to the db can fail while it still saves locally,
+      // so a newer local copy is kept and pushed up rather than replaced by the db's older one.
+      if (mine && dbAt && mine > dbAt) { dbSave(state); return false; }
+      if (mine && mine === dbAt) return false; // the very same save: nothing to do
+      state = normalize(parsed);
+      localSavedAt = dbAt || localSavedAt;
+      writeLocal(JSON.stringify(state), localSavedAt); // so the save that follows sees no change
+      return true;
     }).catch(function () {
       // Could not read it, so what it holds is unknown: stay local-only and try again shortly.
       if (dbLoadTries++ < 3) setTimeout(function () { loadFromDbIfAvailable().then(function (swapped) { if (swapped) { autoArchive(); save(); renderAll(); } }); }, 2500 * dbLoadTries);
