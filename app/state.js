@@ -121,7 +121,7 @@ export function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop,
     milestones: d.milestones, pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0 }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" } }
   };
 }
 
@@ -256,6 +256,10 @@ export function normalize(s) {
     // vaultPurgeDays used to be called archivePurgeDays; read whichever is present.
     var rawPurge = [0, 7, 30, 60, 90].indexOf(s.settings.vaultPurgeDays) >= 0 ? s.settings.vaultPurgeDays : s.settings.archivePurgeDays;
     if ([0, 7, 30, 60, 90].indexOf(rawPurge) >= 0) d.settings.vaultPurgeDays = rawPurge;
+    if (s.settings.contact && typeof s.settings.contact === "object") {
+      var c = s.settings.contact;
+      d.settings.contact = { name: S(c.name, 200), company: S(c.company, 200), phone: S(c.phone, 200), email: S(c.email, 200), address: S(c.address, 500), website: S(c.website, 200) };
+    }
   }
   // Pins used to route to a quest's page via "proj:" + id; migrate any saved
   // pin to "quest:" + id so an old sidebar pin keeps working after the rename.

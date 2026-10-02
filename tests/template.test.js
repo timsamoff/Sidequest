@@ -1361,6 +1361,27 @@ async function exportClick(k, projectName) {
   const k = kit(await mk(saved));
   ok(k.saved().quests.some(p => p.id === "pOld"), "Never (0) leaves even a very old archived project in place");
 }
+{
+  // Contact info in Settings: saves, round-trips, and only prints on an
+  // export when at least one field is filled in.
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.tab("settings");
+  k.$("set-contact-name").value = "Ada Lovelace"; k.fire(k.$("set-contact-name"), "blur");
+  k.$("set-contact-company").value = "Analytical Engines Co."; k.fire(k.$("set-contact-company"), "blur");
+  k.$("set-contact-email").value = "ada@example.com"; k.fire(k.$("set-contact-email"), "blur");
+  const c = k.saved().settings.contact;
+  ok(c.name === "Ada Lovelace" && c.company === "Analytical Engines Co." && c.email === "ada@example.com" && c.phone === "" && c.address === "" && c.website === "", "contact fields save individually, blank ones stay blank");
+  const { html } = await exportClick(k, "Sample App");
+  ok(html.includes("Ada Lovelace") && html.includes("Analytical Engines Co.") && html.includes("ada@example.com"), "filled-in contact fields print on the export");
+  ok(!html.includes('<div class="econtactaddr">'), "an empty field (address) is not printed, even as an empty block");
+}
+{
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  const { html } = await exportClick(k, "Sample App");
+  ok(!html.includes('class="econtact"'), "with no contact info filled in at all, no contact block is printed");
+}
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

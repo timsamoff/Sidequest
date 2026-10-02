@@ -957,7 +957,7 @@ export function helpTopics() {
       "**Candidates** are quests that could take the next slot. Select one to edit its notes, start date, due date, and block length in a dialog, then use **Promote** to start it. Add a candidate with **New quest** in the **+** menu, or turn an idea into one with **Make candidate**.",
       "**In progress** lists each active quest with its next task. Use **Pin** on a quest for quick access from the sidebar. Unpinning only hides it there.",
       "Below it, the Quests page lists any quest that is complete or has no tasks yet, under the heading Pending, Completed, or Pending & completed.",
-      "**Client Export**, on an active or complete quest's page, downloads a single read-only web page with that quest's tasks, notes, and an interactive schedule and burndown, for sharing outside the app. A linked quest that is active or complete comes along too, with its own section."]],
+      "**Client Export**, on an active or complete quest's page, downloads a single read-only web page with that quest's tasks, notes, and an interactive schedule and burndown, for sharing outside the app. A linked quest that is active or complete comes along too, with its own section. If you filled in **Your contact info** in Settings, it prints at the top."]],
     ["Finish or vault a quest", [
       "**Mark complete** on a quest's page marks it done, even with tasks still open. A quest also completes by itself once all its tasks are done. Either way, you can send it to the Vault right away or leave it in Quests.",
       "A completed quest shows a **Complete** badge and drops out of In progress. Its tasks also leave Tasks, the main Timeline, Today, and the main burndown, though its own page still lists them. **Reopen** makes it active again and brings them back.",
@@ -1040,7 +1040,35 @@ export function startFreshDialog() {
     acts.appendChild(on(el("button", { type: "button", title: "Cancel" }, "Cancel"), "click", closeModal)); acts.appendChild(go1); body.appendChild(acts);
   });
 }
-export function renderSettings(root) {
+export function renderSettings(page) {
+  // Split like a quest's own page, but the side panel comes FIRST in DOM
+  // order so it stacks above the main settings on a phone, not below --
+  // the opposite of .questsplit, where the charts column trails.
+  var split = el("div", { "class": "setsplit" });
+  var side = el("aside", { "class": "setside" });
+  var root = el("div", { "class": "setmain" });
+  split.appendChild(side); split.appendChild(root); page.appendChild(split);
+  side.appendChild(el("h2", { "class": "first" }, "Your contact info"));
+  side.appendChild(el("p", { "class": "hint" }, "Optional. Anything filled in here prints on a Client Export."));
+  var cg = el("div", { "class": "setgrid" });
+  function cfield(key, id, label, type) {
+    var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label));
+    var inp = el("input", { type: type || "text", id: id });
+    inp.value = state.settings.contact[key];
+    on(inp, "blur", function () { state.settings.contact[key] = inp.value.slice(0, 200); save(); });
+    w.appendChild(inp); cg.appendChild(w);
+  }
+  cfield("name", "set-contact-name", "Name");
+  cfield("company", "set-contact-company", "Company");
+  cfield("phone", "set-contact-phone", "Phone", "tel");
+  cfield("email", "set-contact-email", "Email", "email");
+  cfield("website", "set-contact-website", "Website", "url");
+  side.appendChild(cg);
+  var aw = el("div", { "class": "field" }); aw.appendChild(el("label", { "for": "set-contact-address" }, "Address"));
+  var addr = el("textarea", { id: "set-contact-address", rows: 3 }); addr.value = state.settings.contact.address;
+  on(addr, "blur", function () { state.settings.contact.address = addr.value.slice(0, 500); save(); });
+  aw.appendChild(addr); side.appendChild(aw);
+
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   root.appendChild(el("h2", { "class": "first" }, "Schedule defaults"));
   root.appendChild(el("p", { "class": "hint" }, "Each quest sets its own start date on its page. This is the default " + wl() + " length for any quest that hasn't set its own."));

@@ -357,6 +357,8 @@ tbody tr:last-child td { border-bottom: 0; }
 /* Page content on the left, Schedule/Timeline/Burndown on the right as one continuous flow. */
 .questsplit { display: block; }
 .questmain, .questcharts { min-width: 0; }
+.setsplit { display: block; }
+.setmain, .setside { min-width: 0; }
 /* Reserves no space until there's an error, so an empty message doesn't push Timeline down. */
 .schedmsg { min-height: 0; margin-top: 0; }
 .schedmsg:not(:empty) { margin-top: var(--space-10); }
@@ -376,6 +378,12 @@ svg.chart.nofocusring { outline: none; }
 @media (min-width: 900px) {
   .questsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); column-gap: var(--space-22); align-items: start; }
   .questexpand { display: inline-block; }
+  /* .setside comes first in the markup so it stacks above .setmain on a
+     phone; order swaps it to the right on a wide screen without touching
+     DOM order, which is what the phone layout depends on. */
+  .setsplit { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); column-gap: var(--space-22); align-items: start; }
+  .setmain { order: 1; }
+  .setside { order: 2; }
 }
 .ms { position: absolute; top: 4px; width: 14px; height: 14px; background: var(--burn); transform: translateX(-7px) rotate(45deg); border-radius: 2px; cursor: pointer; }
 /* The diamond is only 14px, so an invisible larger area makes it easy to hit. */
@@ -1070,7 +1078,7 @@ function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop,
     milestones: d.milestones, pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0 }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" } }
   };
 }
 
@@ -1205,6 +1213,10 @@ function normalize(s) {
     // vaultPurgeDays used to be called archivePurgeDays; read whichever is present.
     var rawPurge = [0, 7, 30, 60, 90].indexOf(s.settings.vaultPurgeDays) >= 0 ? s.settings.vaultPurgeDays : s.settings.archivePurgeDays;
     if ([0, 7, 30, 60, 90].indexOf(rawPurge) >= 0) d.settings.vaultPurgeDays = rawPurge;
+    if (s.settings.contact && typeof s.settings.contact === "object") {
+      var c = s.settings.contact;
+      d.settings.contact = { name: S(c.name, 200), company: S(c.company, 200), phone: S(c.phone, 200), email: S(c.email, 200), address: S(c.address, 500), website: S(c.website, 200) };
+    }
   }
   // Pins used to route to a quest's page via "proj:" + id; migrate any saved
   // pin to "quest:" + id so an old sidebar pin keeps working after the rename.
@@ -1767,7 +1779,9 @@ function flattenSections(node, out) {
 function buildExportSnapshot(p) {
   var tree = buildExportTree(p);
   var sections = flattenSections(tree);
-  return { exportedAt: fmtY(TODAY), root: tree, sections: sections };
+  var c = state.settings.contact || {};
+  var contact = Object.keys(c).some(function (k) { return c[k]; }) ? c : null;
+  return { exportedAt: fmtY(TODAY), root: tree, sections: sections, contact: contact };
 }
 
 var EXPORT_TEST_HOOKS = { buildExportTree: buildExportTree, flattenSections: flattenSections };
@@ -1871,7 +1885,10 @@ body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-
 .ewrap { max-width: 1100px; margin: 0 auto; }\
 .ebrand { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }\
 .ebrand svg { width: 28px; height: 28px; flex: none; }\
-.ebrand span { font-weight: 700; font-size: 1.1rem; }\
+.ebrand span { font-family: 'Spectral', Georgia, 'Times New Roman', serif; font-weight: 600; font-size: 1.1rem; }\
+.econtact { color: var(--muted); font-size: .9rem; line-height: 1.5; margin-bottom: 18px; }\
+.econtactname { color: var(--ink); font-weight: 600; }\
+.econtactaddr { white-space: pre-line; }\
 h1, h2, h3, h4, h5 { font-weight: 700; }\
 .ehint { color: var(--muted); }\
 .etoc { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 18px 0; }\
@@ -2018,6 +2035,21 @@ var burnHost=document.getElementById(id+'-burn');if(burnHost)drawBurn(burnHost,c
 // it follows light/dark mode the same way the live app's sidebar logo does.
 var EXPORT_BRAND = '<div class="ebrand"><svg viewBox="0 0 512 512" aria-hidden="true" focusable="false"><defs><clipPath id="eLogoClip"><rect width="512" height="512" rx="112"/></clipPath></defs><rect width="512" height="512" rx="112" fill="var(--est)"/><g clip-path="url(#eLogoClip)"><path d="M115.88-30.43l30.33,154.2" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M102.47,177.65l-23.25,4.57c-36.81,7.24-51.6,29.27-44.36,66.08l28.7,145.94" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M207.09,157.08l52.31-10.29c34.87-6.86,55.74,7.15,62.6,42.02l9.64,49.01" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M295.51,299.68l-23.25,4.57c-25.19,4.95-35.3,20.02-30.35,45.21l19.38,98.53" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M388.51,281.39l29.06-5.72c32.94-6.48,52.64,6.75,59.12,39.69l4,20.34" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><circle cx="154.78" cy="167.37" r="53.31" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/><circle cx="342.01" cy="290.53" r="47.39" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/><rect x="31.22" y="387.08" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-80.82 21.45) rotate(-11.13)" fill="var(--planned)"/><rect x="227.98" y="435.92" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-86.54 60.34) rotate(-11.13)" fill="var(--planned)"/><rect x="432.89" y="334.59" width="118.48" height="118.48" rx="9" ry="9" transform="translate(-109.15 582.92) rotate(-56.13)" fill="var(--burn)"/></g></svg><span>Sidequest</span></div>\n';
 
+// A letterhead-style block of whichever contact fields were filled in, or
+// nothing at all if none were -- see buildExportSnapshot(), which already
+// resolves "nothing filled in" to a null contact.
+function renderContactBlock(contact) {
+  if (!contact) return "";
+  var lines = [];
+  if (contact.name) lines.push('<div class="econtactname">' + escHtml(contact.name) + "</div>");
+  if (contact.company) lines.push('<div>' + escHtml(contact.company) + "</div>");
+  if (contact.address) lines.push('<div class="econtactaddr">' + escHtml(contact.address).replace(/\n/g, "<br>") + "</div>");
+  if (contact.phone) lines.push('<div>' + escHtml(contact.phone) + "</div>");
+  if (contact.email) lines.push('<div>' + escHtml(contact.email) + "</div>");
+  if (contact.website) lines.push('<div>' + escHtml(contact.website) + "</div>");
+  return '<div class="econtact">' + lines.join("") + "</div>\n";
+}
+
 function renderExportDocument(snapshot) {
   var p = snapshot.root;
   var toc = snapshot.sections.length > 1 ? '<nav class="etoc"><strong>Contents</strong><ul>' + renderTocEntry(snapshot.root) + "</ul></nav>" : "";
@@ -2027,6 +2059,7 @@ function renderExportDocument(snapshot) {
   var title = escHtml(p.name) + " (exported from Sidequest)";
   var html = "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>" + title + "</title>\n<style>" + EXPORT_CSS + "</style>\n</head>\n<body>\n<div class=\"ewrap\">\n";
   html += EXPORT_BRAND;
+  html += renderContactBlock(snapshot.contact);
   html += "<h1>" + escHtml(p.name) + " <span class=\"chip ereadonly\">Read only</span></h1>\n<p class=\"ehint\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ".</p>\n";
   html += toc + sections;
   html += "<p class=\"efoot\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ".</p>\n";
@@ -3563,7 +3596,35 @@ function startFreshDialog() {
     acts.appendChild(on(el("button", { type: "button", title: "Cancel" }, "Cancel"), "click", closeModal)); acts.appendChild(go1); body.appendChild(acts);
   });
 }
-function renderSettings(root) {
+function renderSettings(page) {
+  // Split like a quest's own page, but the side panel comes FIRST in DOM
+  // order so it stacks above the main settings on a phone, not below --
+  // the opposite of .questsplit, where the charts column trails.
+  var split = el("div", { "class": "setsplit" });
+  var side = el("aside", { "class": "setside" });
+  var root = el("div", { "class": "setmain" });
+  split.appendChild(side); split.appendChild(root); page.appendChild(split);
+  side.appendChild(el("h2", { "class": "first" }, "Your contact info"));
+  side.appendChild(el("p", { "class": "hint" }, "Optional. Anything filled in here prints on a Client Export."));
+  var cg = el("div", { "class": "setgrid" });
+  function cfield(key, id, label, type) {
+    var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label));
+    var inp = el("input", { type: type || "text", id: id });
+    inp.value = state.settings.contact[key];
+    on(inp, "blur", function () { state.settings.contact[key] = inp.value.slice(0, 200); save(); });
+    w.appendChild(inp); cg.appendChild(w);
+  }
+  cfield("name", "set-contact-name", "Name");
+  cfield("company", "set-contact-company", "Company");
+  cfield("phone", "set-contact-phone", "Phone", "tel");
+  cfield("email", "set-contact-email", "Email", "email");
+  cfield("website", "set-contact-website", "Website", "url");
+  side.appendChild(cg);
+  var aw = el("div", { "class": "field" }); aw.appendChild(el("label", { "for": "set-contact-address" }, "Address"));
+  var addr = el("textarea", { id: "set-contact-address", rows: 3 }); addr.value = state.settings.contact.address;
+  on(addr, "blur", function () { state.settings.contact.address = addr.value.slice(0, 500); save(); });
+  aw.appendChild(addr); side.appendChild(aw);
+
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   root.appendChild(el("h2", { "class": "first" }, "Schedule defaults"));
   root.appendChild(el("p", { "class": "hint" }, "Each quest sets its own start date on its page. This is the default " + wl() + " length for any quest that hasn't set its own."));
