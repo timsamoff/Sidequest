@@ -1263,24 +1263,19 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(by("n3").start === "" && by("n3").due === "", "a Backlog task's dates are cleared on load");
 }
 
-// Client Export reads the bare global Blob/URL/document (same convention as
-// the existing backup-download fallback in views.js, not window.*), so Node's
-// own real Blob resolves inside it even under jsdom. Capturing the Blob's own
-// parts through a wrapped global Blob, and the anchor's download name through
-// a wrapped document.createElement, is simpler and more reliable here than
-// round-tripping through a real blob: URL, which jsdom's fetch() can't read.
-function exportClick(k, projectName) {
-  var RealBlob = Blob, parts = null, downloadName = null;
-  global.Blob = function (p, opts) { parts = p; return new RealBlob(p, opts); };
-  const origCreate = k.d.createElement.bind(k.d);
-  k.d.createElement = (tag) => { const e = origCreate(tag); if (tag === "a") e.click = () => { downloadName = e.download; }; return e; };
+// Client Export writes through the same Save As dialog stub as Save backup's
+// own test, since both go through showSaveFilePicker before falling back to a
+// plain download.
+async function exportClick(k, projectName) {
+  let written = null, downloadName = null;
+  k.w.showSaveFilePicker = (opts) => { downloadName = opts.suggestedName; return Promise.resolve({ createWritable: () => Promise.resolve({ write: (t) => { written = t; return Promise.resolve(); }, close: () => Promise.resolve() }) }); };
   k.tab("projects"); k.click(k.btn(k.$("view"), projectName));
   k.click(k.btn(k.$("view"), "Client Export"));
-  global.Blob = RealBlob;
-  return { html: parts ? parts.join("") : "", downloadName };
+  await new Promise((r) => setTimeout(r, 30));
+  return { html: written || "", downloadName };
 }
 {
-  const { html } = exportClick(kit(await mk()), "Sample App");
+  const { html } = await exportClick(kit(await mk()), "Sample App");
   ok(html.includes("<!doctype html>") && html.includes("</html>"), "produces a complete standalone HTML document");
   ok(html.includes("Sample App") && html.includes("Sample Website"), "includes the project and its linked project");
   ok(html.includes('id="proj-pApp"') && html.includes('id="proj-pSite"'), "each project gets its own section, addressable by id");
@@ -1301,7 +1296,7 @@ function exportClick(k, projectName) {
     ],
     tasks: []
   };
-  const { html } = exportClick(kit(await mk(saved)), "Project A");
+  const { html } = await exportClick(kit(await mk(saved)), "Project A");
   const sectionCount = (html.match(/class="esection"/g) || []).length;
   ok(sectionCount === 2, "A linking to B linking back to A produces exactly two sections, not an infinite chain (" + sectionCount + ")");
   ok(html.includes("already shown above"), "the repeated link back to A points at its existing section instead of re-expanding it");
@@ -1317,7 +1312,7 @@ function exportClick(k, projectName) {
     ],
     tasks: []
   };
-  const { html } = exportClick(kit(await mk(saved)), "Project X");
+  const { html } = await exportClick(kit(await mk(saved)), "Project X");
   ok(html.includes("Project Y") && html.includes('id="proj-pY"'), "a Complete linked project is expanded into its own section");
   ok(!html.includes("Project Z"), "an Archived linked project is skipped entirely, not even named");
 }
@@ -1328,7 +1323,7 @@ function exportClick(k, projectName) {
     projects: [{ id: "pF", name: "Full Notes Co.", status: "active", start: "2026-08-03", days: 7, notes: longNote }],
     tasks: []
   };
-  const { html, downloadName } = exportClick(kit(await mk(saved)), "Full Notes Co.");
+  const { html, downloadName } = await exportClick(kit(await mk(saved)), "Full Notes Co.");
   ok(html.includes(longNote), "the full, unclamped notes field is included even past the live app's own display clamp");
   ok(/^full-notes-co-\d{4}-\d{2}-\d{2}\.html$/.test(downloadName), "the filename is the project's name, slugged, plus today's date (" + downloadName + ")");
 }

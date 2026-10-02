@@ -201,7 +201,7 @@ function renderCharts(node) {
   var id = sectionId(node.id);
   var html = '<div class="echarts" data-chart="' + escAttr(id) + '">';
   if (node.charts.lanes.length) {
-    html += '<h3 class="efirst">Timeline</h3><div class="etimeline" id="' + id + '-tl"></div>';
+    html += '<h3 class="efirst">Timeline</h3><div class="echartbox"><div class="etimeline" id="' + id + '-tl"></div></div>';
   }
   html += '<h3' + (node.charts.lanes.length ? "" : ' class="efirst"') + '>Burndown</h3>';
   html += '<div class="echartbox"><div id="' + id + '-burn"></div></div>';
@@ -252,6 +252,7 @@ h1, h2, h3, h4, h5 { font-weight: 700; }\
 .chip[data-v='In progress'] { background: var(--chip-work); }\
 .chip[data-v='Completed'] { background: var(--chip-done); }\
 .chip.projcomplete { background: var(--chip-done); }\
+.chip.ereadonly { background: var(--muted); color: var(--surface); vertical-align: middle; font-size: .7rem; margin-left: 8px; }\
 .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--late-bg); color: var(--late); font-size: .8rem; font-weight: 600; }\
 .etasklist, .list { list-style: none; margin: 8px 0; padding: 0; }\
 .etask { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--surface); }\
@@ -385,7 +386,7 @@ export function renderExportDocument(snapshot) {
   snapshot.sections.forEach(function (n) { if (n.charts) chartsById[sectionId(n.id)] = n.charts; });
   var title = escHtml(p.name) + " (exported from Sidequest)";
   var html = "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>" + title + "</title>\n<style>" + EXPORT_CSS + "</style>\n</head>\n<body>\n<div class=\"ewrap\">\n";
-  html += "<h1>" + escHtml(p.name) + "</h1>\n<p class=\"ehint\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ". Read-only -- this file has no connection back to the live project.</p>\n";
+  html += "<h1>" + escHtml(p.name) + " <span class=\"chip ereadonly\">Read only</span></h1>\n<p class=\"ehint\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ".</p>\n";
   html += toc + sections;
   html += "<p class=\"efoot\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ".</p>\n";
   // Escaping "</" stops a task name or note containing a literal "</script>"

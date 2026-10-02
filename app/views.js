@@ -110,19 +110,36 @@ export function archiveProject(p) {
     state.tasks.forEach(function (t) { if (t.projectId === p.id && !t.arch) t.arch = { at: iso(TODAY), why: "removed" }; });
   });
 }
-// Builds the standalone read-only export and downloads it. Scoped to Active/
-// Complete projects, matching where the button itself lives (see
-// renderProjectPage()) -- Candidate and Archived export layouts are
-// unscoped, left for a future pass per the design brief.
+// Builds the standalone read-only export and offers it for saving, same
+// fallback order as saveBackupFile(): the Claude downloads capability, then a
+// real Save As dialog, then a plain download. Scoped to Active/Complete
+// projects, matching where the button itself lives (see renderProjectPage())
+// -- Candidate and Archived export layouts are unscoped, left for a future
+// pass per the design brief.
 export function exportProjectForClient(p) {
   var snapshot = buildExportSnapshot(p);
   var html = renderExportDocument(snapshot);
-  var blob = new Blob([html], { type: "text/html" });
-  var url = URL.createObjectURL(blob);
-  var a = el("a", { href: url, download: exportFileName(p) });
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-  notify("Exported " + p.name + ".");
+  var name = exportFileName(p);
+  downloadsReady.then(function (d) {
+    if (d) return d.save({ filename: name, data: html }).then(function () { notify("Exported " + p.name + "."); });
+    var framed = false;
+    try { framed = !!(window.claude && window.top !== window.self); } catch (e) { framed = true; }
+    if (framed) { notify("This published copy was not given permission to save files. Publish it again with the downloads capability turned on."); return; }
+    if (typeof window.showSaveFilePicker === "function") {
+      return window.showSaveFilePicker({ suggestedName: name, types: [{ description: "Sidequest export", accept: { "text/html": [".html"] } }] })
+        .then(function (h) { return h.createWritable(); })
+        .then(function (w) { return w.write(html).then(function () { return w.close(); }); })
+        .then(function () { notify("Exported " + p.name + "."); });
+    }
+    var blob = new Blob([html], { type: "text/html" });
+    var url = URL.createObjectURL(blob);
+    var a = el("a", { href: url, download: name });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    notify("Exported " + p.name + ".");
+  }).catch(function (err) {
+    notify(err && (err.code === "declined" || err.name === "AbortError") ? "Export canceled." : "The export could not be saved.");
+  });
 }
 // Offers archiving now or leaving it in Projects. Launch-critical warning is soft, never blocking.
 export function completionDialog(p) {
