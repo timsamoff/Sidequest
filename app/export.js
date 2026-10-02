@@ -132,12 +132,18 @@ function flattenSections(node, out) {
 
 // Builds the full snapshot for one quest's export: the root quest plus
 // everything reachable through Active/Complete links.
+// Resolves a field set to null when every value is blank, so a caller can
+// tell "nothing filled in" apart from "filled in but empty" with one check.
+function filledOrNull(fields) {
+  return fields && Object.keys(fields).some(function (k) { return fields[k]; }) ? fields : null;
+}
+
 export function buildExportSnapshot(p) {
   var tree = buildExportTree(p);
   var sections = flattenSections(tree);
-  var c = state.settings.contact || {};
-  var contact = Object.keys(c).some(function (k) { return c[k]; }) ? c : null;
-  return { exportedAt: fmtY(TODAY), root: tree, sections: sections, contact: contact };
+  var contact = filledOrNull(state.settings.contact);
+  var client = filledOrNull(p.client);
+  return { exportedAt: fmtY(TODAY), root: tree, sections: sections, contact: contact, client: client };
 }
 
 export var EXPORT_TEST_HOOKS = { buildExportTree: buildExportTree, flattenSections: flattenSections };
@@ -242,7 +248,9 @@ body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-
 .ebrand { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }\
 .ebrand svg { width: 28px; height: 28px; flex: none; }\
 .ebrand span { font-family: 'Spectral', Georgia, 'Times New Roman', serif; font-weight: 600; font-size: 1.1rem; }\
-.econtact { color: var(--muted); font-size: .9rem; line-height: 1.5; margin-bottom: 18px; }\
+.eletterhead { display: flex; gap: 32px; flex-wrap: wrap; margin-bottom: 18px; color: var(--muted); font-size: .9rem; line-height: 1.5; }\
+.ecol { min-width: 180px; }\
+.echead { color: var(--ink); font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }\
 .econtactname { color: var(--ink); font-weight: 600; }\
 .econtactaddr { white-space: pre-line; }\
 h1, h2, h3, h4, h5 { font-weight: 700; }\
@@ -391,19 +399,37 @@ var burnHost=document.getElementById(id+'-burn');if(burnHost)drawBurn(burnHost,c
 // it follows light/dark mode the same way the live app's sidebar logo does.
 var EXPORT_BRAND = '<div class="ebrand"><svg viewBox="0 0 512 512" aria-hidden="true" focusable="false"><defs><clipPath id="eLogoClip"><rect width="512" height="512" rx="112"/></clipPath></defs><rect width="512" height="512" rx="112" fill="var(--est)"/><g clip-path="url(#eLogoClip)"><path d="M115.88-30.43l30.33,154.2" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M102.47,177.65l-23.25,4.57c-36.81,7.24-51.6,29.27-44.36,66.08l28.7,145.94" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M207.09,157.08l52.31-10.29c34.87-6.86,55.74,7.15,62.6,42.02l9.64,49.01" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M295.51,299.68l-23.25,4.57c-25.19,4.95-35.3,20.02-30.35,45.21l19.38,98.53" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M388.51,281.39l29.06-5.72c32.94-6.48,52.64,6.75,59.12,39.69l4,20.34" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><circle cx="154.78" cy="167.37" r="53.31" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/><circle cx="342.01" cy="290.53" r="47.39" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/><rect x="31.22" y="387.08" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-80.82 21.45) rotate(-11.13)" fill="var(--planned)"/><rect x="227.98" y="435.92" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-86.54 60.34) rotate(-11.13)" fill="var(--planned)"/><rect x="432.89" y="334.59" width="118.48" height="118.48" rx="9" ry="9" transform="translate(-109.15 582.92) rotate(-56.13)" fill="var(--burn)"/></g></svg><span>Sidequest</span></div>\n';
 
-// A letterhead-style block of whichever contact fields were filled in, or
-// nothing at all if none were -- see buildExportSnapshot(), which already
-// resolves "nothing filled in" to a null contact.
-function renderContactBlock(contact) {
-  if (!contact) return "";
+function addrLine(v) { return '<div class="econtactaddr">' + escHtml(v).replace(/\n/g, "<br>") + "</div>"; }
+function plainLine(v) { return "<div>" + escHtml(v) + "</div>"; }
+
+// One letterhead column: a heading ("Prepared by"/"Prepared for"), a bold
+// name line, then whatever else was filled in. Returns "" if fields is null.
+// `nameKey` is the field that leads the column in bold (the user's own name
+// for "Prepared by", the Quest Giver's organization for "Prepared for").
+// `secondKey` is the next most identifying field, shown plain right after it
+// (company for a person, POC for an organization).
+function renderLetterColumn(heading, fields, nameKey, secondKey) {
+  if (!fields) return "";
   var lines = [];
-  if (contact.name) lines.push('<div class="econtactname">' + escHtml(contact.name) + "</div>");
-  if (contact.company) lines.push('<div>' + escHtml(contact.company) + "</div>");
-  if (contact.address) lines.push('<div class="econtactaddr">' + escHtml(contact.address).replace(/\n/g, "<br>") + "</div>");
-  if (contact.phone) lines.push('<div>' + escHtml(contact.phone) + "</div>");
-  if (contact.email) lines.push('<div>' + escHtml(contact.email) + "</div>");
-  if (contact.website) lines.push('<div>' + escHtml(contact.website) + "</div>");
-  return '<div class="econtact">' + lines.join("") + "</div>\n";
+  if (fields[nameKey]) lines.push('<div class="econtactname">' + escHtml(fields[nameKey]) + "</div>");
+  if (fields[secondKey]) lines.push(plainLine(fields[secondKey]));
+  if (fields.address) lines.push(addrLine(fields.address));
+  if (fields.phone) lines.push(plainLine(fields.phone));
+  if (fields.email) lines.push(plainLine(fields.email));
+  if (fields.website) lines.push(plainLine(fields.website));
+  return '<div class="ecol"><div class="echead">' + heading + "</div>" + lines.join("") + "</div>";
+}
+
+// "Prepared by" is the user's own Settings contact info; "Prepared for" is
+// the quest's own Quest Giver info. Either side can be empty on its own:
+// with no Quest Giver info, "Prepared for" is simply left out; with no user
+// info at all, "Prepared for" takes the left (only) position instead of
+// sitting stranded on the right.
+function renderLetterhead(contact, client) {
+  var by = renderLetterColumn("Prepared by", contact, "name", "company");
+  var forWhom = renderLetterColumn("Prepared for", client, "org", "poc");
+  if (!by && !forWhom) return "";
+  return '<div class="eletterhead">' + (by || forWhom) + (by ? forWhom : "") + "</div>\n";
 }
 
 export function renderExportDocument(snapshot) {
@@ -415,7 +441,7 @@ export function renderExportDocument(snapshot) {
   var title = escHtml(p.name) + " (exported from Sidequest)";
   var html = "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>" + title + "</title>\n<style>" + EXPORT_CSS + "</style>\n</head>\n<body>\n<div class=\"ewrap\">\n";
   html += EXPORT_BRAND;
-  html += renderContactBlock(snapshot.contact);
+  html += renderLetterhead(snapshot.contact, snapshot.client);
   html += "<h1>" + escHtml(p.name) + " <span class=\"chip ereadonly\">Read only</span></h1>\n<p class=\"ehint\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ".</p>\n";
   html += toc + sections;
   html += "<p class=\"efoot\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ".</p>\n";

@@ -1414,7 +1414,41 @@ async function exportClick(k, projectName) {
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   const { html } = await exportClick(k, "Sample App");
-  ok(!html.includes('class="econtact"'), "with no contact info filled in at all, no contact block is printed");
+  ok(!html.includes('class="eletterhead"'), "with no contact or Quest Giver info filled in at all, no letterhead block is printed");
+}
+{
+  // Letterhead: Prepared by / Prepared for, and the positioning rules
+  // the user asked for -- no Prepared for when only the user's own info
+  // exists, and Prepared for alone (on the left) when only Quest Giver
+  // info exists.
+  const saved = {
+    settings: { contact: { name: "Ada Lovelace", company: "", phone: "", email: "", address: "", website: "" } },
+    quests: [{ id: "pL", name: "Letterhead Quest", status: "active", start: "2026-08-03", days: 7, client: { org: "Acme Co.", poc: "Jordan Lee", phone: "", email: "", address: "", website: "" } }],
+    tasks: []
+  };
+  const { html } = await exportClick(kit(await mk(saved)), "Letterhead Quest");
+  const byIdx = html.indexOf("Prepared by"), forIdx = html.indexOf("Prepared for");
+  ok(byIdx >= 0 && forIdx > byIdx, "with both filled in, Prepared by comes first and Prepared for follows");
+  ok(html.includes("Ada Lovelace") && html.includes("Acme Co.") && html.includes("Jordan Lee"), "both columns print their own fields");
+}
+{
+  const saved = {
+    settings: { contact: { name: "Ada Lovelace", company: "", phone: "", email: "", address: "", website: "" } },
+    quests: [{ id: "pO", name: "Only User Info", status: "active", start: "2026-08-03", days: 7 }],
+    tasks: []
+  };
+  const { html } = await exportClick(kit(await mk(saved)), "Only User Info");
+  ok(html.includes("Prepared by") && !html.includes("Prepared for"), "with only the user's own info, Prepared for is left out entirely");
+}
+{
+  const saved = {
+    quests: [{ id: "pG", name: "Only Giver Info", status: "active", start: "2026-08-03", days: 7, client: { org: "Acme Co.", poc: "", phone: "", email: "", address: "", website: "" } }],
+    tasks: []
+  };
+  const { html } = await exportClick(kit(await mk(saved)), "Only Giver Info");
+  ok(!html.includes("Prepared by") && html.includes("Prepared for"), "with only Quest Giver info, Prepared by is left out");
+  const letterhead = html.slice(html.indexOf('class="eletterhead"'), html.indexOf('class="eletterhead"') + 400);
+  ok(letterhead.indexOf("Prepared for") < letterhead.indexOf("Acme Co."), "and Prepared for takes the lone/left position, not stranded on the right");
 }
 {
   // Quest Giver: per-quest client info, saves live, and round-trips.
