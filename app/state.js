@@ -22,7 +22,7 @@ export function task(id, block, questId, what, done, steps, extra) {
 // record and id carry through candidate -> active -> vaulted, never a second
 // record.
 export function quest(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], launchCritical: false, hist: {}, lastSlip: null };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], launchCritical: false, hist: {}, lastSlip: null, client: { org: "", poc: "", phone: "", email: "", address: "", website: "" } };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -168,6 +168,7 @@ export function normalize(s) {
       var days = (typeof x.days === "number" && x.days >= 1 && x.days <= 90) ? Math.round(x.days)
         : (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? Math.max(1, Math.round(d.days * x.mult)) : d.days;
       var linked = Array.isArray(x.linkedQuestIds) ? x.linkedQuestIds : x.linkedProjectIds;
+      var xc = x.client && typeof x.client === "object" ? x.client : {};
       return {
         id: S(x.id, 40), name: S(x.name, 120),
         status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
@@ -179,7 +180,8 @@ export function normalize(s) {
         // can only point at another quest that actually exists in the final
         // set. Arbitrary depth or cycles are fine; each side of a link is just
         // an id in this array, and nothing here ever traverses the graph.
-        linkedQuestIds: Array.isArray(linked) ? linked.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : []
+        linkedQuestIds: Array.isArray(linked) ? linked.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : [],
+        client: { org: S(xc.org, 200), poc: S(xc.poc, 200), phone: S(xc.phone, 200), email: S(xc.email, 200), address: S(xc.address, 500), website: S(xc.website, 200) }
       };
     });
   }

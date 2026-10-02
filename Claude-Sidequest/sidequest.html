@@ -979,7 +979,7 @@ function task(id, block, questId, what, done, steps, extra) {
 // record and id carry through candidate -> active -> vaulted, never a second
 // record.
 function quest(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], launchCritical: false, hist: {}, lastSlip: null };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], launchCritical: false, hist: {}, lastSlip: null, client: { org: "", poc: "", phone: "", email: "", address: "", website: "" } };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -1125,6 +1125,7 @@ function normalize(s) {
       var days = (typeof x.days === "number" && x.days >= 1 && x.days <= 90) ? Math.round(x.days)
         : (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? Math.max(1, Math.round(d.days * x.mult)) : d.days;
       var linked = Array.isArray(x.linkedQuestIds) ? x.linkedQuestIds : x.linkedProjectIds;
+      var xc = x.client && typeof x.client === "object" ? x.client : {};
       return {
         id: S(x.id, 40), name: S(x.name, 120),
         status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
@@ -1136,7 +1137,8 @@ function normalize(s) {
         // can only point at another quest that actually exists in the final
         // set. Arbitrary depth or cycles are fine; each side of a link is just
         // an id in this array, and nothing here ever traverses the graph.
-        linkedQuestIds: Array.isArray(linked) ? linked.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : []
+        linkedQuestIds: Array.isArray(linked) ? linked.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : [],
+        client: { org: S(xc.org, 200), poc: S(xc.poc, 200), phone: S(xc.phone, 200), email: S(xc.email, 200), address: S(xc.address, 500), website: S(xc.website, 200) }
       };
     });
   }
@@ -3125,6 +3127,34 @@ function renderQuestPage(root, id) {
     on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(); });
     root.appendChild(ta);
     if (typeof ResizeObserver !== "undefined") new ResizeObserver(function () { if (ta.offsetHeight > 0) ui.notesH[p.id] = ta.offsetHeight; }).observe(ta);
+  }
+
+  root.appendChild(el("h2", null, "Quest Giver"));
+  root.appendChild(el("p", { "class": "hint" }, "Optional. The client or contact for this quest."));
+  if (readOnly) {
+    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website].filter(Boolean);
+    root.appendChild(el("p", { "class": "hint notetext" }, glines.length ? glines.join("\n") : "Nothing filled in."));
+  } else {
+    var giverBox = el("div", { "class": "box", style: "margin-top:10px" });
+    var gg = el("div", { "class": "setgrid" });
+    function gfield(key, id, label, type) {
+      var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label));
+      var inp = el("input", { type: type || "text", id: id });
+      inp.value = p.client[key];
+      on(inp, "input", function () { p.client[key] = inp.value.slice(0, 200); save(); });
+      w.appendChild(inp); gg.appendChild(w);
+    }
+    gfield("org", "giver-org-" + p.id, "Organization");
+    gfield("poc", "giver-poc-" + p.id, "POC");
+    gfield("phone", "giver-phone-" + p.id, "Phone", "tel");
+    gfield("email", "giver-email-" + p.id, "Email", "email");
+    gfield("website", "giver-website-" + p.id, "Website", "url");
+    giverBox.appendChild(gg);
+    var gaw = el("div", { "class": "field" }); gaw.appendChild(el("label", { "for": "giver-address-" + p.id }, "Address"));
+    var gaddr = el("textarea", { id: "giver-address-" + p.id, rows: 3 }); gaddr.value = p.client.address;
+    on(gaddr, "input", function () { p.client.address = gaddr.value.slice(0, 500); save(); });
+    gaw.appendChild(gaddr); giverBox.appendChild(gaw);
+    root.appendChild(giverBox);
   }
 
   root.appendChild(el("h2", null, "Linked quests"));

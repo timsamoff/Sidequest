@@ -633,7 +633,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   const split = k.d.querySelector("#view .questsplit");
   ok(!!split && !!split.querySelector(".questmain") && !split.querySelector(".questtop") && !split.querySelector(".questrest") && !!split.querySelector(".questcharts"), "an active quest's page has one content column and a Schedule/Timeline/Burndown column");
-  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Notes,Linked quests", "the left column runs Tasks, Before you launch, Notes, then Linked quests (" + [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() + ")");
+  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Notes,Quest Giver,Linked quests", "the left column runs Tasks, Before you launch, Notes, Quest Giver, then Linked quests (" + [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() + ")");
   ok(!split.querySelector(".pintoggle") && !split.querySelector(".pinbar"), "there is no Pin button on a quest's own page");
   ok(split.querySelector(".questmain").textContent.includes("6 tasks (1 in the Backlog). 6 of 17 steps complete."), "the task-count line sits under the Tasks heading");
   const side = split.querySelector(".questcharts");
@@ -1177,7 +1177,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const chips = [...k.d.querySelectorAll("#view .questmain .l3 span")].map(s => s.textContent);
   ok(chips.includes("Est 3 h") && chips.includes("Est 6 h"), "task rows on the quest page show their estimate as Est N h");
   const heads = [...k.d.querySelectorAll("#view .questmain h2")].map(h => h.textContent);
-  ok(heads.join() === "Tasks,Before you launch,Notes,Linked quests", "the quest page order is Tasks, Before you launch, Notes, Linked quests (" + heads.join() + ")");
+  ok(heads.join() === "Tasks,Before you launch,Notes,Quest Giver,Linked quests", "the quest page order is Tasks, Before you launch, Notes, Quest Giver, Linked quests (" + heads.join() + ")");
   const g1 = sv.find(t => t.id === "g1");
   ok(g1.block === 1 && g1.start && g1.due && g1.start < g1.due, "Sample Game's first task keeps block 1 with its own start and due");
   const gp = k.saved().quests.find(p => p.id === "pGame");
@@ -1387,6 +1387,24 @@ async function exportClick(k, projectName) {
   k.click(k.$("welcomeDismiss"));
   const { html } = await exportClick(k, "Sample App");
   ok(!html.includes('class="econtact"'), "with no contact info filled in at all, no contact block is printed");
+}
+{
+  // Quest Giver: per-quest client info, saves live, and round-trips.
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  k.$("giver-org-pApp").value = "Acme Co."; k.fire(k.$("giver-org-pApp"), "input");
+  k.$("giver-poc-pApp").value = "Jordan Lee"; k.fire(k.$("giver-poc-pApp"), "input");
+  const client = k.saved().quests.find(q => q.id === "pApp").client;
+  ok(client.org === "Acme Co." && client.poc === "Jordan Lee" && client.phone === "" && client.email === "" && client.address === "" && client.website === "", "Quest Giver fields save live and round-trip, blank ones stay blank");
+  k.$("giver-org-pApp").value = ""; k.fire(k.$("giver-org-pApp"), "input");
+  ok(k.saved().quests.find(q => q.id === "pApp").client.org === "", "clearing a Quest Giver field saves right away, same as Settings' own contact fields");
+}
+{
+  // Old-shaped saved data with no `client` field at all still loads with a usable, empty one.
+  const saved = { quests: [{ id: "pOld", name: "Old Quest", status: "active", start: "2026-08-03", days: 7 }], tasks: [] };
+  const k = kit(await mk(saved));
+  ok(JSON.stringify(k.saved().quests[0].client) === JSON.stringify({ org: "", poc: "", phone: "", email: "", address: "", website: "" }), "a quest saved before Quest Giver existed gets a default empty client object on load");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

@@ -571,6 +571,34 @@ export function renderQuestPage(root, id) {
     if (typeof ResizeObserver !== "undefined") new ResizeObserver(function () { if (ta.offsetHeight > 0) ui.notesH[p.id] = ta.offsetHeight; }).observe(ta);
   }
 
+  root.appendChild(el("h2", null, "Quest Giver"));
+  root.appendChild(el("p", { "class": "hint" }, "Optional. The client or contact for this quest."));
+  if (readOnly) {
+    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website].filter(Boolean);
+    root.appendChild(el("p", { "class": "hint notetext" }, glines.length ? glines.join("\n") : "Nothing filled in."));
+  } else {
+    var giverBox = el("div", { "class": "box", style: "margin-top:10px" });
+    var gg = el("div", { "class": "setgrid" });
+    function gfield(key, id, label, type) {
+      var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label));
+      var inp = el("input", { type: type || "text", id: id });
+      inp.value = p.client[key];
+      on(inp, "input", function () { p.client[key] = inp.value.slice(0, 200); save(); });
+      w.appendChild(inp); gg.appendChild(w);
+    }
+    gfield("org", "giver-org-" + p.id, "Organization");
+    gfield("poc", "giver-poc-" + p.id, "POC");
+    gfield("phone", "giver-phone-" + p.id, "Phone", "tel");
+    gfield("email", "giver-email-" + p.id, "Email", "email");
+    gfield("website", "giver-website-" + p.id, "Website", "url");
+    giverBox.appendChild(gg);
+    var gaw = el("div", { "class": "field" }); gaw.appendChild(el("label", { "for": "giver-address-" + p.id }, "Address"));
+    var gaddr = el("textarea", { id: "giver-address-" + p.id, rows: 3 }); gaddr.value = p.client.address;
+    on(gaddr, "input", function () { p.client.address = gaddr.value.slice(0, 500); save(); });
+    gaw.appendChild(gaddr); giverBox.appendChild(gaw);
+    root.appendChild(giverBox);
+  }
+
   root.appendChild(el("h2", null, "Linked quests"));
   linksSection(root, p);
 
