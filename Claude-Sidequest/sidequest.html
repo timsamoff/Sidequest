@@ -89,6 +89,7 @@ html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 72px); }
 *, *::before, *::after { box-sizing: inherit; }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 1.5; }
 h1, h2, h3 { font-family: var(--font-serif); font-weight: 600; line-height: 1.2; margin: 0; }
+.dialogheading { margin-top: var(--space-16); }
 h1 { font-size: 1.5rem; }
 h2 { font-size: 1.3rem; margin-top: var(--space-22); margin-bottom: var(--space-6); }
 h3 { font-size: 1.05rem; margin-top: var(--space-22); }
@@ -2050,10 +2051,10 @@ function plainLine(v) { return "<div>" + escHtml(v) + "</div>"; }
 
 // One letterhead column: a heading ("Prepared by"/"Prepared for"), a bold
 // name line, then whatever else was filled in. Returns "" if fields is null.
-// `nameKey` is the field that leads the column in bold (the user's own name
-// for "Prepared by", the Quest Giver's organization for "Prepared for").
-// `secondKey` is the next most identifying field, shown plain right after it
-// (company for a person, POC for an organization).
+// `nameKey` is the field that leads the column in bold (the user's own
+// company for "Prepared by", the Quest Giver's organization for "Prepared
+// for" -- both sides lead with the organization, not the person).
+// `secondKey` is the contact person, shown plain right after it.
 function renderLetterColumn(heading, fields, nameKey, secondKey) {
   if (!fields) return "";
   var lines = [];
@@ -2072,7 +2073,7 @@ function renderLetterColumn(heading, fields, nameKey, secondKey) {
 // info at all, "Prepared for" takes the left (only) position instead of
 // sitting stranded on the right.
 function renderLetterhead(contact, client) {
-  var by = renderLetterColumn("Prepared by", contact, "name", "company");
+  var by = renderLetterColumn("Prepared by", contact, "company", "name");
   var forWhom = renderLetterColumn("Prepared for", client, "org", "poc");
   if (!by && !forWhom) return "";
   return '<div class="eletterhead">' + (by || forWhom) + (by ? forWhom : "") + "</div>\n";
@@ -2303,6 +2304,9 @@ function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
       if (f.type === "static") {
         w.appendChild(el("span", { "class": "hint" }, f.label + ": " + f.value)); body.appendChild(w); return;
       }
+      if (f.type === "heading") {
+        body.appendChild(el("h3", { "class": "dialogheading" }, f.label)); return;
+      }
       w.appendChild(el("label", { "for": id }, f.label));
       var inp;
       if (f.type === "select") {
@@ -2385,9 +2389,20 @@ function taskDialog(prefillQuestId, backlog) {
   }, "Pick when this should be done and it's placed in the right " + wl() + " automatically. Leave the due date empty to put the task in the Backlog.");
 }
 function questDialog() {
-  formDialog("New quest", [{ key: "name", label: "Quest name" }, { key: "notes", label: "Notes (optional)", type: "textarea", rows: 5 }], "Add quest", function (v) {
+  formDialog("New quest", [
+    { key: "name", label: "Quest name" },
+    { key: "notes", label: "Notes (optional)", type: "textarea", rows: 5 },
+    { key: "giverHeading", label: "Quest Giver", type: "heading" },
+    { key: "giverOrg", label: "Organization" },
+    { key: "giverPoc", label: "POC" },
+    { key: "giverPhone", label: "Phone", type: "tel" },
+    { key: "giverEmail", label: "Email", type: "email" },
+    { key: "giverWebsite", label: "Website", type: "url" },
+    { key: "giverAddress", label: "Address", type: "textarea", rows: 3 }
+  ], "Add quest", function (v) {
     if (!v.name) return "Enter a quest name.";
-    state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000) })); changed();
+    var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200) };
+    state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000), client: client })); changed();
     return { msg: v.name + " added as a candidate for the next slot." };
   }, "It joins the candidates for the next slot. You can workshop it later.");
 }
@@ -2416,12 +2431,13 @@ function candidateDialog(p) {
     { key: "start", label: "Start date", type: "date", value: p.start },
     { key: "due", label: "Due date", type: "date", value: p.due },
     { key: "days", label: "Days per " + wd(), type: "number", min: "1", max: "90", step: "1", value: p.days },
-    { key: "giverOrg", label: "Quest Giver: Organization", value: p.client.org },
-    { key: "giverPoc", label: "Quest Giver: POC", value: p.client.poc },
-    { key: "giverPhone", label: "Quest Giver: Phone", type: "tel", value: p.client.phone },
-    { key: "giverEmail", label: "Quest Giver: Email", type: "email", value: p.client.email },
-    { key: "giverWebsite", label: "Quest Giver: Website", type: "url", value: p.client.website },
-    { key: "giverAddress", label: "Quest Giver: Address", type: "textarea", rows: 3, value: p.client.address }
+    { key: "giverHeading", label: "Quest Giver", type: "heading" },
+    { key: "giverOrg", label: "Organization", value: p.client.org },
+    { key: "giverPoc", label: "POC", value: p.client.poc },
+    { key: "giverPhone", label: "Phone", type: "tel", value: p.client.phone },
+    { key: "giverEmail", label: "Email", type: "email", value: p.client.email },
+    { key: "giverWebsite", label: "Website", type: "url", value: p.client.website },
+    { key: "giverAddress", label: "Address", type: "textarea", rows: 3, value: p.client.address }
   ], "Save", function (v) {
     if (!v.name) return "Enter a quest name.";
     var days = parseInt(v.days, 10);
@@ -3579,7 +3595,7 @@ function helpTopics() {
       "**Candidates** are quests that could take the next slot. Select one to edit its notes, start date, due date, and block length in a dialog, then use **Promote** to start it. Add a candidate with **New quest** in the **+** menu, or turn an idea into one with **Make candidate**.",
       "**In progress** lists each active quest with its next task. Use **Pin** on a quest for quick access from the sidebar. Unpinning only hides it there.",
       "Below it, the Quests page lists any quest that is complete or has no tasks yet, under the heading Pending, Completed, or Pending & completed.",
-      "**Client Export**, on an active or complete quest's page, downloads a single read-only web page with that quest's tasks, notes, and an interactive schedule and burndown, for sharing outside the app. A linked quest that is active or complete comes along too, with its own section. If you filled in **Your contact info** in Settings, it prints at the top."]],
+      "**Client Export**, on an active or complete quest's page, downloads a single read-only web page with that quest's tasks, notes, and an interactive schedule and burndown, for sharing outside the app. A linked quest that is active or complete comes along too, with its own section. If you filled in **Your contact info** in Settings or this quest's own **Quest Giver** section, they print at the top as Prepared by and Prepared for."]],
     ["Finish or vault a quest", [
       "**Mark complete** on a quest's page marks it done, even with tasks still open. A quest also completes by itself once all its tasks are done. Either way, you can send it to the Vault right away or leave it in Quests.",
       "A completed quest shows a **Complete** badge and drops out of In progress. Its tasks also leave Tasks, the main Timeline, Today, and the main burndown, though its own page still lists them. **Reopen** makes it active again and brings them back.",
@@ -3681,8 +3697,8 @@ function renderSettings(page) {
     on(inp, "input", function () { state.settings.contact[key] = inp.value.slice(0, 200); save(); });
     w.appendChild(inp); cg.appendChild(w);
   }
-  cfield("name", "set-contact-name", "Name");
   cfield("company", "set-contact-company", "Company");
+  cfield("name", "set-contact-name", "Name");
   cfield("phone", "set-contact-phone", "Phone", "tel");
   cfield("email", "set-contact-email", "Email", "email");
   cfield("website", "set-contact-website", "Website", "url");

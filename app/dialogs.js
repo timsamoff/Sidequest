@@ -59,6 +59,9 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
       if (f.type === "static") {
         w.appendChild(el("span", { "class": "hint" }, f.label + ": " + f.value)); body.appendChild(w); return;
       }
+      if (f.type === "heading") {
+        body.appendChild(el("h3", { "class": "dialogheading" }, f.label)); return;
+      }
       w.appendChild(el("label", { "for": id }, f.label));
       var inp;
       if (f.type === "select") {
@@ -141,9 +144,20 @@ export function taskDialog(prefillQuestId, backlog) {
   }, "Pick when this should be done and it's placed in the right " + wl() + " automatically. Leave the due date empty to put the task in the Backlog.");
 }
 export function questDialog() {
-  formDialog("New quest", [{ key: "name", label: "Quest name" }, { key: "notes", label: "Notes (optional)", type: "textarea", rows: 5 }], "Add quest", function (v) {
+  formDialog("New quest", [
+    { key: "name", label: "Quest name" },
+    { key: "notes", label: "Notes (optional)", type: "textarea", rows: 5 },
+    { key: "giverHeading", label: "Quest Giver", type: "heading" },
+    { key: "giverOrg", label: "Organization" },
+    { key: "giverPoc", label: "POC" },
+    { key: "giverPhone", label: "Phone", type: "tel" },
+    { key: "giverEmail", label: "Email", type: "email" },
+    { key: "giverWebsite", label: "Website", type: "url" },
+    { key: "giverAddress", label: "Address", type: "textarea", rows: 3 }
+  ], "Add quest", function (v) {
     if (!v.name) return "Enter a quest name.";
-    state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000) })); changed();
+    var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200) };
+    state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000), client: client })); changed();
     return { msg: v.name + " added as a candidate for the next slot." };
   }, "It joins the candidates for the next slot. You can workshop it later.");
 }
@@ -172,12 +186,13 @@ export function candidateDialog(p) {
     { key: "start", label: "Start date", type: "date", value: p.start },
     { key: "due", label: "Due date", type: "date", value: p.due },
     { key: "days", label: "Days per " + wd(), type: "number", min: "1", max: "90", step: "1", value: p.days },
-    { key: "giverOrg", label: "Quest Giver: Organization", value: p.client.org },
-    { key: "giverPoc", label: "Quest Giver: POC", value: p.client.poc },
-    { key: "giverPhone", label: "Quest Giver: Phone", type: "tel", value: p.client.phone },
-    { key: "giverEmail", label: "Quest Giver: Email", type: "email", value: p.client.email },
-    { key: "giverWebsite", label: "Quest Giver: Website", type: "url", value: p.client.website },
-    { key: "giverAddress", label: "Quest Giver: Address", type: "textarea", rows: 3, value: p.client.address }
+    { key: "giverHeading", label: "Quest Giver", type: "heading" },
+    { key: "giverOrg", label: "Organization", value: p.client.org },
+    { key: "giverPoc", label: "POC", value: p.client.poc },
+    { key: "giverPhone", label: "Phone", type: "tel", value: p.client.phone },
+    { key: "giverEmail", label: "Email", type: "email", value: p.client.email },
+    { key: "giverWebsite", label: "Website", type: "url", value: p.client.website },
+    { key: "giverAddress", label: "Address", type: "textarea", rows: 3, value: p.client.address }
   ], "Save", function (v) {
     if (!v.name) return "Enter a quest name.";
     var days = parseInt(v.days, 10);

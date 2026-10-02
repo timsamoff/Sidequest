@@ -1090,8 +1090,8 @@ export function renderSettings(page) {
     on(inp, "input", function () { state.settings.contact[key] = inp.value.slice(0, 200); save(); });
     w.appendChild(inp); cg.appendChild(w);
   }
-  cfield("name", "set-contact-name", "Name");
   cfield("company", "set-contact-company", "Company");
+  cfield("name", "set-contact-name", "Name");
   cfield("phone", "set-contact-phone", "Phone", "tel");
   cfield("email", "set-contact-email", "Email", "email");
   cfield("website", "set-contact-website", "Website", "url");

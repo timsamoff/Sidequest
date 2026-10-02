@@ -404,10 +404,10 @@ function plainLine(v) { return "<div>" + escHtml(v) + "</div>"; }
 
 // One letterhead column: a heading ("Prepared by"/"Prepared for"), a bold
 // name line, then whatever else was filled in. Returns "" if fields is null.
-// `nameKey` is the field that leads the column in bold (the user's own name
-// for "Prepared by", the Quest Giver's organization for "Prepared for").
-// `secondKey` is the next most identifying field, shown plain right after it
-// (company for a person, POC for an organization).
+// `nameKey` is the field that leads the column in bold (the user's own
+// company for "Prepared by", the Quest Giver's organization for "Prepared
+// for" -- both sides lead with the organization, not the person).
+// `secondKey` is the contact person, shown plain right after it.
 function renderLetterColumn(heading, fields, nameKey, secondKey) {
   if (!fields) return "";
   var lines = [];
@@ -426,7 +426,7 @@ function renderLetterColumn(heading, fields, nameKey, secondKey) {
 // info at all, "Prepared for" takes the left (only) position instead of
 // sitting stranded on the right.
 function renderLetterhead(contact, client) {
-  var by = renderLetterColumn("Prepared by", contact, "name", "company");
+  var by = renderLetterColumn("Prepared by", contact, "company", "name");
   var forWhom = renderLetterColumn("Prepared for", client, "org", "poc");
   if (!by && !forWhom) return "";
   return '<div class="eletterhead">' + (by || forWhom) + (by ? forWhom : "") + "</div>\n";

@@ -566,10 +566,23 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // Quest Giver fields live in the same dialog for a candidate
   k.tab("projects"); k.click(k.btn(k.$("view"), "Renamed Extension"));
   ok(!!k.$("f-giverOrg") && !!k.$("f-giverPoc") && !!k.$("f-giverPhone") && !!k.$("f-giverEmail") && !!k.$("f-giverWebsite") && !!k.$("f-giverAddress"), "the candidate dialog has all six Quest Giver fields");
+  ok([...k.d.querySelectorAll("#modalBody .dialogheading")].some(h => h.textContent === "Quest Giver"), "a real heading introduces the Quest Giver fields, not a prefix on each label");
+  ok(k.d.querySelector("label[for='f-giverOrg']").textContent === "Organization", "the fields' own labels are plain (Organization, not Quest Giver: Organization)");
   k.setField("giverOrg", "Acme Co."); k.setField("giverPoc", "Jordan Lee");
   k.click(k.btn(k.$("modalBody"), "Save"));
   const giver = k.saved().quests.find(p => p.id === "pExt").client;
   ok(giver.org === "Acme Co." && giver.poc === "Jordan Lee" && giver.phone === "", "saving the candidate dialog saves its Quest Giver fields, blank ones stay blank");
+}
+{
+  // New quest also collects Quest Giver fields up front
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.menuAct("newBtn", "newQuest");
+  ok(!!k.$("f-giverOrg") && !!k.$("f-giverAddress"), "the New quest dialog has Quest Giver fields too");
+  k.setField("name", "Brand New Quest"); k.setField("giverOrg", "New Client LLC");
+  k.click(k.btn(k.$("modalBody"), "Add quest"));
+  const nq = k.saved().quests.find(p => p.name === "Brand New Quest");
+  ok(nq.client.org === "New Client LLC" && nq.client.poc === "", "a quest created with Quest Giver info saves it from the start");
 }
 {
   const k = kit(await mk());
