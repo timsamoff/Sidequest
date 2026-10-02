@@ -1,5 +1,5 @@
 import { state, ui, changed, isISO, task, project as makeProject } from "./state.js";
-import { iso, addDays, parseISO, fmt, fmtY } from "./dates.js";
+import { iso, addDays, parseISO, fmt, fmtY, TODAY } from "./dates.js";
 import {
   wd, wl, wpC, counted, activeProjects, liveProjects, findProject, dispProject, nextTask, findTask,
   orderedAll, taskOptions, stepOptions, syncFromSteps, findStep, decisionFor,
@@ -129,7 +129,7 @@ export function taskDialog(prefillProjectId, backlog) {
     } else if (v.start) return "Add a due date too, or clear the start date. A task with no due date goes to the Backlog.";
     var est = v.est === "" ? 0 : parseFloat(v.est);
     if (isNaN(est) || est < 0 || est > 9999) return "Enter the estimated time as hours from 0 to 9999, or leave it empty.";
-    var t = task("c" + uid(), blk, v.project, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100 });
+    var t = task("c" + uid(), blk, v.project, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
     state.tasks.push(t); ui.sel = t.id; changed();
     return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ")." };
   }, "Pick when this should be done and it's placed in the right " + wl() + " automatically. Leave the due date empty to put the task in the Backlog.");

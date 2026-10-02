@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { fmt, fmtY, addDays, addMonths, parseISO, TODAY } from "./dates.js";
-import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, live, dispProject, findProject, projectBurn, projectBurnTasks, burnTasks, short, isHiddenComplete, blockStartFor, blockEndFor, blockForDate, checkpointStep, globalActual } from "./model.js";
+import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, live, dispProject, findProject, projectBurn, projectBurnTasks, burnTasks, short, isHiddenComplete, blockStartFor, blockEndFor, blockForDate, checkpointStep, globalActual, histAt } from "./model.js";
 import { el, on } from "./dom.js";
 
 export function svgEl(tag, attrs, text) {
@@ -22,6 +22,7 @@ function renderBurn(host, wide, cfg) {
   host.style.position = "relative";
   var cps = cfg.cps, n = cps.length, pl = cfg.planned, acts = cfg.actual;
   var ymax = Math.max(cfg.total, 1); acts.forEach(function (a) { if (a !== null && a > ymax) ymax = a; });
+  (cfg.scopeSteps || []).forEach(function (st) { if (st.v > ymax) ymax = st.v; });
   var tick = Math.max(1, Math.ceil(ymax / 8));
   var W = wide ? 960 : 640, H = wide ? 320 : 300, L = 40, R = 18, T = 16, B = 44;
   var svg = svgEl("svg", { "class": "chart", viewBox: "0 0 " + W + " " + H, role: "group", tabindex: "0" });
@@ -36,6 +37,15 @@ function renderBurn(host, wide, cfg) {
   var every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 70))));
   cps.forEach(function (ms, i) { if (i % every === 0 || i === n - 1) svg.appendChild(svgEl("text", { "class": "axis", x: x(i), y: H - 16, "text-anchor": "middle" }, fmt(ms))); });
   svg.appendChild(svgEl("polyline", { "class": "planned", points: pl.map(function (p, i) { return x(i) + "," + y(p); }).join(" ") }));
+  // Tasks in scope, as steps at the dates it really changed (never a slope between points).
+  var ss = cfg.scopeSteps;
+  if (ss && (ss.length > 1 || (ss.length === 1 && cfg.scopeEnd > ss[0].ms))) {
+    var px = function (ms) { return L + (W - L - R) * Math.max(0, Math.min(1, (ms - cps[0]) / (cps[n - 1] - cps[0]))); };
+    var sp = [], pv = null;
+    ss.forEach(function (st) { if (pv !== null) sp.push(px(st.ms) + "," + y(pv)); sp.push(px(st.ms) + "," + y(st.v)); pv = st.v; });
+    sp.push(px(cfg.scopeEnd) + "," + y(pv));
+    svg.appendChild(svgEl("polyline", { "class": "scope", points: sp.join(" ") }));
+  }
   var seg = [];
   function flush() { if (seg.length > 1) svg.appendChild(svgEl("polyline", { "class": "actual", points: seg.join(" ") })); seg = []; }
   acts.forEach(function (a, i) { if (a === null) { flush(); return; } seg.push(x(i) + "," + y(a)); });
@@ -127,12 +137,23 @@ function weekTip(cps, i, pl, act, scopes, tasks, span, withProject) {
   return lines.join("\n");
 }
 
+// Total scope over the chart's range from a recorded history, plus today's live count.
+function scopeSteps(cps, hist, liveCount) {
+  var start = cps[0], last = cps[cps.length - 1], end = Math.min(TODAY, last), out = [];
+  function add(ms, v) { if (!out.length || out[out.length - 1].v !== v) out.push({ ms: ms, v: v }); }
+  var first = histAt(hist, start);
+  if (first) add(start, first[0]);
+  Object.keys(hist).sort().forEach(function (k) { var ms = parseISO(k); if (ms > start && ms <= end) add(ms, hist[k][0]); });
+  if (TODAY >= start && TODAY <= last) add(TODAY, liveCount);
+  return { steps: out, end: end };
+}
+
 export function drawChart(host, wide) {
   var total = totalUnits(), cps = checkpoints(), n = cps.length, ga = globalActual(cps);
-  var pl = cps.map(planned), tasks = burnTasks(), span = checkpointStep() * 86400000;
+  var pl = cps.map(planned), tasks = burnTasks(), span = checkpointStep() * 86400000, sc = scopeSteps(cps, state.hist, total);
   renderBurn(host, wide, {
-    cps: cps, planned: pl, actual: ga.actual, total: total,
-    label: "Burndown chart. Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
+    cps: cps, planned: pl, actual: ga.actual, total: total, scopeSteps: sc.steps, scopeEnd: sc.end,
+    label: "Burndown chart. Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". A grey line shows the tasks in scope.",
     tip: function (i) { return weekTip(cps, i, pl, ga.actual, ga.scope, tasks, span, true); }
   });
 }
@@ -143,9 +164,10 @@ export function drawProjectChart(host, p, wide) {
   if (!bd) { host.innerHTML = ""; return false; }
   var cps = bd.cps, n = cps.length, pl = bd.planned, span = bd.stepDays * 86400000;
   var marks = live(state.milestones).filter(function (m) { return m.projectId === p.id; }).map(function (m) { return { ms: parseISO(m.date), text: m.text }; });
+  var sc = scopeSteps(cps, p.hist, bd.total);
   renderBurn(host, wide, {
-    cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks,
-    label: "Burndown chart for " + p.name + ". Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
+    cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks, scopeSteps: sc.steps, scopeEnd: sc.end,
+    label: "Burndown chart for " + p.name + ". Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". A grey line shows the tasks in scope.",
     tip: function (i) { return weekTip(cps, i, pl, bd.actual, bd.scope, bd.tasks, span, false); }
   });
   return true;

@@ -79,6 +79,7 @@ export function syncTaskBlocks() {
 }
 // Estimated time is hours, shown as "3 h" or "1.5 h".
 export function fmtHours(h) { return (Math.round(h * 100) / 100) + " h"; }
+export function fmtHoursLong(h) { var r = Math.round(h * 100) / 100; return r + (r === 1 ? " hour" : " hours"); }
 // Total and still-open estimated hours across every task of one project,
 // Backlog included.
 export function projectEstimate(p) {

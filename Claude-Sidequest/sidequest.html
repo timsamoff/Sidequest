@@ -244,9 +244,11 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 /* A task opened in place on a project's page: part of the list, not a separate card. */
 .tlist li > .detail { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
 .metarow { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--space-4) var(--space-12); }
-.estleft { white-space: nowrap; }
+.estleft { margin-left: auto; white-space: nowrap; }
 .item .l1 { color: var(--muted); font-size: var(--text-sm); }
 .item .l1 b { color: var(--ink); font-weight: 600; }
+/* A date line with a tag pinned to its right end. */
+.item .l1.split { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-8); }
 .item .l2 { margin-top: var(--space-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .item.done .l2 { color: var(--muted); }
 .item .l3 { margin-top: var(--space-6); display: flex; gap: var(--space-8); align-items: center; flex-wrap: wrap; font-size: var(--text-sm); color: var(--muted); }
@@ -321,11 +323,13 @@ svg.chart { display: block; width: 100%; height: auto; }
 .chart .axis { fill: var(--muted); font-size: 12px; font-family: var(--font-sans); }
 .chart .planned { fill: none; stroke: var(--planned); stroke-width: 2.5; stroke-dasharray: 7 5; }
 .chart .actual { fill: none; stroke: var(--burn); stroke-width: 3; }
+.chart .scope { fill: none; stroke: var(--muted); stroke-opacity: .45; stroke-width: 1.5; }
 .chart .dot { fill: var(--burn); stroke: var(--surface); stroke-width: 2; }
 .legend { display: flex; flex-wrap: wrap; gap: var(--space-16); padding: var(--space-6) var(--space-4) var(--space-10); font-size: .88rem; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: var(--space-8); }
 .legend i { display: inline-block; width: 24px; height: 0; border-top: 3px solid var(--burn); }
 .legend i.p { border-top: 3px dashed var(--planned); }
+.legend i.s { border-top: 2px solid var(--muted); opacity: .5; }
 .tablewrap { margin-top: var(--space-12); overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; vertical-align: top; padding: var(--space-10) var(--space-12); border-bottom: 1px solid var(--line); }
@@ -735,6 +739,7 @@ function syncTaskBlocks() {
 }
 // Estimated time is hours, shown as "3 h" or "1.5 h".
 function fmtHours(h) { return (Math.round(h * 100) / 100) + " h"; }
+function fmtHoursLong(h) { var r = Math.round(h * 100) / 100; return r + (r === 1 ? " hour" : " hours"); }
 // Total and still-open estimated hours across every task of one project,
 // Backlog included.
 function projectEstimate(p) {
@@ -947,7 +952,7 @@ var APP_NAME = "Sidequest";
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
 function st(id, text, launch, done) { return { id: id, text: text, done: done === true, launch: launch === true }; }
 function task(id, block, projectId, what, done, steps, extra) {
-  var t = { id: id, block: block, projectId: projectId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0 };
+  var t = { id: id, block: block, projectId: projectId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0, added: "" };
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
   return t;
 }
@@ -968,9 +973,9 @@ function sampleData() {
   var yest = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 1)).toISOString().slice(0, 10);
   var lastWeek = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 7)).toISOString().slice(0, 10);
   // Burndown history entries are [tasks in scope, tasks still open], keyed by the
-  // day recorded. Sample App has five scheduled tasks and started two Mondays ago; its
+  // day recorded. Sample App started two Mondays ago with four scheduled tasks and gained a fifth; its
   // second one is running late, so the burndown sits above the plan.
-  var appHistory = {}; appHistory[day(0)] = [5, 5]; appHistory[day(5)] = [5, 4];
+  var appHistory = {}; appHistory[day(0)] = [4, 4]; appHistory[day(5)] = [4, 3]; appHistory[day(9)] = [5, 4];
   // Sample Finished Project runs a little late, then ahead, then lands on time,
   // so its full-project Burndown crosses the planned line instead of tracking it.
   var doneHistory = {}; doneHistory[day(-28)] = [4, 4]; doneHistory[day(-20)] = [4, 3]; doneHistory[day(-15)] = [4, 2]; doneHistory[day(-12)] = [4, 1]; doneHistory[day(-1)] = [4, 0];
@@ -1023,6 +1028,8 @@ function sampleData() {
   tasks.forEach(function (t) { if (DONE[t.id]) t.doneAt = DONE[t.id]; });
   // Shorter than its two-week block: starts two days in, due a week later.
   tasks.forEach(function (t) { if (t.id === "g1") { t.start = day(23); t.due = day(30); } });
+  // Sample App's last task joined the plan after the project started: a scope change.
+  tasks.forEach(function (t) { if (t.id === "a5") t.added = day(9); });
   return {
     tasks: tasks,
     projects: projects,
@@ -1135,7 +1142,7 @@ function normalize(s) {
       if (tstart && tdue && tstart > tdue) tstart = "";
       var test = typeof t.est === "number" && t.est > 0 && t.est <= 9999 ? Math.round(t.est * 100) / 100 : 0;
       ts.push({
-        id: S(t.id, 40), block: b, projectId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test,
+        id: S(t.id, 40), block: b, projectId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
         custom: t.custom === true, isNext: t.isNext === true,
         arch: validArch(t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : ""
@@ -1296,6 +1303,7 @@ function renderBurn(host, wide, cfg) {
   host.style.position = "relative";
   var cps = cfg.cps, n = cps.length, pl = cfg.planned, acts = cfg.actual;
   var ymax = Math.max(cfg.total, 1); acts.forEach(function (a) { if (a !== null && a > ymax) ymax = a; });
+  (cfg.scopeSteps || []).forEach(function (st) { if (st.v > ymax) ymax = st.v; });
   var tick = Math.max(1, Math.ceil(ymax / 8));
   var W = wide ? 960 : 640, H = wide ? 320 : 300, L = 40, R = 18, T = 16, B = 44;
   var svg = svgEl("svg", { "class": "chart", viewBox: "0 0 " + W + " " + H, role: "group", tabindex: "0" });
@@ -1310,6 +1318,15 @@ function renderBurn(host, wide, cfg) {
   var every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 70))));
   cps.forEach(function (ms, i) { if (i % every === 0 || i === n - 1) svg.appendChild(svgEl("text", { "class": "axis", x: x(i), y: H - 16, "text-anchor": "middle" }, fmt(ms))); });
   svg.appendChild(svgEl("polyline", { "class": "planned", points: pl.map(function (p, i) { return x(i) + "," + y(p); }).join(" ") }));
+  // Tasks in scope, as steps at the dates it really changed (never a slope between points).
+  var ss = cfg.scopeSteps;
+  if (ss && (ss.length > 1 || (ss.length === 1 && cfg.scopeEnd > ss[0].ms))) {
+    var px = function (ms) { return L + (W - L - R) * Math.max(0, Math.min(1, (ms - cps[0]) / (cps[n - 1] - cps[0]))); };
+    var sp = [], pv = null;
+    ss.forEach(function (st) { if (pv !== null) sp.push(px(st.ms) + "," + y(pv)); sp.push(px(st.ms) + "," + y(st.v)); pv = st.v; });
+    sp.push(px(cfg.scopeEnd) + "," + y(pv));
+    svg.appendChild(svgEl("polyline", { "class": "scope", points: sp.join(" ") }));
+  }
   var seg = [];
   function flush() { if (seg.length > 1) svg.appendChild(svgEl("polyline", { "class": "actual", points: seg.join(" ") })); seg = []; }
   acts.forEach(function (a, i) { if (a === null) { flush(); return; } seg.push(x(i) + "," + y(a)); });
@@ -1401,12 +1418,23 @@ function weekTip(cps, i, pl, act, scopes, tasks, span, withProject) {
   return lines.join("\n");
 }
 
+// Total scope over the chart's range from a recorded history, plus today's live count.
+function scopeSteps(cps, hist, liveCount) {
+  var start = cps[0], last = cps[cps.length - 1], end = Math.min(TODAY, last), out = [];
+  function add(ms, v) { if (!out.length || out[out.length - 1].v !== v) out.push({ ms: ms, v: v }); }
+  var first = histAt(hist, start);
+  if (first) add(start, first[0]);
+  Object.keys(hist).sort().forEach(function (k) { var ms = parseISO(k); if (ms > start && ms <= end) add(ms, hist[k][0]); });
+  if (TODAY >= start && TODAY <= last) add(TODAY, liveCount);
+  return { steps: out, end: end };
+}
+
 function drawChart(host, wide) {
   var total = totalUnits(), cps = checkpoints(), n = cps.length, ga = globalActual(cps);
-  var pl = cps.map(planned), tasks = burnTasks(), span = checkpointStep() * 86400000;
+  var pl = cps.map(planned), tasks = burnTasks(), span = checkpointStep() * 86400000, sc = scopeSteps(cps, state.hist, total);
   renderBurn(host, wide, {
-    cps: cps, planned: pl, actual: ga.actual, total: total,
-    label: "Burndown chart. Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
+    cps: cps, planned: pl, actual: ga.actual, total: total, scopeSteps: sc.steps, scopeEnd: sc.end,
+    label: "Burndown chart. Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". A grey line shows the tasks in scope.",
     tip: function (i) { return weekTip(cps, i, pl, ga.actual, ga.scope, tasks, span, true); }
   });
 }
@@ -1417,9 +1445,10 @@ function drawProjectChart(host, p, wide) {
   if (!bd) { host.innerHTML = ""; return false; }
   var cps = bd.cps, n = cps.length, pl = bd.planned, span = bd.stepDays * 86400000;
   var marks = live(state.milestones).filter(function (m) { return m.projectId === p.id; }).map(function (m) { return { ms: parseISO(m.date), text: m.text }; });
+  var sc = scopeSteps(cps, p.hist, bd.total);
   renderBurn(host, wide, {
-    cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks,
-    label: "Burndown chart for " + p.name + ". Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ".",
+    cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks, scopeSteps: sc.steps, scopeEnd: sc.end,
+    label: "Burndown chart for " + p.name + ". Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". A grey line shows the tasks in scope.",
     tip: function (i) { return weekTip(cps, i, pl, bd.actual, bd.scope, bd.tasks, span, false); }
   });
   return true;
@@ -1790,7 +1819,7 @@ function taskDialog(prefillProjectId, backlog) {
     } else if (v.start) return "Add a due date too, or clear the start date. A task with no due date goes to the Backlog.";
     var est = v.est === "" ? 0 : parseFloat(v.est);
     if (isNaN(est) || est < 0 || est > 9999) return "Enter the estimated time as hours from 0 to 9999, or leave it empty.";
-    var t = task("c" + uid(), blk, v.project, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100 });
+    var t = task("c" + uid(), blk, v.project, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
     state.tasks.push(t); ui.sel = t.id; changed();
     return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ")." };
   }, "Pick when this should be done and it's placed in the right " + wl() + " automatically. Leave the due date empty to put the task in the Backlog.");
@@ -2010,6 +2039,18 @@ function confirmDialog(title, text, label, onConfirm) {
 
 
 /* views */
+// Added to the plan after its project started: a scope change, marked on the task itself.
+// "1 of 3 steps", then "Est 6 h" -- with a bullet between them only when both show.
+function stepsAndEst(l3, t) {
+  var steps = t.steps.length ? t.steps.filter(function (x) { return x.done; }).length + " of " + t.steps.length + " steps" : "";
+  if (steps) l3.appendChild(el("span", null, steps));
+  if (steps && t.est > 0) l3.appendChild(el("span", { "aria-hidden": "true" }, "\u00b7"));
+  if (t.est > 0) l3.appendChild(el("span", null, "Est " + fmtHours(t.est)));
+}
+function addedChip(t) {
+  if (!t.added || t.isNext || !t.projectId || t.added <= pset(t.projectId).start) return null;
+  return el("span", { "class": "chip", title: "Added to the plan after this project started" }, "Added " + fmt(parseISO(t.added)));
+}
 function nextUpPanel() {
   var box = el("div", { "class": "panel" });
   var t = nextTask();
@@ -2116,7 +2157,9 @@ function burnParts(o) {
   var lg = el("div", { "class": "legend" });
   var l1 = el("span"); l1.appendChild(el("i", { "class": "p" })); l1.appendChild(document.createTextNode("Planned"));
   var l2 = el("span"); l2.appendChild(el("i")); l2.appendChild(document.createTextNode("Actual"));
-  lg.appendChild(l1); lg.appendChild(l2); cb.appendChild(lg);
+  lg.appendChild(l1); lg.appendChild(l2);
+  var l3 = el("span"); l3.appendChild(el("i", { "class": "s" })); l3.appendChild(document.createTextNode("In scope")); lg.appendChild(l3);
+  cb.appendChild(lg);
   if (proj) drawProjectChart(host, proj, o.wide); else drawChart(host, o.wide);
   var rn = proj ? projectRemainingUnits(proj) : remainingUnits(), tot = proj ? projectTotalUnits(proj) : totalUnits(), rb = el("div", { "class": "box" });
   var nbk = proj ? counted().filter(function (t) { return t.projectId === proj.id && !t.isNext && t.block === 0; }).length : backlogTasks().length;
@@ -2151,14 +2194,15 @@ function taskRow(t) {
   var li = el("li");
   var b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
   if (t.id === ui.sel) b.setAttribute("aria-current", "true");
-  var l1 = el("div", { "class": "l1" }); l1.appendChild(el("b", null, dispProject(t)));
-  l1.appendChild(document.createTextNode(" · " + (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)))));
+  var l1 = el("div", { "class": "l1 split" }), l1t = el("span"); l1t.appendChild(el("b", null, dispProject(t)));
+  l1t.appendChild(document.createTextNode(" · " + (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)))));
+  l1.appendChild(l1t);
+  var tag1 = addedChip(t); if (tag1) l1.appendChild(tag1);
   b.appendChild(l1);
   b.appendChild(el("div", { "class": "l2" }, dispWhat(t)));
   var l3 = el("div", { "class": "l3" });
   l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
-  if (t.steps.length) l3.appendChild(el("span", null, t.steps.filter(function (s) { return s.done; }).length + " of " + t.steps.length + " steps"));
-  if (t.est > 0) l3.appendChild(el("span", null, fmtHours(t.est)));
+  stepsAndEst(l3, t);
   if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
   b.appendChild(l3);
   on(b, "click", function () { ui.sel = t.id; ui.detail = true; renderView(); scrollTop(); });
@@ -2201,6 +2245,7 @@ function buildDetail(t, inline) {
   if (!inline) lh.appendChild(el("h2", { style: "margin:0" }, dispProject(t)));
   var dm = el("p", { "class": "dmeta" }, (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))) + " ");
   if (isLate(t)) dm.appendChild(el("span", { "class": "badge" }, "Overdue"));
+  var tag2 = addedChip(t); if (tag2) { tag2.style.marginLeft = "6px"; dm.appendChild(tag2); }
   lh.appendChild(dm); top.appendChild(lh);
   var sel = el("select", { "class": "status", "aria-label": "Status" });
   STATUSES.forEach(function (s) { var o = el("option", { value: s }, s); if (s === t.status) o.selected = true; sel.appendChild(o); });
@@ -2238,12 +2283,13 @@ function buildDetail(t, inline) {
     // "blur", not "change" -- a date input fires "change" per segment while typing.
     on(bd, "blur", function () {
       if (bd.value === shownDue()) return;
-      if (bd.value === "") { t.block = 0; t.start = ""; t.due = ""; changed(); notify("Moved to the Backlog."); return; }
+      if (bd.value === "") { t.block = 0; t.start = ""; t.due = ""; t.added = ""; changed(); notify("Moved to the Backlog."); return; }
       if (!isISO(bd.value)) { resetDates(); dmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
       var blk = blockForDate(projKey(t), parseISO(bd.value));
       if (blk === null) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(projFirst) + ", this project's own start date."; return; }
       if (t.block > 0 && t.start && bd.value < t.start) { resetDates(); dmsg.textContent = "The due date can't be before the start date."; return; }
       dmsg.textContent = "";
+      if (t.block === 0) t.added = iso(TODAY);
       t.due = bd.value; t.block = blk; changed();
       notify("Due " + fmt(taskEnd(t)) + ", in " + wd() + " " + blk + ".");
     });
@@ -2458,7 +2504,7 @@ function renderProjectPage(root, id) {
   // The count line on the left, the open estimated time on the right.
   var est = projectEstimate(p), metaRow = el("div", { "class": "metarow" });
   metaRow.appendChild(metaLine);
-  if (est.total > 0) metaRow.appendChild(el("span", { "class": "hint estleft" }, "Est. " + fmtHours(est.left) + " left"));
+  if (est.total > 0) metaRow.appendChild(el("span", { "class": "hint estleft" }, "Est. " + fmtHoursLong(est.left) + " remaining"));
   root.appendChild(metaRow);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
   else if (p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this project is Complete. Reopen it to bring them back."));
@@ -2473,12 +2519,14 @@ function renderProjectPage(root, id) {
       var open = !readOnly && ui.projOpen[p.id] === t.id;
       var li = el("li", { id: "ptask-" + t.id }), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
       if (!readOnly) b.setAttribute("aria-expanded", open ? "true" : "false");
-      b.appendChild(el("div", { "class": "l1" }, t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
+      var l1 = el("div", { "class": "l1 split" });
+      l1.appendChild(el("span", null, t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
+      var tag1 = addedChip(t); if (tag1) l1.appendChild(tag1);
+      b.appendChild(l1);
       b.appendChild(el("div", { "class": "l2" }, t.what));
       var l3 = el("div", { "class": "l3" });
       l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
-      if (t.steps.length) l3.appendChild(el("span", null, t.steps.filter(function (x) { return x.done; }).length + " of " + t.steps.length + " steps"));
-      if (t.est > 0) l3.appendChild(el("span", null, fmtHours(t.est)));
+      stepsAndEst(l3, t);
       if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
       b.appendChild(l3);
       on(b, "click", function () { if (readOnly) { openTask(t.id); return; } ui.projOpen[p.id] = open ? null : t.id; renderView(); });
@@ -2870,12 +2918,12 @@ function helpTopics() {
     ["Work through your day (Today)", [
       "**Next up** shows the task to do now. **Start** marks it in progress, and **Open task** takes you to it in Tasks.",
       "Anything past its end date appears below it. If you are running behind, open that project's own page and use **Slip schedule** there.",
-      "The burndown counts tasks, one each, and shows how many are still open against the plan. The app records the counts itself whenever you make a change, so nothing is typed in, and a day you did not open the app keeps the last count. Adding tasks later shows as the line stepping up, and a project marked Complete takes its open tasks off the chart. Both are called out as scope changes in the tooltip and the table. Point at a day or week, tap it, or focus the chart and use the arrow keys to see its counts and tasks."]],
+      "The burndown counts tasks, one each, and shows how many are still open against the plan. The app records the counts itself whenever you make a change, so nothing is typed in, and a day you did not open the app keeps the last count. A grey line shows how many tasks are in scope, stepping up when tasks are added and down when they are removed. On a project's page, a task added after the project started carries an Added tag with its date. A project marked Complete takes its open tasks off the main chart. Scope changes are also called out in the tooltip and the table. Point at a day or week, tap it, or focus the chart and use the arrow keys to see its counts and tasks."]],
     ["Add and schedule tasks", [
       "Tap **+**, then **New task**. Enter the project, what you do, and when it is done.",
       "Pick a due date and the task lands in the " + w + " that contains it. Add a start date if it begins later than that " + w + " does, and an estimated time in hours if you want one. Leave the due date empty to put the task in the Backlog.",
       "Open a task in **Tasks**, or select it on its project's page where it opens right in place, to change its status, add steps and notes, or edit its start date, due date, and estimated time. A start date can't be after the due date. Use the pencil beside its name to rename it.",
-      "A project's page shows the estimated time still open beside its task count, like \"Est. 12 h left\". It drops as you complete tasks.",
+      "A project's page shows the estimated time still open beside its task count, like \"Est. 12 hours remaining\". It drops as you complete tasks.",
       "Finishing every step marks the task done."]],
     ["Use the Backlog", [
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",

@@ -6,7 +6,7 @@ import {
   findProject, findAnyProject, linkedProjects, unlinkProjects, chosen, dispProject, dispWhat,
   totalUnits, remainingUnits, planned, ordered, backlogTasks, sortTasks,
   isLate, lateTasks, setStatus, syncFromSteps, nextTask, projectTasksAllDone, projectTotalUnits, projectRemainingUnits,
-  validPage, isPinned, pinPage, unpinPage, projectMeta, fmtHours, projectEstimate, recordHist, checkpointStep, globalActual,
+  validPage, isPinned, pinPage, unpinPage, projectMeta, fmtHours, fmtHoursLong, projectEstimate, recordHist, checkpointStep, globalActual,
   findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask
 } from "./model.js";
 import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline } from "./dom.js";
@@ -15,6 +15,18 @@ import { openTask, go, renderView, renderAll, renderChrome, applyTheme } from ".
 import { stepDialog, stepEditDialog, decisionDialog, decisionEditDialog, linkProjectDialog, ideaDialog, candidateDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
 
 /* views */
+// Added to the plan after its project started: a scope change, marked on the task itself.
+// "1 of 3 steps", then "Est 6 h" -- with a bullet between them only when both show.
+function stepsAndEst(l3, t) {
+  var steps = t.steps.length ? t.steps.filter(function (x) { return x.done; }).length + " of " + t.steps.length + " steps" : "";
+  if (steps) l3.appendChild(el("span", null, steps));
+  if (steps && t.est > 0) l3.appendChild(el("span", { "aria-hidden": "true" }, "\u00b7"));
+  if (t.est > 0) l3.appendChild(el("span", null, "Est " + fmtHours(t.est)));
+}
+function addedChip(t) {
+  if (!t.added || t.isNext || !t.projectId || t.added <= pset(t.projectId).start) return null;
+  return el("span", { "class": "chip", title: "Added to the plan after this project started" }, "Added " + fmt(parseISO(t.added)));
+}
 export function nextUpPanel() {
   var box = el("div", { "class": "panel" });
   var t = nextTask();
@@ -121,7 +133,9 @@ export function burnParts(o) {
   var lg = el("div", { "class": "legend" });
   var l1 = el("span"); l1.appendChild(el("i", { "class": "p" })); l1.appendChild(document.createTextNode("Planned"));
   var l2 = el("span"); l2.appendChild(el("i")); l2.appendChild(document.createTextNode("Actual"));
-  lg.appendChild(l1); lg.appendChild(l2); cb.appendChild(lg);
+  lg.appendChild(l1); lg.appendChild(l2);
+  var l3 = el("span"); l3.appendChild(el("i", { "class": "s" })); l3.appendChild(document.createTextNode("In scope")); lg.appendChild(l3);
+  cb.appendChild(lg);
   if (proj) drawProjectChart(host, proj, o.wide); else drawChart(host, o.wide);
   var rn = proj ? projectRemainingUnits(proj) : remainingUnits(), tot = proj ? projectTotalUnits(proj) : totalUnits(), rb = el("div", { "class": "box" });
   var nbk = proj ? counted().filter(function (t) { return t.projectId === proj.id && !t.isNext && t.block === 0; }).length : backlogTasks().length;
@@ -156,14 +170,15 @@ export function taskRow(t) {
   var li = el("li");
   var b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
   if (t.id === ui.sel) b.setAttribute("aria-current", "true");
-  var l1 = el("div", { "class": "l1" }); l1.appendChild(el("b", null, dispProject(t)));
-  l1.appendChild(document.createTextNode(" · " + (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)))));
+  var l1 = el("div", { "class": "l1 split" }), l1t = el("span"); l1t.appendChild(el("b", null, dispProject(t)));
+  l1t.appendChild(document.createTextNode(" · " + (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)))));
+  l1.appendChild(l1t);
+  var tag1 = addedChip(t); if (tag1) l1.appendChild(tag1);
   b.appendChild(l1);
   b.appendChild(el("div", { "class": "l2" }, dispWhat(t)));
   var l3 = el("div", { "class": "l3" });
   l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
-  if (t.steps.length) l3.appendChild(el("span", null, t.steps.filter(function (s) { return s.done; }).length + " of " + t.steps.length + " steps"));
-  if (t.est > 0) l3.appendChild(el("span", null, fmtHours(t.est)));
+  stepsAndEst(l3, t);
   if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
   b.appendChild(l3);
   on(b, "click", function () { ui.sel = t.id; ui.detail = true; renderView(); scrollTop(); });
@@ -206,6 +221,7 @@ export function buildDetail(t, inline) {
   if (!inline) lh.appendChild(el("h2", { style: "margin:0" }, dispProject(t)));
   var dm = el("p", { "class": "dmeta" }, (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))) + " ");
   if (isLate(t)) dm.appendChild(el("span", { "class": "badge" }, "Overdue"));
+  var tag2 = addedChip(t); if (tag2) { tag2.style.marginLeft = "6px"; dm.appendChild(tag2); }
   lh.appendChild(dm); top.appendChild(lh);
   var sel = el("select", { "class": "status", "aria-label": "Status" });
   STATUSES.forEach(function (s) { var o = el("option", { value: s }, s); if (s === t.status) o.selected = true; sel.appendChild(o); });
@@ -243,12 +259,13 @@ export function buildDetail(t, inline) {
     // "blur", not "change" -- a date input fires "change" per segment while typing.
     on(bd, "blur", function () {
       if (bd.value === shownDue()) return;
-      if (bd.value === "") { t.block = 0; t.start = ""; t.due = ""; changed(); notify("Moved to the Backlog."); return; }
+      if (bd.value === "") { t.block = 0; t.start = ""; t.due = ""; t.added = ""; changed(); notify("Moved to the Backlog."); return; }
       if (!isISO(bd.value)) { resetDates(); dmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
       var blk = blockForDate(projKey(t), parseISO(bd.value));
       if (blk === null) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(projFirst) + ", this project's own start date."; return; }
       if (t.block > 0 && t.start && bd.value < t.start) { resetDates(); dmsg.textContent = "The due date can't be before the start date."; return; }
       dmsg.textContent = "";
+      if (t.block === 0) t.added = iso(TODAY);
       t.due = bd.value; t.block = blk; changed();
       notify("Due " + fmt(taskEnd(t)) + ", in " + wd() + " " + blk + ".");
     });
@@ -463,7 +480,7 @@ export function renderProjectPage(root, id) {
   // The count line on the left, the open estimated time on the right.
   var est = projectEstimate(p), metaRow = el("div", { "class": "metarow" });
   metaRow.appendChild(metaLine);
-  if (est.total > 0) metaRow.appendChild(el("span", { "class": "hint estleft" }, "Est. " + fmtHours(est.left) + " left"));
+  if (est.total > 0) metaRow.appendChild(el("span", { "class": "hint estleft" }, "Est. " + fmtHoursLong(est.left) + " remaining"));
   root.appendChild(metaRow);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "Archived. Restore it to make changes."));
   else if (p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this project is Complete. Reopen it to bring them back."));
@@ -478,12 +495,14 @@ export function renderProjectPage(root, id) {
       var open = !readOnly && ui.projOpen[p.id] === t.id;
       var li = el("li", { id: "ptask-" + t.id }), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
       if (!readOnly) b.setAttribute("aria-expanded", open ? "true" : "false");
-      b.appendChild(el("div", { "class": "l1" }, t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
+      var l1 = el("div", { "class": "l1 split" });
+      l1.appendChild(el("span", null, t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
+      var tag1 = addedChip(t); if (tag1) l1.appendChild(tag1);
+      b.appendChild(l1);
       b.appendChild(el("div", { "class": "l2" }, t.what));
       var l3 = el("div", { "class": "l3" });
       l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
-      if (t.steps.length) l3.appendChild(el("span", null, t.steps.filter(function (x) { return x.done; }).length + " of " + t.steps.length + " steps"));
-      if (t.est > 0) l3.appendChild(el("span", null, fmtHours(t.est)));
+      stepsAndEst(l3, t);
       if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
       b.appendChild(l3);
       on(b, "click", function () { if (readOnly) { openTask(t.id); return; } ui.projOpen[p.id] = open ? null : t.id; renderView(); });
@@ -875,12 +894,12 @@ export function helpTopics() {
     ["Work through your day (Today)", [
       "**Next up** shows the task to do now. **Start** marks it in progress, and **Open task** takes you to it in Tasks.",
       "Anything past its end date appears below it. If you are running behind, open that project's own page and use **Slip schedule** there.",
-      "The burndown counts tasks, one each, and shows how many are still open against the plan. The app records the counts itself whenever you make a change, so nothing is typed in, and a day you did not open the app keeps the last count. Adding tasks later shows as the line stepping up, and a project marked Complete takes its open tasks off the chart. Both are called out as scope changes in the tooltip and the table. Point at a day or week, tap it, or focus the chart and use the arrow keys to see its counts and tasks."]],
+      "The burndown counts tasks, one each, and shows how many are still open against the plan. The app records the counts itself whenever you make a change, so nothing is typed in, and a day you did not open the app keeps the last count. A grey line shows how many tasks are in scope, stepping up when tasks are added and down when they are removed. On a project's page, a task added after the project started carries an Added tag with its date. A project marked Complete takes its open tasks off the main chart. Scope changes are also called out in the tooltip and the table. Point at a day or week, tap it, or focus the chart and use the arrow keys to see its counts and tasks."]],
     ["Add and schedule tasks", [
       "Tap **+**, then **New task**. Enter the project, what you do, and when it is done.",
       "Pick a due date and the task lands in the " + w + " that contains it. Add a start date if it begins later than that " + w + " does, and an estimated time in hours if you want one. Leave the due date empty to put the task in the Backlog.",
       "Open a task in **Tasks**, or select it on its project's page where it opens right in place, to change its status, add steps and notes, or edit its start date, due date, and estimated time. A start date can't be after the due date. Use the pencil beside its name to rename it.",
-      "A project's page shows the estimated time still open beside its task count, like \"Est. 12 h left\". It drops as you complete tasks.",
+      "A project's page shows the estimated time still open beside its task count, like \"Est. 12 hours remaining\". It drops as you complete tasks.",
       "Finishing every step marks the task done."]],
     ["Use the Backlog", [
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",

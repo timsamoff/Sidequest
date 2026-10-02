@@ -13,7 +13,7 @@ export var APP_NAME = "Sidequest";
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
 export function st(id, text, launch, done) { return { id: id, text: text, done: done === true, launch: launch === true }; }
 export function task(id, block, projectId, what, done, steps, extra) {
-  var t = { id: id, block: block, projectId: projectId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0 };
+  var t = { id: id, block: block, projectId: projectId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0, added: "" };
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
   return t;
 }
@@ -34,9 +34,9 @@ export function sampleData() {
   var yest = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 1)).toISOString().slice(0, 10);
   var lastWeek = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 7)).toISOString().slice(0, 10);
   // Burndown history entries are [tasks in scope, tasks still open], keyed by the
-  // day recorded. Sample App has five scheduled tasks and started two Mondays ago; its
+  // day recorded. Sample App started two Mondays ago with four scheduled tasks and gained a fifth; its
   // second one is running late, so the burndown sits above the plan.
-  var appHistory = {}; appHistory[day(0)] = [5, 5]; appHistory[day(5)] = [5, 4];
+  var appHistory = {}; appHistory[day(0)] = [4, 4]; appHistory[day(5)] = [4, 3]; appHistory[day(9)] = [5, 4];
   // Sample Finished Project runs a little late, then ahead, then lands on time,
   // so its full-project Burndown crosses the planned line instead of tracking it.
   var doneHistory = {}; doneHistory[day(-28)] = [4, 4]; doneHistory[day(-20)] = [4, 3]; doneHistory[day(-15)] = [4, 2]; doneHistory[day(-12)] = [4, 1]; doneHistory[day(-1)] = [4, 0];
@@ -89,6 +89,8 @@ export function sampleData() {
   tasks.forEach(function (t) { if (DONE[t.id]) t.doneAt = DONE[t.id]; });
   // Shorter than its two-week block: starts two days in, due a week later.
   tasks.forEach(function (t) { if (t.id === "g1") { t.start = day(23); t.due = day(30); } });
+  // Sample App's last task joined the plan after the project started: a scope change.
+  tasks.forEach(function (t) { if (t.id === "a5") t.added = day(9); });
   return {
     tasks: tasks,
     projects: projects,
@@ -201,7 +203,7 @@ export function normalize(s) {
       if (tstart && tdue && tstart > tdue) tstart = "";
       var test = typeof t.est === "number" && t.est > 0 && t.est <= 9999 ? Math.round(t.est * 100) / 100 : 0;
       ts.push({
-        id: S(t.id, 40), block: b, projectId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test,
+        id: S(t.id, 40), block: b, projectId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
         custom: t.custom === true, isNext: t.isNext === true,
         arch: validArch(t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : ""

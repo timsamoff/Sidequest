@@ -694,7 +694,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const sel = k.d.querySelector("#view .projmain .detail .status"); sel.value = "Completed"; k.fire(sel);
   ok(k.d.querySelectorAll("#view .projmain .tlist .detail").length === 1, "the task stays open after an edit");
   const after = k.d.querySelector("#view .estleft").textContent;
-  ok(before === "Est. 27 h left" && after === "Est. 23 h left", "completing a 4 h task lowers the open estimate (" + before + " -> " + after + ")");
+  ok(before === "Est. 27 hours remaining" && after === "Est. 23 hours remaining", "completing a 4 h task lowers the open estimate (" + before + " -> " + after + ")");
   k.click(k.d.querySelector("#view .projmain .tlist button.item[aria-expanded='true']"));
   ok(!k.d.querySelector("#view .projmain .tlist .detail"), "clicking the open task again closes it");
   // the launch checklist's task link opens the task in place too
@@ -792,6 +792,70 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(/4 open tasks are no longer counted in the main burndown/.test(k.$("modalBody").textContent), "the completion dialog warns about open tasks leaving the burndown (" + k.$("modalBody").textContent.slice(0, 160) + ")");
 }
 {
+  // the main burndown draws total scope as steps at the dates it changed; project charts do not
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.tab("timeline");
+  const scope = k.d.querySelector("#view svg.chart polyline.scope");
+  ok(!!scope && [...k.d.querySelectorAll("#view .legend span")].some(s => s.textContent === "In scope"), "the main burndown has an In scope line and a legend entry for it");
+  const pts = scope.getAttribute("points").split(" ").map(p => p.split(",").map(Number));
+  const vertical = pts.some((p, i) => i > 0 && p[0] === pts[i - 1][0] && p[1] !== pts[i - 1][1]);
+  const slope = pts.some((p, i) => i > 0 && p[0] !== pts[i - 1][0] && p[1] !== pts[i - 1][1]);
+  ok(vertical && !slope, "it moves in steps (a straight rise where scope changed, level everywhere else), never in slopes");
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  ok(!!k.d.querySelector("#view .projcharts polyline.scope") && [...k.d.querySelectorAll("#view .projcharts .legend span")].some(s => s.textContent === "In scope"), "a project's own burndown draws its own In scope line too");
+  const ppts = k.d.querySelector("#view .projcharts polyline.scope").getAttribute("points").split(" ").map(p => p.split(",").map(Number));
+  ok(ppts.some((p, i) => i > 0 && p[0] === ppts[i - 1][0] && p[1] < ppts[i - 1][1]), "and it steps up where a task was added");
+}
+{
+  // a task added to the plan after its project started is tagged on the task itself
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  const rowOf = (txt) => [...k.d.querySelectorAll("#view .projmain .tlist li")].find(li => li.textContent.includes(txt));
+  const chip = (li) => [...li.querySelectorAll(".chip")].map(c => c.textContent).find(t => /^Added /.test(t));
+  ok(!!chip(rowOf("Submit to the app store")) && !chip(rowOf("Sketch the main screens")) && !chip(rowOf("Run a beta with five friends")), "only the sample's late-added task carries an Added tag (" + chip(rowOf("Submit to the app store")) + ")");
+  const tagged = [...rowOf("Submit to the app store").querySelectorAll(".chip")].find(c => /^Added /.test(c.textContent));
+  ok(tagged.parentElement.classList.contains("l1"), "the tag sits on the same line as the dates, at the top of the row");
+  k.tab("schedule");
+  const trow = [...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Submit to the app store"));
+  ok(!!trow && [...trow.querySelectorAll(".l1 .chip")].some(c => /^Added /.test(c.textContent)), "the Tasks page shows the Added tag too");
+  k.click(trow);
+  ok([...k.d.querySelectorAll(".detailpane .dmeta .chip")].some(c => /^Added /.test(c.textContent)), "and so does the task's detail");
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  // a Backlog task given a due date enters the plan today and gets tagged; clearing the date removes it
+  k.click(rowOf("Add a dark mode").querySelector("button.item"));
+  const due = k.$("task-due");
+  const d = new Date(), iso = n => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) + n * 86400000).toISOString().slice(0, 10);
+  due.value = iso(20); k.fire(due, "blur");
+  const dm = k.saved().tasks.find(t => t.what === "Add a dark mode");
+  ok(dm.added === iso(0) && !!chip(rowOf("Add a dark mode")), "scheduling a Backlog task records the day it joined the plan and tags it");
+  const due2 = k.$("task-due"); due2.value = ""; k.fire(due2, "blur");
+  ok(k.saved().tasks.find(t => t.what === "Add a dark mode").added === "" && !chip(rowOf("Add a dark mode")), "sending it back to the Backlog clears that");
+  // a new scheduled task from the dialog is tagged too; a Backlog item is not
+  k.click(k.btn(k.$("view"), "Add task"));
+  k.setField("what", "Late idea"); k.setField("due", iso(10)); k.click(k.btn(k.$("modalBody"), "Add task"));
+  ok(k.saved().tasks.find(t => t.what === "Late idea").added === iso(0), "a task created with a due date records the day it joined the plan");
+  // saved data: an added date only makes sense on a scheduled task
+  const saved = { projects: [{ id: "pA", name: "A", status: "active", start: iso(-5) }], tasks: [
+    { id: "t1", block: 2, projectId: "pA", what: "Scheduled", done: "d", status: "Not started", steps: [], added: iso(-1) },
+    { id: "t2", block: 0, projectId: "pA", what: "Waiting", done: "d", status: "Not started", steps: [], added: iso(-1) },
+    { id: "t3", block: 1, projectId: "pA", what: "Bad date", done: "d", status: "Not started", steps: [], added: "soon" }] };
+  const k2 = kit(await mk(saved));
+  const tt = k2.saved().tasks;
+  ok(tt.find(t => t.id === "t1").added === iso(-1) && tt.find(t => t.id === "t2").added === "" && tt.find(t => t.id === "t3").added === "", "on load, a valid date is kept only on a scheduled task");
+}
+{
+  // a bullet separates steps from the estimate only when both are shown
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  const l3of = (txt) => [...k.d.querySelectorAll("#view .projmain .tlist li")].find(li => li.textContent.includes(txt)).querySelector(".l3");
+  const bits = (l3) => [...l3.children].map(c => c.textContent);
+  ok(bits(l3of("Run a beta with five friends")).join("|").includes("0 of 3 steps|\u00b7|Est 4 h"), "steps and an estimate are separated by a bullet (" + bits(l3of("Run a beta with five friends")).join("|") + ")");
+  ok(!bits(l3of("Add a dark mode")).includes("\u00b7"), "a task with an estimate but no steps has no bullet (" + bits(l3of("Add a dark mode")).join("|") + ")");
+}
+{
   // saved history is validated on load, and the old step-count snapshots are not carried over
   const saved = { actual: [34, 31, 25, null, null, null, null], hist: { "2026-09-14": [12, 5], bad: [1, 1], "2026-09-21": [3, 9], "2026-09-28": "x", "2026-09-29": [5, -1] }, projects: [{ id: "pV", name: "Snap", status: "active", actual: { "2026-09-14": 12 }, hist: { "2026-09-14": [12, 5], bad: [1, 1], "2026-09-21": [3, 9], "2026-09-28": "x", "2026-09-29": [5, -1] } }], tasks: [] };
   const k = kit(await mk(saved));
@@ -864,7 +928,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(svg.getAttribute("tabindex") === "0" && svg.getAttribute("role") === "group" && /arrow keys/.test(svg.getAttribute("aria-label")), "the chart is one labeled keyboard stop");
   ok(tip().hidden && tip().getAttribute("aria-live") === "polite" && tip().getAttribute("role") === "status", "the tooltip starts hidden and is a live region");
   fire(hits[1], "mouseenter");
-  ok(!tip().hidden && /^Week of /.test(tip().textContent) && /Planned: \d+ remaining/.test(tip().textContent) && /Actual: 4 remaining of 5 in scope/.test(tip().textContent), "hovering a week shows its planned and actual counts (" + tip().textContent.replace(/\n/g, " | ") + ")");
+  ok(!tip().hidden && /^Week of /.test(tip().textContent) && /Planned: \d+ remaining/.test(tip().textContent) && /Actual: 3 remaining of 4 in scope/.test(tip().textContent), "hovering a week shows its planned and actual counts (" + tip().textContent.replace(/\n/g, " | ") + ")");
   fire(hits[1], "mouseleave");
   ok(tip().hidden, "moving the pointer away hides it");
   const named = hits.map(h => { fire(h, "mouseenter"); const s = tip().textContent; fire(h, "mouseleave"); return s; });
@@ -913,10 +977,10 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(total === 30, "Sample App's estimates add up to 30 h (" + total + ")");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
   const est = k.d.querySelector("#view .metarow .estleft");
-  ok(!!est && est.textContent === "Est. " + left + " h left", "the project page shows the open estimate at the right of the count line (" + (est && est.textContent) + ")");
+  ok(!!est && est.textContent === "Est. " + left + " hours remaining", "the project page shows the open estimate at the right of the count line (" + (est && est.textContent) + ")");
   ok(!k.d.querySelector("#view .estline"), "the old estimate line under the list is gone");
   const chips = [...k.d.querySelectorAll("#view .projmain .l3 span")].map(s => s.textContent);
-  ok(chips.includes("3 h") && chips.includes("6 h"), "task rows on the project page show their estimate");
+  ok(chips.includes("Est 3 h") && chips.includes("Est 6 h"), "task rows on the project page show their estimate as Est N h");
   const heads = [...k.d.querySelectorAll("#view .projmain h2")].map(h => h.textContent);
   ok(heads.join() === "Tasks,Before you launch,Notes,Linked projects", "the project page order is Tasks, Before you launch, Notes, Linked projects (" + heads.join() + ")");
   const g1 = sv.find(t => t.id === "g1");
@@ -924,7 +988,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const gp = k.saved().projects.find(p => p.id === "pGame");
   ok(g1.start > gp.start && (Date.parse(g1.due) - Date.parse(g1.start)) / 864e5 === 7, "and its dates are shorter than its two-week block");
   k.tab("schedule");
-  ok([...k.d.querySelectorAll(".listpane .item .l3 span")].some(s => s.textContent === "12 h"), "the Tasks list shows an estimate chip");
+  ok([...k.d.querySelectorAll(".listpane .item .l3 span")].some(s => s.textContent === "Est 12 h"), "the Tasks list shows an estimate chip");
 }
 {
   // editing start, due, and estimate in the Tasks detail pane

@@ -159,9 +159,11 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 /* A task opened in place on a project's page: part of the list, not a separate card. */
 .tlist li > .detail { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
 .metarow { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--space-4) var(--space-12); }
-.estleft { white-space: nowrap; }
+.estleft { margin-left: auto; white-space: nowrap; }
 .item .l1 { color: var(--muted); font-size: var(--text-sm); }
 .item .l1 b { color: var(--ink); font-weight: 600; }
+/* A date line with a tag pinned to its right end. */
+.item .l1.split { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-8); }
 .item .l2 { margin-top: var(--space-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .item.done .l2 { color: var(--muted); }
 .item .l3 { margin-top: var(--space-6); display: flex; gap: var(--space-8); align-items: center; flex-wrap: wrap; font-size: var(--text-sm); color: var(--muted); }
@@ -236,11 +238,13 @@ svg.chart { display: block; width: 100%; height: auto; }
 .chart .axis { fill: var(--muted); font-size: 12px; font-family: var(--font-sans); }
 .chart .planned { fill: none; stroke: var(--planned); stroke-width: 2.5; stroke-dasharray: 7 5; }
 .chart .actual { fill: none; stroke: var(--burn); stroke-width: 3; }
+.chart .scope { fill: none; stroke: var(--muted); stroke-opacity: .45; stroke-width: 1.5; }
 .chart .dot { fill: var(--burn); stroke: var(--surface); stroke-width: 2; }
 .legend { display: flex; flex-wrap: wrap; gap: var(--space-16); padding: var(--space-6) var(--space-4) var(--space-10); font-size: .88rem; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: var(--space-8); }
 .legend i { display: inline-block; width: 24px; height: 0; border-top: 3px solid var(--burn); }
 .legend i.p { border-top: 3px dashed var(--planned); }
+.legend i.s { border-top: 2px solid var(--muted); opacity: .5; }
 .tablewrap { margin-top: var(--space-12); overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; vertical-align: top; padding: var(--space-10) var(--space-12); border-bottom: 1px solid var(--line); }
