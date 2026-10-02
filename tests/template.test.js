@@ -894,6 +894,17 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.saved().tasks.length === before && k.saved().projects.some(p => p.name === "Sample Game"), "Undo puts the previous data back");
 }
 {
+  // a task's Timeline bar takes its status: Not started, In progress, Completed
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  const barOf = (txt) => [...k.d.querySelectorAll("#view .projcharts .lane")].find(l => l.textContent.includes(txt)).querySelectorAll(".bar")[1];
+  ok(barOf("Sketch the main screens").classList.contains("done") && barOf("Build the sign-in flow").classList.contains("work") && barOf("Run a beta with five friends").classList.contains("new"), "Completed is green, In progress is yellow, Not started is pale blue on the Timeline");
+  k.tab("schedule");
+  k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Run a beta with five friends")));
+  ok(k.d.querySelector(".detailpane select.status").getAttribute("data-v") === "Not started" && [...k.d.querySelectorAll(".listpane .chip")].some(c => c.getAttribute("data-v") === "Not started"), "the status pull-down and chips carry the status the colours key off");
+}
+{
   // saved history is validated on load, and the old step-count snapshots are not carried over
   const saved = { actual: [34, 31, 25, null, null, null, null], hist: { "2026-09-14": [12, 5], bad: [1, 1], "2026-09-21": [3, 9], "2026-09-28": "x", "2026-09-29": [5, -1] }, projects: [{ id: "pV", name: "Snap", status: "active", actual: { "2026-09-14": 12 }, hist: { "2026-09-14": [12, 5], bad: [1, 1], "2026-09-21": [3, 9], "2026-09-28": "x", "2026-09-29": [5, -1] } }], tasks: [] };
   const k = kit(await mk(saved));
