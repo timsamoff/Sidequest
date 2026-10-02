@@ -2319,7 +2319,7 @@ function questDialog() {
     if (!v.name) return "Enter a quest name.";
     state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000) })); changed();
     return { msg: v.name + " added as a candidate for the next slot." };
-  }, "It joins the candidates for the next slot. You can park it later.");
+  }, "It joins the candidates for the next slot. You can workshop it later.");
 }
 // With an idea passed in, edits it in place (same record, same id); with none,
 // adds a new one.
@@ -2363,7 +2363,7 @@ function ideaDialog(idea) {
   formDialog(idea ? "Edit idea" : "New idea", [
     { key: "text", label: "Idea", value: idea ? idea.text : undefined },
     { key: "note", label: "Note (optional)", type: "textarea", rows: 5, value: idea ? idea.note : undefined }
-  ], idea ? "Save idea" : "Add to Workshop", function (v) {
+  ], idea ? "Save idea" : "Workshop it", function (v) {
     if (!v.text) return "Enter the idea.";
     if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 5000); changed(); return { msg: "Idea saved." }; }
     state.workshop.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000) }); changed();
@@ -3246,7 +3246,7 @@ function candidatesSection() {
     var pr = el("button", { type: "button", "class": "small", title: "Promote to quest" }, "Promote");
     on(pr, "click", function () { promoteToActive(cd.id); });
     acts.appendChild(pr);
-    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Move to the Workshop" }, "Park it"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Move to the Workshop" }, "Workshop it"), "click", function () {
       state.quests = state.quests.filter(function (x) { return x.id !== cd.id; });
       state.workshop.push({ id: uid(), text: cd.name, note: cd.notes }); changed();
     }));
@@ -3481,7 +3481,7 @@ function helpTopics() {
       "**Mark launch critical** flags a linked quest that has to finish first. It shows on the other quest's Launch checklist, and counts as done once it is complete or in the Vault. Completing a quest or sending it to the Vault with an unfinished launch-critical link only warns you."]],
     ["Use the Workshop", [
       "Ideas that are not ready yet live in the **Workshop**. Add one with **Add idea**. Select an idea's title to open it and change its text or note.",
-      "**Make candidate** turns an idea into a quest candidate, and its note becomes the quest's **Notes**. **Park it** on a candidate sends the notes back. **Vault** sends an idea to the Vault."]],
+      "**Make candidate** turns an idea into a quest candidate, and its note becomes the quest's **Notes**. **Workshop it** on a candidate sends the notes back. **Vault** sends an idea to the Vault."]],
     ["Read the Timeline", [
       "Every quest gets a lane. A light bar is an estimate you set on the quest's page. It is not a promise.",
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline. Select a diamond, or a milestone's text in the list, to change its quest, text, or date, or to remove it.",

@@ -512,7 +512,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.menuAct("newBtn", "newIdea");
   ok(k.$("modalTitle").textContent === "New idea" && k.$("f-note").tagName === "TEXTAREA", "adding a new idea also uses the textarea note");
   k.setField("text", "Long note idea"); k.setField("note", "x".repeat(1500));
-  k.click(k.btn(k.$("modalBody"), "Add to Workshop"));
+  k.click(k.btn(k.$("modalBody"), "Workshop it"));
   ok(k.saved().workshop.find(p => p.text === "Long note idea").note.length === 1500, "a note longer than the old 300-character cap is kept");
 }
 
@@ -558,9 +558,9 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.tab("projects");
   const candRow = () => [...k.d.querySelectorAll("#view .list li")].find(li => li.querySelector('button[title="Move to the Workshop"]'));
   ok(!!candRow().querySelector(".noteclamp"), "a candidate's note in the list is clamped to two lines");
-  k.click(k.btn(candRow(), "Park it"));
+  k.click(k.btn(candRow(), "Workshop it"));
   const idea = k.saved().workshop.find(p => p.text === "Sample Browser Extension");
-  ok(idea && idea.note === "A small tool that could ship in a month", "Park it carries the quest's Notes back to the idea's note");
+  ok(idea && idea.note === "A small tool that could ship in a month", "Workshop it carries the quest's Notes back to the idea's note");
   k.tab("workshop");
   const irow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Browser Extension"));
   ok(!!irow.querySelector(".noteclamp"), "an idea's note in the Workshop is clamped to two lines");

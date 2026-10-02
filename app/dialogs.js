@@ -145,7 +145,7 @@ export function questDialog() {
     if (!v.name) return "Enter a quest name.";
     state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000) })); changed();
     return { msg: v.name + " added as a candidate for the next slot." };
-  }, "It joins the candidates for the next slot. You can park it later.");
+  }, "It joins the candidates for the next slot. You can workshop it later.");
 }
 // With an idea passed in, edits it in place (same record, same id); with none,
 // adds a new one.
@@ -189,7 +189,7 @@ export function ideaDialog(idea) {
   formDialog(idea ? "Edit idea" : "New idea", [
     { key: "text", label: "Idea", value: idea ? idea.text : undefined },
     { key: "note", label: "Note (optional)", type: "textarea", rows: 5, value: idea ? idea.note : undefined }
-  ], idea ? "Save idea" : "Add to Workshop", function (v) {
+  ], idea ? "Save idea" : "Workshop it", function (v) {
     if (!v.text) return "Enter the idea.";
     if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 5000); changed(); return { msg: "Idea saved." }; }
     state.workshop.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000) }); changed();
