@@ -1869,6 +1869,9 @@ var EXPORT_CSS = "\
 * { box-sizing: border-box; }\
 body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; line-height: 1.4; }\
 .ewrap { max-width: 1100px; margin: 0 auto; }\
+.ebrand { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }\
+.ebrand svg { width: 28px; height: 28px; flex: none; }\
+.ebrand span { font-weight: 700; font-size: 1.1rem; }\
 h1, h2, h3, h4, h5 { font-weight: 700; }\
 .ehint { color: var(--muted); }\
 .etoc { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 18px 0; }\
@@ -2010,6 +2013,11 @@ var burnHost=document.getElementById(id+'-burn');if(burnHost)drawBurn(burnHost,c
 // Produces the complete file as a string. `snapshot` is buildExportSnapshot()'s
 // output. No DOM, no live state, no imports beyond what's already above --
 // everything the output needs is baked into this one string.
+// The real icon's own path data (assets/sidequest-icon.svg, via index.html's
+// #sqLogo symbol), not invented geometry. Uses the export's own CSS tokens so
+// it follows light/dark mode the same way the live app's sidebar logo does.
+var EXPORT_BRAND = '<div class="ebrand"><svg viewBox="0 0 512 512" aria-hidden="true" focusable="false"><defs><clipPath id="eLogoClip"><rect width="512" height="512" rx="112"/></clipPath></defs><rect width="512" height="512" rx="112" fill="var(--est)"/><g clip-path="url(#eLogoClip)"><path d="M115.88-30.43l30.33,154.2" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M102.47,177.65l-23.25,4.57c-36.81,7.24-51.6,29.27-44.36,66.08l28.7,145.94" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M207.09,157.08l52.31-10.29c34.87-6.86,55.74,7.15,62.6,42.02l9.64,49.01" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M295.51,299.68l-23.25,4.57c-25.19,4.95-35.3,20.02-30.35,45.21l19.38,98.53" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M388.51,281.39l29.06-5.72c32.94-6.48,52.64,6.75,59.12,39.69l4,20.34" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><circle cx="154.78" cy="167.37" r="53.31" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/><circle cx="342.01" cy="290.53" r="47.39" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/><rect x="31.22" y="387.08" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-80.82 21.45) rotate(-11.13)" fill="var(--planned)"/><rect x="227.98" y="435.92" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-86.54 60.34) rotate(-11.13)" fill="var(--planned)"/><rect x="432.89" y="334.59" width="118.48" height="118.48" rx="9" ry="9" transform="translate(-109.15 582.92) rotate(-56.13)" fill="var(--burn)"/></g></svg><span>Sidequest</span></div>\n';
+
 function renderExportDocument(snapshot) {
   var p = snapshot.root;
   var toc = snapshot.sections.length > 1 ? '<nav class="etoc"><strong>Contents</strong><ul>' + renderTocEntry(snapshot.root) + "</ul></nav>" : "";
@@ -2018,6 +2026,7 @@ function renderExportDocument(snapshot) {
   snapshot.sections.forEach(function (n) { if (n.charts) chartsById[sectionId(n.id)] = n.charts; });
   var title = escHtml(p.name) + " (exported from Sidequest)";
   var html = "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>" + title + "</title>\n<style>" + EXPORT_CSS + "</style>\n</head>\n<body>\n<div class=\"ewrap\">\n";
+  html += EXPORT_BRAND;
   html += "<h1>" + escHtml(p.name) + " <span class=\"chip ereadonly\">Read only</span></h1>\n<p class=\"ehint\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ".</p>\n";
   html += toc + sections;
   html += "<p class=\"efoot\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ".</p>\n";
