@@ -240,13 +240,14 @@ svg.chart { display: block; width: 100%; height: auto; }
 .chart .axis { fill: var(--muted); font-size: 12px; font-family: var(--font-sans); }
 .chart .planned { fill: none; stroke: var(--planned); stroke-width: 2.5; stroke-dasharray: 7 5; }
 .chart .actual { fill: none; stroke: var(--burn); stroke-width: 3; }
-.chart .scope { fill: none; stroke: var(--muted); stroke-opacity: .45; stroke-width: 1.5; }
+.chart .scope { fill: none; stroke: var(--scope); stroke-width: 2; }
 .chart .dot { fill: var(--burn); stroke: var(--surface); stroke-width: 2; }
 .legend { display: flex; flex-wrap: wrap; gap: var(--space-16); padding: var(--space-6) var(--space-4) var(--space-10); font-size: .88rem; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: var(--space-8); }
 .legend i { display: inline-block; width: 24px; height: 0; border-top: 3px solid var(--burn); }
 .legend i.p { border-top: 3px dashed var(--planned); }
-.legend i.s { border-top: 2px solid var(--muted); opacity: .5; }
+.legend i.s { border-top: 2px solid var(--scope); }
+.scopechg { color: var(--scope); font-weight: 600; }
 .tablewrap { margin-top: var(--space-12); overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; vertical-align: top; padding: var(--space-10) var(--space-12); border-bottom: 1px solid var(--line); }

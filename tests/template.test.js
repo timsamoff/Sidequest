@@ -250,7 +250,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!helpText.includes("Mark done") && !helpText.includes("archive completed tasks") && !helpText.includes("View beside its name") && !helpText.includes("with its circle"), "Help no longer describes buttons and settings that were removed");
   const staleHelp = ["default start date", "Show backup text", "pasted text", "Restore from text", "copy your data as text", "Sprint 1", "Where things stand", "Next slot"];
   ok(staleHelp.every(ph => !helpText.includes(ph)), "Help does not describe things that were removed (" + staleHelp.filter(ph => helpText.includes(ph)).join(", ") + ")");
-  const coveredHelp = ["Save backup", "Restore backup", "Est. 12 hours remaining", "Added tag", "Not started shows in blue", "Pending, Completed", "leave Tasks, the main Timeline, Today, and the main burndown", "gray line", "Slip schedule", "default length of a stretch of work"];
+  const coveredHelp = ["Save backup", "Restore backup", "Est. 12 hours remaining", "Added tag", "Not started shows in blue", "Pending, Completed", "leave Tasks, the main Timeline, Today, and the main burndown", "orange line", "Slip schedule", "default length of a stretch of work"];
   ok(coveredHelp.every(ph => helpText.includes(ph)), "Help covers the features that changed recently (missing: " + coveredHelp.filter(ph => !helpText.includes(ph)).join(", ") + ")");
   ok(!/\u2014/.test(helpText), "Help has no em dashes");
   ok(["Finish or archive a project", "Link projects", "Use the Parking lot"].every(t => titles.includes(t)) && helpText.includes("Reopen") && helpText.includes("splash screen"), "Help covers Complete/Reopen, linking, the Parking lot, and the splash setting");
@@ -807,20 +807,20 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(/4 open tasks are no longer counted in the main burndown/.test(k.$("modalBody").textContent), "the completion dialog warns about open tasks leaving the burndown (" + k.$("modalBody").textContent.slice(0, 160) + ")");
 }
 {
-  // the main burndown draws total scope as steps at the dates it changed; project charts do not
+  // the main burndown draws total scope as ramps ending on the dates it changed
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.tab("timeline");
   const scope = k.d.querySelector("#view svg.chart polyline.scope");
-  ok(!!scope && [...k.d.querySelectorAll("#view .legend span")].some(s => s.textContent === "In scope"), "the main burndown has an In scope line and a legend entry for it");
+  ok(!!scope && [...k.d.querySelectorAll("#view .legend span")].some(s => s.textContent === "Scope"), "the main burndown has an In scope line and a legend entry for it");
   const pts = scope.getAttribute("points").split(" ").map(p => p.split(",").map(Number));
   const vertical = pts.some((p, i) => i > 0 && p[0] === pts[i - 1][0] && p[1] !== pts[i - 1][1]);
   const slope = pts.some((p, i) => i > 0 && p[0] !== pts[i - 1][0] && p[1] !== pts[i - 1][1]);
-  ok(vertical && !slope, "it moves in steps (a straight rise where scope changed, level everywhere else), never in slopes");
+  ok(!vertical && slope, "it ramps where scope changed (a slope, never a vertical step) and is level everywhere else");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  ok(!!k.d.querySelector("#view .projcharts polyline.scope") && [...k.d.querySelectorAll("#view .projcharts .legend span")].some(s => s.textContent === "In scope"), "a project's own burndown draws its own In scope line too");
+  ok(!!k.d.querySelector("#view .projcharts polyline.scope") && [...k.d.querySelectorAll("#view .projcharts .legend span")].some(s => s.textContent === "Scope"), "a project's own burndown draws its own In scope line too");
   const ppts = k.d.querySelector("#view .projcharts polyline.scope").getAttribute("points").split(" ").map(p => p.split(",").map(Number));
-  ok(ppts.some((p, i) => i > 0 && p[0] === ppts[i - 1][0] && p[1] < ppts[i - 1][1]), "and it steps up where a task was added");
+  ok(ppts.some((p, i) => i > 0 && p[0] > ppts[i - 1][0] && p[1] < ppts[i - 1][1]), "and it ramps up where a task was added");
 }
 {
   // a task added to the plan after its project started is tagged on the task itself

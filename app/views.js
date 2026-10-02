@@ -131,10 +131,10 @@ export function burnParts(o) {
   var h = el(o.level || "h2", null, "Burndown");
   var cb = el("div", { "class": "chartbox" }); var host = el("div"); cb.appendChild(host);
   var lg = el("div", { "class": "legend" });
-  var l1 = el("span"); l1.appendChild(el("i", { "class": "p" })); l1.appendChild(document.createTextNode("Planned"));
+  var l1 = el("span"); l1.appendChild(el("i", { "class": "p" })); l1.appendChild(document.createTextNode("Ideal"));
   var l2 = el("span"); l2.appendChild(el("i")); l2.appendChild(document.createTextNode("Actual"));
   lg.appendChild(l1); lg.appendChild(l2);
-  var l3 = el("span"); l3.appendChild(el("i", { "class": "s" })); l3.appendChild(document.createTextNode("In scope")); lg.appendChild(l3);
+  var l3 = el("span"); l3.appendChild(el("i", { "class": "s" })); l3.appendChild(document.createTextNode("Scope")); lg.appendChild(l3);
   cb.appendChild(lg);
   if (proj) drawProjectChart(host, proj, o.wide); else drawChart(host, o.wide);
   var rn = proj ? projectRemainingUnits(proj) : remainingUnits(), tot = proj ? projectTotalUnits(proj) : totalUnits(), rb = el("div", { "class": "box" });
@@ -795,7 +795,7 @@ export function renderTimeline(root) {
     });
     // Added or removed work, compared with the previous point that has a count.
     var sc = ga.scope[i], diff = sc !== null && prevScope !== null ? sc - prevScope : 0, tdc = el("td");
-    tdc.appendChild(el("span", null, diff > 0 ? "+" + diff : diff < 0 ? "\u2212" + (-diff) : ""));
+    tdc.appendChild(el("span", { "class": "scopechg" }, diff > 0 ? "+" + diff : diff < 0 ? "\u2212" + (-diff) : ""));
     tr.appendChild(tdc);
     if (sc !== null) prevScope = sc;
     body.appendChild(tr);
@@ -905,7 +905,7 @@ export function helpTopics() {
     ["Work through your day (Today)", [
       "**Next up** shows the task to do now. **Start** marks it in progress, and **Open task** takes you to it in Tasks.",
       "Anything past its end date appears below it. If you are running behind, open that project's own page and use **Slip schedule** there.",
-      "The burndown counts tasks, one each, and shows how many are still open against the plan. The app records the counts itself whenever you make a change, so nothing is typed in, and a day you did not open the app keeps the last count. A gray line shows how many tasks are in scope, stepping up when tasks are added and down when they are removed. A task added after its project started carries an Added tag with its date, on the project's page and in Tasks. A project marked Complete takes its open tasks off the main chart. Scope changes are also called out in the tooltip and the table. Point at a day or week, tap it, or focus the chart and use the arrow keys to see its counts and tasks."]],
+      "The burndown counts tasks, one each, and shows how many are still open against the plan. The app records the counts itself whenever you make a change, so nothing is typed in, and a day you did not open the app keeps the last count. An orange line shows how many tasks are in scope, ramping up when tasks are added and down when they are removed. A task added after its project started carries an Added tag with its date, on the project's page and in Tasks. A project marked Complete takes its open tasks off the main chart. Scope changes are also called out in the tooltip and the table. Point at a day or week, tap it, or focus the chart and use the arrow keys to see its counts and tasks."]],
     ["Add and schedule tasks", [
       "Tap **+**, then **New task**. Enter the project, what you do, and how you will know it is done.",
       "Pick a due date and the task lands in the " + w + " that contains it. Add a start date if it begins later than that " + w + " does, and an estimated time in hours if you want one. Leave the due date empty to put the task in the Backlog.",

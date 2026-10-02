@@ -37,12 +37,16 @@ function renderBurn(host, wide, cfg) {
   var every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 70))));
   cps.forEach(function (ms, i) { if (i % every === 0 || i === n - 1) svg.appendChild(svgEl("text", { "class": "axis", x: x(i), y: H - 16, "text-anchor": "middle" }, fmt(ms))); });
   svg.appendChild(svgEl("polyline", { "class": "planned", points: pl.map(function (p, i) { return x(i) + "," + y(p); }).join(" ") }));
-  // Tasks in scope, as steps at the dates it really changed (never a slope between points).
+  // Tasks in scope: level, then a ramp (one chart step wide) ending on the date it changed.
   var ss = cfg.scopeSteps;
   if (ss && (ss.length > 1 || (ss.length === 1 && cfg.scopeEnd > ss[0].ms))) {
     var px = function (ms) { return L + (W - L - R) * Math.max(0, Math.min(1, (ms - cps[0]) / (cps[n - 1] - cps[0]))); };
     var sp = [], pv = null;
-    ss.forEach(function (st) { if (pv !== null) sp.push(px(st.ms) + "," + y(pv)); sp.push(px(st.ms) + "," + y(st.v)); pv = st.v; });
+    var ramp = (cps[n - 1] - cps[0]) / (n - 1), pms = null;
+    ss.forEach(function (st) {
+      if (pv !== null) { sp.push(px(Math.max(pms, st.ms - ramp)) + "," + y(pv)); }
+      sp.push(px(st.ms) + "," + y(st.v)); pv = st.v; pms = st.ms;
+    });
     sp.push(px(cfg.scopeEnd) + "," + y(pv));
     svg.appendChild(svgEl("polyline", { "class": "scope", points: sp.join(" ") }));
   }
@@ -153,7 +157,7 @@ export function drawChart(host, wide) {
   var pl = cps.map(planned), tasks = burnTasks(), span = checkpointStep() * 86400000, sc = scopeSteps(cps, state.hist, total);
   renderBurn(host, wide, {
     cps: cps, planned: pl, actual: ga.actual, total: total, scopeSteps: sc.steps, scopeEnd: sc.end,
-    label: "Burndown chart. Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". A gray line shows the tasks in scope.",
+    label: "Burndown chart. Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". An orange line shows the tasks in scope.",
     tip: function (i) { return weekTip(cps, i, pl, ga.actual, ga.scope, tasks, span, true); }
   });
 }
@@ -167,7 +171,7 @@ export function drawProjectChart(host, p, wide) {
   var sc = scopeSteps(cps, p.hist, bd.total);
   renderBurn(host, wide, {
     cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks, scopeSteps: sc.steps, scopeEnd: sc.end,
-    label: "Burndown chart for " + p.name + ". Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". A gray line shows the tasks in scope.",
+    label: "Burndown chart for " + p.name + ". Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". An orange line shows the tasks in scope.",
     tip: function (i) { return weekTip(cps, i, pl, bd.actual, bd.scope, bd.tasks, span, false); }
   });
   return true;
