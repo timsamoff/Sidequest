@@ -69,6 +69,7 @@ const MODULE_ORDER = [
   "model.js",
   "state.js",
   "chart.js",
+  "export.js",
   "search.js",
   "dialogs.js",
   "views.js",

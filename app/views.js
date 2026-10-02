@@ -13,6 +13,7 @@ import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInlin
 import { drawChart, drawProjectChart, rangeBlock, projectRangeBlock } from "./chart.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme } from "./app.js";
 import { stepDialog, stepEditDialog, decisionDialog, decisionEditDialog, linkProjectDialog, ideaDialog, candidateDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
+import { buildExportSnapshot, renderExportDocument, exportFileName } from "./export.js";
 
 /* views */
 // Added to the plan after its project started: a scope change, marked on the task itself.
@@ -109,9 +110,19 @@ export function archiveProject(p) {
     state.tasks.forEach(function (t) { if (t.projectId === p.id && !t.arch) t.arch = { at: iso(TODAY), why: "removed" }; });
   });
 }
-// Not yet implemented -- see sentinel-notes/client-project-export-design-brief.md.
+// Builds the standalone read-only export and downloads it. Scoped to Active/
+// Complete projects, matching where the button itself lives (see
+// renderProjectPage()) -- Candidate and Archived export layouts are
+// unscoped, left for a future pass per the design brief.
 export function exportProjectForClient(p) {
-  notify("Client Export isn’t built yet.");
+  var snapshot = buildExportSnapshot(p);
+  var html = renderExportDocument(snapshot);
+  var blob = new Blob([html], { type: "text/html" });
+  var url = URL.createObjectURL(blob);
+  var a = el("a", { href: url, download: exportFileName(p) });
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  notify("Exported " + p.name + ".");
 }
 // Offers archiving now or leaving it in Projects. Launch-critical warning is soft, never blocking.
 export function completionDialog(p) {
