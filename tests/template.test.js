@@ -29,8 +29,8 @@ register(pathToFileURL(path.join(__dirname, "isolate-loader.mjs")));
 let counter = 0;
 async function mk(saved, claude, stamp) {
   const dom = new JSDOM(html, { url: "https://example.test/", pretendToBeVisual: true });
-  dom.window.scrollTo = () => {};
-  if (claude) dom.window.claude = claude;
+  dom.window.scrollTo = () => {};
+  if (claude) dom.window.claude = claude;
   if (stamp) dom.window.localStorage.setItem("sidequest-template-v1-saved-at", stamp);
   if (saved) dom.window.localStorage.setItem("sidequest-template-v1", JSON.stringify(saved));
   global.window = dom.window;
@@ -248,6 +248,11 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("view").textContent.includes("use the pencil beside a step") && k.$("view").textContent.includes("Add decision"), "and the topic explains the step pencil and adding a decision from a step");
   const helpText = k.$("view").textContent;
   ok(!helpText.includes("Mark done") && !helpText.includes("archive completed tasks") && !helpText.includes("View beside its name") && !helpText.includes("with its circle"), "Help no longer describes buttons and settings that were removed");
+  const staleHelp = ["default start date", "Show backup text", "pasted text", "Restore from text", "copy your data as text", "Sprint 1", "Where things stand", "Next slot"];
+  ok(staleHelp.every(ph => !helpText.includes(ph)), "Help does not describe things that were removed (" + staleHelp.filter(ph => helpText.includes(ph)).join(", ") + ")");
+  const coveredHelp = ["Save backup", "Restore backup", "Est. 12 hours remaining", "Added tag", "Not started shows in blue", "Pending, Completed", "leave Tasks, the main Timeline, Today, and the main burndown", "gray line", "Slip schedule", "default length of a stretch of work"];
+  ok(coveredHelp.every(ph => helpText.includes(ph)), "Help covers the features that changed recently (missing: " + coveredHelp.filter(ph => !helpText.includes(ph)).join(", ") + ")");
+  ok(!/\u2014/.test(helpText), "Help has no em dashes");
   ok(["Finish or archive a project", "Link projects", "Use the Parking lot"].every(t => titles.includes(t)) && helpText.includes("Reopen") && helpText.includes("splash screen"), "Help covers Complete/Reopen, linking, the Parking lot, and the splash setting");
   ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Parking lot,Archive,Help,Settings", "Help sits between Archive and Settings");
 }
@@ -904,7 +909,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(barOf("Sketch the main screens").classList.contains("done") && barOf("Build the sign-in flow").classList.contains("work") && barOf("Run a beta with five friends").classList.contains("new"), "Completed is green, In progress is yellow, Not started is pale blue on the Timeline");
   k.tab("schedule");
   k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Run a beta with five friends")));
-  ok(k.d.querySelector(".detailpane select.status").getAttribute("data-v") === "Not started" && [...k.d.querySelectorAll(".listpane .chip")].some(c => c.getAttribute("data-v") === "Not started"), "the status pull-down and chips carry the status the colours key off");
+  ok(k.d.querySelector(".detailpane select.status").getAttribute("data-v") === "Not started" && [...k.d.querySelectorAll(".listpane .chip")].some(c => c.getAttribute("data-v") === "Not started"), "the status pull-down and chips carry the status the colors key off");
 }
 {
   // the backup reminder: remembered in settings, quiet until two weeks have passed, web app only
@@ -991,7 +996,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     const f = fake({ "state/main": { json: realJson } }, { decline: true });
     const k = kit(await mk(null, f.claude)); await wait();
     k.tab("settings"); k.click(k.$("saveFile")); await wait();
-    ok(k.$("view").textContent.includes("Save cancelled.") && k.$("view").textContent.includes("No backup saved yet."), "if the viewer declines, nothing is recorded as saved");
+    ok(k.$("view").textContent.includes("Save canceled.") && k.$("view").textContent.includes("No backup saved yet."), "if the viewer declines, nothing is recorded as saved");
   }
   // newest save wins when the db and this device disagree
   const T1 = "2026-10-01T10:00:00.000Z", T2 = "2026-10-01T12:00:00.000Z";

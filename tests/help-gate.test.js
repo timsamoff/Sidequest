@@ -55,5 +55,53 @@ const many = { "app/views.js": Array.from({ length: 8 }, (_, i) => '+    el("but
 ok(/and 3 more/.test(gate.buildReminder(base({ diffs: many })) || ""), "a long list of labels is trimmed to five");
 ok(/Non-blocking/.test(gate.buildReminder(base({ triggerHits: ["x"] })) || ""), "the reminder says plainly it is non-blocking and cannot check accuracy");
 
+/* ---- topics inside helpTopics(): where each is and which a diff touched ---- */
+const topicSrc = ["export function helpTopics() {", "  return [", '    ["Work through your day (Today)", [', '      "a",', '      "b"]],', '    ["Read the Timeline", [', '      "c"]],', "  ];", "}"].join("\n");
+const tr = gate.helpTopicRanges(topicSrc);
+ok(same(tr.map((t) => [t.title, t.start, t.end]), [["Work through your day (Today)", 3, 5], ["Read the Timeline", 6, 9]]), "each topic's title and line range are found (" + JSON.stringify(tr.map((t) => [t.start, t.end])) + ")");
+ok(same(gate.helpTopicRanges("nothing here"), []), "no helpTopics() means no topics");
+ok(same(gate.topicsTouched("@@ -4 +4 @@\n", topicSrc), ["Work through your day (Today)"]), "a hunk inside a topic touches only that topic");
+ok(same(gate.topicsTouched("@@ -4 +4 @@\n@@ -7 +7 @@\n", topicSrc), ["Work through your day (Today)", "Read the Timeline"]), "hunks in two topics touch both");
+ok(same(gate.topicsTouched("@@ -1 +1 @@\n", topicSrc), []), "a hunk on the function line touches no topic");
+ok(same(gate.topicsTouched("@@ -5,1 +4,0 @@\n", topicSrc), ["Work through your day (Today)"]), "a deletion inside a topic counts");
+
+/* ---- areas of the app that decide what Help says ---- */
+ok(/projectBurn/.test(gate.changedText("@@ -10 +10 @@ export function projectBurn(p) {\n+  x = 1;")), "the function named in a hunk header counts as changed code");
+const areas = (diffs) => gate.areaHits(diffs).map((h) => h.area.name);
+ok(same(areas({ "app/model.js": "+export function totalUnits() { return 1; }" }), ["burndown and task counting"]), "counting code is the burndown area");
+ok(same(areas({ "app/chart.js": "@@ -1 +1 @@ function renderBurn(host, wide, cfg) {\n+  y = 2;" }), ["burndown and task counting"]), "an edit inside a chart function counts even if its name is only in the hunk header");
+ok(same(areas({ "app/model.js": "-export function taskEnd(t) { return 1; }" }), ["scheduling and dates"]), "date math is the scheduling area");
+ok(same(areas({ "css/styles.css": '+.chip[data-v="Not started"] { background: var(--chip-new); }' }), ["status colors"]), "a status color rule is the status colors area");
+ok(same(areas({ "css/tokens.css": "+  --chip-new: #D3E3F6;" }), ["status colors"]), "a status color token is too");
+ok(same(areas({ "app/views.js": "+function saveBackupFile(msg, onDone) {" }), ["backup and restore"]), "backup code is the backup area");
+ok(same(areas({ "app/views.js": "+  sweepProjectCompletion();" }), ["project lifecycle and what each page shows"]), "completion and archive code is the lifecycle area");
+ok(same(areas({ "app/model.js": "+export function fmtHours(h) { return h; } // a comment" }), []), "an unrelated change is in no area");
+ok(same(areas({}), []) && same(areas(undefined), []), "no diffs means no areas");
+
+/* ---- process-flow elements: headings, dialogs, input controls ---- */
+ok(same(gate.changedStructure(d('-  root.appendChild(el("h2", null, "Notes"));', '+  root.appendChild(el("h2", null, "Project notes"));')).sort(), ["heading: Notes", "heading: Project notes"]), "a renamed section heading is a change");
+ok(same(gate.changedStructure(d('+  el("h2", split ? { "class": "first" } : null, "Tasks")')), ["heading: Tasks"]), "the heading text is the last string, not an attribute");
+ok(gate.changedStructure(d('-  el("h2", null, "Notes");', '+  el("h2", { style: "x" }, "Notes");')).length === 0, "reformatting a heading is not a change");
+ok(same(gate.changedStructure('+    confirmDialog("Restore this backup?", "text", "Restore backup", function () {});'), ["dialog: Restore this backup?"]), "a new confirmation dialog is a change");
+ok(gate.changedStructure("+export function confirmDialog(title, text, label, onConfirm) {").length === 0, "defining the dialog helper is not a new step");
+ok(same(gate.changedStructure('+  var file = el("input", { type: "file", id: "restoreFile", accept: ".json" });'), ["input: restoreFile"]), "a new input control is a change");
+ok(gate.changedStructure("").length === 0 && gate.changedStructure(undefined).length === 0, "no diff has no structure changes");
+
+/* ---- the reminder with areas and process steps ---- */
+const topicBase = (over) => Object.assign({ diffs: {}, triggerHits: [], viewsSource: topicSrc }, over);
+const burn = { "app/model.js": "+export function remainingUnits() { return 1; }" };
+ok(/burndown and task counting changed \(remainingUnits\)/.test(gate.buildReminder(topicBase({ diffs: burn })) || ""), "a counting change gives a reminder naming the area and the code");
+ok(/"Work through your day \(Today\)", "Read the Timeline"/.test(gate.buildReminder(topicBase({ diffs: burn })) || ""), "and the Help topics to check");
+ok(gate.buildReminder(topicBase({ diffs: Object.assign({}, burn, { "app/views.js": "@@ -4 +4 @@\n" }) })) === null, "editing a topic that describes the area silences it");
+ok(/scheduling and dates/.test(gate.buildReminder(topicBase({ diffs: { "app/model.js": "+export function taskStart(t) { return 1; }", "app/views.js": "@@ -7 +7 @@\n" } })) || ""), "editing an unrelated topic does not silence an area");
+ok(!/helpTopics\(\) in app\/views.js was not changed/.test(gate.buildReminder(topicBase({ diffs: { "app/model.js": "+export function taskStart(t) { return 1; }", "app/views.js": "@@ -7 +7 @@\n" } })) || ""), "and the reminder does not claim Help was untouched when it was edited");
+ok(/helpTopics\(\) in app\/views.js was not changed/.test(gate.buildReminder(topicBase({ diffs: burn })) || ""), "with no Help edit at all it says so");
+const heading = { "app/views.js": d('-  el("h2", null, "Notes");', '+  el("h2", null, "Project notes");', "@@ -50 +50 @@") };
+ok(/a step in the user's process changed \(heading: Project notes; heading: Notes\)|a step in the user's process changed \(heading: Notes; heading: Project notes\)/.test(gate.buildReminder(topicBase({ diffs: heading })) || ""), "a heading change gives a process-step reminder");
+ok(gate.buildReminder(topicBase({ diffs: Object.assign({}, heading, { "app/views.js": heading["app/views.js"] + "\n@@ -4 +4 @@" }) })) === null, "which any Help edit silences");
+ok(/dialog: Restore this backup\?/.test(gate.buildReminder(topicBase({ diffs: { "app/views.js": '+    confirmDialog("Restore this backup?", "t", "Restore", function () {});\n@@ -50 +50 @@' } })) || ""), "a new confirmation step gives a reminder");
+ok(gate.buildReminder(topicBase({ diffs: { "app/model.js": "+// tidy a comment\n@@ -50 +50 @@" } })) === null, "a change that touches no area, label, or step stays quiet");
+ok(/Non-blocking/.test(gate.buildReminder(topicBase({ diffs: burn })) || ""), "area reminders also say they are non-blocking");
+
 console.log(fails ? "\n" + fails + " FAILED" : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

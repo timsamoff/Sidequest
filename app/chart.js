@@ -153,7 +153,7 @@ export function drawChart(host, wide) {
   var pl = cps.map(planned), tasks = burnTasks(), span = checkpointStep() * 86400000, sc = scopeSteps(cps, state.hist, total);
   renderBurn(host, wide, {
     cps: cps, planned: pl, actual: ga.actual, total: total, scopeSteps: sc.steps, scopeEnd: sc.end,
-    label: "Burndown chart. Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". A grey line shows the tasks in scope.",
+    label: "Burndown chart. Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". A gray line shows the tasks in scope.",
     tip: function (i) { return weekTip(cps, i, pl, ga.actual, ga.scope, tasks, span, true); }
   });
 }
@@ -167,7 +167,7 @@ export function drawProjectChart(host, p, wide) {
   var sc = scopeSteps(cps, p.hist, bd.total);
   renderBurn(host, wide, {
     cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks, scopeSteps: sc.steps, scopeEnd: sc.end,
-    label: "Burndown chart for " + p.name + ". Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". A grey line shows the tasks in scope.",
+    label: "Burndown chart for " + p.name + ". Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". A gray line shows the tasks in scope.",
     tip: function (i) { return weekTip(cps, i, pl, bd.actual, bd.scope, bd.tasks, span, false); }
   });
   return true;

@@ -905,23 +905,25 @@ export function helpTopics() {
     ["Work through your day (Today)", [
       "**Next up** shows the task to do now. **Start** marks it in progress, and **Open task** takes you to it in Tasks.",
       "Anything past its end date appears below it. If you are running behind, open that project's own page and use **Slip schedule** there.",
-      "The burndown counts tasks, one each, and shows how many are still open against the plan. The app records the counts itself whenever you make a change, so nothing is typed in, and a day you did not open the app keeps the last count. A grey line shows how many tasks are in scope, stepping up when tasks are added and down when they are removed. On a project's page, a task added after the project started carries an Added tag with its date. A project marked Complete takes its open tasks off the main chart. Scope changes are also called out in the tooltip and the table. Point at a day or week, tap it, or focus the chart and use the arrow keys to see its counts and tasks."]],
+      "The burndown counts tasks, one each, and shows how many are still open against the plan. The app records the counts itself whenever you make a change, so nothing is typed in, and a day you did not open the app keeps the last count. A gray line shows how many tasks are in scope, stepping up when tasks are added and down when they are removed. A task added after its project started carries an Added tag with its date, on the project's page and in Tasks. A project marked Complete takes its open tasks off the main chart. Scope changes are also called out in the tooltip and the table. Point at a day or week, tap it, or focus the chart and use the arrow keys to see its counts and tasks."]],
     ["Add and schedule tasks", [
-      "Tap **+**, then **New task**. Enter the project, what you do, and when it is done.",
+      "Tap **+**, then **New task**. Enter the project, what you do, and how you will know it is done.",
       "Pick a due date and the task lands in the " + w + " that contains it. Add a start date if it begins later than that " + w + " does, and an estimated time in hours if you want one. Leave the due date empty to put the task in the Backlog.",
       "Open a task in **Tasks**, or select it on its project's page where it opens right in place, to change its status, add steps and notes, or edit its start date, due date, and estimated time. A start date can't be after the due date. Use the pencil beside its name to rename it.",
       "A project's page shows the estimated time still open beside its task count, like \"Est. 12 hours remaining\". It drops as you complete tasks.",
-      "Finishing every step marks the task done."]],
+      "A task is Not started, In progress, or Completed. Not started shows in blue, In progress in yellow, and Completed in green, on the status menu, on the task's row, and on its bar in a project's Timeline.",
+      "Finishing every step marks the task done, and adding a step to a finished task reopens it."]],
     ["Use the Backlog", [
       "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
       "To schedule it, open the item and set a due date. Backlog items stay out of the burndown until you do. Clearing a task's due date sends it back to the Backlog and clears its start date. An estimated time is kept either way."]],
     ["Manage projects", [
       "Each active project has its own page. Open **Projects** and select the project's name. Use the pencil beside its title to rename it, and edit its notes there. Down the page you will find its Tasks, Before you launch checklist, Notes, and Linked projects, in that order. Select a task to open it right there. Beside that (below it on a phone) are its Schedule, where you set its start date, due date, and block length, and its own Timeline and Burndown, which redraw as you change the schedule. On the Timeline, a pale band behind each task's bar shows the block it sits in. On a wide screen, **Expand** shows them large.",
       "**Candidates** are projects that could take the next slot. Select one to edit its notes, start date, due date, and block length in a dialog, then use **Promote** to start it. Add a candidate with **New project** in the **+** menu, or turn an idea into one with **Make candidate**.",
-      "**In progress** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there."]],
+      "**In progress** lists each active project with its next task. Use **Pin** on a project for quick access from the sidebar. Unpinning only hides it there.",
+      "Below it, the Projects page lists any project that is complete or has no tasks yet, under the heading Pending, Completed, or Pending & completed."]],
     ["Finish or archive a project", [
       "**Mark complete** on a project's page marks it done, even with tasks still open. A project also completes by itself once all its tasks are done. Either way, you can archive it right away or leave it in Projects.",
-      "A completed project shows a **Complete** badge and drops out of In progress. **Reopen** makes it active again.",
+      "A completed project shows a **Complete** badge and drops out of In progress. Its tasks also leave Tasks, the main Timeline, Today, and the main burndown, though its own page still lists them. **Reopen** makes it active again and brings them back.",
       "**Archive** puts a project and its open tasks in the Archive. **Restore** brings all of it back."]],
     ["Link projects", [
       "**Linked projects**, on a project's page, connects it to related projects. Choose **Link project** and pick one. A link goes both ways.",
@@ -932,7 +934,8 @@ export function helpTopics() {
     ["Read the Timeline", [
       "Every project gets a lane. A light bar is an estimate you set on the project's page. It is not a promise.",
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline. Select a diamond, or a milestone's text in the list, to change its project, text, or date, or to remove it.",
-      "A project's own page has a Timeline with a lane for each scheduled task, and its own Burndown. Point at a week on a burndown, tap it, or focus it and use the left and right arrow keys, to see its counts and which tasks finish or were completed. The full-width burndown and a table of the counts are further down this page. The counts are recorded automatically from your tasks and can't be edited."]],
+      "A project's own page has a Timeline with a lane for each scheduled task, and its own Burndown. Point at a week on a burndown, tap it, or focus it and use the left and right arrow keys, to see its counts and which tasks finish or were completed. The full-width burndown and a table of the counts are further down this page. The counts are recorded automatically from your tasks and can't be edited.",
+      "On a project's own Timeline, each task's bar takes its status color: blue for Not started, yellow for In progress, green for Completed."]],
     ["Launch checklist and decisions", [
       "On any task, use the pencil beside a step to rename it, put it on that project's own **Launch** section, or remove it. A step on the checklist shows a **Launch** tag. Ticking it there or in **Tasks** keeps both in sync.",
       "A decision belongs to one step. Select **Add decision** beside a step to write down what you need to settle. Select the decision tag to answer it, change it, or remove it. Answering it ticks the step, and clearing the answer unticks it.",
@@ -942,10 +945,10 @@ export function helpTopics() {
       "**Delete** on a task, or **Remove** on a decision or milestone, deletes it right away, with a short **Undo** in case you didn't mean to.",
       "In the Archive, select a project's name to look at it. **Restore** puts a project or idea back, and a project's tasks with it. **Delete forever** always asks first, and it cannot be undone."]],
     ["Slip a project's schedule", [
-      "On a project's own page, above the Timeline, choose **Slip schedule**. Pick the number of days and choose **Push dates later** — its still-incomplete tasks move later by that many days. Completed tasks and the Backlog are not affected.",
+      "On a project's own page, above the Timeline, choose **Slip schedule**. Pick the number of days and choose **Push dates later**, and its still-incomplete tasks move later by that many days. Completed tasks and the Backlog are not affected.",
       "**Undo last slip** in the same dialog reverses it."]],
     ["Settings, backup, and starting over", [
-      "In **Settings**, set the default start date and pace, what to call a stretch of work (Block, Sprint, and so on), the date format, the theme, and whether the splash screen plays when the app opens.",
+      "In **Settings**, set the default length of a stretch of work in days, what to call it (Block, Sprint, and so on), the date format, the theme, and whether the splash screen plays when the app opens.",
       "Everything is saved in this browser only. Under **Backup and restore**, **Save backup** lets you choose where to put a backup file, and **Restore backup** loads one back after warning you that it replaces everything. You get a few seconds to undo a restore. After two weeks without a backup, Today adds a quiet reminder.",
       "**Start fresh** erases everything after a warning. Save a backup first. You can begin empty or with the starting projects."]]
   ];
@@ -1113,7 +1116,7 @@ function saveBackupFile(msg, onDone) {
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     saved("Backup downloaded.");
   }).catch(function (err) {
-    msg.textContent = err && (err.code === "declined" || err.name === "AbortError") ? "Save cancelled." : "The backup could not be saved.";
+    msg.textContent = err && (err.code === "declined" || err.name === "AbortError") ? "Save canceled." : "The backup could not be saved.";
   });
 }
 // Reads the chosen file, then asks before replacing everything with it.

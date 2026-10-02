@@ -280,7 +280,7 @@ svg.chart.nofocusring { outline: none; }
 .chart .guide { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
 .charttip { position: absolute; z-index: 3; max-width: 300px; padding: var(--space-8) var(--space-10); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-control); box-shadow: 0 4px 14px rgba(0, 0, 0, .18); font-size: var(--text-sm); line-height: 1.35; white-space: pre-line; pointer-events: none; }
 .charttip[hidden] { display: none; }
-/* A task's bar takes its status colour, with a faint edge so a pale bar still reads on the grey track. */
+/* A task's bar takes its status color, with a faint edge so a pale bar still reads on the gray track. */
 .bar.new, .bar.work, .bar.done { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-ink) 28%, transparent); }
 .bar.new { background: var(--chip-new); }
 .bar.work { background: var(--chip-work); }
