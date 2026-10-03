@@ -382,7 +382,7 @@ export function linksSection(root, p) {
   var readOnly = !!p.vault;
   var links = linkedQuests(p);
   var ul = el("ul", { "class": "list" });
-  if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No linked quests."));
+  if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No quest links."));
   links.forEach(function (lp) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nm = el("button", { type: "button", "class": "textbtn qlink", title: "View this quest" }, lp.name);
@@ -406,7 +406,7 @@ export function linksSection(root, p) {
   var candidates = liveQuests().filter(function (x) { return x.id !== p.id && p.linkedQuestIds.indexOf(x.id) < 0; });
   if (candidates.length) {
     var addRow = el("div", { "class": "actions", style: "margin-top:10px" });
-    addRow.appendChild(on(el("button", { type: "button", "class": "small", title: "Link this quest to another" }, "Link quest"), "click", function () { linkQuestDialog(p); }));
+    addRow.appendChild(on(el("button", { type: "button", "class": "small", title: "Create a link to another quest" }, "Link quest"), "click", function () { linkQuestDialog(p); }));
     root.appendChild(addRow);
   }
 }
@@ -602,7 +602,7 @@ export function renderQuestPage(root, id) {
     root.appendChild(giverBox);
   }
 
-  root.appendChild(el("h2", null, "Linked quests"));
+  root.appendChild(el("h2", null, "Quest links"));
   linksSection(root, p);
 
   var ar = el("div", { "class": "actions", style: "margin-top:14px" });
@@ -984,7 +984,7 @@ export function helpTopics() {
       "To schedule it, open the item and set a due date. Backlog items stay out of the burndown until you do. Clearing a task's due date sends it back to the Backlog and clears its start date. An estimated time is kept either way."]],
     ["Manage quests", [
       "A quest is what used to be called a project here. Same thing, new name -- nothing about your existing quests changed.",
-      "Each active quest has its own page. Open **Quests** and select the quest's name. Use the pencil beside its title to rename it, and edit its notes there. Down the page you will find its Tasks, Before you launch checklist, Notes, and Linked quests, in that order. Select a task to open it right there. Beside that (below it on a phone) are its Schedule, where you set its start date, due date, and block length, and its own Timeline and Burndown, which redraw as you change the schedule. On the Timeline, a pale band behind each task's bar shows the block it sits in. On a wide screen, **Expand** shows them large.",
+      "Each active quest has its own page. Open **Quests** and select the quest's name. Use the pencil beside its title to rename it, and edit its notes there. Down the page you will find its Tasks, Before you launch checklist, Notes, and Quest links, in that order. Select a task to open it right there. Beside that (below it on a phone) are its Schedule, where you set its start date, due date, and block length, and its own Timeline and Burndown, which redraw as you change the schedule. On the Timeline, a pale band behind each task's bar shows the block it sits in. On a wide screen, **Expand** shows them large.",
       "**Candidates** are quests that could take the next slot. Select one to edit its notes, start date, due date, and block length in a dialog, then use **Promote** to start it. Add a candidate with **New quest** in the **+** menu, or turn an idea into one with **Make candidate**.",
       "**In progress** lists each active quest with its next task. Use **Pin** on a quest for quick access from the sidebar. Unpinning only hides it there.",
       "Below it, the Quests page lists any quest that is complete or has no tasks yet, under the heading Pending, Completed, or Pending & completed.",
@@ -994,7 +994,7 @@ export function helpTopics() {
       "A completed quest shows a **Complete** badge and drops out of In progress. Its tasks also leave Tasks, the main Timeline, Today, and the main burndown, though its own page still lists them. **Reopen** makes it active again and brings them back.",
       "**Vault** puts a quest and its open tasks in the Vault. **Restore** brings all of it back."]],
     ["Link quests", [
-      "**Linked quests**, on a quest's page, connects it to related quests. Choose **Link quest** and pick one. A link goes both ways.",
+      "**Quest links**, on a quest's page, connects it to related quests. Choose **Link quest** to create a Quest link. A link goes both ways.",
       "**Mark launch critical** flags a linked quest that has to finish first. It shows on the other quest's Launch checklist, and counts as done once it is complete or in the Vault. Completing a quest or sending it to the Vault with an unfinished launch-critical link only warns you."]],
     ["Use the Workshop", [
       "Ideas that are not ready yet live in the **Workshop**. Add one with **Add idea**. Select an idea's title to open it and change its text or note.",

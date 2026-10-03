@@ -372,7 +372,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  ok([...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Linked quests"), "quest page has a Linked quests section");
+  ok([...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Quest links"), "quest page has a Quest links section");
   ok(k.$("view").textContent.includes("Sample Website"), "Sample App already links to Sample Website (sample data)");
   // bidirectional: the other side shows the link back
   k.click(k.btn(k.$("view"), "Sample Website"));
@@ -394,7 +394,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // still showing as a linked quest).
   const unlinkBtn = [...k.d.querySelectorAll("#view button")].find(b => b.textContent.trim() === "Unlink");
   k.click(unlinkBtn);
-  ok(k.$("view").textContent.includes("No linked quests"), "unlinking removes the linked-quest row (Sample Website may still appear in the re-link picker, which is correct)");
+  ok(k.$("view").textContent.includes("No quest links"), "unlinking removes the linked-quest row (Sample Website may still appear in the re-link picker, which is correct)");
 }
 
 /* ---- quest Complete status, Launch-critical links, archived viewing ---- */
@@ -687,7 +687,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   const split = k.d.querySelector("#view .questsplit");
   ok(!!split && !!split.querySelector(".questmain") && !split.querySelector(".questtop") && !split.querySelector(".questrest") && !!split.querySelector(".questcharts"), "an active quest's page has one content column and a Schedule/Timeline/Burndown column");
-  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Notes,Quest Giver,Linked quests", "the left column runs Tasks, Before you launch, Notes, Quest Giver, then Linked quests (" + [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() + ")");
+  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Notes,Quest Giver,Quest links", "the left column runs Tasks, Before you launch, Notes, Quest Giver, then Quest links (" + [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() + ")");
   ok(!split.querySelector(".pintoggle") && !split.querySelector(".pinbar"), "there is no Pin button on a quest's own page");
   ok(split.querySelector(".questmain").textContent.includes("6 tasks (1 in the Backlog). 6 of 17 steps complete."), "the task-count line sits under the Tasks heading");
   const side = split.querySelector(".questcharts");
@@ -1231,7 +1231,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const chips = [...k.d.querySelectorAll("#view .questmain .l3 span")].map(s => s.textContent);
   ok(chips.includes("Est 3 h") && chips.includes("Est 6 h"), "task rows on the quest page show their estimate as Est N h");
   const heads = [...k.d.querySelectorAll("#view .questmain h2")].map(h => h.textContent);
-  ok(heads.join() === "Tasks,Before you launch,Notes,Quest Giver,Linked quests", "the quest page order is Tasks, Before you launch, Notes, Quest Giver, Linked quests (" + heads.join() + ")");
+  ok(heads.join() === "Tasks,Before you launch,Notes,Quest Giver,Quest links", "the quest page order is Tasks, Before you launch, Notes, Quest Giver, Quest links (" + heads.join() + ")");
   const g1 = sv.find(t => t.id === "g1");
   ok(g1.block === 1 && g1.start && g1.due && g1.start < g1.due, "Sample Game's first task keeps block 1 with its own start and due");
   const gp = k.saved().quests.find(p => p.id === "pGame");

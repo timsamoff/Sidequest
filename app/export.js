@@ -195,7 +195,7 @@ function renderTasks(node) {
 function renderLinks(node) {
   var real = node.links.filter(function (l) { return !l.cycle; });
   var cycles = node.links.filter(function (l) { return l.cycle; });
-  if (!real.length && !cycles.length) return '<p class="hint">No linked quests.</p>';
+  if (!real.length && !cycles.length) return '<p class="hint">No quest links.</p>';
   var items = real.map(function (l) { return '<li><a href="#' + sectionId(l.id) + '">' + escHtml(l.name) + "</a></li>"; })
     .concat(cycles.map(function (l) { return '<li><a href="#' + sectionId(l.id) + '">' + escHtml(l.name) + "</a> (already shown above)</li>"; }));
   return '<ul class="list">' + items.join("") + "</ul>";
@@ -231,7 +231,7 @@ function renderSection(node) {
   html += renderTasks(node);
   html += "<h3>Notes</h3>";
   html += '<p class="enotes">' + (node.notes ? escHtml(node.notes).replace(/\n/g, "<br>") : "No notes.") + "</p>";
-  html += "<h3>Linked quests</h3>";
+  html += "<h3>Quest links</h3>";
   html += renderLinks(node);
   html += "</div>";
   html += '<div class="easide">' + renderCharts(node) + "</div>";
