@@ -108,15 +108,17 @@ function stripModuleSyntax(source, filename) {
 // Sound effects are referenced in app/*.js as plain relative paths
 // ("assets/sfx/....mp3"), which don't resolve on a published artifact with
 // no adjacent assets/ folder -- same problem the favicon had. Fixed the same
-// way: the literal string inside the bundled JS is swapped for a base64
-// data URI built from the real file, at build time.
-var SFX_FILES = ["splash.mp3", "complete.mp3"];
+// way: each literal string reference in the bundled JS is swapped for a
+// variable name, with one real `var SFX_...` declaration holding the actual
+// base64 data URI -- a file referenced from more than one call site (the
+// splash sound currently is) is only embedded once, not once per reference.
+var SFX_FILES = { "assets/sfx/splash.mp3": "SFX_SPLASH", "assets/sfx/complete.mp3": "SFX_COMPLETE" };
 
 function buildSfxDataUris() {
   var map = {};
-  SFX_FILES.forEach(function (name) {
-    var buf = fs.readFileSync(path.join(ROOT, "assets", "sfx", name));
-    map["assets/sfx/" + name] = "data:audio/mpeg;base64," + buf.toString("base64");
+  Object.keys(SFX_FILES).forEach(function (relPath) {
+    var buf = fs.readFileSync(path.join(ROOT, relPath));
+    map[relPath] = "data:audio/mpeg;base64," + buf.toString("base64");
   });
   return map;
 }
@@ -134,13 +136,16 @@ function build() {
     var src = fs.readFileSync(full, "utf8");
     scriptParts.push("// ---- " + name + " ----\n" + stripModuleSyntax(src, name));
   });
-  var bundledScript = "(function () {\n\"use strict\";\n" + scriptParts.join("\n\n") + "\n})();\n";
-
   var sfxDataUris = buildSfxDataUris();
-  Object.keys(sfxDataUris).forEach(function (relPath) {
+  var sfxVarDecls = Object.keys(SFX_FILES).map(function (relPath) {
+    return "var " + SFX_FILES[relPath] + " = " + JSON.stringify(sfxDataUris[relPath]) + ";";
+  }).join("\n");
+  var bundledScript = "(function () {\n\"use strict\";\n" + sfxVarDecls + "\n" + scriptParts.join("\n\n") + "\n})();\n";
+
+  Object.keys(SFX_FILES).forEach(function (relPath) {
     var literal = '"' + relPath + '"';
     if (bundledScript.indexOf(literal) === -1) throw new Error("build-artifact: expected to find " + literal + " in the bundled script to inline as a sound effect, but it wasn't there -- check the reference hasn't changed.");
-    bundledScript = bundledScript.split(literal).join('"' + sfxDataUris[relPath] + '"');
+    bundledScript = bundledScript.split(literal).join(SFX_FILES[relPath]);
   });
 
   // Verify every app/*.js file was actually included -- a file added to app/

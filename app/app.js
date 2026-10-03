@@ -1,6 +1,6 @@
 import { state, ui, save, saveUI, changed, autoVault, purgeOldVault, APP_NAME, loadFromDbIfAvailable } from "./state.js";
 import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest } from "./model.js";
-import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline, playSfx } from "./dom.js";
+import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline } from "./dom.js";
 import { lateTasks } from "./model.js";
 import {
   renderToday, renderSchedule, renderQuests, renderWorkshop,
@@ -127,6 +127,13 @@ export function wireMenu(btnId, menuId) {
   });
 }
 
+// The splash's own pending timers, exposed so a test can cancel them after
+// itself -- otherwise a splash scheduled during one test's boot keeps firing
+// (including its sound) well after that test has moved on, since nothing
+// else ever calls this normally (a real page load is torn down by navigating
+// away, not by anything in-page).
+export var cancelSplash = function () {};
+
 // Deferred one microtask so the whole import cycle (state.js etc.) finishes evaluating first.
 Promise.resolve().then(function () {
   $("brand").textContent = APP_NAME;
@@ -134,10 +141,8 @@ Promise.resolve().then(function () {
   autoVault(); purgeOldVault(); save();
   renderAll();
 
-  // Decorative only -- the app has already rendered above. The sound only
-  // plays when the splash itself is actually shown, not just when audio is on.
-  if (state.settings.showSplash && state.settings.audio) playSfx("assets/sfx/splash.mp3");
-  playSplash(state.settings.showSplash);
+  // Decorative only -- the app has already rendered above.
+  cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio) || cancelSplash;
 
   // Checked after first paint -- no-op on the web app, real on a published artifact with db.
   loadFromDbIfAvailable().then(function (swapped) {

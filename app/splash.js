@@ -2,7 +2,7 @@
 // hand-composed artwork (the icon's own 5 branches, not procedural).
 // Sequence: blur -> branches draw -> blur -> the "Sidequest" title (shown from
 // first paint via static HTML) wipes into the affirmation -> fade out.
-import { $ } from "./dom.js";
+import { $, playSfx } from "./dom.js";
 
 var SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -173,7 +173,13 @@ var TIMING = {
   blurDelay: 20,    // after the last line finishes
   textDelay: 500,   // after blur starts
   holdDur: 2150,    // text fully visible before fade-out starts
-  fadeOutDur: 500
+  fadeOutDur: 500,
+  // Where the splash sound starts, relative to the text-wipe (textAt):
+  // negative fires it that many ms before the wipe begins (to cover the
+  // small real-world lag between calling play() and sound actually
+  // starting), positive fires it after, 0 fires it exactly at the wipe.
+  // Change this one number to move the sound without touching anything else.
+  soundOffset: -10
 };
 
 // Per-pair start/end times, resolved parent-first (buildTree lists parent before child).
@@ -190,8 +196,13 @@ function schedule(pairs) {
 
 // Plays the splash sequence, then removes/hides the overlay and calls done()
 // (if given) once the fade-out finishes. No-op (calls done() immediately) if
-// showSplash is off or the element isn't present.
-export function playSplash(showSplash, done) {
+// showSplash is off or the element isn't present. When `audio` is true, the
+// affirmation's text-wipe sound is scheduled a few ms ahead of the wipe
+// itself, for the small real-world lag between calling play() and sound
+// actually starting -- best effort only: a browser that has not yet seen any
+// interaction on this page blocks it outright, with no retry, since a sound
+// played later than the wipe it's meant to accompany would be worse than none.
+export function playSplash(showSplash, done, audio) {
   var root = $("splash");
   // Markup ships pre-blurred in plain HTML, before any JS runs -- avoids a
   // real flash-of-sharp-app bug. If the setting's off, hide it now instead.
@@ -220,6 +231,8 @@ export function playSplash(showSplash, done) {
     timers.push(setTimeout(function () { pair.node.classList.add("shown"); }, pair.end));
   });
   timers.push(setTimeout(function () { root.classList.add("artBlurred"); }, artBlurAt));
+  // Disabled: browsers block Audio.play() here outside a real click/tap/keydown handler.
+  // if (audio) timers.push(setTimeout(function () { playSfx("assets/sfx/splash.mp3"); }, Math.max(0, textAt + TIMING.soundOffset)));
   timers.push(setTimeout(function () { root.classList.add("textIn"); }, textAt));
   timers.push(setTimeout(function () {
     root.classList.add("fading");

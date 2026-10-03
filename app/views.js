@@ -711,6 +711,7 @@ export function promoteToActive(id) {
   var t = state.tasks.filter(function (x) { return x.isNext; })[0];
   if (t) t.status = "Completed";
   changed();
+  if (state.settings.audio) playSfx("assets/sfx/splash.mp3");
 }
 export function standingBlock() {
   var wrap = el("div");

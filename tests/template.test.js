@@ -27,7 +27,13 @@ const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 register(pathToFileURL(path.join(__dirname, "isolate-loader.mjs")));
 
 let counter = 0;
+// The previous mk() call's own app.js module instance, so its still-pending
+// splash timers (which otherwise keep firing -- including a sound effect --
+// well after that test has moved on to a different global.window) can be
+// cancelled before the next one boots.
+let lastAppModule = null;
 async function mk(saved, claude, stamp, audioStub) {
+  if (lastAppModule) lastAppModule.cancelSplash();
   const dom = new JSDOM(html, { url: "https://example.test/", pretendToBeVisual: true });
   dom.window.scrollTo = () => {};
   if (claude) dom.window.claude = claude;
@@ -41,7 +47,7 @@ async function mk(saved, claude, stamp, audioStub) {
   // internal). Redefine the property instead so jsdom's window.localStorage wins.
   Object.defineProperty(global, "localStorage", { value: dom.window.localStorage, configurable: true, writable: true });
   global.FileReader = dom.window.FileReader;
-  await import("../app/app.js?run=" + (++counter));
+  lastAppModule = await import("../app/app.js?run=" + (++counter));
   // app.js's own boot sequence (rendering the initial view, wiring menus and
   // search) is deferred one microtask past module evaluation -- see app/app.js's
   // comment on this -- so tests must wait a tick for it to have run.
@@ -1566,24 +1572,19 @@ async function exportClick(k, projectName) {
   ok(k.saved().settings.audio === false && k.saved().settings.completionFx === false, "both settings round-trip through normalize() when off");
 }
 {
-  // The splash sound plays at boot only when both the splash itself and
-  // Audio are on.
+  // The splash sound itself is commented out in app/splash.js pending more
+  // research (confirmed: a browser blocks play() called from a setTimeout
+  // even right after a real click, not just at boot with zero interaction --
+  // there's no timing fix for that). This just confirms it stays silent for
+  // now, so re-enabling it later is a deliberate, visible change to this
+  // test too, not a silent gap in coverage. mk() cancels the previous call's
+  // own splash timers before booting the next one (see lastAppModule above).
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   let played = null;
   const stub = function (src) { played = src; return { play: function () { return Promise.resolve(); } }; };
   await mk({ settings: { showSplash: true, audio: true } }, undefined, undefined, stub);
-  ok(played === "assets/sfx/splash.mp3", "the splash sound plays at boot when showSplash and Audio are both on (" + played + ")");
-}
-{
-  let played = null;
-  const stub = function (src) { played = src; return { play: function () { return Promise.resolve(); } }; };
-  await mk({ settings: { showSplash: false, audio: true } }, undefined, undefined, stub);
-  ok(played === null, "no splash sound when the splash itself is off, even with Audio on");
-}
-{
-  let played = null;
-  const stub = function (src) { played = src; return { play: function () { return Promise.resolve(); } }; };
-  await mk({ settings: { showSplash: true, audio: false } }, undefined, undefined, stub);
-  ok(played === null, "no splash sound when Audio is off, even with the splash itself on");
+  await wait(2500);
+  ok(played === null, "the splash sound is currently disabled, even with showSplash and Audio both on");
 }
 {
   // The completion sound plays only when Audio is on, regardless of
@@ -1616,6 +1617,32 @@ async function exportClick(k, projectName) {
   k.click(k.btn(k.$("view"), "Mark complete"));
   k.w.Audio = RealAudio;
   ok(!played, "Mark complete plays no sound when Audio is off");
+}
+{
+  // Promoting a candidate to a quest plays the splash sound, since that
+  // click is a real user gesture a browser will actually allow audio from
+  // (unlike the splash's own setTimeout-driven moment -- see app/splash.js).
+  const saved = { settings: { audio: true }, quests: [{ id: "pCand", name: "Candidate Quest", status: "candidate" }], tasks: [] };
+  const k = kit(await mk(saved));
+  let played = null;
+  const RealAudio = k.w.Audio;
+  k.w.Audio = function (src) { played = src; return { play: function () { return Promise.resolve(); } }; };
+  k.tab("projects");
+  k.click(k.btn(k.$("view"), "Promote"));
+  k.w.Audio = RealAudio;
+  ok(played === "assets/sfx/splash.mp3", "promoting a candidate plays the splash sound when Audio is on (" + played + ")");
+  ok(k.saved().quests.find((q) => q.id === "pCand").status === "active", "and the quest is actually promoted");
+}
+{
+  const saved = { settings: { audio: false }, quests: [{ id: "pCand2", name: "Candidate Quest 2", status: "candidate" }], tasks: [] };
+  const k = kit(await mk(saved));
+  let played = false;
+  const RealAudio = k.w.Audio;
+  k.w.Audio = function () { played = true; return { play: function () { return Promise.resolve(); } }; };
+  k.tab("projects");
+  k.click(k.btn(k.$("view"), "Promote"));
+  k.w.Audio = RealAudio;
+  ok(!played, "promoting a candidate plays no sound when Audio is off");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
