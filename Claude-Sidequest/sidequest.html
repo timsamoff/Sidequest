@@ -3824,7 +3824,7 @@ function helpTopics() {
       "On a quest's own page, above the Timeline, choose **Slip schedule**. Pick the number of days and choose **Push dates later**, and its still-incomplete tasks move later by that many days. Completed tasks and the Backlog are not affected.",
       "**Undo last slip** in the same dialog reverses it."]],
     ["Settings, backup, and starting over", [
-      "In **Settings**, set the default length of a stretch of work in days, what to call it (Block, Sprint, and so on), the date format, the theme, whether the splash screen plays when the app opens, whether sound effects play at all (**Audio**), and whether completing a quest shows a confetti burst (**Completion FX**).",
+      "In **Settings**, set the default length of a stretch of work in days, what to call it (Block, Sprint, and so on), the date format, the theme, whether the splash screen plays when the app opens, whether sound effects play at all (**Sound Effects**), and whether completing a quest shows a confetti burst (**Completion FX**).",
       "Everything is saved in this browser only. Under **Backup and restore**, **Save backup** lets you choose where to put a backup file, and **Restore backup** loads one back after warning you that it replaces everything. You get a few seconds to undo a restore. After two weeks without a backup, Today adds a quiet reminder.",
       "Under **Vault**, you can set items to delete automatically after 7, 30, 60, or 90 days, counted from when each one was vaulted, or leave it set to Never. This is checked each time Sidequest opens, and there's no further warning once it's turned on.",
       "**Start fresh** erases everything after a warning. Save a backup first. You can begin empty or with the starting quests."]]
@@ -3979,11 +3979,6 @@ function renderSettings(page) {
   root.appendChild(el("h2", null, "Appearance and formats"));
   var appearanceBox = el("div", { "class": "box", style: "margin-top:10px" });
   var ag = el("div", { "class": "setgrid" });
-  var tw = el("div", { "class": "field" }); tw.appendChild(el("label", { "for": "set-theme" }, "Theme"));
-  var th = el("select", { id: "set-theme", "class": "plain" });
-  [["auto", "Match this device"], ["light", "Light"], ["dark", "Dark"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if (o[0] === state.settings.theme) op.selected = true; th.appendChild(op); });
-  on(th, "change", function () { state.settings.theme = th.value; applyTheme(); save(); });
-  tw.appendChild(th); ag.appendChild(tw);
   var fw = el("div", { "class": "field" }); fw.appendChild(el("label", { "for": "set-datefmt" }, "Date format"));
   var df = el("select", { id: "set-datefmt", "class": "plain" });
   var sample = Date.UTC(2026, 8, 21);
@@ -3994,23 +3989,30 @@ function renderSettings(page) {
   });
   on(df, "change", function () { state.settings.dateFormat = df.value; changed(); });
   fw.appendChild(df); ag.appendChild(fw);
+  var tw = el("div", { "class": "field" }); tw.appendChild(el("label", { "for": "set-theme" }, "Theme"));
+  var th = el("select", { id: "set-theme", "class": "plain" });
+  [["auto", "Match this device"], ["light", "Light"], ["dark", "Dark"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if (o[0] === state.settings.theme) op.selected = true; th.appendChild(op); });
+  on(th, "change", function () { state.settings.theme = th.value; applyTheme(); save(); });
+  tw.appendChild(th); ag.appendChild(tw);
+  appearanceBox.appendChild(ag);
+  appearanceBox.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device's own format."));
+  var ag2 = el("div", { "class": "setgrid", style: "margin-top:10px" });
   var sw = el("div", { "class": "field" }); sw.appendChild(el("label", { "for": "set-splash" }, "Splash screen on open"));
   var ss = el("select", { id: "set-splash", "class": "plain" });
   [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.showSplash) op.selected = true; ss.appendChild(op); });
   on(ss, "change", function () { state.settings.showSplash = ss.value === "on"; save(); });
-  sw.appendChild(ss); ag.appendChild(sw);
-  var aw2 = el("div", { "class": "field" }); aw2.appendChild(el("label", { "for": "set-audio" }, "Audio"));
-  var as = el("select", { id: "set-audio", "class": "plain" });
-  [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.audio) op.selected = true; as.appendChild(op); });
-  on(as, "change", function () { state.settings.audio = as.value === "on"; save(); });
-  aw2.appendChild(as); ag.appendChild(aw2);
+  sw.appendChild(ss); ag2.appendChild(sw);
   var fxw = el("div", { "class": "field" }); fxw.appendChild(el("label", { "for": "set-completion-fx" }, "Completion FX"));
   var fxs = el("select", { id: "set-completion-fx", "class": "plain" });
   [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.completionFx) op.selected = true; fxs.appendChild(op); });
   on(fxs, "change", function () { state.settings.completionFx = fxs.value === "on"; save(); });
-  fxw.appendChild(fxs); ag.appendChild(fxw);
-  appearanceBox.appendChild(ag);
-  appearanceBox.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device's own format. Nothing here uses a time of day yet."));
+  fxw.appendChild(fxs); ag2.appendChild(fxw);
+  var aw2 = el("div", { "class": "field" }); aw2.appendChild(el("label", { "for": "set-audio" }, "Sound Effects"));
+  var as = el("select", { id: "set-audio", "class": "plain" });
+  [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.audio) op.selected = true; as.appendChild(op); });
+  on(as, "change", function () { state.settings.audio = as.value === "on"; save(); });
+  aw2.appendChild(as); ag2.appendChild(aw2);
+  appearanceBox.appendChild(ag2);
   root.appendChild(appearanceBox);
 
   root.appendChild(el("h2", null, "Vault"));
