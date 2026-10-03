@@ -145,6 +145,12 @@ export function exportQuestForClient(p) {
 // Offers vaulting now or leaving it in Quests. Launch-critical warning is soft, never blocking.
 export function completionDialog(p) {
   var warn = incompleteLaunchCriticalLinks(p);
+  // A Complete quest is out of active rotation, so it no longer needs a
+  // sidebar shortcut -- remembered here, not just dropped, so Reopen can
+  // restore the pin rather than making the user redo it. Unpinned directly,
+  // not via unpinPage(), since its own toast would compete with this dialog.
+  var key = "quest:" + p.id;
+  if (isPinned(key)) { p.wasPinned = true; state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); }
   if (state.settings.audio) playSfx("assets/sfx/complete.mp3");
   if (state.settings.completionFx) playConfetti();
   openModal("Quest complete", function (body) {
@@ -627,7 +633,10 @@ export function renderQuestPage(root, id) {
     } else if (p.status === "complete") {
       // No auto-revert -- Reopen is the only way back to Active.
       ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Reopen this quest" }, "Reopen"), "click", function () {
-        p.status = "active"; changed(); notify("Reopened.");
+        p.status = "active";
+        // Restore a pin completionDialog() auto-removed on completion.
+        if (p.wasPinned) { var key = "quest:" + p.id; if (!isPinned(key)) state.pins.push(key); p.wasPinned = false; }
+        changed(); notify("Reopened.");
         if (state.settings.audio) playSfx("assets/sfx/splash.mp3");
       }));
     }

@@ -1004,7 +1004,7 @@ function task(id, block, questId, what, done, steps, extra) {
 // record and id carry through candidate -> active -> vaulted, never a second
 // record.
 function quest(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, client: { org: "", poc: "", phone: "", email: "", address: "", website: "" } };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, client: { org: "", poc: "", phone: "", email: "", address: "", website: "" } };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -1161,6 +1161,8 @@ function normalize(s) {
         due: isISO(x.due) ? x.due : "",
         notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), vault: validVault(x.vault || x.arch), launchCritical: x.launchCritical === true, hist: cleanHist(x.hist),
         lastSlip: cleanSlip(x.lastSlip),
+        // Set aside by completionDialog()'s auto-unpin so Reopen can restore it.
+        wasPinned: x.wasPinned === true,
         // Validated below, once every quest's real id is known -- a link
         // can only point at another quest that actually exists in the final
         // set. Arbitrary depth or cycles are fine; each side of a link is just
@@ -2925,6 +2927,12 @@ function exportQuestForClient(p) {
 // Offers vaulting now or leaving it in Quests. Launch-critical warning is soft, never blocking.
 function completionDialog(p) {
   var warn = incompleteLaunchCriticalLinks(p);
+  // A Complete quest is out of active rotation, so it no longer needs a
+  // sidebar shortcut -- remembered here, not just dropped, so Reopen can
+  // restore the pin rather than making the user redo it. Unpinned directly,
+  // not via unpinPage(), since its own toast would compete with this dialog.
+  var key = "quest:" + p.id;
+  if (isPinned(key)) { p.wasPinned = true; state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); }
   if (state.settings.audio) playSfx(SFX_COMPLETE);
   if (state.settings.completionFx) playConfetti();
   openModal("Quest complete", function (body) {
@@ -3407,7 +3415,10 @@ function renderQuestPage(root, id) {
     } else if (p.status === "complete") {
       // No auto-revert -- Reopen is the only way back to Active.
       ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Reopen this quest" }, "Reopen"), "click", function () {
-        p.status = "active"; changed(); notify("Reopened.");
+        p.status = "active";
+        // Restore a pin completionDialog() auto-removed on completion.
+        if (p.wasPinned) { var key = "quest:" + p.id; if (!isPinned(key)) state.pins.push(key); p.wasPinned = false; }
+        changed(); notify("Reopened.");
         if (state.settings.audio) playSfx(SFX_SPLASH);
       }));
     }

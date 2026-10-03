@@ -425,6 +425,9 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // set apart visually, and can be reopened
   ok(!!k.d.querySelector("#view .chip.questcomplete"), "a Complete quest shows a Complete badge on its own page");
   ok(!!k.btn(k.$("view"), "Reopen") && !k.btn(k.$("view"), "Mark complete"), "Complete quest offers Reopen in place of Mark complete");
+  // Sample App was pinned by sample data -- completing it auto-unpins it.
+  ok(!k.btn(k.d.querySelector("#nav"), "Sample App"), "completing a pinned quest auto-unpins it from the sidebar");
+  ok(k.saved().quests.find(p => p.id === "pApp").wasPinned === true, "the prior pin is remembered, not just dropped");
   k.tab("projects");
   ok(!k.stand().includes("Sample App"), "a Complete quest drops out of In progress");
   const appRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample App"));
@@ -437,6 +440,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.saved().quests.find(p => p.id === "pApp").status === "active", "Reopen sets the quest back to active");
   ok(!k.d.querySelector("#view .chip.questcomplete"), "reopened quest loses the Complete badge");
   ok(!!k.btn(k.$("view"), "Mark complete"), "reopened quest offers Mark complete again");
+  ok(!!k.btn(k.d.querySelector("#nav"), "Sample App"), "Reopen restores the quest's prior pin");
+  ok(k.saved().quests.find(p => p.id === "pApp").wasPinned === false, "and clears the remembered flag once restored");
   // sticky: reopening a task does not revert Complete
   k.click(k.btn(k.$("view"), "Mark complete"));
   k.click(k.btn(k.$("modalBody"), "Leave in Quests"));
@@ -447,13 +452,13 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("view").textContent.includes("Tasks from Complete quests are not listed here"), "the Tasks page explains why");
   k.tab("timeline");
   ok(![...k.d.querySelectorAll("#view .lane .lname")].some(l => l.textContent === "Sample App"), "a Complete-but-kept quest's lane is hidden from the global Timeline");
-  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
   ok(k.$("view").textContent.includes("Its tasks are not included in Tasks, Timeline, or Today"), "the quest's own page explains the hiding");
   k.click([...k.d.querySelectorAll(".questmain .tlist .item")].find(b => b.textContent.includes("Sketch the main screens")));
   const statusSel = k.d.querySelector(".questmain .detail .status"); statusSel.value = "In progress"; k.fire(statusSel);
   ok(k.saved().quests.find(p => p.id === "pApp").status === "complete", "reopening a task does not auto-revert a Complete quest");
   // reopening the quest brings its tasks straight back, no separate restore
-  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
   k.click(k.btn(k.$("view"), "Reopen"));
   k.tab("schedule");
   ok(k.$("view").textContent.includes("Sketch the main screens"), "reopening the quest brings its tasks back into the Tasks list immediately");

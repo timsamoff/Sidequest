@@ -22,7 +22,7 @@ export function task(id, block, questId, what, done, steps, extra) {
 // record and id carry through candidate -> active -> vaulted, never a second
 // record.
 export function quest(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, client: { org: "", poc: "", phone: "", email: "", address: "", website: "" } };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, client: { org: "", poc: "", phone: "", email: "", address: "", website: "" } };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -179,6 +179,8 @@ export function normalize(s) {
         due: isISO(x.due) ? x.due : "",
         notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), vault: validVault(x.vault || x.arch), launchCritical: x.launchCritical === true, hist: cleanHist(x.hist),
         lastSlip: cleanSlip(x.lastSlip),
+        // Set aside by completionDialog()'s auto-unpin so Reopen can restore it.
+        wasPinned: x.wasPinned === true,
         // Validated below, once every quest's real id is known -- a link
         // can only point at another quest that actually exists in the final
         // set. Arbitrary depth or cycles are fine; each side of a link is just
