@@ -775,7 +775,7 @@ export function standingBlock() {
 export function candidatesSection() {
   var sec = el("div");
   var hd = el("div", { "class": "sechead", style: "margin-top:28px" }); hd.appendChild(el("h2", null, "Candidates")); sec.appendChild(hd);
-  sec.appendChild(el("p", { "class": "hint" }, "Choose which quest gets the next slot. Use New quest in the menu, or make an idea in the Workshop a candidate."));
+  sec.appendChild(el("p", { "class": "hint" }, "Choose which quest gets the next slot. Use New quest in the menu, or make an idea in the Workshop a candidate. A candidate can be promoted or sent to the Vault, but not sent back to the Workshop."));
   var list = el("ul", { "class": "list" });
   var cs = candidateQuests();
   if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a candidate."));
@@ -791,10 +791,6 @@ export function candidatesSection() {
     var pr = el("button", { type: "button", "class": "small", title: "Promote to quest" }, "Promote");
     on(pr, "click", function () { promoteToActive(cd.id); });
     acts.appendChild(pr);
-    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Move to the Workshop" }, "Workshop it"), "click", function () {
-      state.quests = state.quests.filter(function (x) { return x.id !== cd.id; });
-      state.workshop.push({ id: uid(), text: cd.name, note: cd.notes }); changed();
-    }));
     var rm = el("button", { type: "button", "class": "small danger", title: "Send this candidate to the Vault" }, "Vault");
     on(rm, "click", function () { removeToVault(cd, "Quest"); });
     acts.appendChild(rm); row.appendChild(acts); li.appendChild(row);
@@ -1027,7 +1023,7 @@ export function helpTopics() {
       "**Mark launch critical** flags a linked quest that has to finish first. It shows on the other quest's Launch checklist, and counts as done once it is complete or in the Vault. Completing a quest or sending it to the Vault with an unfinished launch-critical link only warns you."]],
     ["Use the Workshop", [
       "Ideas that are not ready yet live in the **Workshop**. Add one with **Add idea**. Select an idea's title to open it and change its text or note.",
-      "**Make candidate** turns an idea into a quest candidate, and its note becomes the quest's **Notes**. **Workshop it** on a candidate sends the notes back. **Vault** sends an idea to the Vault."]],
+      "**Make candidate** turns an idea into a quest candidate, and its note becomes the quest's **Notes**. This is one-way -- a candidate can be promoted or sent to the Vault, but not sent back to the Workshop. **Vault** sends an idea to the Vault."]],
     ["Read the Timeline", [
       "Every quest gets a lane. A light bar is an estimate you set on the quest's page. It is not a promise.",
       "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline. Select a diamond, or a milestone's text in the list, to change its quest, text, or date, or to remove it.",

@@ -647,26 +647,28 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("viewTitle").textContent === "Sample Browser Extension", "clicking a candidate row's name opens its page, not a dialog");
 }
 {
-  // notes travel between ideas and candidates, and list rows clamp them
+  // notes travel from an idea into a new candidate, and list rows clamp them;
+  // a candidate has no way back to the Workshop (one-way)
   const k = kit(await mk());
   k.tab("projects");
-  const candRow = () => [...k.d.querySelectorAll("#view .list li")].find(li => li.querySelector('button[title="Move to the Workshop"]'));
+  const candRow = () => [...k.d.querySelectorAll("#view .list li")].find(li => li.querySelector('button[title="Promote to quest"]') && li.textContent.includes("Sample Browser Extension"));
   ok(!!candRow().querySelector(".noteclamp"), "a candidate's note in the list is clamped to two lines");
-  k.click(k.btn(candRow(), "Workshop it"));
-  const idea = k.saved().workshop.find(p => p.text === "Sample Browser Extension");
-  ok(idea && idea.note === "A small tool that could ship in a month", "Workshop it carries the quest's Notes back to the idea's note");
+  ok(!candRow().querySelector('button[title="Move to the Workshop"]'), "a candidate row has no Workshop it button");
   k.tab("workshop");
-  const irow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Browser Extension"));
+  k.click(k.btn(k.$("view"), "Add idea"));
+  k.setField("text", "A fresh idea"); k.setField("note", "Some notes on it");
+  k.click(k.btn(k.$("modalBody"), "Workshop it"));
+  const irow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("A fresh idea"));
   ok(!!irow.querySelector(".noteclamp"), "an idea's note in the Workshop is clamped to two lines");
   k.click(k.btn(irow, "Make candidate"));
-  const quest = k.saved().quests.find(p => p.name === "Sample Browser Extension" && p.status === "candidate");
-  ok(quest && quest.notes === "A small tool that could ship in a month" && !("note" in quest), "Make candidate puts the idea's note in the quest's Notes, with no separate note field");
+  const quest = k.saved().quests.find(p => p.name === "A fresh idea" && p.status === "candidate");
+  ok(quest && quest.notes === "Some notes on it" && !("note" in quest), "Make candidate puts the idea's note in the quest's Notes, with no separate note field");
 }
 {
   // a vaulted candidate's page is read-only like any vaulted quest's
   const k = kit(await mk());
   k.tab("projects");
-  const candRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.querySelector('button[title="Move to the Workshop"]'));
+  const candRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.querySelector('button[title="Promote to quest"]') && li.textContent.includes("Sample Browser Extension"));
   k.click(k.btn(candRow, "Vault"));
   k.tab("vault");
   k.click(k.btn(k.$("view"), "Sample Browser Extension"));
