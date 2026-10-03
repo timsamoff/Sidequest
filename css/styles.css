@@ -320,6 +320,9 @@ svg.chart.nofocusring { outline: none; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); background: var(--ink); color: var(--bg); padding: var(--space-10) var(--space-16); border-radius: var(--radius-card); z-index: 60; font-size: var(--text-sm); }
 .toast:empty { display: none; }
 
+/* Confetti sits above everything, including an open modal, but never blocks clicks. */
+.confettiFx { position: fixed; inset: 0; z-index: 80; pointer-events: none; }
+
 /* splash screen: viewport-relative sizing so the ~75% panel works in either orientation. */
 .splash { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity .5s ease; }
 .splash.fading { opacity: 0; }

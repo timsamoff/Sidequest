@@ -72,6 +72,7 @@ const MODULE_ORDER = [
   "export.js",
   "search.js",
   "dialogs.js",
+  "confetti.js",
   "views.js",
   "splash.js",
   "app.js",

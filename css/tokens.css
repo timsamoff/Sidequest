@@ -56,6 +56,9 @@
   --chip-ink: #1A2733;
   --est: #B9CCE0;
   --sel: #E6EEF6;
+  /* Same six values in both themes -- confetti reads as festive against either background. */
+  --confetti-1: #2F5D8A; --confetti-2: #C62F2F; --confetti-3: #2E8B57;
+  --confetti-4: #E8A33D; --confetti-5: #7B5EA7; --confetti-6: #D4587A;
   --scrim: rgba(15, 25, 35, .5);
 }
 @media (prefers-color-scheme: dark) {

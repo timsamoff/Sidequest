@@ -40,6 +40,12 @@ async function mk(saved, claude, stamp, audioStub) {
   if (stamp) dom.window.localStorage.setItem("sidequest-template-v1-saved-at", stamp);
   if (saved) dom.window.localStorage.setItem("sidequest-template-v1", JSON.stringify(saved));
   if (audioStub) dom.window.Audio = audioStub;
+  // jsdom has no real canvas 2D context (confirmed: getContext("2d") returns
+  // null without the optional native "canvas" package) -- a minimal no-op
+  // stub lets confetti.js's real append/animate/cleanup code run in tests.
+  dom.window.HTMLCanvasElement.prototype.getContext = function () {
+    return { clearRect: () => {}, save: () => {}, restore: () => {}, translate: () => {}, rotate: () => {}, scale: () => {}, fillRect: () => {}, set fillStyle(v) {} };
+  };
   global.window = dom.window;
   global.document = dom.window.document;
   // Node 22+ has its own built-in `localStorage` global, defined as a getter --
@@ -1609,6 +1615,22 @@ async function exportClick(k, projectName) {
   const saved = { settings: { audio: false, completionFx: false } };
   const k = kit(await mk(saved));
   ok(k.saved().settings.audio === false && k.saved().settings.completionFx === false, "both settings round-trip through normalize() when off");
+}
+{
+  // Completion FX gates the confetti burst on quest completion. The canvas
+  // element appears synchronously (before the animation itself runs on
+  // requestAnimationFrame), so checking for it right after Mark complete is
+  // enough to confirm the gate without needing a real animation loop.
+  const k = kit(await mk({ quests: [{ id: "pFx", name: "FX Quest", status: "active" }], tasks: [] }));
+  k.tab("projects"); k.click(k.btn(k.d.querySelector("#view"), "FX Quest"));
+  k.click(k.btn(k.$("view"), "Mark complete"));
+  ok(!!k.d.querySelector("canvas.confettiFx"), "Mark complete starts the confetti burst when Completion FX is on");
+}
+{
+  const k = kit(await mk({ settings: { completionFx: false }, quests: [{ id: "pFx2", name: "FX Quest Off", status: "active" }], tasks: [] }));
+  k.tab("projects"); k.click(k.btn(k.d.querySelector("#view"), "FX Quest Off"));
+  k.click(k.btn(k.$("view"), "Mark complete"));
+  ok(!k.d.querySelector("canvas.confettiFx"), "Mark complete starts no confetti burst when Completion FX is off");
 }
 {
   // The splash sound itself is commented out in app/splash.js pending more

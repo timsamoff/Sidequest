@@ -11,6 +11,7 @@ import {
 } from "./model.js";
 import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx } from "./dom.js";
 import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
+import { playConfetti } from "./confetti.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme } from "./app.js";
 import { stepDialog, stepEditDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
 import { buildExportSnapshot, renderExportDocument, exportFileName } from "./export.js";
@@ -145,6 +146,7 @@ export function exportQuestForClient(p) {
 export function completionDialog(p) {
   var warn = incompleteLaunchCriticalLinks(p);
   if (state.settings.audio) playSfx("assets/sfx/complete.mp3");
+  if (state.settings.completionFx) playConfetti();
   openModal("Quest complete", function (body) {
     body.appendChild(el("p", { "class": "first" }, "“" + p.name + "” is marked complete. Send it to the Vault now, or leave it in Quests."));
     var openTasks = questRemainingUnits(p);
@@ -1041,7 +1043,7 @@ export function helpTopics() {
       "On a quest's own page, above the Timeline, choose **Slip schedule**. Pick the number of days and choose **Push dates later**, and its still-incomplete tasks move later by that many days. Completed tasks and the Backlog are not affected.",
       "**Undo last slip** in the same dialog reverses it."]],
     ["Settings, backup, and starting over", [
-      "In **Settings**, set the default length of a stretch of work in days, what to call it (Block, Sprint, and so on), the date format, the theme, whether the splash screen plays when the app opens, and whether sound effects play at all (**Audio**).",
+      "In **Settings**, set the default length of a stretch of work in days, what to call it (Block, Sprint, and so on), the date format, the theme, whether the splash screen plays when the app opens, whether sound effects play at all (**Audio**), and whether completing a quest shows a confetti burst (**Completion FX**).",
       "Everything is saved in this browser only. Under **Backup and restore**, **Save backup** lets you choose where to put a backup file, and **Restore backup** loads one back after warning you that it replaces everything. You get a few seconds to undo a restore. After two weeks without a backup, Today adds a quiet reminder.",
       "Under **Vault**, you can set items to delete automatically after 7, 30, 60, or 90 days, counted from when each one was vaulted, or leave it set to Never. This is checked each time Sidequest opens, and there's no further warning once it's turned on.",
       "**Start fresh** erases everything after a warning. Save a backup first. You can begin empty or with the starting quests."]]
