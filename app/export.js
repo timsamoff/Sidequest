@@ -245,7 +245,7 @@ var EXPORT_CSS = "\
 * { box-sizing: border-box; }\
 body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; line-height: 1.4; }\
 .ewrap { max-width: 1100px; margin: 0 auto; }\
-.ebrand { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }\
+.ebrand { display: flex; align-items: center; gap: 8px; margin-bottom: 32px; }\
 .ebrand svg { width: 28px; height: 28px; flex: none; }\
 .ebrand span { font-family: 'Spectral', Georgia, 'Times New Roman', serif; font-weight: 600; font-size: 1.1rem; }\
 .eletterhead { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; color: var(--muted); font-size: .9rem; line-height: 1.5; }\

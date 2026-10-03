@@ -625,7 +625,7 @@ export function renderQuestPage(root, id) {
       if (warn.length) notify("Sending to the Vault even though " + (warn.length === 1 ? "a launch-critical linked quest isn’t" : "launch-critical linked quests aren’t") + " finished: " + warn.map(function (lp) { return lp.name; }).join(", ") + ".");
       vaultQuest(p);
     }));
-    ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Export web page for client review" }, "Client Export"), "click", function () {
+    ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Export web page for client review" }, "Quest Giver Export"), "click", function () {
       exportQuestForClient(p);
     }));
   }
@@ -988,7 +988,7 @@ export function helpTopics() {
       "**Candidates** are quests that could take the next slot. Select one to edit its notes, start date, due date, and block length in a dialog, then use **Promote** to start it. Add a candidate with **New quest** in the **+** menu, or turn an idea into one with **Make candidate**.",
       "**In progress** lists each active quest with its next task. Use **Pin** on a quest for quick access from the sidebar. Unpinning only hides it there.",
       "Below it, the Quests page lists any quest that is complete or has no tasks yet, under the heading Pending, Completed, or Pending & completed.",
-      "**Client Export**, on an active or complete quest's page, downloads a single read-only web page with that quest's tasks, notes, and an interactive schedule and burndown, for sharing outside the app. A linked quest that is active or complete comes along too, with its own section. If you filled in **Your contact info** in Settings or this quest's own **Quest Giver** section, they print at the top as Prepared by and Prepared for. **Add brandmark** in Settings uploads a small image that prints above Prepared by."]],
+      "**Quest Giver Export**, on an active or complete quest's page, downloads a single read-only web page with that quest's tasks, notes, and an interactive schedule and burndown, for sharing outside the app. A linked quest that is active or complete comes along too, with its own section. If you filled in **Your contact info** in Settings or this quest's own **Quest Giver** section, they print at the top as Prepared by and Prepared for. **Add brandmark** in Settings uploads a small image that prints above Prepared by."]],
     ["Finish or vault a quest", [
       "**Mark complete** on a quest's page marks it done, even with tasks still open. A quest also completes by itself once all its tasks are done. Either way, you can send it to the Vault right away or leave it in Quests.",
       "A completed quest shows a **Complete** badge and drops out of In progress. Its tasks also leave Tasks, the main Timeline, Today, and the main burndown, though its own page still lists them. **Reopen** makes it active again and brings them back.",
@@ -1130,7 +1130,7 @@ export function renderSettings(page) {
   var root = el("div", { "class": "setmain" });
   split.appendChild(side); split.appendChild(root); page.appendChild(split);
   side.appendChild(el("h2", { "class": "first" }, "Your contact info"));
-  side.appendChild(el("p", { "class": "hint" }, "Optional. Anything filled in here prints on a Client Export."));
+  side.appendChild(el("p", { "class": "hint" }, "Optional. Anything filled in here prints on a Quest Giver Export."));
   var contactBox = el("div", { "class": "box", style: "margin-top:10px" });
   var cg = el("div", { "class": "setgrid" });
   function cfield(key, id, label, type) {

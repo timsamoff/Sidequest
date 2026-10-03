@@ -1306,14 +1306,14 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(by("n3").start === "" && by("n3").due === "", "a Backlog task's dates are cleared on load");
 }
 
-// Client Export writes through the same Save As dialog stub as Save backup's
+// Quest Giver Export writes through the same Save As dialog stub as Save backup's
 // own test, since both go through showSaveFilePicker before falling back to a
 // plain download.
 async function exportClick(k, projectName) {
   let written = null, downloadName = null;
   k.w.showSaveFilePicker = (opts) => { downloadName = opts.suggestedName; return Promise.resolve({ createWritable: () => Promise.resolve({ write: (t) => { written = t; return Promise.resolve(); }, close: () => Promise.resolve() }) }); };
   k.tab("projects"); k.click(k.btn(k.$("view"), projectName));
-  k.click(k.btn(k.$("view"), "Client Export"));
+  k.click(k.btn(k.$("view"), "Quest Giver Export"));
   await new Promise((r) => setTimeout(r, 30));
   return { html: written || "", downloadName };
 }
