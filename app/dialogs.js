@@ -179,34 +179,6 @@ export function linkQuestDialog(p) {
 // date, and its own block/sprint length. Promotion (Candidate -> Active) is a
 // separate row action on the Candidates list, not a button in this dialog --
 // this dialog only saves, matching ideaDialog's own Edit/Save pattern.
-export function candidateDialog(p) {
-  formDialog("Edit candidate", [
-    { key: "name", label: "Quest name", value: p.name },
-    { key: "notes", label: "Notes", type: "textarea", rows: 5, value: p.notes },
-    { key: "start", label: "Start date", type: "date", value: p.start },
-    { key: "due", label: "Due date", type: "date", value: p.due },
-    { key: "days", label: "Days per " + wd(), type: "number", min: "1", max: "90", step: "1", value: p.days },
-    { key: "giverHeading", label: "Quest Giver", type: "heading" },
-    { key: "giverOrg", label: "Organization", value: p.client.org },
-    { key: "giverPoc", label: "POC", value: p.client.poc },
-    { key: "giverPhone", label: "Phone", type: "tel", value: p.client.phone },
-    { key: "giverEmail", label: "Email", type: "email", value: p.client.email },
-    { key: "giverWebsite", label: "Website", type: "url", value: p.client.website },
-    { key: "giverAddress", label: "Address", type: "textarea", rows: 3, value: p.client.address }
-  ], "Save", function (v) {
-    if (!v.name) return "Enter a quest name.";
-    var days = parseInt(v.days, 10);
-    if (isNaN(days) || days < 1 || days > 90) return wd() + " length must be from 1 to 90 days.";
-    p.name = v.name.slice(0, 120);
-    p.notes = v.notes.slice(0, 5000);
-    p.start = isISO(v.start) ? v.start : "";
-    p.due = isISO(v.due) ? v.due : "";
-    p.days = days;
-    p.client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200) };
-    changed();
-    return { msg: "Candidate saved." };
-  });
-}
 export function ideaDialog(idea) {
   formDialog(idea ? "Edit idea" : "New idea", [
     { key: "text", label: "Idea", value: idea ? idea.text : undefined },

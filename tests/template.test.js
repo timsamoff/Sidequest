@@ -566,32 +566,58 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ], tasks: [] };
   const k = kit(await mk(saved));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Old shape"));
-  ok(!!k.$("f-notes") && k.$("f-notes").value === "short\n\nlong", "an old short note is folded into the front of Notes when both exist");
-  k.click(k.btn(k.$("modalBody"), "Cancel"));
+  ok(k.d.querySelector("#view textarea").value === "short\n\nlong", "an old short note is folded into the front of Notes when both exist");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Only short"));
-  ok(!!k.$("f-notes") && k.$("f-notes").value === "just this", "an old short note alone becomes the quest's Notes");
+  ok(k.d.querySelector("#view textarea").value === "just this", "an old short note alone becomes the quest's Notes");
 }
 {
-  // a candidate is edited entirely through candidateDialog(), same pattern as an Idea
+  // a candidate now has a real page, same shape as an active quest's,
+  // minus Quest links and with Promote/Vault in place of the usual actions
   const k = kit(await mk());
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Browser Extension"));
-  ok(k.$("f-notes").value === "A small tool that could ship in a month", "the candidate dialog shows its Notes");
-  ok(k.$("f-name").value === "Sample Browser Extension", "the candidate dialog shows its name");
-  k.setField("notes", "Edited notes"); k.setField("name", "Renamed Extension");
-  k.click(k.btn(k.$("modalBody"), "Save"));
-  ok(k.saved().quests.find(p => p.id === "pExt").notes === "Edited notes" && k.saved().quests.find(p => p.id === "pExt").name === "Renamed Extension", "saving the candidate dialog saves its name and Notes");
-  k.tab("projects"); k.click(k.btn(k.$("view"), "Renamed Extension"));
-  k.setField("name", "   "); k.click(k.btn(k.$("modalBody"), "Save"));
-  ok(k.$("modalBody").textContent.includes("Enter a quest name"), "a blank candidate name is rejected");
-  // Quest Giver fields live in the same dialog for a candidate
-  k.tab("projects"); k.click(k.btn(k.$("view"), "Renamed Extension"));
-  ok(!!k.$("f-giverOrg") && !!k.$("f-giverPoc") && !!k.$("f-giverPhone") && !!k.$("f-giverEmail") && !!k.$("f-giverWebsite") && !!k.$("f-giverAddress"), "the candidate dialog has all six Quest Giver fields");
-  ok([...k.d.querySelectorAll("#modalBody .dialogheading")].some(h => h.textContent === "Quest Giver"), "a real heading introduces the Quest Giver fields, not a prefix on each label");
-  ok(k.d.querySelector("label[for='f-giverOrg']").textContent === "Organization", "the fields' own labels are plain (Organization, not Quest Giver: Organization)");
-  k.setField("giverOrg", "Acme Co."); k.setField("giverPoc", "Jordan Lee");
-  k.click(k.btn(k.$("modalBody"), "Save"));
+  ok(k.d.querySelector("#view textarea").value === "A small tool that could ship in a month", "the candidate page shows its Notes");
+  ok(k.$("viewTitle").textContent === "Sample Browser Extension", "the candidate page shows its name as the title");
+  ok(!k.$("renameBtn").hidden, "a candidate's page has the rename pencil like any other live quest");
+  ok(![...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Quest links"), "a candidate's page has no Quest links section");
+  ok(!!k.btn(k.$("view"), "Promote") && !!k.btn(k.$("view"), "Vault"), "a candidate's page offers Promote and Vault");
+  ok(!k.btn(k.$("view"), "Mark complete") && !k.btn(k.$("view"), "Quest Giver Export"), "a candidate's page has no Mark complete or Quest Giver Export button");
+  // Quest Giver fields live right on the page for a candidate, same as an active quest
+  ok(!!k.$("giver-org-pExt") && !!k.$("giver-poc-pExt") && !!k.$("giver-phone-pExt") && !!k.$("giver-email-pExt") && !!k.$("giver-website-pExt") && !!k.$("giver-address-pExt"), "the candidate page has all six Quest Giver fields");
+  k.$("giver-org-pExt").value = "Acme Co."; k.fire(k.$("giver-org-pExt"), "input");
+  k.$("giver-poc-pExt").value = "Jordan Lee"; k.fire(k.$("giver-poc-pExt"), "input");
   const giver = k.saved().quests.find(p => p.id === "pExt").client;
-  ok(giver.org === "Acme Co." && giver.poc === "Jordan Lee" && giver.phone === "", "saving the candidate dialog saves its Quest Giver fields, blank ones stay blank");
+  ok(giver.org === "Acme Co." && giver.poc === "Jordan Lee" && giver.phone === "", "editing the candidate page's Quest Giver fields saves them, blank ones stay blank");
+}
+{
+  // Promote and Vault both work from the candidate page itself
+  const k = kit(await mk());
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Browser Extension"));
+  k.click(k.btn(k.$("view"), "Promote"));
+  ok(k.saved().quests.find(p => p.id === "pExt").status === "active", "Promote on the candidate page promotes it");
+  ok(!!k.btn(k.$("view"), "Demote") && !!k.btn(k.$("view"), "Mark complete") && !!k.btn(k.$("view"), "Vault") && !!k.btn(k.$("view"), "Quest Giver Export"), "the now-active quest's page has the full active action row, including Demote");
+  k.click(k.btn(k.$("view"), "Demote"));
+  ok(k.saved().quests.find(p => p.id === "pExt").status === "candidate", "Demote sends it back to Candidates");
+  ok(![...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Quest links") && !!k.btn(k.$("view"), "Promote"), "after demotion the page shows the candidate layout again");
+  k.click(k.btn(k.$("view"), "Vault"));
+  ok(!!k.saved().quests.find(p => p.id === "pExt").vault, "Vault on the candidate page sends it to the Vault");
+}
+{
+  // demoting a linked quest sets its links aside and strips them from both
+  // sides; promoting it again restores them
+  const k = kit(await mk());
+  // pApp and pSite are linked by the sample data
+  k.tab("projects"); k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  ok(!!k.btn(k.$("view"), "Demote"), "Sample App's page offers Demote");
+  k.click(k.btn(k.$("view"), "Demote"));
+  const demoted = k.saved().quests.find(p => p.id === "pApp");
+  ok(demoted.status === "candidate" && demoted.linkedQuestIds.length === 0, "demoting clears the quest's own live links");
+  ok(JSON.stringify(demoted.savedLinkIds) === JSON.stringify(["pSite"]), "demoting saves the prior links for later");
+  const site = k.saved().quests.find(p => p.id === "pSite");
+  ok(site.linkedQuestIds.indexOf("pApp") < 0, "demoting also removes the link from the other quest's side");
+  k.click(k.btn(k.$("view"), "Promote"));
+  const restored = k.saved().quests.find(p => p.id === "pApp");
+  ok(restored.status === "active" && restored.linkedQuestIds.indexOf("pSite") >= 0 && restored.savedLinkIds === null, "promoting again restores the saved link and clears the saved copy");
+  ok(k.saved().quests.find(p => p.id === "pSite").linkedQuestIds.indexOf("pApp") >= 0, "the other quest's side of the link is restored too");
 }
 {
   // New quest also collects Quest Giver fields up front
@@ -612,6 +638,13 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!k.$("renameBtn").hidden && !!k.d.querySelector("#view textarea"), "an active quest keeps its pencil and its editable Notes");
   k.tab("today");
   ok(k.$("renameBtn").hidden, "the pencil is only on quest pages");
+}
+{
+  // the Candidates list row's own name navigates to the candidate's page
+  const k = kit(await mk());
+  k.tab("projects");
+  k.click(k.btn(k.$("view"), "Sample Browser Extension"));
+  ok(k.$("viewTitle").textContent === "Sample Browser Extension", "clicking a candidate row's name opens its page, not a dialog");
 }
 {
   // notes travel between ideas and candidates, and list rows clamp them
@@ -1160,10 +1193,14 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!side && side.textContent.includes("Nothing is scheduled yet") && ![...side.querySelectorAll("h2")].some(h => h.textContent === "Burndown"), "a quest with no scheduled tasks says so and draws no burndown");
 }
 {
-  // candidates and vaulted quests stay single-column
+  // a live candidate has the same two-column layout as an active quest
   const k = kit(await mk());
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Browser Extension"));
-  ok(!k.d.querySelector("#view .questsplit"), "a candidate's page has no charts column");
+  ok(!!k.d.querySelector("#view .questsplit"), "a candidate's page has the usual charts column");
+}
+{
+  // vaulted quests, including vaulted candidates, stay single-column
+  const k = kit(await mk());
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Game"));
   k.click(k.btn(k.$("view"), "Vault"));
   k.tab("vault"); k.click(k.btn(k.$("view"), "Sample Game"));

@@ -3,7 +3,7 @@ import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart } from "./dates.js";
 import {
   WORDS, wd, wl, pset, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
   checkpoints, live, counted, liveQuests, activeQuests, candidateQuests, completeQuests,
-  findQuest, findAnyQuest, linkedQuests, unlinkQuests, chosen, dispQuest, dispWhat,
+  findQuest, findAnyQuest, linkedQuests, linkQuests, unlinkQuests, chosen, dispQuest, dispWhat,
   totalUnits, remainingUnits, planned, ordered, backlogTasks, sortTasks,
   isLate, lateTasks, setStatus, syncFromSteps, nextTask, questTasksAllDone, questTotalUnits, questRemainingUnits,
   validPage, isPinned, pinPage, unpinPage, questMeta, fmtHours, fmtHoursLong, questEstimate, recordHist, checkpointStep, globalActual,
@@ -12,7 +12,7 @@ import {
 import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx } from "./dom.js";
 import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme } from "./app.js";
-import { stepDialog, stepEditDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, candidateDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
+import { stepDialog, stepEditDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
 import { buildExportSnapshot, renderExportDocument, exportFileName } from "./export.js";
 
 /* views */
@@ -500,19 +500,19 @@ export function renderQuestPage(root, id) {
   var metaLine = el("p", { "class": "hint" });
   if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip questcomplete", style: "margin-right:8px" }, "Complete"));
   metaLine.appendChild(document.createTextNode(questMeta(p)));
-  if (!readOnly && (p.status === "active" || p.status === "complete")) {
+  if (!readOnly) {
     split = el("div", { "class": "questsplit" });
     // Grid areas defined in styles.css.
     root = el("div", { "class": "questmain" });
     split.appendChild(root); page.appendChild(split);
   } else {
     root.appendChild(metaLine);
-    if (readOnly) root.appendChild(el("p", { "class": "hint" }, "In the Vault. Restore it to make changes."));
+    root.appendChild(el("p", { "class": "hint" }, "In the Vault. Restore it to make changes."));
   }
 
-  // A live candidate has no page -- edited via candidateDialog() instead.
-  // Vaulted candidates keep this read-only view (reachable from the Vault).
-  if (p.status === "candidate") {
+  // A vaulted candidate keeps this read-only, Notes-only view (reachable
+  // from the Vault list) -- a live candidate falls through to the full page below.
+  if (p.status === "candidate" && readOnly) {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
     root.appendChild(el("h2", null, "Quest Giver"));
@@ -603,18 +603,25 @@ export function renderQuestPage(root, id) {
     root.appendChild(giverBox);
   }
 
-  root.appendChild(el("h2", null, "Quest links"));
-  linksSection(root, p);
+  // A candidate isn't a real destination for other quests to link to yet.
+  if (p.status !== "candidate") {
+    root.appendChild(el("h2", null, "Quest links"));
+    linksSection(root, p);
+  }
 
   var ar = el("div", { "class": "actions", style: "margin-top:14px" });
   if (readOnly) {
     ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Bring back to Quests" }, "Restore"), "click", function () { restoreEntry({ kind: "quest", list: "quests", item: p }); }));
+  } else if (p.status === "candidate") {
+    ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Promote to quest" }, "Promote"), "click", function () { promoteToActive(p.id); }));
+    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Send this candidate to the Vault" }, "Vault"), "click", function () { removeToVault(p, "Quest"); }));
   } else {
     if (p.status === "active") {
       ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Mark complete" }, "Mark complete"), "click", function () {
         // Manual path, equal in standing to the auto-trigger, not a fallback.
         p.status = "complete"; changed(); completionDialog(p);
       }));
+      ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Send this quest back to Candidates" }, "Demote"), "click", function () { demoteToCandidate(p.id); }));
     } else if (p.status === "complete") {
       // No auto-revert -- Reopen is the only way back to Active.
       ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Reopen this quest" }, "Reopen"), "click", function () {
@@ -703,15 +710,34 @@ function questCharts(p, wide, expandBtn, first) {
   return out;
 }
 
-// Promotes in place -- same record, same id.
+// Promotes in place -- same record, same id. Restores any links that were
+// set aside by a prior demoteToCandidate() -- only ones still pointing at a
+// quest that still exists.
 export function promoteToActive(id) {
   var p = findAnyQuest(id);
   if (!p) return;
   p.status = "active";
+  if (p.savedLinkIds) {
+    p.savedLinkIds.forEach(function (lid) { if (findAnyQuest(lid)) linkQuests(p.id, lid); });
+    p.savedLinkIds = null;
+  }
   var t = state.tasks.filter(function (x) { return x.isNext; })[0];
   if (t) t.status = "Completed";
   changed();
   if (state.settings.audio) playSfx("assets/sfx/splash.mp3");
+}
+// Sends an active quest back to Candidates. A candidate isn't a real link
+// target, so its links are set aside (not just dropped) in savedLinkIds and
+// removed from both sides -- restored by promoteToActive() above if it's
+// promoted again.
+export function demoteToCandidate(id) {
+  var p = findAnyQuest(id);
+  if (!p) return;
+  p.savedLinkIds = p.linkedQuestIds.slice();
+  p.linkedQuestIds.slice().forEach(function (lid) { unlinkQuests(p.id, lid); });
+  p.status = "candidate";
+  changed();
+  notify("Sent back to Candidates.");
 }
 export function standingBlock() {
   var wrap = el("div");
@@ -756,8 +782,8 @@ export function candidatesSection() {
   cs.forEach(function (cd) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nmWrap = el("div", { style: "flex:1 1 200px" });
-    var nm = el("button", { type: "button", "class": "textbtn qlink", title: "Edit this candidate" }, cd.name);
-    on(nm, "click", function () { candidateDialog(cd); });
+    var nm = el("button", { type: "button", "class": "textbtn qlink", title: "View this candidate" }, cd.name);
+    on(nm, "click", function () { go("quest:" + cd.id); });
     nmWrap.appendChild(nm);
     if (cd.notes) nmWrap.appendChild(el("p", { "class": "cnote notetext noteclamp", style: "margin-left:0" }, cd.notes));
     row.appendChild(nmWrap);

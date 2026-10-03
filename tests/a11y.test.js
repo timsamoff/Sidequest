@@ -70,6 +70,14 @@ async function main() {
   const projResults = await new AxeBuilder({ page }).include("#view").analyze();
   ok(projResults.violations.length === 0, "a quest's own page has no axe violations" + (projResults.violations.length ? ":\n     " + projResults.violations.map(v => v.id + " (" + v.nodes.length + ")").join(", ") : ""));
 
+  // A candidate's own page (its own branch: no Quest links, Promote/Vault actions)
+  await page.click('.tab[data-view="projects"]');
+  await page.waitForTimeout(150);
+  await page.click('#view button:has-text("Sample Browser Extension")');
+  await page.waitForTimeout(150);
+  const candResults = await new AxeBuilder({ page }).include("#view").analyze();
+  ok(candResults.violations.length === 0, "a candidate's own page has no axe violations" + (candResults.violations.length ? ":\n     " + candResults.violations.map(v => v.id + " (" + v.nodes.length + ")").join(", ") : ""));
+
   await browser.close();
   server.close();
 }

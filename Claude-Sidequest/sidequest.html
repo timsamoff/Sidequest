@@ -907,14 +907,11 @@ function syncFromSteps(t) {
 function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Completed") return o[i]; return null; }
 function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
 // "quest:" + id routes to a quest's own page -- id-based, not name-based, so
-// renaming a quest never breaks its pin or an in-flight link to it. A live
-// candidate has no page of its own (edited via candidateDialog() instead,
-// like an Idea) -- only a vaulted candidate's page is reachable, as the one
-// remaining read-only view of its notes from the Vault list.
+// renaming a quest never breaks its pin or an in-flight link to it. Every
+// status, including a live candidate, has a page now.
 function validPage(key) {
   if (typeof key !== "string" || key.indexOf("quest:") !== 0) return false;
-  var p = findQuest(key.slice(6));
-  return !!p && (p.status !== "candidate" || !!p.vault);
+  return !!findQuest(key.slice(6));
 }
 function pageTitle(key) {
   if (key === "search") return "Search";
@@ -1001,7 +998,7 @@ function task(id, block, questId, what, done, steps, extra) {
 // record and id carry through candidate -> active -> vaulted, never a second
 // record.
 function quest(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], launchCritical: false, hist: {}, lastSlip: null, client: { org: "", poc: "", phone: "", email: "", address: "", website: "" } };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, client: { org: "", poc: "", phone: "", email: "", address: "", website: "" } };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -1147,6 +1144,9 @@ function normalize(s) {
       var days = (typeof x.days === "number" && x.days >= 1 && x.days <= 90) ? Math.round(x.days)
         : (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? Math.max(1, Math.round(d.days * x.mult)) : d.days;
       var linked = Array.isArray(x.linkedQuestIds) ? x.linkedQuestIds : x.linkedProjectIds;
+      // Set aside while demoted to candidate (see demoteToCandidate() in
+      // views.js), so a later promotion can restore the same links.
+      var saved = Array.isArray(x.savedLinkIds) ? x.savedLinkIds : null;
       var xc = x.client && typeof x.client === "object" ? x.client : {};
       return {
         id: S(x.id, 40), name: S(x.name, 120),
@@ -1160,6 +1160,7 @@ function normalize(s) {
         // set. Arbitrary depth or cycles are fine; each side of a link is just
         // an id in this array, and nothing here ever traverses the graph.
         linkedQuestIds: Array.isArray(linked) ? linked.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : [],
+        savedLinkIds: saved ? saved.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : null,
         client: { org: S(xc.org, 200), poc: S(xc.poc, 200), phone: S(xc.phone, 200), email: S(xc.email, 200), address: S(xc.address, 500), website: S(xc.website, 200) }
       };
     });
@@ -1167,6 +1168,7 @@ function normalize(s) {
   var questIds = {}; d.quests.forEach(function (p) { questIds[p.id] = true; });
   d.quests.forEach(function (p) {
     p.linkedQuestIds = p.linkedQuestIds.filter(function (id) { return id !== p.id && questIds[id]; });
+    if (p.savedLinkIds) p.savedLinkIds = p.savedLinkIds.filter(function (id) { return id !== p.id && questIds[id]; });
   });
   if (Array.isArray(s.tasks)) {
     var ts = [];
@@ -2159,7 +2161,6 @@ function exportFileName(p) {
 
 
 
-
 /* search */
 var SEARCH_LABELS = { task: "Tasks", step: "Steps", quest: "Quests", idea: "Ideas", decision: "Decisions", milestone: "Milestones" };
 var SEARCH_ORDER = ["task", "step", "quest", "idea", "decision", "milestone"];
@@ -2204,7 +2205,7 @@ function searchAll(q, includeVault) {
     });
   });
   liveQuests().forEach(function (p) {
-    consider("quest", p.name, [p.notes], questMeta(p), function () { if (p.status === "candidate") candidateDialog(p); else go(validPage("quest:" + p.id) ? "quest:" + p.id : "projects"); }, false, ["Notes"]);
+    consider("quest", p.name, [p.notes], questMeta(p), function () { go(validPage("quest:" + p.id) ? "quest:" + p.id : "projects"); }, false, ["Notes"]);
   });
   state.quests.forEach(function (p) { if (p.vault) consider("quest", p.name, [p.notes], "Vaulted quest", function () { go("vault"); }, true, ["Notes"]); });
   state.workshop.forEach(function (p) { consider("idea", p.text, [p.note], "Workshop", function () { go(p.vault ? "vault" : "workshop"); }, !!p.vault, ["Note"]); });
@@ -2469,34 +2470,6 @@ function linkQuestDialog(p) {
 // date, and its own block/sprint length. Promotion (Candidate -> Active) is a
 // separate row action on the Candidates list, not a button in this dialog --
 // this dialog only saves, matching ideaDialog's own Edit/Save pattern.
-function candidateDialog(p) {
-  formDialog("Edit candidate", [
-    { key: "name", label: "Quest name", value: p.name },
-    { key: "notes", label: "Notes", type: "textarea", rows: 5, value: p.notes },
-    { key: "start", label: "Start date", type: "date", value: p.start },
-    { key: "due", label: "Due date", type: "date", value: p.due },
-    { key: "days", label: "Days per " + wd(), type: "number", min: "1", max: "90", step: "1", value: p.days },
-    { key: "giverHeading", label: "Quest Giver", type: "heading" },
-    { key: "giverOrg", label: "Organization", value: p.client.org },
-    { key: "giverPoc", label: "POC", value: p.client.poc },
-    { key: "giverPhone", label: "Phone", type: "tel", value: p.client.phone },
-    { key: "giverEmail", label: "Email", type: "email", value: p.client.email },
-    { key: "giverWebsite", label: "Website", type: "url", value: p.client.website },
-    { key: "giverAddress", label: "Address", type: "textarea", rows: 3, value: p.client.address }
-  ], "Save", function (v) {
-    if (!v.name) return "Enter a quest name.";
-    var days = parseInt(v.days, 10);
-    if (isNaN(days) || days < 1 || days > 90) return wd() + " length must be from 1 to 90 days.";
-    p.name = v.name.slice(0, 120);
-    p.notes = v.notes.slice(0, 5000);
-    p.start = isISO(v.start) ? v.start : "";
-    p.due = isISO(v.due) ? v.due : "";
-    p.days = days;
-    p.client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200) };
-    changed();
-    return { msg: "Candidate saved." };
-  });
-}
 function ideaDialog(idea) {
   formDialog(idea ? "Edit idea" : "New idea", [
     { key: "text", label: "Idea", value: idea ? idea.text : undefined },
@@ -3197,19 +3170,19 @@ function renderQuestPage(root, id) {
   var metaLine = el("p", { "class": "hint" });
   if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip questcomplete", style: "margin-right:8px" }, "Complete"));
   metaLine.appendChild(document.createTextNode(questMeta(p)));
-  if (!readOnly && (p.status === "active" || p.status === "complete")) {
+  if (!readOnly) {
     split = el("div", { "class": "questsplit" });
     // Grid areas defined in styles.css.
     root = el("div", { "class": "questmain" });
     split.appendChild(root); page.appendChild(split);
   } else {
     root.appendChild(metaLine);
-    if (readOnly) root.appendChild(el("p", { "class": "hint" }, "In the Vault. Restore it to make changes."));
+    root.appendChild(el("p", { "class": "hint" }, "In the Vault. Restore it to make changes."));
   }
 
-  // A live candidate has no page -- edited via candidateDialog() instead.
-  // Vaulted candidates keep this read-only view (reachable from the Vault).
-  if (p.status === "candidate") {
+  // A vaulted candidate keeps this read-only, Notes-only view (reachable
+  // from the Vault list) -- a live candidate falls through to the full page below.
+  if (p.status === "candidate" && readOnly) {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
     root.appendChild(el("h2", null, "Quest Giver"));
@@ -3300,18 +3273,25 @@ function renderQuestPage(root, id) {
     root.appendChild(giverBox);
   }
 
-  root.appendChild(el("h2", null, "Quest links"));
-  linksSection(root, p);
+  // A candidate isn't a real destination for other quests to link to yet.
+  if (p.status !== "candidate") {
+    root.appendChild(el("h2", null, "Quest links"));
+    linksSection(root, p);
+  }
 
   var ar = el("div", { "class": "actions", style: "margin-top:14px" });
   if (readOnly) {
     ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Bring back to Quests" }, "Restore"), "click", function () { restoreEntry({ kind: "quest", list: "quests", item: p }); }));
+  } else if (p.status === "candidate") {
+    ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Promote to quest" }, "Promote"), "click", function () { promoteToActive(p.id); }));
+    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Send this candidate to the Vault" }, "Vault"), "click", function () { removeToVault(p, "Quest"); }));
   } else {
     if (p.status === "active") {
       ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Mark complete" }, "Mark complete"), "click", function () {
         // Manual path, equal in standing to the auto-trigger, not a fallback.
         p.status = "complete"; changed(); completionDialog(p);
       }));
+      ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Send this quest back to Candidates" }, "Demote"), "click", function () { demoteToCandidate(p.id); }));
     } else if (p.status === "complete") {
       // No auto-revert -- Reopen is the only way back to Active.
       ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Reopen this quest" }, "Reopen"), "click", function () {
@@ -3400,15 +3380,34 @@ function questCharts(p, wide, expandBtn, first) {
   return out;
 }
 
-// Promotes in place -- same record, same id.
+// Promotes in place -- same record, same id. Restores any links that were
+// set aside by a prior demoteToCandidate() -- only ones still pointing at a
+// quest that still exists.
 function promoteToActive(id) {
   var p = findAnyQuest(id);
   if (!p) return;
   p.status = "active";
+  if (p.savedLinkIds) {
+    p.savedLinkIds.forEach(function (lid) { if (findAnyQuest(lid)) linkQuests(p.id, lid); });
+    p.savedLinkIds = null;
+  }
   var t = state.tasks.filter(function (x) { return x.isNext; })[0];
   if (t) t.status = "Completed";
   changed();
   if (state.settings.audio) playSfx(SFX_SPLASH);
+}
+// Sends an active quest back to Candidates. A candidate isn't a real link
+// target, so its links are set aside (not just dropped) in savedLinkIds and
+// removed from both sides -- restored by promoteToActive() above if it's
+// promoted again.
+function demoteToCandidate(id) {
+  var p = findAnyQuest(id);
+  if (!p) return;
+  p.savedLinkIds = p.linkedQuestIds.slice();
+  p.linkedQuestIds.slice().forEach(function (lid) { unlinkQuests(p.id, lid); });
+  p.status = "candidate";
+  changed();
+  notify("Sent back to Candidates.");
 }
 function standingBlock() {
   var wrap = el("div");
@@ -3453,8 +3452,8 @@ function candidatesSection() {
   cs.forEach(function (cd) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nmWrap = el("div", { style: "flex:1 1 200px" });
-    var nm = el("button", { type: "button", "class": "textbtn qlink", title: "Edit this candidate" }, cd.name);
-    on(nm, "click", function () { candidateDialog(cd); });
+    var nm = el("button", { type: "button", "class": "textbtn qlink", title: "View this candidate" }, cd.name);
+    on(nm, "click", function () { go("quest:" + cd.id); });
     nmWrap.appendChild(nm);
     if (cd.notes) nmWrap.appendChild(el("p", { "class": "cnote notetext noteclamp", style: "margin-left:0" }, cd.notes));
     row.appendChild(nmWrap);

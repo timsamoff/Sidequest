@@ -3,7 +3,6 @@ import { parseISO, fmt, fmtY } from "./dates.js";
 import { taskStart, taskEnd, dispQuest, liveQuests, questMeta, short, validPage, findStep } from "./model.js";
 import { $, el, on, scrollTop } from "./dom.js";
 import { go, openTask, renderAll } from "./app.js";
-import { candidateDialog } from "./dialogs.js";
 
 /* search */
 export var SEARCH_LABELS = { task: "Tasks", step: "Steps", quest: "Quests", idea: "Ideas", decision: "Decisions", milestone: "Milestones" };
@@ -49,7 +48,7 @@ export function searchAll(q, includeVault) {
     });
   });
   liveQuests().forEach(function (p) {
-    consider("quest", p.name, [p.notes], questMeta(p), function () { if (p.status === "candidate") candidateDialog(p); else go(validPage("quest:" + p.id) ? "quest:" + p.id : "projects"); }, false, ["Notes"]);
+    consider("quest", p.name, [p.notes], questMeta(p), function () { go(validPage("quest:" + p.id) ? "quest:" + p.id : "projects"); }, false, ["Notes"]);
   });
   state.quests.forEach(function (p) { if (p.vault) consider("quest", p.name, [p.notes], "Vaulted quest", function () { go("vault"); }, true, ["Notes"]); });
   state.workshop.forEach(function (p) { consider("idea", p.text, [p.note], "Workshop", function () { go(p.vault ? "vault" : "workshop"); }, !!p.vault, ["Note"]); });

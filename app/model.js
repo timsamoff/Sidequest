@@ -214,14 +214,11 @@ export function syncFromSteps(t) {
 export function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Completed") return o[i]; return null; }
 export function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
 // "quest:" + id routes to a quest's own page -- id-based, not name-based, so
-// renaming a quest never breaks its pin or an in-flight link to it. A live
-// candidate has no page of its own (edited via candidateDialog() instead,
-// like an Idea) -- only a vaulted candidate's page is reachable, as the one
-// remaining read-only view of its notes from the Vault list.
+// renaming a quest never breaks its pin or an in-flight link to it. Every
+// status, including a live candidate, has a page now.
 export function validPage(key) {
   if (typeof key !== "string" || key.indexOf("quest:") !== 0) return false;
-  var p = findQuest(key.slice(6));
-  return !!p && (p.status !== "candidate" || !!p.vault);
+  return !!findQuest(key.slice(6));
 }
 export function pageTitle(key) {
   if (key === "search") return "Search";

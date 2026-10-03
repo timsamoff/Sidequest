@@ -22,7 +22,7 @@ export function task(id, block, questId, what, done, steps, extra) {
 // record and id carry through candidate -> active -> vaulted, never a second
 // record.
 export function quest(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], launchCritical: false, hist: {}, lastSlip: null, client: { org: "", poc: "", phone: "", email: "", address: "", website: "" } };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, client: { org: "", poc: "", phone: "", email: "", address: "", website: "" } };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -168,6 +168,9 @@ export function normalize(s) {
       var days = (typeof x.days === "number" && x.days >= 1 && x.days <= 90) ? Math.round(x.days)
         : (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? Math.max(1, Math.round(d.days * x.mult)) : d.days;
       var linked = Array.isArray(x.linkedQuestIds) ? x.linkedQuestIds : x.linkedProjectIds;
+      // Set aside while demoted to candidate (see demoteToCandidate() in
+      // views.js), so a later promotion can restore the same links.
+      var saved = Array.isArray(x.savedLinkIds) ? x.savedLinkIds : null;
       var xc = x.client && typeof x.client === "object" ? x.client : {};
       return {
         id: S(x.id, 40), name: S(x.name, 120),
@@ -181,6 +184,7 @@ export function normalize(s) {
         // set. Arbitrary depth or cycles are fine; each side of a link is just
         // an id in this array, and nothing here ever traverses the graph.
         linkedQuestIds: Array.isArray(linked) ? linked.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : [],
+        savedLinkIds: saved ? saved.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : null,
         client: { org: S(xc.org, 200), poc: S(xc.poc, 200), phone: S(xc.phone, 200), email: S(xc.email, 200), address: S(xc.address, 500), website: S(xc.website, 200) }
       };
     });
@@ -188,6 +192,7 @@ export function normalize(s) {
   var questIds = {}; d.quests.forEach(function (p) { questIds[p.id] = true; });
   d.quests.forEach(function (p) {
     p.linkedQuestIds = p.linkedQuestIds.filter(function (id) { return id !== p.id && questIds[id]; });
+    if (p.savedLinkIds) p.savedLinkIds = p.savedLinkIds.filter(function (id) { return id !== p.id && questIds[id]; });
   });
   if (Array.isArray(s.tasks)) {
     var ts = [];
