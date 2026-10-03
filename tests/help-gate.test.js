@@ -74,7 +74,7 @@ ok(same(areas({ "app/model.js": "-export function taskEnd(t) { return 1; }" }), 
 ok(same(areas({ "css/styles.css": '+.chip[data-v="Not started"] { background: var(--chip-new); }' }), ["status colors"]), "a status color rule is the status colors area");
 ok(same(areas({ "css/tokens.css": "+  --chip-new: #D3E3F6;" }), ["status colors"]), "a status color token is too");
 ok(same(areas({ "app/views.js": "+function saveBackupFile(msg, onDone) {" }), ["backup and restore"]), "backup code is the backup area");
-ok(same(areas({ "app/views.js": "+  sweepProjectCompletion();" }), ["project lifecycle and what each page shows"]), "completion and archive code is the lifecycle area");
+ok(same(areas({ "app/views.js": "+  sweepQuestCompletion();" }), ["quest lifecycle and what each page shows"]), "completion and archive code is the lifecycle area");
 ok(same(areas({ "app/model.js": "+export function fmtHours(h) { return h; } // a comment" }), []), "an unrelated change is in no area");
 ok(same(areas({}), []) && same(areas(undefined), []), "no diffs means no areas");
 

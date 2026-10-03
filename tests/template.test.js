@@ -270,16 +270,17 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
-  ok(titles.length === 13 && titles.includes("Launch checklist and decisions"), "template Help has the Launch checklist topic (" + titles.length + " topics)");
-  ok(k.$("view").textContent.includes("use the pencil beside a step") && k.$("view").textContent.includes("Add decision"), "and the topic explains the step pencil and adding a decision from a step");
+  ok(titles.length === 14 && titles.includes("Launch checklist and decisions"), "template Help has the Launch checklist topic (" + titles.length + " topics)");
+  ok(titles.includes("From idea to quest: the whole path"), "Help has a dedicated topic walking through the full idea-to-quest lifecycle");
+  ok(k.$("view").textContent.includes("beside any step") && k.$("view").textContent.includes("Add decision"), "and the topic explains the step pencil and adding a decision from a step");
   const helpText = k.$("view").textContent;
   ok(!helpText.includes("Mark done") && !helpText.includes("archive completed tasks") && !helpText.includes("View beside its name") && !helpText.includes("with its circle"), "Help no longer describes buttons and settings that were removed");
-  const staleHelp = ["default start date", "Show backup text", "pasted text", "Restore from text", "copy your data as text", "Sprint 1", "Where things stand", "Next slot"];
+  const staleHelp = ["default start date", "Show backup text", "pasted text", "Restore from text", "copy your data as text", "Sprint 1", "Where things stand", "Next slot", "what used to be called", "used to be called a project"];
   ok(staleHelp.every(ph => !helpText.includes(ph)), "Help does not describe things that were removed (" + staleHelp.filter(ph => helpText.includes(ph)).join(", ") + ")");
-  const coveredHelp = ["Save backup", "Restore backup", "Est. 12 hours remaining", "Added tag", "Not started shows in blue", "Pending, Completed", "leave Tasks, the main Timeline, Today, and the main burndown", "orange line", "Slip schedule", "default length of a stretch of work"];
+  const coveredHelp = ["Save backup", "Restore backup", "Est. 12 hours remaining", "Added tag", "Not started", "In progress", "Completed", "Pending, Completed", "leave Tasks, the main Timeline, Today, and the main burndown", "orange line", "Slip schedule", "length of a", "Main menu"];
   ok(coveredHelp.every(ph => helpText.includes(ph)), "Help covers the features that changed recently (missing: " + coveredHelp.filter(ph => !helpText.includes(ph)).join(", ") + ")");
   ok(!/\u2014/.test(helpText), "Help has no em dashes");
-  ok(["Finish or vault a quest", "Link quests", "Use the Workshop"].every(t => titles.includes(t)) && helpText.includes("Reopen") && helpText.includes("splash screen"), "Help covers Complete/Reopen, linking, the Workshop, and the splash setting");
+  ok(["Finish or vault a quest", "Link quests", "Use the Workshop"].every(t => titles.includes(t)) && helpText.includes("Reopen") && helpText.includes("splash"), "Help covers Complete/Reopen, linking, the Workshop, and the splash setting");
   ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Workshop,Vault,Help,Settings", "Help sits between Vault and Settings");
 }
 

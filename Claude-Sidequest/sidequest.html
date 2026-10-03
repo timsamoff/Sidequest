@@ -3783,62 +3783,67 @@ function helpTopics() {
   return [
     ["Find your way around", [
       "On a computer, use the sidebar on the left. On a phone, use the tabs along the bottom.",
-      "The menu button (three lines, top right) lists every page.",
-      "The **+** button adds things: a task, backlog item, step, quest, idea, decision, or milestone.",
-      "Search: press [[/]] on a computer, or tap the magnifier on a phone. Press [[Enter]] to open the first result and [[Esc]] to clear it. On a phone, tap the **X** where the magnifier was to cancel."]],
+      "The **Main menu** (three lines, top right) lists every page, including the ones that don't fit in the sidebar or the tab bar.",
+      "Use the **+** button to add a quest, task, step, decision, milestone, backlog item, or idea. It opens a menu in that order, since quests and tasks are what you'll reach for most.",
+      "Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **X** where the magnifier was to cancel."]],
+    ["From idea to quest: the whole path", [
+      "An idea starts in the **Workshop**, with nothing more than a line of text and an optional note. This is the place for something you're not ready to commit to -- it costs nothing to put there and nothing to leave sitting.",
+      "When an idea is worth doing, select **Make candidate**. Its note becomes the candidate's Notes, and it moves to **Quests**, under **Candidates**. This move only goes one way: a candidate can't be sent back to the Workshop. If you change your mind, vault it instead.",
+      "A candidate has its own page, the same shape as an active quest's -- Tasks, Schedule, Notes, Quest Giver info, all of it. You can build the whole thing out, start date and all, before it's actually running. The only pieces missing are Quest links and the usual finish-line buttons, since neither one means anything until the quest is real.",
+      "**Promote** turns a candidate into an active quest. Nothing about the record changes -- same id, same tasks, same everything -- only its status moves. From here it behaves like any other quest: it can be marked complete, sent to the Vault, or demoted back to a candidate if it turns out the timing was wrong.",
+      "**Demote**, on an active quest's page, is the reverse of Promote. Its Quest links come off on both sides first (a candidate isn't a link target), but Sidequest remembers them, and promoting the quest again puts them back.",
+      "A quest finishes by **Mark complete**, or on its own once every task is done. From there, **Reopen** brings it back to active, or **Vault** sets it aside for good. Nothing is actually destroyed until you delete it from the Vault."]],
     ["Work through your day (Today)", [
       "**Next up** shows the task to do now. **Start** marks it in progress, and **Open task** takes you to it in Tasks.",
-      "Anything past its end date appears below it. If you are running behind, open that quest's own page and use **Slip schedule** there.",
-      "The burndown counts tasks, one each, and shows how many are still open against the plan. The app records the counts itself whenever you make a change, so nothing is typed in, and a day you did not open the app keeps the last count. An orange line shows how many tasks are in scope, ramping up when tasks are added and down when they are removed. A task added after its quest started carries an Added tag with its date, on the quest's page and in Tasks. A quest marked Complete takes its open tasks off the main chart. Scope changes are also called out in the tooltip and the table. Point at a day or week, tap it, or focus the chart and use the arrow keys to see its counts and tasks."]],
+      "Anything past its end date appears below it. If you're running behind, open that quest's own page and use **Slip schedule** there.",
+      "The burndown counts tasks, one each, against the plan. Sidequest records the count itself every time something changes, so there's nothing to type in, and a day you don't open the app just keeps the last count. An orange line tracks scope -- it climbs when a task is added and drops when one is removed, so growing work doesn't quietly look like progress. A task added after its quest started carries an Added tag with its date, on the quest's page and in Tasks. A quest marked Complete takes its open tasks off this chart entirely. Point at a day or week, tap it, or focus the chart and use the arrow keys, to see its counts and which tasks are behind them."]],
     ["Add and schedule tasks", [
-      "Tap **+**, then **New task**. Enter the quest, what you do, and how you will know it is done.",
-      "Pick a due date and the task lands in the " + w + " that contains it. Add a start date if it begins later than that " + w + " does, and an estimated time in hours if you want one. Leave the due date empty to put the task in the Backlog.",
-      "Open a task in **Tasks**, or select it on its quest's page where it opens right in place, to change its status, add steps and notes, or edit its start date, due date, and estimated time. A start date can't be after the due date. Use the pencil beside its name to rename it.",
-      "A quest's page shows the estimated time still open beside its task count, like \"Est. 12 hours remaining\". It drops as you complete tasks.",
-      "A task is Not started, In progress, or Completed. Not started shows in blue, In progress in yellow, and Completed in green, on the status menu, on the task's row, and on its bar in a quest's Timeline.",
-      "Finishing every step marks the task done, and adding a step to a finished task reopens it."]],
+      "Tap **+**, then **New task**. Enter the quest, what you're doing, and how you'll know it's done.",
+      "Pick a due date and the task lands in whichever " + w + " contains it. Add a start date if it begins later than that " + w + " does, and an estimated time in hours if that's useful to you. Leave the due date empty and the task goes to the Backlog instead.",
+      "Open a task from **Tasks**, or select it right on its quest's page where it expands in place, to change its status, add steps and notes, or edit its dates and estimate. A start date can't fall after the due date. The pencil beside its name renames it.",
+      "A quest's page shows the estimated time still open beside its task count -- something like \"Est. 12 hours remaining\" -- and that number drops as tasks get done.",
+      "A task is Not started, In progress, or Completed -- blue, yellow, and green, everywhere it shows up: the status menu, the task's row, its bar on a quest's Timeline.",
+      "Finishing every step on a task marks it done. Add a new step to a finished task and it reopens, since there's now something left to do."]],
     ["Use the Backlog", [
-      "The Backlog holds work that has no dates yet. Add an item with **+**, then **New backlog item**.",
-      "To schedule it, open the item and set a due date. Backlog items stay out of the burndown until you do. Clearing a task's due date sends it back to the Backlog and clears its start date. An estimated time is kept either way."]],
-    ["Manage quests", [
-      "A quest is what used to be called a project here. Same thing, new name -- nothing about your existing quests changed.",
-      "Each active quest has its own page. Open **Quests** and select the quest's name. Use the pencil beside its title to rename it, and edit its notes there. Down the page you will find its Tasks, Before you launch checklist, Notes, and Quest links, in that order. Select a task to open it right there. Beside that (below it on a phone) are its Schedule, where you set its start date, due date, and block length, and its own Timeline and Burndown, which redraw as you change the schedule. On the Timeline, a pale band behind each task's bar shows the block it sits in. On a wide screen, **Expand** shows them large.",
-      "**Candidates** are quests that could take the next slot. Select one to open its own page, the same as an active quest's, where you can edit its notes, schedule, and Quest Giver info and work on its tasks. Use **Promote** there to start it, or **Vault** to set it aside. Add a candidate with **New quest** in the **+** menu, or turn an idea into one with **Make candidate**.",
-      "**In progress** lists each active quest with its next task. Use **Pin** on a quest for quick access from the sidebar. Unpinning only hides it there.",
-      "Below it, the Quests page lists any quest that is complete or has no tasks yet, under the heading Pending, Completed, or Pending & completed.",
-      "**Quest Giver Export**, on an active or complete quest's page, downloads a single read-only web page with that quest's tasks, notes, and an interactive schedule and burndown, for sharing outside the app. A linked quest that is active or complete comes along too, with its own section. If you filled in **Your contact info** in Settings or this quest's own **Quest Giver** section, they print at the top as Prepared by and Prepared for. **Add brandmark** in Settings uploads a small image that prints above Prepared by."]],
-    ["Finish or vault a quest", [
-      "**Mark complete** on a quest's page marks it done, even with tasks still open. A quest also completes by itself once all its tasks are done. Either way, you can send it to the Vault right away or leave it in Quests.",
-      "**Demote**, on an active quest's page, sends it back to Candidates. Its Quest links are set aside and removed from both sides, then restored if you promote it again.",
-      "A completed quest shows a **Complete** badge and drops out of In progress. Its tasks also leave Tasks, the main Timeline, Today, and the main burndown, though its own page still lists them. If it was pinned to the sidebar, completing it removes the pin; **Reopen** makes it active again, brings its tasks back, and restores the pin.",
-      "**Vault** puts a quest and its open tasks in the Vault. **Restore** brings all of it back."]],
-    ["Link quests", [
-      "**Quest links**, on a quest's page, connects it to related quests. Choose **Link quest** to create a Quest link. A link goes both ways.",
-      "**Mark launch critical** flags a linked quest that has to finish first. It shows on the other quest's Launch checklist, and counts as done once it is complete or in the Vault. Completing a quest or sending it to the Vault with an unfinished launch-critical link only warns you."]],
+      "The Backlog holds work with no dates yet. Add something directly with **+**, then **New backlog item**, or clear a task's due date to send it there.",
+      "To schedule a Backlog item, open it and set a due date. Nothing in the Backlog counts toward the burndown until it has one. Going the other way -- clearing a due date -- also clears the start date, but keeps whatever estimate you set."]],
     ["Use the Workshop", [
-      "Ideas that are not ready yet live in the **Workshop**. Add one with **Add idea**. Select an idea's title to open it and change its text or note.",
-      "**Make candidate** turns an idea into a quest candidate, and its note becomes the quest's **Notes**. This is one-way -- a candidate can be promoted or sent to the Vault, but not sent back to the Workshop. **Vault** sends an idea to the Vault."]],
+      "The Workshop is where an idea lives before it's worth a full quest record. **Add idea** needs nothing but a line of text and, if you want, a note.",
+      "Select an idea's title to open it and change the text or note. **Make candidate** is the only way out -- see \"From idea to quest: the whole path\" for where it goes from there."]],
+    ["Manage quests", [
+      "A quest is the same thing a project would be called anywhere else. Yours haven't changed, only the word has.",
+      "Every quest has its own page. Open **Quests** and select its name. The pencil beside the title renames it; the Notes field below is yours to use however you like. Further down: Tasks, the Before you launch checklist, Notes, and Quest links, in that order, with its Schedule, Timeline, and Burndown running alongside (below, on a phone). Change the schedule and the Timeline and Burndown redraw to match. On the Timeline, a pale band behind each task's bar marks the " + w + " it falls in. **Expand**, on a wide screen, makes all three large.",
+      "**In progress**, on the Quests page, lists each active quest with its next task. **Pin** keeps one in the sidebar for quick access -- unpinning only hides it there, it's still listed on this page either way. A quest that's Complete loses its pin automatically, since there's nothing left to jump to; Reopen brings the pin back along with everything else.",
+      "Below In progress, the Quests page lists anything complete or not yet started, under whichever heading fits what's actually there: Pending, Completed, or Pending & completed.",
+      "**Quest Giver Export**, on an active or complete quest's page, downloads one self-contained web page with that quest's tasks, notes, and a working schedule and burndown, meant for sharing outside the app. A linked quest that's also active or complete rides along with its own section. Fill in **Your contact info** in Settings and this quest's own **Quest Giver** section, and both print at the top as Prepared by and Prepared for. **Add brandmark**, also in Settings, uploads a small image that prints above Prepared by."]],
+    ["Finish or vault a quest", [
+      "**Mark complete** works even with tasks still open -- it's a statement that the quest is done, not that every box is checked. A quest also completes on its own once every task actually is. Either way you're offered the Vault right away, or you can leave it sitting in Quests.",
+      "A completed quest wears a **Complete** badge and drops out of In progress. Its tasks leave Tasks, the main Timeline, Today, and the main burndown too, though they're still right there on the quest's own page. **Reopen** undoes all of it: back to active, tasks back everywhere, pin restored if it had one.",
+      "**Vault** sends a quest and its open tasks to the Vault together. **Restore** brings all of it back, exactly as it was."]],
+    ["Link quests", [
+      "**Quest links**, on a quest's page, tie it to related quests. **Link quest** creates one -- it runs both directions, so it shows up on the other quest's page too.",
+      "**Mark launch critical** flags a linked quest as something that has to finish first. It shows up on the OTHER quest's Launch checklist, counted done once the linked one is complete or vaulted. Nothing is blocked by this -- completing or vaulting a quest with an unfinished launch-critical link just warns you first."]],
     ["Read the Timeline", [
-      "Every quest gets a lane. A light bar is an estimate you set on the quest's page. It is not a promise.",
-      "Add milestones with **Add milestone**. They show as diamonds and in the list below the timeline. Select a diamond, or a milestone's text in the list, to change its quest, text, or date, or to remove it.",
-      "A quest's own page has a Timeline with a lane for each scheduled task, and its own Burndown. Point at a week on a burndown, tap it, or focus it and use the left and right arrow keys, to see its counts and which tasks finish or were completed. The full-width burndown and a table of the counts are further down this page. The counts are recorded automatically from your tasks and can't be edited.",
-      "On a quest's own Timeline, each task's bar takes its status color: blue for Not started, yellow for In progress, green for Completed."]],
+      "Every quest gets a lane. The light bar is an estimate you set yourself on the quest's page -- not a promise, just a guess rendered visually.",
+      "**Add milestone** places a diamond on the date you choose, also listed below the timeline. Select a diamond, or its text in that list, to change its quest, text, or date, or to remove it.",
+      "A quest's own page has its own Timeline, one lane per scheduled task, and its own Burndown beneath it. Point at a week, tap it, or focus the chart and use the arrow keys, to see the count and which tasks finish or were completed that week. The counts come straight from your tasks and can't be edited by hand.",
+      "On a quest's own Timeline, a task's bar takes its status color: blue for Not started, yellow for In progress, green for Completed."]],
     ["Launch checklist and decisions", [
-      "On any task, use the pencil beside a step to rename it, put it on that quest's own **Launch** section, or remove it. A step on the checklist shows a **Launch** tag. Ticking it there or in **Tasks** keeps both in sync.",
-      "A decision belongs to one step. Select **Add decision** beside a step to write down what you need to settle. Select the decision tag to answer it, change it, or remove it. Answering it ticks the step, and clearing the answer unticks it.",
-      "Use **Add item** on a quest's Launch section to create a new step for the list."]],
+      "The pencil beside any step lets you rename it, put it on that quest's **Launch** checklist, or remove it. A step on the checklist carries a **Launch** tag, and ticking it there or in Tasks keeps both in sync -- there's only one real state underneath.",
+      "A decision always belongs to exactly one step. **Add decision** beside a step writes down what needs settling; the decision tag opens it again to answer, change, or remove it. Answering it ticks the step, and clearing the answer unticks it again.",
+      "**Add item**, on a quest's Launch section, creates a new step for the list directly, without going through a task first."]],
     ["The Vault and undo", [
-      "Only **Quests** and **Ideas** go to the **Vault**, using their **Vault** button. A completed task just stays visible in its quest, marked done.",
-      "**Delete** on a task, or **Remove** on a decision or milestone, deletes it right away, with a short **Undo** in case you didn't mean to.",
-      "In the Vault, select a quest's name to look at it. **Restore** puts a quest or idea back, and a quest's tasks with it. **Delete forever** always asks first, and it cannot be undone."]],
+      "Only **Quests** and **Ideas** go to the Vault, each with its own **Vault** button. A completed task has nowhere to go -- it just stays in its quest, marked done.",
+      "**Delete** on a task, or **Remove** on a decision or milestone, is immediate, with a short **Undo** right after in case that wasn't what you meant.",
+      "In the Vault, select a quest's name to see it read-only. **Restore** brings a quest or idea back, tasks included. **Delete forever** always asks first -- there's no undo once you confirm it."]],
     ["Slip a quest's schedule", [
-      "On a quest's own page, above the Timeline, choose **Slip schedule**. Pick the number of days and choose **Push dates later**, and its still-incomplete tasks move later by that many days. Completed tasks and the Backlog are not affected.",
-      "**Undo last slip** in the same dialog reverses it."]],
+      "On a quest's own page, above the Timeline, **Slip schedule** pushes its still-incomplete tasks later by however many days you choose. Completed tasks and anything in the Backlog don't move -- they're either already done or have no date to slip in the first place.",
+      "**Undo last slip**, in the same dialog, puts everything back exactly where it was."]],
     ["Settings, backup, and starting over", [
-      "In **Settings**, set the default length of a stretch of work in days, what to call it (Block, Sprint, and so on), the date format, the theme, whether the splash screen plays when the app opens, whether sound effects play at all (**Sound Effects**), and whether completing a quest shows a confetti burst (**Completion FX**).",
-      "Everything is saved in this browser only. Under **Backup and restore**, **Save backup** lets you choose where to put a backup file, and **Restore backup** loads one back after warning you that it replaces everything. You get a few seconds to undo a restore. After two weeks without a backup, Today adds a quiet reminder.",
-      "Under **Vault**, you can set items to delete automatically after 7, 30, 60, or 90 days, counted from when each one was vaulted, or leave it set to Never. This is checked each time Sidequest opens, and there's no further warning once it's turned on.",
-      "**Start fresh** erases everything after a warning. Save a backup first. You can begin empty or with the starting quests."]]
+      "**Settings** covers how Sidequest looks and schedules by default: the length of a " + w + " in days, what to call it (Block, Sprint, and so on), date format, theme, whether the splash plays on open, whether **Sound Effects** play at all, and whether finishing a quest sets off a **Completion FX** confetti burst.",
+      "Everything lives in this browser only, so **Backup and restore** matters. **Save backup** writes a file wherever you choose; **Restore backup** reads one back in, after warning you it replaces everything currently here -- you get a few seconds to undo that if you change your mind. Go two weeks without a backup and Today will say so, quietly.",
+      "**Vault** items can delete themselves automatically, 7, 30, 60, or 90 days after being vaulted, or never, if you leave it there. Sidequest checks this once, each time it opens -- there's no second warning once the setting is on.",
+      "**Start fresh** erases everything, after one warning. Back it up first if there's anything worth keeping. You can start completely empty, or with the sample quests back in place."]]
   ];
 }
 function renderHelp(root) {
