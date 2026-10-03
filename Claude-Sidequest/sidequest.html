@@ -1897,6 +1897,8 @@ body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-
 .ebrand span { font-family: 'Spectral', Georgia, 'Times New Roman', serif; font-weight: 600; font-size: 1.1rem; }\
 .eletterhead { display: flex; gap: 32px; flex-wrap: wrap; margin-bottom: 18px; color: var(--muted); font-size: .9rem; line-height: 1.5; }\
 .ecol { min-width: 180px; }\
+.ecol a { color: var(--planned); text-decoration: none; }\
+.ecol a:hover { text-decoration: underline; }\
 .echead { color: var(--ink); font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }\
 .econtactname { color: var(--ink); font-weight: 600; }\
 .econtactaddr { white-space: pre-line; }\
@@ -2048,6 +2050,16 @@ var EXPORT_BRAND = '<div class="ebrand"><svg viewBox="0 0 512 512" aria-hidden="
 
 function addrLine(v) { return '<div class="econtactaddr">' + escHtml(v).replace(/\n/g, "<br>") + "</div>"; }
 function plainLine(v) { return "<div>" + escHtml(v) + "</div>"; }
+function linkLine(href, text) { return '<div><a href="' + escAttr(href) + '">' + escHtml(text) + "</a></div>"; }
+function emailLine(v) { return linkLine("mailto:" + v, v); }
+// A typed phone number is kept as-is for display; the tel: link strips
+// everything but digits and a leading "+", since letters/punctuation in a
+// href would make some phones refuse to dial it.
+function phoneLine(v) { return linkLine("tel:" + v.replace(/[^\d+]/g, ""), v); }
+// A typed website is kept as-is for display; a scheme is added to the link
+// only if the user didn't already type one, since "example.com" alone is a
+// relative link, not the page it looks like.
+function websiteLine(v) { return linkLine(/^[a-z][a-z0-9+.-]*:/i.test(v) ? v : "https://" + v, v); }
 
 // One letterhead column: a heading ("Prepared by"/"Prepared for"), a bold
 // name line, then whatever else was filled in. Returns "" if fields is null.
@@ -2061,9 +2073,9 @@ function renderLetterColumn(heading, fields, nameKey, secondKey) {
   if (fields[nameKey]) lines.push('<div class="econtactname">' + escHtml(fields[nameKey]) + "</div>");
   if (fields[secondKey]) lines.push(plainLine(fields[secondKey]));
   if (fields.address) lines.push(addrLine(fields.address));
-  if (fields.phone) lines.push(plainLine(fields.phone));
-  if (fields.email) lines.push(plainLine(fields.email));
-  if (fields.website) lines.push(plainLine(fields.website));
+  if (fields.phone) lines.push(phoneLine(fields.phone));
+  if (fields.email) lines.push(emailLine(fields.email));
+  if (fields.website) lines.push(websiteLine(fields.website));
   return '<div class="ecol"><div class="echead">' + heading + "</div>" + lines.join("") + "</div>";
 }
 

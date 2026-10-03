@@ -1445,6 +1445,27 @@ async function exportClick(k, projectName) {
   ok(html.includes("Ada Lovelace") && html.includes("Acme Co.") && html.includes("Jordan Lee"), "both columns print their own fields");
 }
 {
+  // Email, website, and phone become real links on the letterhead.
+  const saved = {
+    settings: { contact: { company: "Acme Co.", name: "", phone: "555-0100", email: "ada@example.com", address: "", website: "example.com" } },
+    quests: [{ id: "pLinks", name: "Links Quest", status: "active", start: "2026-08-03", days: 7 }],
+    tasks: []
+  };
+  const { html } = await exportClick(kit(await mk(saved)), "Links Quest");
+  ok(html.includes('<a href="mailto:ada@example.com">ada@example.com</a>'), "the email prints as a mailto: link, display text unchanged");
+  ok(html.includes('<a href="tel:5550100">555-0100</a>'), "the phone prints as a tel: link with punctuation stripped from the href only");
+  ok(html.includes('<a href="https://example.com">example.com</a>'), "a website typed with no scheme gets https:// added to the link, display text unchanged");
+}
+{
+  const saved = {
+    settings: { contact: { company: "Acme Co.", website: "https://example.com", name: "", phone: "", email: "", address: "" } },
+    quests: [{ id: "pLinks2", name: "Scheme Quest", status: "active", start: "2026-08-03", days: 7 }],
+    tasks: []
+  };
+  const { html } = await exportClick(kit(await mk(saved)), "Scheme Quest");
+  ok(html.includes('<a href="https://example.com">https://example.com</a>'), "a website typed with its own scheme is not double-prefixed");
+}
+{
   const saved = {
     settings: { contact: { name: "Ada Lovelace", company: "", phone: "", email: "", address: "", website: "" } },
     quests: [{ id: "pO", name: "Only User Info", status: "active", start: "2026-08-03", days: 7 }],
