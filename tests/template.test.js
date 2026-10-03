@@ -1705,6 +1705,31 @@ async function exportClick(k, projectName) {
   k.w.Audio = RealAudio;
   ok(!played, "promoting a candidate plays no sound when Audio is off");
 }
+{
+  // Reopening a Complete quest is also a real click, so it plays the same
+  // splash sound as Promote.
+  const saved = { settings: { audio: true }, quests: [{ id: "pReo", name: "Reopen Quest", status: "complete" }], tasks: [] };
+  const k = kit(await mk(saved));
+  let played = null;
+  const RealAudio = k.w.Audio;
+  k.w.Audio = function (src) { played = src; return { play: function () { return Promise.resolve(); } }; };
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Reopen Quest"));
+  k.click(k.btn(k.$("view"), "Reopen"));
+  k.w.Audio = RealAudio;
+  ok(played === "assets/sfx/splash.mp3", "reopening a Complete quest plays the splash sound when Audio is on (" + played + ")");
+  ok(k.saved().quests.find((q) => q.id === "pReo").status === "active", "and the quest is actually reopened");
+}
+{
+  const saved = { settings: { audio: false }, quests: [{ id: "pReo2", name: "Reopen Quest 2", status: "complete" }], tasks: [] };
+  const k = kit(await mk(saved));
+  let played = false;
+  const RealAudio = k.w.Audio;
+  k.w.Audio = function () { played = true; return { play: function () { return Promise.resolve(); } }; };
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Reopen Quest 2"));
+  k.click(k.btn(k.$("view"), "Reopen"));
+  k.w.Audio = RealAudio;
+  ok(!played, "reopening a Complete quest plays no sound when Audio is off");
+}
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

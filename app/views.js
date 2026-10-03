@@ -628,6 +628,7 @@ export function renderQuestPage(root, id) {
       // No auto-revert -- Reopen is the only way back to Active.
       ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Reopen this quest" }, "Reopen"), "click", function () {
         p.status = "active"; changed(); notify("Reopened.");
+        if (state.settings.audio) playSfx("assets/sfx/splash.mp3");
       }));
     }
     ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Send this quest to the Vault" }, "Vault"), "click", function () {

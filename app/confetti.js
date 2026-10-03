@@ -12,16 +12,21 @@ function confettiColors() {
   return out.length ? out : [cs.getPropertyValue("--planned").trim() || "rgb(47,93,138)"];
 }
 
-function Particle(cx, cy, w, h, colors) {
-  this.p0 = { x: cx, y: cy };
-  this.p1 = { x: Math.random() * w, y: Math.random() * h * 0.6 };
-  this.p2 = { x: Math.random() * w, y: Math.random() * h };
+// Each particle starts somewhere along the top edge, not one shared center
+// point, so the burst reads as falling across the whole width from the start
+// rather than exploding outward from a single spot.
+function Particle(w, h, colors) {
+  var sx = Math.random() * w, sy = -20 - Math.random() * 40;
+  this.p0 = { x: sx, y: sy };
+  this.p1 = { x: Math.random() * w, y: h * (0.2 + Math.random() * 0.3) };
+  this.p2 = { x: Math.random() * w, y: h * (0.5 + Math.random() * 0.3) };
   this.p3 = { x: Math.random() * w, y: h + 40 };
   this.time = 0;
-  this.duration = 1.6 + Math.random() * 1.1;
+  this.duration = 2.6 + Math.random() * 1.8;
+  this.delay = Math.random() * 1.2;
   this.color = colors[(Math.random() * colors.length) | 0];
-  this.w = 7; this.h = 5;
-  this.x = cx; this.y = cy; this.r = 0; this.sy = 1;
+  this.w = 8; this.h = 6;
+  this.x = sx; this.y = sy; this.r = 0; this.sy = 1;
   this.complete = false;
 }
 function easeOutCubic(t, d) { t = t / d - 1; return t * t * t + 1; }
@@ -33,6 +38,7 @@ function cubeBezier(p0, c0, c1, p1, t) {
   };
 }
 Particle.prototype.update = function (dt) {
+  if (this.delay > 0) { this.delay -= dt; return; }
   this.time = Math.min(this.duration, this.time + dt);
   var f = easeOutCubic(this.time, this.duration);
   var p = cubeBezier(this.p0, this.p1, this.p2, this.p3, f);
@@ -43,6 +49,7 @@ Particle.prototype.update = function (dt) {
   this.complete = this.time === this.duration;
 };
 Particle.prototype.draw = function (ctx) {
+  if (this.delay > 0) return;
   ctx.save();
   ctx.translate(this.x, this.y);
   ctx.rotate(this.r);
@@ -73,7 +80,7 @@ export function playConfetti() {
 
   var colors = confettiColors();
   var particles = [];
-  for (var i = 0; i < 150; i++) particles.push(new Particle(canvas.width * 0.5, canvas.height * 0.35, canvas.width, canvas.height, colors));
+  for (var i = 0; i < 220; i++) particles.push(new Particle(canvas.width, canvas.height, colors));
 
   var last = null;
   function frame(t) {
