@@ -288,6 +288,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .setgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-4) var(--space-16); max-width: 640px; }
 .setgrid .field { min-width: 0; justify-content: flex-end; }
 .setgrid input, .setgrid select { min-width: 0; height: 42px; }
+.brandmarkpreview { display: flex; align-items: center; gap: var(--space-12); }
+.brandmarkpreview img { max-width: 80px; max-height: 80px; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); }
 @media (max-width: 640px) { .setgrid { grid-template-columns: minmax(0, 1fr); } }
 .about p { margin-top: var(--space-2); }
 .radiorow { display: flex; gap: var(--space-10); align-items: flex-start; margin-top: var(--space-10); cursor: pointer; }
@@ -1079,7 +1081,7 @@ function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop,
     milestones: d.milestones, pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" } }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "" }
   };
 }
 
@@ -1220,6 +1222,11 @@ function normalize(s) {
       var c = s.settings.contact;
       d.settings.contact = { name: S(c.name, 200), company: S(c.company, 200), phone: S(c.phone, 200), email: S(c.email, 200), address: S(c.address, 500), website: S(c.website, 200) };
     }
+    // A data: URI, capped well above the 300 KB upload limit to allow for
+    // base64's own ~33% size increase -- anything else (including a stale
+    // URL-style value from before this existed) is dropped, not truncated,
+    // since a cut-off image would just fail to decode.
+    if (typeof s.settings.brandmark === "string" && /^data:image\//.test(s.settings.brandmark) && s.settings.brandmark.length <= 500000) d.settings.brandmark = s.settings.brandmark;
   }
   // Pins used to route to a quest's page via "proj:" + id; migrate any saved
   // pin to "quest:" + id so an old sidebar pin keeps working after the rename.
@@ -1790,7 +1797,7 @@ function buildExportSnapshot(p) {
   var sections = flattenSections(tree);
   var contact = filledOrNull(state.settings.contact);
   var client = filledOrNull(p.client);
-  return { exportedAt: fmtY(TODAY), root: tree, sections: sections, contact: contact, client: client };
+  return { exportedAt: fmtY(TODAY), root: tree, sections: sections, contact: contact, client: client, brandmark: state.settings.brandmark || "" };
 }
 
 var EXPORT_TEST_HOOKS = { buildExportTree: buildExportTree, flattenSections: flattenSections };
@@ -1899,6 +1906,7 @@ body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-
 .ecol { min-width: 180px; }\
 .ecol a { color: var(--planned); text-decoration: none; }\
 .ecol a:hover { text-decoration: underline; }\
+.ebrandmark { display: block; max-width: 160px; max-height: 80px; margin-bottom: 6px; }\
 .echead { color: var(--ink); font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }\
 .econtactname { color: var(--ink); font-weight: 600; }\
 .econtactaddr { white-space: pre-line; }\
@@ -2061,31 +2069,35 @@ function phoneLine(v) { return linkLine("tel:" + v.replace(/[^\d+]/g, ""), v); }
 // relative link, not the page it looks like.
 function websiteLine(v) { return linkLine(/^[a-z][a-z0-9+.-]*:/i.test(v) ? v : "https://" + v, v); }
 
-// One letterhead column: a heading ("Prepared by"/"Prepared for"), a bold
-// name line, then whatever else was filled in. Returns "" if fields is null.
+// One letterhead column: a heading ("Prepared by"/"Prepared for"), an
+// optional brandmark image, a bold name line, then whatever else was filled
+// in. Returns "" if there is nothing at all to show (fields is null AND no
+// brandmark) -- a brandmark alone is enough reason to show the column, even
+// with every text field left blank.
 // `nameKey` is the field that leads the column in bold (the user's own
 // company for "Prepared by", the Quest Giver's organization for "Prepared
 // for" -- both sides lead with the organization, not the person).
 // `secondKey` is the contact person, shown plain right after it.
-function renderLetterColumn(heading, fields, nameKey, secondKey) {
-  if (!fields) return "";
+function renderLetterColumn(heading, fields, nameKey, secondKey, brandmark) {
+  if (!fields && !brandmark) return "";
   var lines = [];
-  if (fields[nameKey]) lines.push('<div class="econtactname">' + escHtml(fields[nameKey]) + "</div>");
-  if (fields[secondKey]) lines.push(plainLine(fields[secondKey]));
-  if (fields.address) lines.push(addrLine(fields.address));
-  if (fields.phone) lines.push(phoneLine(fields.phone));
-  if (fields.email) lines.push(emailLine(fields.email));
-  if (fields.website) lines.push(websiteLine(fields.website));
+  if (brandmark) lines.push('<img class="ebrandmark" src="' + escAttr(brandmark) + '" alt="">');
+  if (fields && fields[nameKey]) lines.push('<div class="econtactname">' + escHtml(fields[nameKey]) + "</div>");
+  if (fields && fields[secondKey]) lines.push(plainLine(fields[secondKey]));
+  if (fields && fields.address) lines.push(addrLine(fields.address));
+  if (fields && fields.phone) lines.push(phoneLine(fields.phone));
+  if (fields && fields.email) lines.push(emailLine(fields.email));
+  if (fields && fields.website) lines.push(websiteLine(fields.website));
   return '<div class="ecol"><div class="echead">' + heading + "</div>" + lines.join("") + "</div>";
 }
 
-// "Prepared by" is the user's own Settings contact info; "Prepared for" is
-// the quest's own Quest Giver info. Either side can be empty on its own:
-// with no Quest Giver info, "Prepared for" is simply left out; with no user
-// info at all, "Prepared for" takes the left (only) position instead of
-// sitting stranded on the right.
-function renderLetterhead(contact, client) {
-  var by = renderLetterColumn("Prepared by", contact, "company", "name");
+// "Prepared by" is the user's own Settings contact info (plus an optional
+// uploaded brandmark); "Prepared for" is the quest's own Quest Giver info.
+// Either side can be empty on its own: with no Quest Giver info, "Prepared
+// for" is simply left out; with no user info or brandmark at all, "Prepared
+// for" takes the left (only) position instead of sitting stranded on the right.
+function renderLetterhead(contact, client, brandmark) {
+  var by = renderLetterColumn("Prepared by", contact, "company", "name", brandmark);
   var forWhom = renderLetterColumn("Prepared for", client, "org", "poc");
   if (!by && !forWhom) return "";
   return '<div class="eletterhead">' + (by || forWhom) + (by ? forWhom : "") + "</div>\n";
@@ -2100,7 +2112,7 @@ function renderExportDocument(snapshot) {
   var title = escHtml(p.name) + " (exported from Sidequest)";
   var html = "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>" + title + "</title>\n<style>" + EXPORT_CSS + "</style>\n</head>\n<body>\n<div class=\"ewrap\">\n";
   html += EXPORT_BRAND;
-  html += renderLetterhead(snapshot.contact, snapshot.client);
+  html += renderLetterhead(snapshot.contact, snapshot.client, snapshot.brandmark);
   html += "<h1>" + escHtml(p.name) + " <span class=\"chip ereadonly\">Read only</span></h1>\n<p class=\"ehint\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ".</p>\n";
   html += toc + sections;
   html += "<p class=\"efoot\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ".</p>\n";
@@ -3690,6 +3702,56 @@ function startFreshDialog() {
     acts.appendChild(on(el("button", { type: "button", title: "Cancel" }, "Cancel"), "click", closeModal)); acts.appendChild(go1); body.appendChild(acts);
   });
 }
+var BRANDMARK_MAX_DIM = 320;
+var BRANDMARK_MAX_BYTES = 300 * 1024;
+// Reads a chosen image file, rejects it outright if it is too large in
+// bytes or too large in either pixel dimension -- no cropping or resizing,
+// since either would mean guessing what the user actually wants kept.
+function readBrandmarkFile(file, msg, onDone) {
+  if (file.size > BRANDMARK_MAX_BYTES) { msg.textContent = "That file is larger than " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB. Choose a smaller one."; return; }
+  var r = new FileReader();
+  r.onerror = function () { msg.textContent = "The file could not be read."; };
+  r.onload = function () {
+    var img = new Image();
+    img.onerror = function () { msg.textContent = "That file isn't a usable image."; };
+    img.onload = function () {
+      if (img.naturalWidth > BRANDMARK_MAX_DIM || img.naturalHeight > BRANDMARK_MAX_DIM) {
+        msg.textContent = "That image is " + img.naturalWidth + "×" + img.naturalHeight + " pixels. Each side must be " + BRANDMARK_MAX_DIM + " pixels or less.";
+        return;
+      }
+      state.settings.brandmark = String(r.result); save(); msg.textContent = ""; onDone();
+    };
+    img.src = String(r.result);
+  };
+  r.readAsDataURL(file);
+}
+function brandmarkField() {
+  var w = el("div", { "class": "field" });
+  w.appendChild(el("label", null, "Brandmark"));
+  w.appendChild(el("p", { "class": "hint" }, "Prints beside Prepared by on a Client Export. " + BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."));
+  var msg = el("p", { "class": "msg", role: "alert" });
+  var preview = el("div", { "class": "brandmarkpreview" });
+  function renderPreview() {
+    preview.innerHTML = "";
+    if (state.settings.brandmark) {
+      preview.appendChild(el("img", { src: state.settings.brandmark, alt: "Your brandmark" }));
+      preview.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Remove the brandmark" }, "Remove"), "click", function () {
+        state.settings.brandmark = ""; save(); renderPreview();
+      }));
+    } else {
+      var file = el("input", { type: "file", id: "set-brandmark", accept: "image/*", hidden: "hidden", "aria-label": "Choose a brandmark image" });
+      on(file, "change", function () {
+        var f = file.files && file.files[0]; if (!f) return;
+        readBrandmarkFile(f, msg, renderPreview); file.value = "";
+      });
+      preview.appendChild(on(el("button", { type: "button", "class": "small", title: "Add brandmark" }, "Add brandmark"), "click", function () { file.click(); }));
+      preview.appendChild(file);
+    }
+  }
+  renderPreview();
+  w.appendChild(preview); w.appendChild(msg);
+  return w;
+}
 function renderSettings(page) {
   // Split like a quest's own page, but the side panel comes FIRST in DOM
   // order so it stacks above the main settings on a phone, not below --
@@ -3719,6 +3781,7 @@ function renderSettings(page) {
   var addr = el("textarea", { id: "set-contact-address", rows: 3 }); addr.value = state.settings.contact.address;
   on(addr, "input", function () { state.settings.contact.address = addr.value.slice(0, 500); save(); });
   aw.appendChild(addr); contactBox.appendChild(aw);
+  contactBox.appendChild(brandmarkField());
   side.appendChild(contactBox);
 
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });

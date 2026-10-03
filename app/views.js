@@ -988,7 +988,7 @@ export function helpTopics() {
       "**Candidates** are quests that could take the next slot. Select one to edit its notes, start date, due date, and block length in a dialog, then use **Promote** to start it. Add a candidate with **New quest** in the **+** menu, or turn an idea into one with **Make candidate**.",
       "**In progress** lists each active quest with its next task. Use **Pin** on a quest for quick access from the sidebar. Unpinning only hides it there.",
       "Below it, the Quests page lists any quest that is complete or has no tasks yet, under the heading Pending, Completed, or Pending & completed.",
-      "**Client Export**, on an active or complete quest's page, downloads a single read-only web page with that quest's tasks, notes, and an interactive schedule and burndown, for sharing outside the app. A linked quest that is active or complete comes along too, with its own section. If you filled in **Your contact info** in Settings or this quest's own **Quest Giver** section, they print at the top as Prepared by and Prepared for."]],
+      "**Client Export**, on an active or complete quest's page, downloads a single read-only web page with that quest's tasks, notes, and an interactive schedule and burndown, for sharing outside the app. A linked quest that is active or complete comes along too, with its own section. If you filled in **Your contact info** in Settings or this quest's own **Quest Giver** section, they print at the top as Prepared by and Prepared for. **Add brandmark** in Settings uploads a small image that prints above Prepared by."]],
     ["Finish or vault a quest", [
       "**Mark complete** on a quest's page marks it done, even with tasks still open. A quest also completes by itself once all its tasks are done. Either way, you can send it to the Vault right away or leave it in Quests.",
       "A completed quest shows a **Complete** badge and drops out of In progress. Its tasks also leave Tasks, the main Timeline, Today, and the main burndown, though its own page still lists them. **Reopen** makes it active again and brings them back.",
@@ -1071,6 +1071,56 @@ export function startFreshDialog() {
     acts.appendChild(on(el("button", { type: "button", title: "Cancel" }, "Cancel"), "click", closeModal)); acts.appendChild(go1); body.appendChild(acts);
   });
 }
+var BRANDMARK_MAX_DIM = 320;
+var BRANDMARK_MAX_BYTES = 300 * 1024;
+// Reads a chosen image file, rejects it outright if it is too large in
+// bytes or too large in either pixel dimension -- no cropping or resizing,
+// since either would mean guessing what the user actually wants kept.
+function readBrandmarkFile(file, msg, onDone) {
+  if (file.size > BRANDMARK_MAX_BYTES) { msg.textContent = "That file is larger than " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB. Choose a smaller one."; return; }
+  var r = new FileReader();
+  r.onerror = function () { msg.textContent = "The file could not be read."; };
+  r.onload = function () {
+    var img = new Image();
+    img.onerror = function () { msg.textContent = "That file isn't a usable image."; };
+    img.onload = function () {
+      if (img.naturalWidth > BRANDMARK_MAX_DIM || img.naturalHeight > BRANDMARK_MAX_DIM) {
+        msg.textContent = "That image is " + img.naturalWidth + "×" + img.naturalHeight + " pixels. Each side must be " + BRANDMARK_MAX_DIM + " pixels or less.";
+        return;
+      }
+      state.settings.brandmark = String(r.result); save(); msg.textContent = ""; onDone();
+    };
+    img.src = String(r.result);
+  };
+  r.readAsDataURL(file);
+}
+function brandmarkField() {
+  var w = el("div", { "class": "field" });
+  w.appendChild(el("label", null, "Brandmark"));
+  w.appendChild(el("p", { "class": "hint" }, "Prints beside Prepared by on a Client Export. " + BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."));
+  var msg = el("p", { "class": "msg", role: "alert" });
+  var preview = el("div", { "class": "brandmarkpreview" });
+  function renderPreview() {
+    preview.innerHTML = "";
+    if (state.settings.brandmark) {
+      preview.appendChild(el("img", { src: state.settings.brandmark, alt: "Your brandmark" }));
+      preview.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Remove the brandmark" }, "Remove"), "click", function () {
+        state.settings.brandmark = ""; save(); renderPreview();
+      }));
+    } else {
+      var file = el("input", { type: "file", id: "set-brandmark", accept: "image/*", hidden: "hidden", "aria-label": "Choose a brandmark image" });
+      on(file, "change", function () {
+        var f = file.files && file.files[0]; if (!f) return;
+        readBrandmarkFile(f, msg, renderPreview); file.value = "";
+      });
+      preview.appendChild(on(el("button", { type: "button", "class": "small", title: "Add brandmark" }, "Add brandmark"), "click", function () { file.click(); }));
+      preview.appendChild(file);
+    }
+  }
+  renderPreview();
+  w.appendChild(preview); w.appendChild(msg);
+  return w;
+}
 export function renderSettings(page) {
   // Split like a quest's own page, but the side panel comes FIRST in DOM
   // order so it stacks above the main settings on a phone, not below --
@@ -1100,6 +1150,7 @@ export function renderSettings(page) {
   var addr = el("textarea", { id: "set-contact-address", rows: 3 }); addr.value = state.settings.contact.address;
   on(addr, "input", function () { state.settings.contact.address = addr.value.slice(0, 500); save(); });
   aw.appendChild(addr); contactBox.appendChild(aw);
+  contactBox.appendChild(brandmarkField());
   side.appendChild(contactBox);
 
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });

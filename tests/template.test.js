@@ -1502,6 +1502,39 @@ async function exportClick(k, projectName) {
   const k = kit(await mk(saved));
   ok(JSON.stringify(k.saved().quests[0].client) === JSON.stringify({ org: "", poc: "", phone: "", email: "", address: "", website: "" }), "a quest saved before Quest Giver existed gets a default empty client object on load");
 }
+{
+  // Brandmark: the Settings UI, and normalize()'s validation. The actual
+  // upload/dimension-check path uses Image.onload, which jsdom never fires
+  // for a real data: URI -- that part is verified in a real browser instead.
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.tab("settings");
+  ok(!!k.btn(k.$("view"), "Add brandmark"), "Settings has an Add brandmark button");
+  ok(k.$("view").textContent.includes("320×320 pixels or smaller") && k.$("view").textContent.includes("300 KB"), "the size limits are stated up front, not just on rejection");
+}
+{
+  const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+  const saved = { settings: { brandmark: tinyPng }, quests: [{ id: "pB", name: "Brandmark Quest", status: "active", start: "2026-08-03", days: 7 }], tasks: [] };
+  const k = kit(await mk(saved));
+  ok(k.saved().settings.brandmark === tinyPng, "a valid data:image/ URI round-trips through normalize()");
+  const { html } = await exportClick(k, "Brandmark Quest");
+  ok(html.includes('class="ebrandmark"') && html.includes(tinyPng), "the brandmark prints on the export, under Prepared by");
+  const byCol = html.slice(html.indexOf("Prepared by"), html.indexOf("Prepared by") + 500);
+  ok(byCol.includes("ebrandmark"), "it sits inside the Prepared by column, right after its heading");
+}
+{
+  const saved = { settings: { brandmark: "not a real data uri" }, quests: [], tasks: [] };
+  const k = kit(await mk(saved));
+  ok(k.saved().settings.brandmark === "", "a malformed brandmark value is dropped on load, not kept or truncated");
+}
+{
+  // A brandmark alone, with every other contact field blank, is still reason
+  // enough to show Prepared by.
+  const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+  const saved = { settings: { brandmark: tinyPng }, quests: [{ id: "pB2", name: "Brandmark Only", status: "active", start: "2026-08-03", days: 7 }], tasks: [] };
+  const { html } = await exportClick(kit(await mk(saved)), "Brandmark Only");
+  ok(html.includes("Prepared by") && html.includes('class="ebrandmark"'), "Prepared by shows with just the brandmark, no text fields filled in");
+}
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

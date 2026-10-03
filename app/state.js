@@ -121,7 +121,7 @@ export function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop,
     milestones: d.milestones, pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" } }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "" }
   };
 }
 
@@ -262,6 +262,11 @@ export function normalize(s) {
       var c = s.settings.contact;
       d.settings.contact = { name: S(c.name, 200), company: S(c.company, 200), phone: S(c.phone, 200), email: S(c.email, 200), address: S(c.address, 500), website: S(c.website, 200) };
     }
+    // A data: URI, capped well above the 300 KB upload limit to allow for
+    // base64's own ~33% size increase -- anything else (including a stale
+    // URL-style value from before this existed) is dropped, not truncated,
+    // since a cut-off image would just fail to decode.
+    if (typeof s.settings.brandmark === "string" && /^data:image\//.test(s.settings.brandmark) && s.settings.brandmark.length <= 500000) d.settings.brandmark = s.settings.brandmark;
   }
   // Pins used to route to a quest's page via "proj:" + id; migrate any saved
   // pin to "quest:" + id so an old sidebar pin keeps working after the rename.

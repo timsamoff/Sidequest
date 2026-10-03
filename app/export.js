@@ -143,7 +143,7 @@ export function buildExportSnapshot(p) {
   var sections = flattenSections(tree);
   var contact = filledOrNull(state.settings.contact);
   var client = filledOrNull(p.client);
-  return { exportedAt: fmtY(TODAY), root: tree, sections: sections, contact: contact, client: client };
+  return { exportedAt: fmtY(TODAY), root: tree, sections: sections, contact: contact, client: client, brandmark: state.settings.brandmark || "" };
 }
 
 export var EXPORT_TEST_HOOKS = { buildExportTree: buildExportTree, flattenSections: flattenSections };
@@ -252,6 +252,7 @@ body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-
 .ecol { min-width: 180px; }\
 .ecol a { color: var(--planned); text-decoration: none; }\
 .ecol a:hover { text-decoration: underline; }\
+.ebrandmark { display: block; max-width: 160px; max-height: 80px; margin-bottom: 6px; }\
 .echead { color: var(--ink); font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }\
 .econtactname { color: var(--ink); font-weight: 600; }\
 .econtactaddr { white-space: pre-line; }\
@@ -414,31 +415,35 @@ function phoneLine(v) { return linkLine("tel:" + v.replace(/[^\d+]/g, ""), v); }
 // relative link, not the page it looks like.
 function websiteLine(v) { return linkLine(/^[a-z][a-z0-9+.-]*:/i.test(v) ? v : "https://" + v, v); }
 
-// One letterhead column: a heading ("Prepared by"/"Prepared for"), a bold
-// name line, then whatever else was filled in. Returns "" if fields is null.
+// One letterhead column: a heading ("Prepared by"/"Prepared for"), an
+// optional brandmark image, a bold name line, then whatever else was filled
+// in. Returns "" if there is nothing at all to show (fields is null AND no
+// brandmark) -- a brandmark alone is enough reason to show the column, even
+// with every text field left blank.
 // `nameKey` is the field that leads the column in bold (the user's own
 // company for "Prepared by", the Quest Giver's organization for "Prepared
 // for" -- both sides lead with the organization, not the person).
 // `secondKey` is the contact person, shown plain right after it.
-function renderLetterColumn(heading, fields, nameKey, secondKey) {
-  if (!fields) return "";
+function renderLetterColumn(heading, fields, nameKey, secondKey, brandmark) {
+  if (!fields && !brandmark) return "";
   var lines = [];
-  if (fields[nameKey]) lines.push('<div class="econtactname">' + escHtml(fields[nameKey]) + "</div>");
-  if (fields[secondKey]) lines.push(plainLine(fields[secondKey]));
-  if (fields.address) lines.push(addrLine(fields.address));
-  if (fields.phone) lines.push(phoneLine(fields.phone));
-  if (fields.email) lines.push(emailLine(fields.email));
-  if (fields.website) lines.push(websiteLine(fields.website));
+  if (brandmark) lines.push('<img class="ebrandmark" src="' + escAttr(brandmark) + '" alt="">');
+  if (fields && fields[nameKey]) lines.push('<div class="econtactname">' + escHtml(fields[nameKey]) + "</div>");
+  if (fields && fields[secondKey]) lines.push(plainLine(fields[secondKey]));
+  if (fields && fields.address) lines.push(addrLine(fields.address));
+  if (fields && fields.phone) lines.push(phoneLine(fields.phone));
+  if (fields && fields.email) lines.push(emailLine(fields.email));
+  if (fields && fields.website) lines.push(websiteLine(fields.website));
   return '<div class="ecol"><div class="echead">' + heading + "</div>" + lines.join("") + "</div>";
 }
 
-// "Prepared by" is the user's own Settings contact info; "Prepared for" is
-// the quest's own Quest Giver info. Either side can be empty on its own:
-// with no Quest Giver info, "Prepared for" is simply left out; with no user
-// info at all, "Prepared for" takes the left (only) position instead of
-// sitting stranded on the right.
-function renderLetterhead(contact, client) {
-  var by = renderLetterColumn("Prepared by", contact, "company", "name");
+// "Prepared by" is the user's own Settings contact info (plus an optional
+// uploaded brandmark); "Prepared for" is the quest's own Quest Giver info.
+// Either side can be empty on its own: with no Quest Giver info, "Prepared
+// for" is simply left out; with no user info or brandmark at all, "Prepared
+// for" takes the left (only) position instead of sitting stranded on the right.
+function renderLetterhead(contact, client, brandmark) {
+  var by = renderLetterColumn("Prepared by", contact, "company", "name", brandmark);
   var forWhom = renderLetterColumn("Prepared for", client, "org", "poc");
   if (!by && !forWhom) return "";
   return '<div class="eletterhead">' + (by || forWhom) + (by ? forWhom : "") + "</div>\n";
@@ -453,7 +458,7 @@ export function renderExportDocument(snapshot) {
   var title = escHtml(p.name) + " (exported from Sidequest)";
   var html = "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>" + title + "</title>\n<style>" + EXPORT_CSS + "</style>\n</head>\n<body>\n<div class=\"ewrap\">\n";
   html += EXPORT_BRAND;
-  html += renderLetterhead(snapshot.contact, snapshot.client);
+  html += renderLetterhead(snapshot.contact, snapshot.client, snapshot.brandmark);
   html += "<h1>" + escHtml(p.name) + " <span class=\"chip ereadonly\">Read only</span></h1>\n<p class=\"ehint\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ".</p>\n";
   html += toc + sections;
   html += "<p class=\"efoot\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ".</p>\n";

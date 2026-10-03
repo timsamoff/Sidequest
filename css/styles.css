@@ -201,6 +201,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .setgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-4) var(--space-16); max-width: 640px; }
 .setgrid .field { min-width: 0; justify-content: flex-end; }
 .setgrid input, .setgrid select { min-width: 0; height: 42px; }
+.brandmarkpreview { display: flex; align-items: center; gap: var(--space-12); }
+.brandmarkpreview img { max-width: 80px; max-height: 80px; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); }
 @media (max-width: 640px) { .setgrid { grid-template-columns: minmax(0, 1fr); } }
 .about p { margin-top: var(--space-2); }
 .radiorow { display: flex; gap: var(--space-10); align-items: flex-start; margin-top: var(--space-10); cursor: pointer; }
