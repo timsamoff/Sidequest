@@ -279,7 +279,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(staleHelp.every(ph => !helpText.includes(ph)), "Help does not describe things that were removed (" + staleHelp.filter(ph => helpText.includes(ph)).join(", ") + ")");
   const coveredHelp = ["Save backup", "Restore backup", "Est. 12 hours remaining", "Added tag", "Not started", "In progress", "Completed", "Pending, Completed", "leave Tasks, the main Timeline, Today, and the main burndown", "orange line", "Slip schedule", "length of a", "Main menu"];
   ok(coveredHelp.every(ph => helpText.includes(ph)), "Help covers the features that changed recently (missing: " + coveredHelp.filter(ph => !helpText.includes(ph)).join(", ") + ")");
-  ok(!/\u2014/.test(helpText), "Help has no em dashes");
+  ok(!/\u2014/.test(helpText) && !helpText.includes("--"), "Help has no em dashes, real or double-hyphen");
+  ok(!/[A-Za-z]'[A-Za-z]/.test(helpText), "Help uses smart apostrophes, not straight ones, in contractions and possessives");
   ok(["Finish or vault a quest", "Link quests", "Use the Workshop"].every(t => titles.includes(t)) && helpText.includes("Reopen") && helpText.includes("splash"), "Help covers Complete/Reopen, linking, the Workshop, and the splash setting");
   ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Workshop,Vault,Help,Settings", "Help sits between Vault and Settings");
 }
@@ -1314,11 +1315,11 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   set("task-start", "2026-08-20");
   ok(t().start === "2026-08-20", "a start date is stored");
   set("task-start", "2026-09-05");
-  ok(t().start === "2026-08-20" && k.$("task-start").value === "2026-08-20" && k.$("view").textContent.includes("start date can't be after"), "a start after the due date is rejected");
+  ok(t().start === "2026-08-20" && k.$("task-start").value === "2026-08-20" && k.$("view").textContent.includes("start date can’t be after"), "a start after the due date is rejected");
   set("task-start", "2026-07-01");
   ok(t().start === "2026-08-20" && k.$("view").textContent.includes("on or after"), "a start before the project's start is rejected");
   set("task-due", "2026-08-10");
-  ok(t().due === "2026-08-30" && k.$("view").textContent.includes("can't be before the start"), "a due date before the start is rejected");
+  ok(t().due === "2026-08-30" && k.$("view").textContent.includes("can’t be before the start"), "a due date before the start is rejected");
   set("task-due", "2026-07-01");
   ok(t().due === "2026-08-30" && t().block === 4, "a due date before the project's start is rejected");
   set("task-est", "2.5");
@@ -1341,7 +1342,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.menuAct("newBtn", "newTask");
   k.setField("what", "Bad order"); k.setField("start", "2026-08-25"); k.setField("due", "2026-08-20");
   k.click(k.btn(k.$("modalBody"), "Add task"));
-  ok(!k.saved().tasks.some(x => x.what === "Bad order") && k.$("modalBody").textContent.includes("can't be after"), "the dialog rejects a start after the due date");
+  ok(!k.saved().tasks.some(x => x.what === "Bad order") && k.$("modalBody").textContent.includes("can’t be after"), "the dialog rejects a start after the due date");
 }
 {
   // Slip shifts start and due together; Undo restores them

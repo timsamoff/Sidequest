@@ -113,7 +113,7 @@ export function taskDialog(prefillQuestId, backlog) {
     ? [{ key: "quest", label: "Quest", type: "static", value: startQuest.name }]
     : [{ key: "quest", label: "Quest", type: "select", options: questOpts, value: startId }];
   fields.push({ key: "what", label: "Task" });
-  fields.push({ key: "done", label: "How you'll know it's done (optional)" });
+  fields.push({ key: "done", label: "How you’ll know it’s done (optional)" });
   if (!backlog) {
     fields.push({ key: "start", label: "Start date (optional)", type: "date" });
     fields.push({ key: "due", label: "Due date, or leave empty for the Backlog", type: "date", value: defaultDue });
@@ -127,21 +127,21 @@ export function taskDialog(prefillQuestId, backlog) {
       if (!isISO(v.due)) return "Enter a valid due date, or leave it empty for the Backlog.";
       var first = parseISO(pset(v.quest).start);
       blk = blockForDate(v.quest, parseISO(v.due));
-      if (blk === null) return "Pick a due date on or after " + fmtY(first) + ", this quest's own start date.";
+      if (blk === null) return "Pick a due date on or after " + fmtY(first) + ", this quest’s own start date.";
       due = v.due;
       if (v.start) {
         if (!isISO(v.start)) return "Enter a valid start date, or leave it empty.";
-        if (parseISO(v.start) < first) return "Pick a start date on or after " + fmtY(first) + ", this quest's own start date.";
-        if (v.start > due) return "The start date can't be after the due date.";
+        if (parseISO(v.start) < first) return "Pick a start date on or after " + fmtY(first) + ", this quest’s own start date.";
+        if (v.start > due) return "The start date can’t be after the due date.";
         start = v.start;
       }
     } else if (v.start) return "Add a due date too, or clear the start date. A task with no due date goes to the Backlog.";
     var est = v.est === "" ? 0 : parseFloat(v.est);
     if (isNaN(est) || est < 0 || est > 9999) return "Enter the estimated time as hours from 0 to 9999, or leave it empty.";
-    var t = task("c" + uid(), blk, v.quest, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
+    var t = task("c" + uid(), blk, v.quest, v.what.slice(0, 400), v.done.slice(0, 200) || "It’s finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
     state.tasks.push(t); ui.sel = t.id; changed();
     return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ")." };
-  }, "Pick when this should be done and it's placed in the right " + wl() + " automatically. Leave the due date empty to put the task in the Backlog.");
+  }, "Pick when this should be done and it’s placed in the right " + wl() + " automatically. Leave the due date empty to put the task in the Backlog.");
 }
 export function questDialog() {
   formDialog("New quest", [
@@ -307,7 +307,7 @@ export function stepDialog(launchItem, prefillQuestId) {
     if (!t) return "Choose a task.";
     t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false, launch: !!launchItem }); syncFromSteps(t); changed();
     return { msg: "Step added to " + dispQuest(t) + (launchItem ? " and the launch checklist." : ".") };
-  }, launchItem ? "The step lives in a task and also shows on this quest's launch checklist." : "");
+  }, launchItem ? "The step lives in a task and also shows on this quest’s launch checklist." : "");
   var questSel = $("f-quest"), taskSel = $("f-task");
   if (questSel && taskSel) {
     on(questSel, "change", function () {

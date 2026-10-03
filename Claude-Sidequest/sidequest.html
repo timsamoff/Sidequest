@@ -1061,8 +1061,8 @@ function sampleData() {
     // give an even planned line, which doneHistory above then zig-zags around.
     task("d1", 1, "pDone", "Design the feature", "The design is agreed", [st("d1a", "Sketch the approach", false, true), st("d1b", "Get sign-off", false, true)], { status: "Completed", doneAt: day(-22) }),
     task("d2", 2, "pDone", "Build the core feature", "It works end to end", [st("d2a", "Build the happy path", false, true), st("d2b", "Handle errors", false, true)], { status: "Completed", doneAt: day(-15) }),
-    task("d3", 3, "pDone", "Test it", "The top bugs are fixed", [st("d3a", "Run through every screen", false, true), st("d3b", "Fix what's broken", false, true)], { status: "Completed", doneAt: day(-8) }),
-    task("d4", 4, "pDone", "Ship it", "It's live", [st("d4a", "Write the release notes", false, true), st("d4b", "Announce it", false, true)], { status: "Completed", doneAt: day(-1) })
+    task("d3", 3, "pDone", "Test it", "The top bugs are fixed", [st("d3a", "Run through every screen", false, true), st("d3b", "Fix what’s broken", false, true)], { status: "Completed", doneAt: day(-8) }),
+    task("d4", 4, "pDone", "Ship it", "It’s live", [st("d4a", "Write the release notes", false, true), st("d4b", "Announce it", false, true)], { status: "Completed", doneAt: day(-1) })
   ];
   var EST = { a1: 3, a2: 6, a3: 8, a4: 4, a5: 5, a6: 4, w1: 3, w2: 10, w3: 2, g1: 12, g2: 20, g3: 8, g4: 16, d1: 6, d2: 12, d3: 8, d4: 3 };
   tasks.forEach(function (t) { if (EST[t.id]) t.est = EST[t.id]; });
@@ -2412,7 +2412,7 @@ function taskDialog(prefillQuestId, backlog) {
     ? [{ key: "quest", label: "Quest", type: "static", value: startQuest.name }]
     : [{ key: "quest", label: "Quest", type: "select", options: questOpts, value: startId }];
   fields.push({ key: "what", label: "Task" });
-  fields.push({ key: "done", label: "How you'll know it's done (optional)" });
+  fields.push({ key: "done", label: "How you’ll know it’s done (optional)" });
   if (!backlog) {
     fields.push({ key: "start", label: "Start date (optional)", type: "date" });
     fields.push({ key: "due", label: "Due date, or leave empty for the Backlog", type: "date", value: defaultDue });
@@ -2426,21 +2426,21 @@ function taskDialog(prefillQuestId, backlog) {
       if (!isISO(v.due)) return "Enter a valid due date, or leave it empty for the Backlog.";
       var first = parseISO(pset(v.quest).start);
       blk = blockForDate(v.quest, parseISO(v.due));
-      if (blk === null) return "Pick a due date on or after " + fmtY(first) + ", this quest's own start date.";
+      if (blk === null) return "Pick a due date on or after " + fmtY(first) + ", this quest’s own start date.";
       due = v.due;
       if (v.start) {
         if (!isISO(v.start)) return "Enter a valid start date, or leave it empty.";
-        if (parseISO(v.start) < first) return "Pick a start date on or after " + fmtY(first) + ", this quest's own start date.";
-        if (v.start > due) return "The start date can't be after the due date.";
+        if (parseISO(v.start) < first) return "Pick a start date on or after " + fmtY(first) + ", this quest’s own start date.";
+        if (v.start > due) return "The start date can’t be after the due date.";
         start = v.start;
       }
     } else if (v.start) return "Add a due date too, or clear the start date. A task with no due date goes to the Backlog.";
     var est = v.est === "" ? 0 : parseFloat(v.est);
     if (isNaN(est) || est < 0 || est > 9999) return "Enter the estimated time as hours from 0 to 9999, or leave it empty.";
-    var t = task("c" + uid(), blk, v.quest, v.what.slice(0, 400), v.done.slice(0, 200) || "It's finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
+    var t = task("c" + uid(), blk, v.quest, v.what.slice(0, 400), v.done.slice(0, 200) || "It’s finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
     state.tasks.push(t); ui.sel = t.id; changed();
     return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ")." };
-  }, "Pick when this should be done and it's placed in the right " + wl() + " automatically. Leave the due date empty to put the task in the Backlog.");
+  }, "Pick when this should be done and it’s placed in the right " + wl() + " automatically. Leave the due date empty to put the task in the Backlog.");
 }
 function questDialog() {
   formDialog("New quest", [
@@ -2606,7 +2606,7 @@ function stepDialog(launchItem, prefillQuestId) {
     if (!t) return "Choose a task.";
     t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false, launch: !!launchItem }); syncFromSteps(t); changed();
     return { msg: "Step added to " + dispQuest(t) + (launchItem ? " and the launch checklist." : ".") };
-  }, launchItem ? "The step lives in a task and also shows on this quest's launch checklist." : "");
+  }, launchItem ? "The step lives in a task and also shows on this quest’s launch checklist." : "");
   var questSel = $("f-quest"), taskSel = $("f-task");
   if (questSel && taskSel) {
     on(questSel, "change", function () {
@@ -2993,7 +2993,7 @@ function renderToday(root) {
 function backupReminder() {
   var n = daysSinceBackup(), box = el("div", { "class": "box", style: "margin-top:22px" });
   box.appendChild(el("p", { "class": "first" }, state.settings.lastBackup ? "It has been " + n + " days since your last backup." : "You have used Sidequest for " + n + " days without saving a backup."));
-  box.appendChild(el("p", { "class": "hint" }, "Your data lives only in this browser on this device. A backup file protects it if the browser's data is ever cleared."));
+  box.appendChild(el("p", { "class": "hint" }, "Your data lives only in this browser on this device. A backup file protects it if the browser’s data is ever cleared."));
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   backupControls(box, msg, function () { box.remove(); notify("Backup saved."); });
   box.appendChild(msg);
@@ -3020,7 +3020,7 @@ function taskRow(t) {
 }
 function renderSchedule(root) {
   var o = ordered(), bl = backlogTasks();
-  var hiddenNote = completeQuests().length ? el("p", { "class": "hint first" }, "Tasks from Complete quests are not listed here. Open a Complete quest's own page to see them.") : null;
+  var hiddenNote = completeQuests().length ? el("p", { "class": "hint first" }, "Tasks from Complete quests are not listed here. Open a Complete quest’s own page to see them.") : null;
   if (!o.length && !bl.length) {
     if (hiddenNote) root.appendChild(hiddenNote);
     root.appendChild(el("p", { "class": "hint" + (hiddenNote ? "" : " first") }, counted().length ? "No open tasks. Completed tasks are in the Vault." : "No tasks yet. Use the + button to add one."));
@@ -3096,8 +3096,8 @@ function buildDetail(t, inline) {
       if (bd.value === "") { t.block = 0; t.start = ""; t.due = ""; t.added = ""; changed(); notify("Moved to the Backlog."); return; }
       if (!isISO(bd.value)) { resetDates(); dmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
       var blk = blockForDate(projKey(t), parseISO(bd.value));
-      if (blk === null) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(questFirst) + ", this quest's own start date."; return; }
-      if (t.block > 0 && t.start && bd.value < t.start) { resetDates(); dmsg.textContent = "The due date can't be before the start date."; return; }
+      if (blk === null) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(questFirst) + ", this quest’s own start date."; return; }
+      if (t.block > 0 && t.start && bd.value < t.start) { resetDates(); dmsg.textContent = "The due date can’t be before the start date."; return; }
       dmsg.textContent = "";
       if (t.block === 0) t.added = iso(TODAY);
       t.due = bd.value; t.block = blk; changed();
@@ -3108,8 +3108,8 @@ function buildDetail(t, inline) {
       if (t.block === 0) { sd.value = ""; dmsg.textContent = "Add a due date first. A task with no due date is in the Backlog."; return; }
       if (sd.value === "") { dmsg.textContent = ""; t.start = ""; changed(); notify("Start date cleared. The task starts when its " + wl() + " does."); return; }
       if (!isISO(sd.value)) { resetDates(); dmsg.textContent = "Enter a valid start date, or leave it empty."; return; }
-      if (parseISO(sd.value) < questFirst) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(questFirst) + ", this quest's own start date."; return; }
-      if (sd.value > iso(taskEnd(t))) { resetDates(); dmsg.textContent = "The start date can't be after the due date."; return; }
+      if (parseISO(sd.value) < questFirst) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(questFirst) + ", this quest’s own start date."; return; }
+      if (sd.value > iso(taskEnd(t))) { resetDates(); dmsg.textContent = "The start date can’t be after the due date."; return; }
       dmsg.textContent = "";
       t.start = sd.value; changed(); notify("Start date saved.");
     });
@@ -3128,7 +3128,7 @@ function buildDetail(t, inline) {
   var nDone = t.steps.filter(function (s) { return s.done; }).length;
   box.appendChild(el("h3", null, t.steps.length ? "Steps (" + nDone + " of " + t.steps.length + " done)" : "Steps"));
   if (!t.steps.length) box.appendChild(el("p", { "class": "hint" }, "No steps yet. This task counts as one item in the burndown. Add steps to break it up."));
-  if (t.steps.length) box.appendChild(el("p", { "class": "hint" }, "Use a step's pencil to rename it, put it on the Launch checklist (it stays one step, so nothing is counted twice), or remove it."));
+  if (t.steps.length) box.appendChild(el("p", { "class": "hint" }, "Use a step’s pencil to rename it, put it on the Launch checklist (it stays one step, so nothing is counted twice), or remove it."));
   var ul = el("ul", { "class": "steps" });
   t.steps.forEach(function (s) {
     var sli = el("li", { "class": s.done ? "done" : "" });
@@ -3209,7 +3209,7 @@ function launchSection(root, p) {
   var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h2", { "class": "sechead-h", id: "h-checks" }, "Before you launch"));
   if (!readOnly) ha.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a launch checklist item" }, "Add item"), "click", function () { stepDialog(true, p.id); }));
   root.appendChild(ha);
-  root.appendChild(el("p", { "class": "hint" }, "These are steps from this quest's tasks. Tick one here or in Tasks and it stays in sync."));
+  root.appendChild(el("p", { "class": "hint" }, "These are steps from this quest’s tasks. Tick one here or in Tasks and it stays in sync."));
   var prog = el("p", { "class": "progress", role: "status", "aria-live": "polite" });
   var items = launchItems(p.id);
   var lcLinks = linkedQuests(p).filter(function (lp) { return lp.launchCritical; });
@@ -3452,7 +3452,7 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
   if (readOnly) {
     host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + (p.due ? ", due " + fmt(p.due) : "") + ", " + wl() + " length " + eff.days + " days" + "."));
   } else {
-    host.appendChild(el("p", { "class": "hint" }, "Set this quest's own start date, due date, and " + wl() + " length."));
+    host.appendChild(el("p", { "class": "hint" }, "Set this quest’s own start date, due date, and " + wl() + " length."));
     var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
     var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
@@ -3492,7 +3492,7 @@ function questCharts(p, wide, expandBtn, first) {
     out.appendChild(tl.node);
   } else {
     // Slip moves incomplete tasks only -- see slipDialog().
-    var slipBtn = el("button", { type: "button", "class": "small", title: "Push this quest's incomplete tasks later to catch up" }, "Slip schedule");
+    var slipBtn = el("button", { type: "button", "class": "small", title: "Push this quest’s incomplete tasks later to catch up" }, "Slip schedule");
     on(slipBtn, "click", function () { slipDialog(p); });
     var hd1 = el("div", { "class": "sechead" }); hd1.appendChild(el("h2", null, "Timeline")); hd1.appendChild(slipBtn);
     out.appendChild(hd1);
@@ -3536,7 +3536,7 @@ function demoteToCandidate(id) {
 function standingBlock() {
   var wrap = el("div");
   wrap.appendChild(el("h2", { "class": "first" }, "In progress"));
-  wrap.appendChild(el("p", { "class": "hint" }, "Built from your open tasks, ordered by when each quest's next task starts. Pin a quest to the sidebar for quick access."));
+  wrap.appendChild(el("p", { "class": "hint" }, "Built from your open tasks, ordered by when each quest’s next task starts. Pin a quest to the sidebar for quick access."));
   var box = el("div", { "class": "box", style: "margin-top:10px" });
   var groups = {}, order = [];
   ordered().forEach(function (t) {
@@ -3760,7 +3760,7 @@ function renderVault(root) {
     row.appendChild(info);
     var acts = el("div", { "class": "li-actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Restore this " + e.kind }, "Restore"), "click", function () { restoreEntry(e); }));
-    acts.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this " + e.kind + " forever (can't be undone)" }, "Delete forever"), "click", function () { deleteForever(e); }));
+    acts.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this " + e.kind + " forever (can’t be undone)" }, "Delete forever"), "click", function () { deleteForever(e); }));
     row.appendChild(acts); li.appendChild(row); ul.appendChild(li);
   });
   root.appendChild(ul);
@@ -3783,67 +3783,67 @@ function helpTopics() {
   return [
     ["Find your way around", [
       "On a computer, use the sidebar on the left. On a phone, use the tabs along the bottom.",
-      "The **Main menu** (three lines, top right) lists every page, including the ones that don't fit in the sidebar or the tab bar.",
-      "Use the **+** button to add a quest, task, step, decision, milestone, backlog item, or idea. It opens a menu in that order, since quests and tasks are what you'll reach for most.",
+      "The **Main menu** (three lines, top right) lists every page, including the ones that don’t fit in the sidebar or the tab bar.",
+      "Use the **+** button to add a quest, task, step, decision, milestone, backlog item, or idea. It opens a menu in that order, since quests and tasks are what you’ll reach for most.",
       "Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **X** where the magnifier was to cancel."]],
     ["From idea to quest: the whole path", [
-      "An idea starts in the **Workshop**, with nothing more than a line of text and an optional note. This is the place for something you're not ready to commit to -- it costs nothing to put there and nothing to leave sitting.",
-      "When an idea is worth doing, select **Make candidate**. Its note becomes the candidate's Notes, and it moves to **Quests**, under **Candidates**. This move only goes one way: a candidate can't be sent back to the Workshop. If you change your mind, vault it instead.",
-      "A candidate has its own page, the same shape as an active quest's -- Tasks, Schedule, Notes, Quest Giver info, all of it. You can build the whole thing out, start date and all, before it's actually running. The only pieces missing are Quest links and the usual finish-line buttons, since neither one means anything until the quest is real.",
-      "**Promote** turns a candidate into an active quest. Nothing about the record changes -- same id, same tasks, same everything -- only its status moves. From here it behaves like any other quest: it can be marked complete, sent to the Vault, or demoted back to a candidate if it turns out the timing was wrong.",
-      "**Demote**, on an active quest's page, is the reverse of Promote. Its Quest links come off on both sides first (a candidate isn't a link target), but Sidequest remembers them, and promoting the quest again puts them back.",
-      "A quest finishes by **Mark complete**, or on its own once every task is done. From there, **Reopen** brings it back to active, or **Vault** sets it aside for good. Nothing is actually destroyed until you delete it from the Vault."]],
+      "An idea starts in the **Workshop**, with nothing more than a line of text and an optional note. This is the place for something you’re not ready to commit to. It costs nothing to put there, and nothing to leave sitting.",
+      "When an idea is worth doing, select **Make candidate**. Its note becomes the candidate’s Notes, and it moves to **Quests**, under **Candidates**. This move only goes one way: a candidate can’t be sent back to the Workshop. If you change your mind, vault it instead.",
+      "A candidate has its own page, the same shape as an active quest’s: Tasks, Schedule, Notes, Quest Giver info. You can build the whole thing out, start date and all, before it’s running. The only pieces missing are Quest links and the usual finish-line buttons, since neither one means anything until the quest is real.",
+      "**Promote** turns a candidate into an active quest. It’s the same record with the same id and the same tasks, only its status moves. From here it behaves like any other quest: it can be marked complete, sent to the Vault, or demoted back to a candidate if it turns out the timing was wrong.",
+      "**Demote**, on an active quest’s page, is the reverse of Promote. Its Quest links come off on both sides first, since a candidate isn’t a link target, but Sidequest remembers them, and promoting the quest again puts them back.",
+      "A quest finishes by **Mark complete**, or on its own once every task is done. From there, **Reopen** brings it back to active, or **Vault** sets it aside. Nothing is destroyed until you delete it from the Vault."]],
     ["Work through your day (Today)", [
       "**Next up** shows the task to do now. **Start** marks it in progress, and **Open task** takes you to it in Tasks.",
-      "Anything past its end date appears below it. If you're running behind, open that quest's own page and use **Slip schedule** there.",
-      "The burndown counts tasks, one each, against the plan. Sidequest records the count itself every time something changes, so there's nothing to type in, and a day you don't open the app just keeps the last count. An orange line tracks scope -- it climbs when a task is added and drops when one is removed, so growing work doesn't quietly look like progress. A task added after its quest started carries an Added tag with its date, on the quest's page and in Tasks. A quest marked Complete takes its open tasks off this chart entirely. Point at a day or week, tap it, or focus the chart and use the arrow keys, to see its counts and which tasks are behind them."]],
+      "Anything past its end date appears below it. If you’re running behind, open that quest’s own page and use **Slip schedule** there.",
+      "The burndown counts tasks, one each, against the plan. Sidequest records the count itself every time something changes, so there’s nothing to type in, and a day you don’t open the app just keeps the last count. An orange line tracks scope. It climbs when a task is added and drops when one is removed, so growing work doesn’t quietly look like progress. A task added after its quest started carries an Added tag with its date, on the quest’s page and in Tasks. A quest marked Complete takes its open tasks off this chart. Point at a day or week, tap it, or focus the chart and use the arrow keys, to see its counts and which tasks are behind them."]],
     ["Add and schedule tasks", [
-      "Tap **+**, then **New task**. Enter the quest, what you're doing, and how you'll know it's done.",
-      "Pick a due date and the task lands in whichever " + w + " contains it. Add a start date if it begins later than that " + w + " does, and an estimated time in hours if that's useful to you. Leave the due date empty and the task goes to the Backlog instead.",
-      "Open a task from **Tasks**, or select it right on its quest's page where it expands in place, to change its status, add steps and notes, or edit its dates and estimate. A start date can't fall after the due date. The pencil beside its name renames it.",
-      "A quest's page shows the estimated time still open beside its task count -- something like \"Est. 12 hours remaining\" -- and that number drops as tasks get done.",
-      "A task is Not started, In progress, or Completed -- blue, yellow, and green, everywhere it shows up: the status menu, the task's row, its bar on a quest's Timeline.",
-      "Finishing every step on a task marks it done. Add a new step to a finished task and it reopens, since there's now something left to do."]],
+      "Tap **+**, then **New task**. Enter the quest, what you’re doing, and how you’ll know it’s done.",
+      "Pick a due date and the task lands in whichever " + w + " contains it. Add a start date if it begins later than that " + w + " does, and an estimated time in hours if that’s useful to you. Leave the due date empty and the task goes to the Backlog instead.",
+      "Open a task from **Tasks**, or select it right on its quest’s page where it expands in place, to change its status, add steps and notes, or edit its dates and estimate. A start date can’t fall after the due date. The pencil beside its name renames it.",
+      "A quest’s page shows the estimated time still open beside its task count, something like “Est. 12 hours remaining,” and that number drops as tasks get done.",
+      "A task is Not started, In progress, or Completed, shown as blue, yellow, and green everywhere it appears: the status menu, the task’s row, and its bar on a quest’s Timeline.",
+      "Finishing every step on a task marks it done. Add a new step to a finished task and it reopens, since there’s now something left to do."]],
     ["Use the Backlog", [
-      "The Backlog holds work with no dates yet. Add something directly with **+**, then **New backlog item**, or clear a task's due date to send it there.",
-      "To schedule a Backlog item, open it and set a due date. Nothing in the Backlog counts toward the burndown until it has one. Going the other way -- clearing a due date -- also clears the start date, but keeps whatever estimate you set."]],
+      "The Backlog holds work with no dates yet. Add something directly with **+**, then **New backlog item**, or clear a task’s due date to send it there.",
+      "To schedule a Backlog item, open it and set a due date. Nothing in the Backlog counts toward the burndown until it has one. Going the other way, clearing a due date, also clears the start date, but keeps whatever estimate you set."]],
     ["Use the Workshop", [
-      "The Workshop is where an idea lives before it's worth a full quest record. **Add idea** needs nothing but a line of text and, if you want, a note.",
-      "Select an idea's title to open it and change the text or note. **Make candidate** is the only way out -- see \"From idea to quest: the whole path\" for where it goes from there."]],
+      "The Workshop is where an idea lives before it’s worth a full quest record. **Add idea** needs nothing but a line of text and, if you want, a note.",
+      "Select an idea’s title to open it and change the text or note. **Make candidate** is the only way out. See “From idea to quest: the whole path” for where it goes from there."]],
     ["Manage quests", [
-      "A quest is the same thing a project would be called anywhere else. Yours haven't changed, only the word has.",
-      "Every quest has its own page. Open **Quests** and select its name. The pencil beside the title renames it; the Notes field below is yours to use however you like. Further down: Tasks, the Before you launch checklist, Notes, and Quest links, in that order, with its Schedule, Timeline, and Burndown running alongside (below, on a phone). Change the schedule and the Timeline and Burndown redraw to match. On the Timeline, a pale band behind each task's bar marks the " + w + " it falls in. **Expand**, on a wide screen, makes all three large.",
-      "**In progress**, on the Quests page, lists each active quest with its next task. **Pin** keeps one in the sidebar for quick access -- unpinning only hides it there, it's still listed on this page either way. A quest that's Complete loses its pin automatically, since there's nothing left to jump to; Reopen brings the pin back along with everything else.",
-      "Below In progress, the Quests page lists anything complete or not yet started, under whichever heading fits what's actually there: Pending, Completed, or Pending & completed.",
-      "**Quest Giver Export**, on an active or complete quest's page, downloads one self-contained web page with that quest's tasks, notes, and a working schedule and burndown, meant for sharing outside the app. A linked quest that's also active or complete rides along with its own section. Fill in **Your contact info** in Settings and this quest's own **Quest Giver** section, and both print at the top as Prepared by and Prepared for. **Add brandmark**, also in Settings, uploads a small image that prints above Prepared by."]],
+      "A quest is the same thing a project would be called anywhere else. Yours haven’t changed, only the word has.",
+      "Every quest has its own page. Open **Quests** and select its name. The pencil beside the title renames it; the Notes field below is yours to use however you like. Further down: Tasks, the Before you launch checklist, Notes, and Quest links, in that order, with its Schedule, Timeline, and Burndown running alongside (below, on a phone). Change the schedule and the Timeline and Burndown redraw to match. On the Timeline, a pale band behind each task’s bar marks the " + w + " it falls in. **Expand**, on a wide screen, makes all three large.",
+      "**In progress**, on the Quests page, lists each active quest with its next task. **Pin** keeps one in the sidebar for quick access. Unpinning only hides it there; it’s still listed on this page either way. A quest that’s Complete loses its pin automatically, since there’s nothing left to jump to, and Reopen brings the pin back along with everything else.",
+      "Below In progress, the Quests page lists anything complete or not yet started, under whichever heading fits what’s actually there: Pending, Completed, or Pending & completed.",
+      "**Quest Giver Export**, on an active or complete quest’s page, downloads one self-contained web page with that quest’s tasks, notes, and a working schedule and burndown, meant for sharing outside the app. A linked quest that’s also active or complete rides along with its own section. Fill in **Your contact info** in Settings and this quest’s own **Quest Giver** section, and both print at the top as Prepared by and Prepared for. **Add brandmark**, also in Settings, uploads a small image that prints above Prepared by."]],
     ["Finish or vault a quest", [
-      "**Mark complete** works even with tasks still open -- it's a statement that the quest is done, not that every box is checked. A quest also completes on its own once every task actually is. Either way you're offered the Vault right away, or you can leave it sitting in Quests.",
-      "A completed quest wears a **Complete** badge and drops out of In progress. Its tasks leave Tasks, the main Timeline, Today, and the main burndown too, though they're still right there on the quest's own page. **Reopen** undoes all of it: back to active, tasks back everywhere, pin restored if it had one.",
+      "**Mark complete** works even with tasks still open. A quest also completes on its own once every task actually is. Either way you’re offered the Vault right away, or you can leave it sitting in Quests.",
+      "A completed quest wears a **Complete** badge and drops out of In progress. Its tasks leave Tasks, the main Timeline, Today, and the main burndown too, though they’re still right there on the quest’s own page. **Reopen** undoes all of it: back to active, tasks back everywhere, pin restored if it had one.",
       "**Vault** sends a quest and its open tasks to the Vault together. **Restore** brings all of it back, exactly as it was."]],
     ["Link quests", [
-      "**Quest links**, on a quest's page, tie it to related quests. **Link quest** creates one -- it runs both directions, so it shows up on the other quest's page too.",
-      "**Mark launch critical** flags a linked quest as something that has to finish first. It shows up on the OTHER quest's Launch checklist, counted done once the linked one is complete or vaulted. Nothing is blocked by this -- completing or vaulting a quest with an unfinished launch-critical link just warns you first."]],
+      "**Quest links**, on a quest’s page, tie it to related quests. **Link quest** creates one, and it runs both directions, so it shows up on the other quest’s page too.",
+      "**Mark launch critical** flags a linked quest as something that has to finish first. It shows up on the other quest’s Launch checklist, counted done once the linked one is complete or vaulted. Completing or vaulting a quest with an unfinished launch-critical link only warns you, it doesn’t block you."]],
     ["Read the Timeline", [
-      "Every quest gets a lane. The light bar is an estimate you set yourself on the quest's page -- not a promise, just a guess rendered visually.",
+      "Every quest gets a lane. The light bar is an estimate you set yourself on the quest’s page, not a promise.",
       "**Add milestone** places a diamond on the date you choose, also listed below the timeline. Select a diamond, or its text in that list, to change its quest, text, or date, or to remove it.",
-      "A quest's own page has its own Timeline, one lane per scheduled task, and its own Burndown beneath it. Point at a week, tap it, or focus the chart and use the arrow keys, to see the count and which tasks finish or were completed that week. The counts come straight from your tasks and can't be edited by hand.",
-      "On a quest's own Timeline, a task's bar takes its status color: blue for Not started, yellow for In progress, green for Completed."]],
+      "A quest’s own page has its own Timeline, one lane per scheduled task, and its own Burndown beneath it. Point at a week, tap it, or focus the chart and use the arrow keys, to see the count and which tasks finish or were completed that week. The counts come straight from your tasks and can’t be edited by hand.",
+      "On a quest’s own Timeline, a task’s bar takes its status color: blue for Not started, yellow for In progress, green for Completed."]],
     ["Launch checklist and decisions", [
-      "The pencil beside any step lets you rename it, put it on that quest's **Launch** checklist, or remove it. A step on the checklist carries a **Launch** tag, and ticking it there or in Tasks keeps both in sync -- there's only one real state underneath.",
+      "The pencil beside any step lets you rename it, put it on that quest’s **Launch** checklist, or remove it. A step on the checklist carries a **Launch** tag, and ticking it there or in Tasks keeps both in sync.",
       "A decision always belongs to exactly one step. **Add decision** beside a step writes down what needs settling; the decision tag opens it again to answer, change, or remove it. Answering it ticks the step, and clearing the answer unticks it again.",
-      "**Add item**, on a quest's Launch section, creates a new step for the list directly, without going through a task first."]],
+      "**Add item**, on a quest’s Launch section, creates a new step for the list without going through a task first."]],
     ["The Vault and undo", [
-      "Only **Quests** and **Ideas** go to the Vault, each with its own **Vault** button. A completed task has nowhere to go -- it just stays in its quest, marked done.",
-      "**Delete** on a task, or **Remove** on a decision or milestone, is immediate, with a short **Undo** right after in case that wasn't what you meant.",
-      "In the Vault, select a quest's name to see it read-only. **Restore** brings a quest or idea back, tasks included. **Delete forever** always asks first -- there's no undo once you confirm it."]],
-    ["Slip a quest's schedule", [
-      "On a quest's own page, above the Timeline, **Slip schedule** pushes its still-incomplete tasks later by however many days you choose. Completed tasks and anything in the Backlog don't move -- they're either already done or have no date to slip in the first place.",
-      "**Undo last slip**, in the same dialog, puts everything back exactly where it was."]],
+      "Only **Quests** and **Ideas** go to the Vault, each with its own **Vault** button. A completed task just stays in its quest, marked done.",
+      "**Delete** on a task, or **Remove** on a decision or milestone, is immediate, with a short **Undo** right after in case that wasn’t what you meant.",
+      "In the Vault, select a quest’s name to see it read-only. **Restore** brings a quest or idea back, tasks included. **Delete forever** always asks first, and there’s no undo once you confirm it."]],
+    ["Slip a quest’s schedule", [
+      "On a quest’s own page, above the Timeline, **Slip schedule** pushes its still-incomplete tasks later by however many days you choose. Completed tasks and anything in the Backlog don’t move.",
+      "**Undo last slip**, in the same dialog, puts everything back where it was."]],
     ["Settings, backup, and starting over", [
       "**Settings** covers how Sidequest looks and schedules by default: the length of a " + w + " in days, what to call it (Block, Sprint, and so on), date format, theme, whether the splash plays on open, whether **Sound Effects** play at all, and whether finishing a quest sets off a **Completion FX** confetti burst.",
-      "Everything lives in this browser only, so **Backup and restore** matters. **Save backup** writes a file wherever you choose; **Restore backup** reads one back in, after warning you it replaces everything currently here -- you get a few seconds to undo that if you change your mind. Go two weeks without a backup and Today will say so, quietly.",
-      "**Vault** items can delete themselves automatically, 7, 30, 60, or 90 days after being vaulted, or never, if you leave it there. Sidequest checks this once, each time it opens -- there's no second warning once the setting is on.",
-      "**Start fresh** erases everything, after one warning. Back it up first if there's anything worth keeping. You can start completely empty, or with the sample quests back in place."]]
+      "Everything lives in this browser only, so **Backup and restore** matters. **Save backup** writes a file wherever you choose. **Restore backup** reads one back in, after warning you it replaces everything currently here, with a few seconds to undo if you change your mind. Go two weeks without a backup and Today will say so, quietly.",
+      "**Vault** items can delete themselves automatically, 7, 30, 60, or 90 days after being vaulted, or never, if you leave it there. Sidequest checks this once, each time it opens, with no second warning once the setting is on.",
+      "**Start fresh** erases everything, after one warning. Back it up first if there’s anything worth keeping. You can start completely empty, or with the sample quests back in place."]]
   ];
 }
 function renderHelp(root) {
@@ -3906,7 +3906,7 @@ function readBrandmarkFile(file, msg, onDone) {
   r.onerror = function () { msg.textContent = "The file could not be read."; };
   r.onload = function () {
     var img = new Image();
-    img.onerror = function () { msg.textContent = "That file isn't a usable image."; };
+    img.onerror = function () { msg.textContent = "That file isn’t a usable image."; };
     img.onload = function () {
       if (img.naturalWidth > BRANDMARK_MAX_DIM || img.naturalHeight > BRANDMARK_MAX_DIM) {
         msg.textContent = "That image is " + img.naturalWidth + "×" + img.naturalHeight + " pixels. Each side must be " + BRANDMARK_MAX_DIM + " pixels or less.";
@@ -3979,7 +3979,7 @@ function renderSettings(page) {
 
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   root.appendChild(el("h2", { "class": "first" }, "Schedule defaults"));
-  root.appendChild(el("p", { "class": "hint" }, "Each quest sets its own start date on its page. This is the default " + wl() + " length for any quest that hasn't set its own."));
+  root.appendChild(el("p", { "class": "hint" }, "Each quest sets its own start date on its page. This is the default " + wl() + " length for any quest that hasn’t set its own."));
   var scheduleBox = el("div", { "class": "box", style: "margin-top:10px" });
   var grid = el("div", { "class": "setgrid" });
   function fieldOf(id, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); grid.appendChild(w); }
@@ -4011,7 +4011,7 @@ function renderSettings(page) {
   on(th, "change", function () { state.settings.theme = th.value; applyTheme(); save(); });
   tw.appendChild(th); ag.appendChild(tw);
   appearanceBox.appendChild(ag);
-  appearanceBox.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device's own format."));
+  appearanceBox.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device’s own format."));
   var ag2 = el("div", { "class": "setgrid", style: "margin-top:10px" });
   var sw = el("div", { "class": "field" }); sw.appendChild(el("label", { "for": "set-splash" }, "Splash screen on open"));
   var ss = el("select", { id: "set-splash", "class": "plain" });
