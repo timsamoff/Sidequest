@@ -27,12 +27,13 @@ const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 register(pathToFileURL(path.join(__dirname, "isolate-loader.mjs")));
 
 let counter = 0;
-async function mk(saved, claude, stamp) {
+async function mk(saved, claude, stamp, audioStub) {
   const dom = new JSDOM(html, { url: "https://example.test/", pretendToBeVisual: true });
   dom.window.scrollTo = () => {};
   if (claude) dom.window.claude = claude;
   if (stamp) dom.window.localStorage.setItem("sidequest-template-v1-saved-at", stamp);
   if (saved) dom.window.localStorage.setItem("sidequest-template-v1", JSON.stringify(saved));
+  if (audioStub) dom.window.Audio = audioStub;
   global.window = dom.window;
   global.document = dom.window.document;
   // Node 22+ has its own built-in `localStorage` global, defined as a getter --
@@ -1547,6 +1548,74 @@ async function exportClick(k, projectName) {
   const saved = { settings: { brandmark: tinyPng }, quests: [{ id: "pB2", name: "Brandmark Only", status: "active", start: "2026-08-03", days: 7 }], tasks: [] };
   const { html } = await exportClick(kit(await mk(saved)), "Brandmark Only");
   ok(html.includes("Prepared by") && html.includes('class="ebrandmark"'), "Prepared by shows with just the brandmark, no text fields filled in");
+}
+{
+  // Audio and Completion FX settings: both default on, both save, both round-trip.
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.tab("settings");
+  ok(k.$("set-audio").value === "on" && k.$("set-completion-fx").value === "on", "Audio and Completion FX both default to On");
+  k.$("set-audio").value = "off"; k.fire(k.$("set-audio"));
+  ok(k.saved().settings.audio === false, "turning Audio off saves immediately");
+  k.$("set-completion-fx").value = "off"; k.fire(k.$("set-completion-fx"));
+  ok(k.saved().settings.completionFx === false, "turning Completion FX off saves immediately, independent of Audio");
+}
+{
+  const saved = { settings: { audio: false, completionFx: false } };
+  const k = kit(await mk(saved));
+  ok(k.saved().settings.audio === false && k.saved().settings.completionFx === false, "both settings round-trip through normalize() when off");
+}
+{
+  // The splash sound plays at boot only when both the splash itself and
+  // Audio are on.
+  let played = null;
+  const stub = function (src) { played = src; return { play: function () { return Promise.resolve(); } }; };
+  await mk({ settings: { showSplash: true, audio: true } }, undefined, undefined, stub);
+  ok(played === "assets/sfx/splash.mp3", "the splash sound plays at boot when showSplash and Audio are both on (" + played + ")");
+}
+{
+  let played = null;
+  const stub = function (src) { played = src; return { play: function () { return Promise.resolve(); } }; };
+  await mk({ settings: { showSplash: false, audio: true } }, undefined, undefined, stub);
+  ok(played === null, "no splash sound when the splash itself is off, even with Audio on");
+}
+{
+  let played = null;
+  const stub = function (src) { played = src; return { play: function () { return Promise.resolve(); } }; };
+  await mk({ settings: { showSplash: true, audio: false } }, undefined, undefined, stub);
+  ok(played === null, "no splash sound when Audio is off, even with the splash itself on");
+}
+{
+  // The completion sound plays only when Audio is on, regardless of
+  // Completion FX (a separate, not-yet-built visual effect toggle).
+  const saved = {
+    settings: { audio: true },
+    quests: [{ id: "pSnd", name: "Sound Quest", status: "active", start: "2026-08-03", days: 7 }],
+    tasks: [{ id: "tSnd", block: 1, questId: "pSnd", what: "Only task", done: "d", status: "Not started", steps: [] }]
+  };
+  const k = kit(await mk(saved));
+  let played = null;
+  const RealAudio = k.w.Audio;
+  k.w.Audio = function (src) { played = src; return { play: function () { return Promise.resolve(); } }; };
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sound Quest"));
+  k.click(k.btn(k.$("view"), "Mark complete"));
+  k.w.Audio = RealAudio;
+  ok(played === "assets/sfx/complete.mp3", "Mark complete plays the completion sound when Audio is on (" + played + ")");
+}
+{
+  const saved = {
+    settings: { audio: false },
+    quests: [{ id: "pNoSnd", name: "No Sound Quest", status: "active", start: "2026-08-03", days: 7 }],
+    tasks: [{ id: "tNoSnd", block: 1, questId: "pNoSnd", what: "Only task", done: "d", status: "Not started", steps: [] }]
+  };
+  const k = kit(await mk(saved));
+  let played = false;
+  const RealAudio = k.w.Audio;
+  k.w.Audio = function () { played = true; return { play: function () { return Promise.resolve(); } }; };
+  k.tab("projects"); k.click(k.btn(k.$("view"), "No Sound Quest"));
+  k.click(k.btn(k.$("view"), "Mark complete"));
+  k.w.Audio = RealAudio;
+  ok(!played, "Mark complete plays no sound when Audio is off");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

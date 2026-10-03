@@ -105,6 +105,22 @@ function stripModuleSyntax(source, filename) {
   return out.join("\n");
 }
 
+// Sound effects are referenced in app/*.js as plain relative paths
+// ("assets/sfx/....mp3"), which don't resolve on a published artifact with
+// no adjacent assets/ folder -- same problem the favicon had. Fixed the same
+// way: the literal string inside the bundled JS is swapped for a base64
+// data URI built from the real file, at build time.
+var SFX_FILES = ["splash.mp3", "complete.mp3"];
+
+function buildSfxDataUris() {
+  var map = {};
+  SFX_FILES.forEach(function (name) {
+    var buf = fs.readFileSync(path.join(ROOT, "assets", "sfx", name));
+    map["assets/sfx/" + name] = "data:audio/mpeg;base64," + buf.toString("base64");
+  });
+  return map;
+}
+
 function build() {
   var htmlPath = path.join(ROOT, "index.html");
   var html = fs.readFileSync(htmlPath, "utf8");
@@ -119,6 +135,13 @@ function build() {
     scriptParts.push("// ---- " + name + " ----\n" + stripModuleSyntax(src, name));
   });
   var bundledScript = "(function () {\n\"use strict\";\n" + scriptParts.join("\n\n") + "\n})();\n";
+
+  var sfxDataUris = buildSfxDataUris();
+  Object.keys(sfxDataUris).forEach(function (relPath) {
+    var literal = '"' + relPath + '"';
+    if (bundledScript.indexOf(literal) === -1) throw new Error("build-artifact: expected to find " + literal + " in the bundled script to inline as a sound effect, but it wasn't there -- check the reference hasn't changed.");
+    bundledScript = bundledScript.split(literal).join('"' + sfxDataUris[relPath] + '"');
+  });
 
   // Verify every app/*.js file was actually included -- a file added to app/
   // later but not added to MODULE_ORDER above must fail the build loudly,
@@ -149,6 +172,7 @@ function build() {
   // -- the og:image meta tag's absolute https://samoff.com/sidequest/assets/...
   // URL is fine as-is and must not trip this check.
   if (/(href|src)="assets\//.test(out)) throw new Error("build-artifact: a relative assets/ reference survived into the bundle -- these don't resolve on a published artifact with no adjacent asset folder.");
+  if (/"assets\/sfx\//.test(out)) throw new Error("build-artifact: a relative assets/sfx/ string literal survived into the bundle -- the sound-effect inlining above didn't replace it.");
   if (out.indexOf(faviconDataUri) === -1) throw new Error("build-artifact: favicon <link> tags not found/replaced -- check index.html's <head> hasn't changed shape.");
   if (out.indexOf("<style>") === -1) throw new Error("build-artifact: css <link> tags not found/replaced -- check index.html's <head> hasn't changed shape.");
   if (out.indexOf(bundledScript) === -1) throw new Error("build-artifact: script tag not found/replaced -- check index.html's closing <body> hasn't changed shape.");

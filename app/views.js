@@ -9,7 +9,7 @@ import {
   validPage, isPinned, pinPage, unpinPage, questMeta, fmtHours, fmtHoursLong, questEstimate, recordHist, checkpointStep, globalActual,
   findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask
 } from "./model.js";
-import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline } from "./dom.js";
+import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx } from "./dom.js";
 import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme } from "./app.js";
 import { stepDialog, stepEditDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, candidateDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
@@ -144,6 +144,7 @@ export function exportQuestForClient(p) {
 // Offers vaulting now or leaving it in Quests. Launch-critical warning is soft, never blocking.
 export function completionDialog(p) {
   var warn = incompleteLaunchCriticalLinks(p);
+  if (state.settings.audio) playSfx("assets/sfx/complete.mp3");
   openModal("Quest complete", function (body) {
     body.appendChild(el("p", { "class": "first" }, "“" + p.name + "” is marked complete. Send it to the Vault now, or leave it in Quests."));
     var openTasks = questRemainingUnits(p);
@@ -1016,7 +1017,7 @@ export function helpTopics() {
       "On a quest's own page, above the Timeline, choose **Slip schedule**. Pick the number of days and choose **Push dates later**, and its still-incomplete tasks move later by that many days. Completed tasks and the Backlog are not affected.",
       "**Undo last slip** in the same dialog reverses it."]],
     ["Settings, backup, and starting over", [
-      "In **Settings**, set the default length of a stretch of work in days, what to call it (Block, Sprint, and so on), the date format, the theme, and whether the splash screen plays when the app opens.",
+      "In **Settings**, set the default length of a stretch of work in days, what to call it (Block, Sprint, and so on), the date format, the theme, whether the splash screen plays when the app opens, and whether sound effects play at all (**Audio**).",
       "Everything is saved in this browser only. Under **Backup and restore**, **Save backup** lets you choose where to put a backup file, and **Restore backup** loads one back after warning you that it replaces everything. You get a few seconds to undo a restore. After two weeks without a backup, Today adds a quiet reminder.",
       "Under **Vault**, you can set items to delete automatically after 7, 30, 60, or 90 days, counted from when each one was vaulted, or leave it set to Never. This is checked each time Sidequest opens, and there's no further warning once it's turned on.",
       "**Start fresh** erases everything after a warning. Save a backup first. You can begin empty or with the starting quests."]]
@@ -1191,6 +1192,16 @@ export function renderSettings(page) {
   [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.showSplash) op.selected = true; ss.appendChild(op); });
   on(ss, "change", function () { state.settings.showSplash = ss.value === "on"; save(); });
   sw.appendChild(ss); ag.appendChild(sw);
+  var aw2 = el("div", { "class": "field" }); aw2.appendChild(el("label", { "for": "set-audio" }, "Audio"));
+  var as = el("select", { id: "set-audio", "class": "plain" });
+  [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.audio) op.selected = true; as.appendChild(op); });
+  on(as, "change", function () { state.settings.audio = as.value === "on"; save(); });
+  aw2.appendChild(as); ag.appendChild(aw2);
+  var fxw = el("div", { "class": "field" }); fxw.appendChild(el("label", { "for": "set-completion-fx" }, "Completion FX"));
+  var fxs = el("select", { id: "set-completion-fx", "class": "plain" });
+  [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.completionFx) op.selected = true; fxs.appendChild(op); });
+  on(fxs, "change", function () { state.settings.completionFx = fxs.value === "on"; save(); });
+  fxw.appendChild(fxs); ag.appendChild(fxw);
   appearanceBox.appendChild(ag);
   appearanceBox.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device's own format. Nothing here uses a time of day yet."));
   root.appendChild(appearanceBox);

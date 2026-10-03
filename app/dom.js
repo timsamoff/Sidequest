@@ -8,6 +8,17 @@ export function el(tag, attrs, text) {
   return e;
 }
 export function on(node, ev, fn) { node.addEventListener(ev, fn); return node; }
+// Plays a short sound effect. Caller decides whether sound is wanted (the
+// audio setting) -- this just plays `src`, silently giving up on any
+// failure (a browser blocking autoplay before the user has interacted with
+// the page, a missing file, an unsupported format), since a sound effect is
+// never worth surfacing an error over.
+export function playSfx(src) {
+  try {
+    var a = new window.Audio(src), p = a.play();
+    if (p && typeof p.catch === "function") p.catch(function () {});
+  } catch (e) { /* no audio support */ }
+}
 // A pencil icon button: the app's one affordance for "change this text".
 var PENCIL = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
 export function pencilButton(label, title, onClick) {

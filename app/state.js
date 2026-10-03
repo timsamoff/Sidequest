@@ -121,7 +121,7 @@ export function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop,
     milestones: d.milestones, pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "" }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true }
   };
 }
 
@@ -267,6 +267,8 @@ export function normalize(s) {
     // URL-style value from before this existed) is dropped, not truncated,
     // since a cut-off image would just fail to decode.
     if (typeof s.settings.brandmark === "string" && /^data:image\//.test(s.settings.brandmark) && s.settings.brandmark.length <= 500000) d.settings.brandmark = s.settings.brandmark;
+    if (typeof s.settings.audio === "boolean") d.settings.audio = s.settings.audio;
+    if (typeof s.settings.completionFx === "boolean") d.settings.completionFx = s.settings.completionFx;
   }
   // Pins used to route to a quest's page via "proj:" + id; migrate any saved
   // pin to "quest:" + id so an old sidebar pin keeps working after the rename.

@@ -1,6 +1,6 @@
 import { state, ui, save, saveUI, changed, autoVault, purgeOldVault, APP_NAME, loadFromDbIfAvailable } from "./state.js";
 import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest } from "./model.js";
-import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline } from "./dom.js";
+import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline, playSfx } from "./dom.js";
 import { lateTasks } from "./model.js";
 import {
   renderToday, renderSchedule, renderQuests, renderWorkshop,
@@ -134,7 +134,9 @@ Promise.resolve().then(function () {
   autoVault(); purgeOldVault(); save();
   renderAll();
 
-  // Decorative only -- the app has already rendered above.
+  // Decorative only -- the app has already rendered above. The sound only
+  // plays when the splash itself is actually shown, not just when audio is on.
+  if (state.settings.showSplash && state.settings.audio) playSfx("assets/sfx/splash.mp3");
   playSplash(state.settings.showSplash);
 
   // Checked after first paint -- no-op on the web app, real on a published artifact with db.
