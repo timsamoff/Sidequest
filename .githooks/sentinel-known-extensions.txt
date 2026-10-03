@@ -6,6 +6,7 @@
 .json
 .md
 .mjs
+.mp3
 .png
 .svg
 .txt
