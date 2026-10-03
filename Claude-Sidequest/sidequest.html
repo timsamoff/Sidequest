@@ -949,6 +949,12 @@ function stepOptions(questId) {
   });
   return o;
 }
+// One task's own steps, for the Quest -> Task -> Step cascade in decisionDialog().
+function stepOptionsForTask(taskId) {
+  var t = findTask(taskId);
+  if (!t) return [];
+  return t.steps.map(function (s) { return { value: s.id, label: short(s.text, 60) }; });
+}
 function taskOptions(questId) {
   var ts = orderedAll();
   if (questId) ts = ts.filter(function (t) { return t.questId === questId; });
@@ -2489,22 +2495,67 @@ function ideaDialog(idea) {
 }
 // prefill is a quest id or { step } (already chosen). A decision must
 // belong to a step (Quest -> Task -> Step -> Decision), at most one.
+// Steps with no decision yet, for one task -- shared by the cascade below and
+// by the quest-level re-check once a task is chosen.
+function openStepOptions(taskId) {
+  return stepOptionsForTask(taskId).filter(function (o) { return !decisionFor(o.value); });
+}
 function decisionDialog(prefill) {
   var stepId = prefill && typeof prefill === "object" ? prefill.step : null;
-  var questId = typeof prefill === "string" ? prefill : undefined;
-  var opts = stepOptions(questId).filter(function (o) { return !decisionFor(o.value); });
-  if (stepId) { var fixed = findStep(stepId); opts = fixed ? [{ value: stepId, label: fixed.s.text }] : []; }
-  if (!opts.length) { notify(stepId ? "That step is gone." : "Every step already has a decision. Add a step first (open a task and add one), then add the decision."); return; }
-  var fields = [{ key: "q", label: "Decision" }];
-  if (!stepId) fields.push({ key: "step", label: "Linked step", type: "select", options: opts, value: opts[0].value });
-  formDialog("New decision", fields, "Add decision", function (v) {
-    var step = stepId || v.step;
+  if (stepId) {
+    var fixed = findStep(stepId);
+    var opts = fixed ? [{ value: stepId, label: fixed.s.text }] : [];
+    if (!opts.length) { notify("That step is gone."); return; }
+    formDialog("New decision", [{ key: "q", label: "Decision" }], "Add decision", function (v) {
+      if (!v.q) return "Enter the decision.";
+      if (decisionFor(stepId)) return "That step already has a decision.";
+      state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: stepId }); changed();
+      return { msg: "Decision added." };
+    }, "For the step: " + opts[0].label + ". A decision is something you need to figure out before you can move forward. Answering it automatically checks that step off.");
+    return;
+  }
+  // No fixed step: cascade Quest -> Task -> Step, same pattern as stepDialog().
+  var startQuest = typeof prefill === "string" ? prefill : "";
+  if (!stepOptions(startQuest || undefined).some(function (o) { return !decisionFor(o.value); })) {
+    notify("Every step already has a decision. Add a step first (open a task and add one), then add the decision.");
+    return;
+  }
+  var questOpts = [{ value: "", label: "All quests" }].concat(liveQuests().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; }));
+  var startTasks = taskOptions(startQuest);
+  var startTask = startTasks.length ? startTasks[0].value : "";
+  var startSteps = openStepOptions(startTask);
+  if (!startSteps.length) {
+    var found = startTasks.filter(function (o) { return openStepOptions(o.value).length; })[0];
+    startTask = found ? found.value : startTask;
+    startSteps = startTask ? openStepOptions(startTask) : [];
+  }
+  formDialog("New decision", [
+    { key: "quest", label: "Quest", type: "select", options: questOpts, value: startQuest },
+    { key: "task", label: "Task", type: "select", options: startTasks, value: startTask },
+    { key: "step", label: "Step", type: "select", options: startSteps, value: startSteps.length ? startSteps[0].value : "" },
+    { key: "q", label: "Decision" }
+  ], "Add decision", function (v) {
     if (!v.q) return "Enter the decision.";
-    if (!step) return "Choose a step.";
-    if (decisionFor(step)) return "That step already has a decision.";
-    state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: step }); changed();
+    if (!v.step) return "Choose a step.";
+    if (decisionFor(v.step)) return "That step already has a decision.";
+    state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: v.step }); changed();
     return { msg: "Decision added." };
-  }, (stepId ? "For the step: " + opts[0].label + ". " : "") + "A decision is something you need to figure out before you can move forward. Answering it automatically checks that step off.");
+  }, "A decision is something you need to figure out before you can move forward. Answering it automatically checks that step off.");
+  var questSel = $("f-quest"), taskSel = $("f-task"), stepSel = $("f-step");
+  if (questSel && taskSel && stepSel) {
+    function fillSteps(taskId) {
+      var sOpts = openStepOptions(taskId);
+      stepSel.innerHTML = "";
+      sOpts.forEach(function (o) { stepSel.appendChild(el("option", { value: o.value }, o.label)); });
+    }
+    on(questSel, "change", function () {
+      var tOpts = taskOptions(questSel.value);
+      taskSel.innerHTML = "";
+      tOpts.forEach(function (o) { taskSel.appendChild(el("option", { value: o.value }, o.label)); });
+      fillSteps(taskSel.value);
+    });
+    on(taskSel, "change", function () { fillSteps(taskSel.value); });
+  }
 }
 // Edits a decision in place: its question and its answer. Removal is supplied by the
 // caller (it lives in views.js). Answering ticks the linked step and clearing the

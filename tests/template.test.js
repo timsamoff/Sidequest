@@ -192,9 +192,22 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(row("Write the store description"), "Decision: open")); k.click(k.btn(k.$("modalBody"), "Remove"));
   ok(!k.saved().decisions.find(d => d.id === added.id) && !!k.btn(k.d.body, "Undo") && !!k.btn(row("Write the store description"), "Add decision"), "Remove deletes the decision with Undo, and the step offers Add decision again");
   k.menuAct("newBtn", "newDecision");
+  ok(k.$("modalTitle").textContent === "New decision" && !!k.$("f-quest") && !!k.$("f-task") && !!k.$("f-step"), "New decision cascades Quest, then Task, then Step, like New step");
+  k.$("f-task").value = "a5"; k.fire(k.$("f-task"));
   const offered = [...k.$("modalBody").querySelectorAll("#f-step option")].map(o => o.textContent);
-  ok(k.$("modalTitle").textContent === "New decision" && !offered.some(t => t.includes("Choose the first app store")) && offered.some(t => t.includes("Write the store description")), "the New decision menu only offers steps that do not already have a decision");
+  ok(!offered.some(t => t.includes("Choose the first app store")) && offered.some(t => t.includes("Write the store description")), "picking that task only offers its steps that do not already have a decision");
   k.click(k.$("modalClose"));
+  // picking a quest narrows the task list, which then narrows the step list
+  k.menuAct("newBtn", "newDecision");
+  k.$("f-quest").value = "pSite"; k.fire(k.$("f-quest"));
+  const taskOpts = [...k.$("modalBody").querySelectorAll("#f-task option")];
+  ok(taskOpts.length > 0 && taskOpts.every(o => !o.textContent.includes("Submit to the app store")), "choosing a quest narrows Task to just that quest's own tasks");
+  const stepOpts = [...k.$("modalBody").querySelectorAll("#f-step option")];
+  ok(stepOpts.length > 0, "Step repopulates for the first task of the newly chosen quest");
+  k.setField("q", "Which domain do we use?");
+  k.click(k.btn(k.$("modalBody"), "Add decision"));
+  const viaCascade = k.saved().decisions.find(d => d.q === "Which domain do we use?");
+  ok(!!viaCascade && !!k.saved().tasks.find(t => t.id === viaCascade.step || t.steps.some(s => s.id === viaCascade.step) && t.questId === "pSite"), "a decision added through the cascade links to a real step on the chosen quest");
 }
 {
   // editing a step: text, Launch flag, and Remove (which takes its decision with it)

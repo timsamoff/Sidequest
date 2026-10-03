@@ -269,6 +269,12 @@ export function stepOptions(questId) {
   });
   return o;
 }
+// One task's own steps, for the Quest -> Task -> Step cascade in decisionDialog().
+export function stepOptionsForTask(taskId) {
+  var t = findTask(taskId);
+  if (!t) return [];
+  return t.steps.map(function (s) { return { value: s.id, label: short(s.text, 60) }; });
+}
 export function taskOptions(questId) {
   var ts = orderedAll();
   if (questId) ts = ts.filter(function (t) { return t.questId === questId; });
