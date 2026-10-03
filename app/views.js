@@ -1077,7 +1077,7 @@ var BRANDMARK_MAX_BYTES = 300 * 1024;
 // bytes or too large in either pixel dimension -- no cropping or resizing,
 // since either would mean guessing what the user actually wants kept.
 function readBrandmarkFile(file, msg, onDone) {
-  if (file.size > BRANDMARK_MAX_BYTES) { msg.textContent = "That file is larger than " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB. Choose a smaller one."; return; }
+  if (file.size > BRANDMARK_MAX_BYTES) { msg.textContent = "File is larger than " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."; return; }
   var r = new FileReader();
   r.onerror = function () { msg.textContent = "The file could not be read."; };
   r.onload = function () {
@@ -1097,7 +1097,7 @@ function readBrandmarkFile(file, msg, onDone) {
 function brandmarkField() {
   var w = el("div", { "class": "field" });
   w.appendChild(el("label", null, "Brandmark"));
-  w.appendChild(el("p", { "class": "hint" }, "Prints beside Prepared by on a Client Export. " + BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."));
+  w.appendChild(el("p", { "class": "hint" }, BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."));
   var msg = el("p", { "class": "msg", role: "alert" });
   var preview = el("div", { "class": "brandmarkpreview" });
   function renderPreview() {

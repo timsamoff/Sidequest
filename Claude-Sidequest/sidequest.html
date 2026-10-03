@@ -1899,7 +1899,7 @@ var EXPORT_CSS = "\
 * { box-sizing: border-box; }\
 body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; line-height: 1.4; }\
 .ewrap { max-width: 1100px; margin: 0 auto; }\
-.ebrand { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }\
+.ebrand { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }\
 .ebrand svg { width: 28px; height: 28px; flex: none; }\
 .ebrand span { font-family: 'Spectral', Georgia, 'Times New Roman', serif; font-weight: 600; font-size: 1.1rem; }\
 .eletterhead { display: flex; gap: 32px; flex-wrap: wrap; margin-bottom: 18px; color: var(--muted); font-size: .9rem; line-height: 1.5; }\
@@ -2081,13 +2081,13 @@ function websiteLine(v) { return linkLine(/^[a-z][a-z0-9+.-]*:/i.test(v) ? v : "
 function renderLetterColumn(heading, fields, nameKey, secondKey, brandmark) {
   if (!fields && !brandmark) return "";
   var lines = [];
-  if (brandmark) lines.push('<img class="ebrandmark" src="' + escAttr(brandmark) + '" alt="">');
   if (fields && fields[nameKey]) lines.push('<div class="econtactname">' + escHtml(fields[nameKey]) + "</div>");
   if (fields && fields[secondKey]) lines.push(plainLine(fields[secondKey]));
   if (fields && fields.address) lines.push(addrLine(fields.address));
   if (fields && fields.phone) lines.push(phoneLine(fields.phone));
   if (fields && fields.email) lines.push(emailLine(fields.email));
   if (fields && fields.website) lines.push(websiteLine(fields.website));
+  if (brandmark) lines.push('<img class="ebrandmark" src="' + escAttr(brandmark) + '" alt="">');
   return '<div class="ecol"><div class="echead">' + heading + "</div>" + lines.join("") + "</div>";
 }
 
@@ -3619,7 +3619,7 @@ function helpTopics() {
       "**Candidates** are quests that could take the next slot. Select one to edit its notes, start date, due date, and block length in a dialog, then use **Promote** to start it. Add a candidate with **New quest** in the **+** menu, or turn an idea into one with **Make candidate**.",
       "**In progress** lists each active quest with its next task. Use **Pin** on a quest for quick access from the sidebar. Unpinning only hides it there.",
       "Below it, the Quests page lists any quest that is complete or has no tasks yet, under the heading Pending, Completed, or Pending & completed.",
-      "**Client Export**, on an active or complete quest's page, downloads a single read-only web page with that quest's tasks, notes, and an interactive schedule and burndown, for sharing outside the app. A linked quest that is active or complete comes along too, with its own section. If you filled in **Your contact info** in Settings or this quest's own **Quest Giver** section, they print at the top as Prepared by and Prepared for."]],
+      "**Client Export**, on an active or complete quest's page, downloads a single read-only web page with that quest's tasks, notes, and an interactive schedule and burndown, for sharing outside the app. A linked quest that is active or complete comes along too, with its own section. If you filled in **Your contact info** in Settings or this quest's own **Quest Giver** section, they print at the top as Prepared by and Prepared for. **Add brandmark** in Settings uploads a small image that prints above Prepared by."]],
     ["Finish or vault a quest", [
       "**Mark complete** on a quest's page marks it done, even with tasks still open. A quest also completes by itself once all its tasks are done. Either way, you can send it to the Vault right away or leave it in Quests.",
       "A completed quest shows a **Complete** badge and drops out of In progress. Its tasks also leave Tasks, the main Timeline, Today, and the main burndown, though its own page still lists them. **Reopen** makes it active again and brings them back.",
@@ -3708,7 +3708,7 @@ var BRANDMARK_MAX_BYTES = 300 * 1024;
 // bytes or too large in either pixel dimension -- no cropping or resizing,
 // since either would mean guessing what the user actually wants kept.
 function readBrandmarkFile(file, msg, onDone) {
-  if (file.size > BRANDMARK_MAX_BYTES) { msg.textContent = "That file is larger than " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB. Choose a smaller one."; return; }
+  if (file.size > BRANDMARK_MAX_BYTES) { msg.textContent = "File is larger than " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."; return; }
   var r = new FileReader();
   r.onerror = function () { msg.textContent = "The file could not be read."; };
   r.onload = function () {
@@ -3728,7 +3728,7 @@ function readBrandmarkFile(file, msg, onDone) {
 function brandmarkField() {
   var w = el("div", { "class": "field" });
   w.appendChild(el("label", null, "Brandmark"));
-  w.appendChild(el("p", { "class": "hint" }, "Prints beside Prepared by on a Client Export. " + BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."));
+  w.appendChild(el("p", { "class": "hint" }, BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."));
   var msg = el("p", { "class": "msg", role: "alert" });
   var preview = el("div", { "class": "brandmarkpreview" });
   function renderPreview() {

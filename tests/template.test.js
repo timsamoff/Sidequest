@@ -1520,7 +1520,7 @@ async function exportClick(k, projectName) {
   const { html } = await exportClick(k, "Brandmark Quest");
   ok(html.includes('class="ebrandmark"') && html.includes(tinyPng), "the brandmark prints on the export, under Prepared by");
   const byCol = html.slice(html.indexOf("Prepared by"), html.indexOf("Prepared by") + 500);
-  ok(byCol.includes("ebrandmark"), "it sits inside the Prepared by column, right after its heading");
+  ok(byCol.includes("ebrandmark"), "it sits inside the Prepared by column, after its text fields");
 }
 {
   const saved = { settings: { brandmark: "not a real data uri" }, quests: [], tasks: [] };

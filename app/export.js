@@ -245,7 +245,7 @@ var EXPORT_CSS = "\
 * { box-sizing: border-box; }\
 body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; line-height: 1.4; }\
 .ewrap { max-width: 1100px; margin: 0 auto; }\
-.ebrand { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }\
+.ebrand { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }\
 .ebrand svg { width: 28px; height: 28px; flex: none; }\
 .ebrand span { font-family: 'Spectral', Georgia, 'Times New Roman', serif; font-weight: 600; font-size: 1.1rem; }\
 .eletterhead { display: flex; gap: 32px; flex-wrap: wrap; margin-bottom: 18px; color: var(--muted); font-size: .9rem; line-height: 1.5; }\
@@ -427,13 +427,13 @@ function websiteLine(v) { return linkLine(/^[a-z][a-z0-9+.-]*:/i.test(v) ? v : "
 function renderLetterColumn(heading, fields, nameKey, secondKey, brandmark) {
   if (!fields && !brandmark) return "";
   var lines = [];
-  if (brandmark) lines.push('<img class="ebrandmark" src="' + escAttr(brandmark) + '" alt="">');
   if (fields && fields[nameKey]) lines.push('<div class="econtactname">' + escHtml(fields[nameKey]) + "</div>");
   if (fields && fields[secondKey]) lines.push(plainLine(fields[secondKey]));
   if (fields && fields.address) lines.push(addrLine(fields.address));
   if (fields && fields.phone) lines.push(phoneLine(fields.phone));
   if (fields && fields.email) lines.push(emailLine(fields.email));
   if (fields && fields.website) lines.push(websiteLine(fields.website));
+  if (brandmark) lines.push('<img class="ebrandmark" src="' + escAttr(brandmark) + '" alt="">');
   return '<div class="ecol"><div class="echead">' + heading + "</div>" + lines.join("") + "</div>";
 }
 
