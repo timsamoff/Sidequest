@@ -121,7 +121,7 @@ export function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop,
     milestones: d.milestones, pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true }
   };
 }
 
@@ -260,6 +260,7 @@ export function normalize(s) {
     if (["Block", "Sprint", "Iteration", "Phase", "Week"].indexOf(s.settings.blockWord) >= 0) d.settings.blockWord = s.settings.blockWord;
     if (typeof s.settings.hideWelcome === "boolean") d.settings.hideWelcome = s.settings.hideWelcome;
     if (typeof s.settings.showSplash === "boolean") d.settings.showSplash = s.settings.showSplash;
+    if (typeof s.settings.animatedBurndown === "boolean") d.settings.animatedBurndown = s.settings.animatedBurndown;
     if (isISO(s.settings.lastBackup)) d.settings.lastBackup = s.settings.lastBackup;
     if (isISO(s.settings.since)) d.settings.since = s.settings.since;
     // vaultPurgeDays used to be called archivePurgeDays; read whichever is present.

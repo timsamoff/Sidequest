@@ -1608,20 +1608,36 @@ async function exportClick(k, projectName) {
   ok(html.includes("Prepared by") && html.includes('class="ebrandmark"'), "Prepared by shows with just the brandmark, no text fields filled in");
 }
 {
-  // Audio and Completion FX settings: both default on, both save, both round-trip.
+  // Audio, Completion FX, and Animated burndown settings: all default on, all save, all round-trip.
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.tab("settings");
-  ok(k.$("set-audio").value === "on" && k.$("set-completion-fx").value === "on", "Audio and Completion FX both default to On");
+  ok(k.$("set-audio").value === "on" && k.$("set-completion-fx").value === "on" && k.$("set-animated-burndown").value === "on", "Audio, Completion FX, and Animated burndown all default to On");
   k.$("set-audio").value = "off"; k.fire(k.$("set-audio"));
   ok(k.saved().settings.audio === false, "turning Audio off saves immediately");
   k.$("set-completion-fx").value = "off"; k.fire(k.$("set-completion-fx"));
   ok(k.saved().settings.completionFx === false, "turning Completion FX off saves immediately, independent of Audio");
+  k.$("set-animated-burndown").value = "off"; k.fire(k.$("set-animated-burndown"));
+  ok(k.saved().settings.animatedBurndown === false, "turning Animated burndown off saves immediately, independent of the others");
 }
 {
-  const saved = { settings: { audio: false, completionFx: false } };
+  const saved = { settings: { audio: false, completionFx: false, animatedBurndown: false } };
   const k = kit(await mk(saved));
-  ok(k.saved().settings.audio === false && k.saved().settings.completionFx === false, "both settings round-trip through normalize() when off");
+  ok(k.saved().settings.audio === false && k.saved().settings.completionFx === false && k.saved().settings.animatedBurndown === false, "all three settings round-trip through normalize() when off");
+}
+{
+  // Animated burndown gates the reveal-rect mechanism on a burndown chart.
+  // With it off, the chart renders complete immediately, with no reveal
+  // rects or IntersectionObserver wiring at all.
+  const k = kit(await mk({ settings: { animatedBurndown: false } }));
+  k.click(k.$("welcomeDismiss"));
+  ok(!k.d.querySelector("rect.burnreveal"), "Today's burndown has no reveal rects when Animated burndown is off");
+  ok(!!k.d.querySelector("svg.chart polyline.planned"), "the chart still draws its lines immediately when animation is off");
+}
+{
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  ok(!!k.d.querySelector("rect.burnreveal"), "Today's burndown has reveal rects when Animated burndown is on (default)");
 }
 {
   // Completion FX gates the confetti burst on quest completion. The canvas

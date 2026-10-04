@@ -36,10 +36,36 @@ function renderBurn(host, wide, cfg) {
   // Thin the date labels on a long axis so they never run together.
   var every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 70))));
   cps.forEach(function (ms, i) { if (i % every === 0 || i === n - 1) svg.appendChild(svgEl("text", { "class": "axis", x: x(i), y: H - 16, "text-anchor": "middle" }, fmt(ms))); });
-  svg.appendChild(svgEl("polyline", { "class": "planned", points: pl.map(function (p, i) { return x(i) + "," + y(p); }).join(" ") }));
+  // Animated draw-in: each line sits in its own clipped group that reveals left
+  // to right, so a dashed line (Ideal) and a multi-segment line (Actual) both
+  // work the same way -- a clip-rect, not stroke-dasharray, which Ideal's own
+  // dash pattern would otherwise fight. Sequenced Ideal, then Actual, then
+  // Scope, matching the legend's own left-to-right order.
+  var animate = state.settings.animatedBurndown;
+  var revealGroups = [];
+  function revealGroup(clipId) {
+    if (!animate) return svg;
+    var clip = svgEl("clipPath", { id: clipId });
+    var rect = svgEl("rect", { class: "burnreveal", x: L, y: 0, width: 0, height: H });
+    clip.appendChild(rect);
+    svg.appendChild(clip);
+    var g = svgEl("g", { "clip-path": "url(#" + clipId + ")" });
+    svg.appendChild(g);
+    revealGroups.push(rect);
+    return g;
+  }
+  var plannedHost = revealGroup("burnclip-planned-" + Math.random().toString(36).slice(2));
+  plannedHost.appendChild(svgEl("polyline", { "class": "planned", points: pl.map(function (p, i) { return x(i) + "," + y(p); }).join(" ") }));
+  var actualHost = revealGroup("burnclip-actual-" + Math.random().toString(36).slice(2));
+  var seg = [];
+  function flush() { if (seg.length > 1) actualHost.appendChild(svgEl("polyline", { "class": "actual", points: seg.join(" ") })); seg = []; }
+  acts.forEach(function (a, i) { if (a === null) { flush(); return; } seg.push(x(i) + "," + y(a)); });
+  flush();
+  acts.forEach(function (a, i) { if (a !== null) actualHost.appendChild(svgEl("circle", { "class": "dot", cx: x(i), cy: y(a), r: 5.5 })); });
   // Tasks in scope: level, then a ramp (one chart step wide) ending on the date it changed.
   var ss = cfg.scopeSteps;
   if (ss && (ss.length > 1 || (ss.length === 1 && cfg.scopeEnd > ss[0].ms))) {
+    var scopeHost = revealGroup("burnclip-scope-" + Math.random().toString(36).slice(2));
     var px = function (ms) { return L + (W - L - R) * Math.max(0, Math.min(1, (ms - cps[0]) / (cps[n - 1] - cps[0]))); };
     var sp = [], pv = null;
     var ramp = (cps[n - 1] - cps[0]) / (n - 1), pms = null;
@@ -48,14 +74,8 @@ function renderBurn(host, wide, cfg) {
       sp.push(px(st.ms) + "," + y(st.v)); pv = st.v; pms = st.ms;
     });
     sp.push(px(cfg.scopeEnd) + "," + y(pv));
-    svg.appendChild(svgEl("polyline", { "class": "scope", points: sp.join(" ") }));
+    scopeHost.appendChild(svgEl("polyline", { "class": "scope", points: sp.join(" ") }));
   }
-  var seg = [];
-  function flush() { if (seg.length > 1) svg.appendChild(svgEl("polyline", { "class": "actual", points: seg.join(" ") })); seg = []; }
-  acts.forEach(function (a, i) { if (a === null) { flush(); return; } seg.push(x(i) + "," + y(a)); });
-  flush();
-  acts.forEach(function (a, i) { if (a !== null) svg.appendChild(svgEl("circle", { "class": "dot", cx: x(i), cy: y(a), r: 5.5 })); });
-
   // Everything the user can point at or arrow to, left to right.
   var guide = svgEl("line", { "class": "guide", x1: 0, x2: 0, y1: T, y2: H - B });
   guide.style.display = "none"; svg.appendChild(guide);
@@ -79,6 +99,44 @@ function renderBurn(host, wide, cfg) {
 
   var tip = el("div", { "class": "charttip", role: "status", "aria-live": "polite" }); tip.hidden = true;
   host.appendChild(svg); host.appendChild(tip);
+
+  // Reveal each rect in turn: Ideal, then Actual, then Scope. A real
+  // transition on the rect's own width, not a CSS custom property, so
+  // reduced-motion's existing blanket `transition: none` rule covers it for
+  // free -- no extra media-query handling needed here. Must come after the
+  // svg is actually appended to the DOM above -- observe() on a detached
+  // element never fires. Starts once the chart is at least half visible,
+  // not merely touching the viewport edge, so scrolling past it quickly
+  // doesn't trigger it; also waits for the splash to finish (IntersectionObserver
+  // has no concept of the splash overlay sitting on top of it, since that's a
+  // z-index/opacity thing, not a layout one -- a chart under the splash still
+  // reads as "intersecting" -- so #splash's own `hidden` is checked too,
+  // polled briefly if it's still up rather than firing underneath it).
+  if (animate && revealGroups.length) {
+    var fullW = W - R - L, stepMs = 525, started = false;
+    function splashGone() { var s = document.getElementById("splash"); return !s || s.hidden; }
+    function fire() {
+      if (started) return; started = true;
+      revealGroups.forEach(function (rect, i) {
+        rect.style.transition = "width " + stepMs + "ms ease";
+        setTimeout(function () { rect.setAttribute("width", fullW); }, 20 + i * stepMs);
+      });
+    }
+    function tryStart() {
+      if (started) return;
+      if (!splashGone()) { setTimeout(tryStart, 100); return; }
+      fire();
+    }
+    if (typeof IntersectionObserver === "undefined") {
+      tryStart();
+    } else {
+      var io = new IntersectionObserver(function (entries) {
+        if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); tryStart(); }
+      }, { threshold: 0.5 });
+      io.observe(svg);
+    }
+  }
+
   var cur = -1, pinned = false;
   function hide() { cur = -1; tip.hidden = true; guide.style.display = "none"; }
   function show(k) {

@@ -1058,7 +1058,7 @@ export function helpTopics() {
       "On a quest’s own page, above the Timeline, **Slip schedule** pushes its still-incomplete tasks later by however many days you choose. Completed tasks and anything in the Backlog don’t move.",
       "**Undo last slip**, in the same dialog, puts everything back where it was."]],
     ["Settings, backup, and starting over", [
-      "**Settings** covers how Sidequest looks and schedules by default: the length of a " + w + " in days, what to call it (Block, Sprint, and so on), date format, theme, whether the splash plays on open, whether **Sound Effects** play at all, and whether finishing a quest sets off a **Completion FX** confetti burst.",
+      "**Settings** covers how Sidequest looks and schedules by default: the length of a " + w + " in days, what to call it (Block, Sprint, and so on), date format, theme, whether the splash plays on open, whether a burndown draws its lines in when it comes into view (**Animated burndown**), whether **Sound Effects** play at all, and whether finishing a quest sets off a **Completion FX** confetti burst.",
       "Everything lives in this browser only, so **Backup and restore** matters. **Save backup** writes a file wherever you choose. **Restore backup** reads one back in, after warning you it replaces everything currently here, with a few seconds to undo if you change your mind. Go two weeks without a backup and Today will say so, quietly.",
       "**Vault** items can delete themselves automatically, 7, 30, 60, or 90 days after being vaulted, or never, if you leave it there. Sidequest checks this once, each time it opens, with no second warning once the setting is on.",
       "**Start fresh** erases everything, after one warning. Back it up first if there’s anything worth keeping. You can start completely empty, or with the sample quests back in place."]]
@@ -1236,6 +1236,11 @@ export function renderSettings(page) {
   [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.showSplash) op.selected = true; ss.appendChild(op); });
   on(ss, "change", function () { state.settings.showSplash = ss.value === "on"; save(); });
   sw.appendChild(ss); ag2.appendChild(sw);
+  var abw = el("div", { "class": "field" }); abw.appendChild(el("label", { "for": "set-animated-burndown" }, "Animated burndown"));
+  var abs = el("select", { id: "set-animated-burndown", "class": "plain" });
+  [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.animatedBurndown) op.selected = true; abs.appendChild(op); });
+  on(abs, "change", function () { state.settings.animatedBurndown = abs.value === "on"; save(); });
+  abw.appendChild(abs); ag2.appendChild(abw);
   var fxw = el("div", { "class": "field" }); fxw.appendChild(el("label", { "for": "set-completion-fx" }, "Completion FX"));
   var fxs = el("select", { id: "set-completion-fx", "class": "plain" });
   [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.completionFx) op.selected = true; fxs.appendChild(op); });
