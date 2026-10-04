@@ -65,14 +65,14 @@ export function sampleData() {
     task("a3", 3, "pApp", "Build the home screen", "The list loads quickly and scrolls smoothly", [st("a3a", "Show the list of items", false, true), st("a3b", "Add pull to refresh"), st("a3c", "Handle an empty list")], { status: "In progress", notes: "Ask a friend to try this on an older phone before moving on." }),
     task("a4", 4, "pApp", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link", true), st("a4c", "Collect and sort the feedback")]),
     task("a5", 5, "pApp", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true, true), st("a5a", "Write the store description", true), st("a5b", "Prepare screenshots", true), st("a5c", "Submit for review", true)]),
-    task("a6", 0, "pApp", "Add a dark mode", "Dark mode works on every screen", []),
+    task("a6", 0, "pApp", "Add a dark mode", "Every screen passes a contrast check in dark mode", []),
     task("w1", 1, "pSite", "Write the page copy", "Every page has final text", [st("w1a", "Write the home page", false, true), st("w1b", "Write the about page"), st("w1c", "Write the contact page")], { status: "In progress" }),
     task("w2", 2, "pSite", "Build the layout", "Pages look right on a phone and a laptop", [st("w2a", "Build the header and footer"), st("w2b", "Make the layout work on phones"), st("w2c", "Compress the images")]),
     task("w3", 3, "pSite", "Launch the site", "The site is live and checked", [st("w3a", "Point the domain at the site", true), st("w3b", "Check every page on a phone", true), st("w3c", "Announce it", true)]),
     task("g1", 1, "pGame", "Prototype the core mechanic", "Someone can play for one minute", [st("g1a", "Make the player move"), st("g1b", "Add one obstacle"), st("g1c", "Add a win and a lose state")]),
-    task("g2", 2, "pGame", "Make the first ten levels", "Ten playable levels"),
+    task("g2", 2, "pGame", "Make the first ten levels", "Ten levels load and can be finished start to end"),
     task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid", true), st("g3c", "Record a trailer", true)]),
-    task("g4", 0, "pGame", "Add a level editor", "Players can make their own levels"),
+    task("g4", 0, "pGame", "Add a level editor", "Players can build, save, and share a level"),
     task("n1", 6, null, "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true }),
     // pDone's own tasks, all finished -- a Complete quest keeps its task
     // history rather than clearing it out. Four weekly tasks at weight 2 each
@@ -87,6 +87,25 @@ export function sampleData() {
   // When the finished tasks were completed (Sample Finished Quest's are a bit late, early, then on time).
   var DONE = { a1: day(5), d1: day(-20), d2: day(-15), d3: day(-12), d4: day(-1) };
   tasks.forEach(function (t) { if (DONE[t.id]) t.doneAt = DONE[t.id]; });
+  // Explicit start/due dates for every scheduled task, matching the real way
+  // a task is scheduled today (pick a due date, the block is derived from it)
+  // instead of the old block-number-only sample shape. Each due date lands on
+  // the same day its block number already implied, so none of the tuned
+  // demonstrations above (the late a2, the scope-added a5, the zig-zag
+  // doneHistory) shift. A start date is only set when the task's own estimate
+  // is light enough that the whole block would otherwise look misleadingly full.
+  var SCHEDULE = {
+    a1: { start: day(2), due: day(4) }, a2: { start: day(9), due: day(12) }, a3: { start: day(18), due: day(20) },
+    a4: { start: day(25), due: day(27) }, a5: { start: day(31), due: day(34) },
+    w1: { start: day(19), due: day(20) }, w2: { start: day(22), due: day(27) }, w3: { due: day(34) },
+    g2: { start: day(37), due: day(47) }, g3: { start: day(55), due: day(58) },
+    d1: { due: day(-25) }, d2: { due: day(-18) }, d3: { due: day(-11) }, d4: { due: day(-4) }
+  };
+  tasks.forEach(function (t) {
+    var s = SCHEDULE[t.id]; if (!s) return;
+    if (s.start) t.start = s.start;
+    t.due = s.due;
+  });
   // Shorter than its two-week block: starts two days in, due a week later.
   tasks.forEach(function (t) { if (t.id === "g1") { t.start = day(23); t.due = day(30); } });
   // Sample App's last task joined the plan after the quest started: a scope change.

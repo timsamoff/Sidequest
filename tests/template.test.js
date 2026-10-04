@@ -695,7 +695,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const rows = () => [...k.d.querySelectorAll("#view .standing li")];
   const webRow = () => rows().find(li => li.textContent.includes("Sample Website"));
   ok(!!k.btn(webRow(), "Pin") && !webRow().querySelector(".scount"), "a Where things stand row has a Pin button and no separate open-task count");
-  ok(/Next up: .* · Sep [0-9]+ · 3 open tasks/.test(webRow().querySelector(".snext").textContent), "the open-task count is on the Next up line (" + webRow().querySelector(".snext").textContent + ")");
+  ok(/Next up: .* · [A-Z][a-z]{2} [0-9]+ · 3 open tasks/.test(webRow().querySelector(".snext").textContent), "the open-task count is on the Next up line (" + webRow().querySelector(".snext").textContent + ")");
   k.click(k.btn(webRow(), "Pin"));
   ok(k.saved().pins.includes("quest:pSite") && !!k.btn(webRow(), "Unpin"), "Pin in Where things stand pins the quest and the button flips to Unpin");
   ok(!!k.btn(k.d.querySelector("#nav"), "Sample Website"), "the pinned quest appears in the sidebar");
