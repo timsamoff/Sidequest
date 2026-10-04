@@ -22,7 +22,7 @@ export function task(id, block, questId, what, done, steps, extra) {
 // record and id carry through candidate -> active -> vaulted, never a second
 // record.
 export function quest(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, client: { org: "", poc: "", phone: "", email: "", address: "", website: "" } };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -187,7 +187,7 @@ export function normalize(s) {
         // an id in this array, and nothing here ever traverses the graph.
         linkedQuestIds: Array.isArray(linked) ? linked.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : [],
         savedLinkIds: saved ? saved.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : null,
-        client: { org: S(xc.org, 200), poc: S(xc.poc, 200), phone: S(xc.phone, 200), email: S(xc.email, 200), address: S(xc.address, 500), website: S(xc.website, 200) }
+        client: { org: S(xc.org, 200), poc: S(xc.poc, 200), phone: S(xc.phone, 200), email: S(xc.email, 200), address: S(xc.address, 500), website: S(xc.website, 200), coin: (typeof xc.coin === "number" && xc.coin >= 0 && xc.coin <= 999999) ? xc.coin : "", per: (xc.per === "Hour" || xc.per === "Quest") ? xc.per : "Hour" }
       };
     });
   }

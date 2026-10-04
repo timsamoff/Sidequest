@@ -524,7 +524,7 @@ export function renderQuestPage(root, id) {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
     root.appendChild(el("h2", null, "Quest Giver"));
-    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website].filter(Boolean);
+    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Coin: " + p.client.coin + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
     root.appendChild(el("p", { "class": "hint notetext" }, cgLines.length ? cgLines.join("\n") : "Nothing filled in."));
     return;
   }
@@ -586,13 +586,13 @@ export function renderQuestPage(root, id) {
   root.appendChild(el("h2", null, "Quest Giver"));
   root.appendChild(el("p", { "class": "hint" }, "Optional. The client or contact for this quest."));
   if (readOnly) {
-    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website].filter(Boolean);
+    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website, gc.coin !== "" ? "Coin: " + gc.coin + " per " + gc.per.toLowerCase() : ""].filter(Boolean);
     root.appendChild(el("p", { "class": "hint notetext" }, glines.length ? glines.join("\n") : "Nothing filled in."));
   } else {
     var giverBox = el("div", { "class": "box", style: "margin-top:10px" });
     var gg = el("div", { "class": "setgrid" });
-    function gfield(key, id, label, type) {
-      var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label));
+    function gfield(key, id, label, type, full) {
+      var w = el("div", { "class": "field" + (full ? " full" : "") }); w.appendChild(el("label", { "for": id }, label));
       var inp = el("input", { type: type || "text", id: id });
       inp.value = p.client[key];
       on(inp, "input", function () { p.client[key] = inp.value.slice(0, 200); save(); });
@@ -602,12 +602,29 @@ export function renderQuestPage(root, id) {
     gfield("poc", "giver-poc-" + p.id, "POC");
     gfield("phone", "giver-phone-" + p.id, "Phone", "tel");
     gfield("email", "giver-email-" + p.id, "Email", "email");
-    gfield("website", "giver-website-" + p.id, "Website", "url");
+    gfield("website", "giver-website-" + p.id, "Website", "url", true);
     giverBox.appendChild(gg);
     var gaw = el("div", { "class": "field" }); gaw.appendChild(el("label", { "for": "giver-address-" + p.id }, "Address"));
     var gaddr = el("textarea", { id: "giver-address-" + p.id, rows: 3 }); gaddr.value = p.client.address;
     on(gaddr, "input", function () { p.client.address = gaddr.value.slice(0, 500); save(); });
     gaw.appendChild(gaddr); giverBox.appendChild(gaw);
+    var gg2 = el("div", { "class": "setgrid", style: "margin-top:10px" });
+    var gcw = el("div", { "class": "field" }); gcw.appendChild(el("label", { "for": "giver-coin-" + p.id }, "Coin"));
+    var gcoin = el("input", { type: "number", id: "giver-coin-" + p.id, min: "0", max: "999999", step: "1" });
+    gcoin.value = p.client.coin === "" ? "" : String(p.client.coin);
+    on(gcoin, "input", function () {
+      if (gcoin.value === "") { p.client.coin = ""; save(); return; }
+      var n = parseInt(gcoin.value, 10);
+      p.client.coin = (isNaN(n) || n < 0) ? "" : Math.min(999999, n);
+      save();
+    });
+    gcw.appendChild(gcoin); gg2.appendChild(gcw);
+    var gpw = el("div", { "class": "field" }); gpw.appendChild(el("label", { "for": "giver-per-" + p.id }, "Per"));
+    var gper = el("select", { id: "giver-per-" + p.id, "class": "plain" });
+    ["Hour", "Quest"].forEach(function (o) { var op = el("option", { value: o }, o); if (o === p.client.per) op.selected = true; gper.appendChild(op); });
+    on(gper, "change", function () { p.client.per = gper.value; save(); });
+    gpw.appendChild(gper); gg2.appendChild(gpw);
+    giverBox.appendChild(gg2);
     root.appendChild(giverBox);
   }
 
@@ -1033,7 +1050,7 @@ export function helpTopics() {
       "Every quest has its own page. Open **Quests** and select its name. The pencil beside the title renames it; the Notes field below is yours to use however you like. Further down: Tasks, the Before you launch checklist, Notes, and Quest links, in that order, with its Schedule, Timeline, and Burndown running alongside (below, on a phone). Change the schedule and the Timeline and Burndown redraw to match. On the Timeline, a pale band behind each task’s bar marks the " + w + " it falls in. **Expand**, on a wide screen, makes all three large.",
       "**In progress**, on the Quests page, lists each active quest with its next task. **Pin** keeps one in the sidebar for quick access. Unpinning only hides it there; it’s still listed on this page either way. A quest that’s Complete loses its pin automatically, since there’s nothing left to jump to, and Reopen brings the pin back along with everything else.",
       "Below In progress, the Quests page lists anything complete or not yet started, under whichever heading fits what’s actually there: Pending, Completed, or Pending & completed.",
-      "**Quest Giver Export**, on an active or complete quest’s page, downloads one self-contained web page with that quest’s tasks, notes, and a working schedule and burndown, meant for sharing outside the app. A linked quest that’s also active or complete rides along with its own section. Fill in **Your contact info** in Settings and this quest’s own **Quest Giver** section, and both print at the top as Prepared by and Prepared for. **Add brandmark**, also in Settings, uploads a small image that prints above Prepared by."]],
+      "**Quest Giver Export**, on an active or complete quest’s page, downloads one self-contained web page with that quest’s tasks, notes, and a working schedule and burndown, meant for sharing outside the app. A linked quest that’s also active or complete rides along with its own section. Fill in **Your contact info** in Settings and this quest’s own **Quest Giver** section, and both print at the top as Prepared by and Prepared for. **Add brandmark**, also in Settings, uploads a small image that prints above Prepared by. **Coin** and **Per**, at the bottom of a quest’s own Quest Giver section, track a contract pay rate for your own reference. They never print on the export."]],
     ["Finish or vault a quest", [
       "**Mark complete** works even with tasks still open. A quest also completes on its own once every task actually is. Either way you’re offered the Vault right away, or you can leave it sitting in Quests.",
       "A completed quest wears a **Complete** badge and drops out of In progress. Its tasks leave Tasks, the main Timeline, Today, and the main burndown too, though they’re still right there on the quest’s own page. **Reopen** undoes all of it: back to active, tasks back everywhere, pin restored if it had one.",
@@ -1175,8 +1192,8 @@ export function renderSettings(page) {
   side.appendChild(el("p", { "class": "hint" }, "Optional. Anything filled in here prints on a Quest Giver Export."));
   var contactBox = el("div", { "class": "box", style: "margin-top:10px" });
   var cg = el("div", { "class": "setgrid" });
-  function cfield(key, id, label, type) {
-    var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label));
+  function cfield(key, id, label, type, full) {
+    var w = el("div", { "class": "field" + (full ? " full" : "") }); w.appendChild(el("label", { "for": id }, label));
     var inp = el("input", { type: type || "text", id: id });
     inp.value = state.settings.contact[key];
     on(inp, "input", function () { state.settings.contact[key] = inp.value.slice(0, 200); save(); });
@@ -1186,7 +1203,7 @@ export function renderSettings(page) {
   cfield("name", "set-contact-name", "Name");
   cfield("phone", "set-contact-phone", "Phone", "tel");
   cfield("email", "set-contact-email", "Email", "email");
-  cfield("website", "set-contact-website", "Website", "url");
+  cfield("website", "set-contact-website", "Website", "url", true);
   contactBox.appendChild(cg);
   var aw = el("div", { "class": "field" }); aw.appendChild(el("label", { "for": "set-contact-address" }, "Address"));
   var addr = el("textarea", { id: "set-contact-address", rows: 3 }); addr.value = state.settings.contact.address;

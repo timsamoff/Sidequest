@@ -153,10 +153,14 @@ export function questDialog() {
     { key: "giverPhone", label: "Phone", type: "tel" },
     { key: "giverEmail", label: "Email", type: "email" },
     { key: "giverWebsite", label: "Website", type: "url" },
-    { key: "giverAddress", label: "Address", type: "textarea", rows: 3 }
+    { key: "giverAddress", label: "Address", type: "textarea", rows: 3 },
+    { key: "giverCoin", label: "Coin", type: "number", min: "0", max: "999999", step: "1" },
+    { key: "giverPer", label: "Per", type: "select", options: [{ value: "Hour", label: "Hour" }, { value: "Quest", label: "Quest" }] }
   ], "Add quest", function (v) {
     if (!v.name) return "Enter a quest name.";
-    var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200) };
+    var coinN = v.giverCoin === "" ? "" : parseInt(v.giverCoin, 10);
+    var coin = (coinN === "" || isNaN(coinN) || coinN < 0) ? "" : Math.min(999999, coinN);
+    var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200), coin: coin, per: v.giverPer === "Quest" ? "Quest" : "Hour" };
     state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000), client: client })); changed();
     return { msg: v.name + " added as a candidate for the next slot." };
   }, "It joins the candidates for the next slot. You can workshop it later.");

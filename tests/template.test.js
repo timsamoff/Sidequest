@@ -1569,10 +1569,27 @@ async function exportClick(k, projectName) {
   ok(k.saved().quests.find(q => q.id === "pApp").client.org === "", "clearing a Quest Giver field saves right away, same as Settings' own contact fields");
 }
 {
+  // Coin/Per: an optional per-quest pay-rate pair, saved alongside Quest
+  // Giver but deliberately never printed on the Quest Giver Export.
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  ok(!!k.$("giver-coin-pApp") && k.d.querySelector('label[for="giver-coin-pApp"]').textContent === "Coin", "the quest page has a Coin field, under Address in the Quest Giver box");
+  ok(!!k.$("giver-per-pApp") && k.d.querySelector('label[for="giver-per-pApp"]').textContent === "Per" && k.$("giver-per-pApp").value === "Hour", "and a Per select, defaulting to Hour");
+  k.$("giver-coin-pApp").value = "25"; k.fire(k.$("giver-coin-pApp"), "input");
+  k.$("giver-per-pApp").value = "Quest"; k.fire(k.$("giver-per-pApp"));
+  const client = k.saved().quests.find(q => q.id === "pApp").client;
+  ok(client.coin === 25 && client.per === "Quest", "Coin and Per save live, Coin as a real number");
+  k.$("giver-coin-pApp").value = "not a number"; k.fire(k.$("giver-coin-pApp"), "input");
+  ok(k.saved().quests.find(q => q.id === "pApp").client.coin === "", "a non-numeric Coin value is rejected back to empty, since the field only allows numbers");
+  const { html } = await exportClick(k, "Sample App");
+  ok(!html.includes("Coin") && !html.includes('"per"') && !html.includes("giver-coin"), "Coin/Per never appear in the Quest Giver Export");
+}
+{
   // Old-shaped saved data with no `client` field at all still loads with a usable, empty one.
   const saved = { quests: [{ id: "pOld", name: "Old Quest", status: "active", start: "2026-08-03", days: 7 }], tasks: [] };
   const k = kit(await mk(saved));
-  ok(JSON.stringify(k.saved().quests[0].client) === JSON.stringify({ org: "", poc: "", phone: "", email: "", address: "", website: "" }), "a quest saved before Quest Giver existed gets a default empty client object on load");
+  ok(JSON.stringify(k.saved().quests[0].client) === JSON.stringify({ org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" }), "a quest saved before Quest Giver existed gets a default empty client object on load");
 }
 {
   // Brandmark: the Settings UI, and normalize()'s validation. The actual

@@ -142,7 +142,9 @@ export function buildExportSnapshot(p) {
   var tree = buildExportTree(p);
   var sections = flattenSections(tree);
   var contact = filledOrNull(state.settings.contact);
-  var client = filledOrNull(p.client);
+  // coin/per (the pay rate) never print on the export -- excluded here so they
+  // can't make filledOrNull treat an otherwise-empty Quest Giver as filled in.
+  var client = filledOrNull({ org: p.client.org, poc: p.client.poc, phone: p.client.phone, email: p.client.email, address: p.client.address, website: p.client.website });
   return { exportedAt: fmtY(TODAY), root: tree, sections: sections, contact: contact, client: client, brandmark: state.settings.brandmark || "" };
 }
 

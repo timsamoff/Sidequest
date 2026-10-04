@@ -290,6 +290,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .dangerbox { border: 1px solid var(--late); background: var(--late-bg); border-radius: var(--radius-card); padding: var(--space-14) var(--space-16); margin-top: var(--space-10); }
 .setgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--space-4) var(--space-16); max-width: 640px; }
 .setgrid .field { min-width: 0; justify-content: flex-end; }
+.setgrid .field.full { grid-column: 1 / -1; }
 .setgrid input, .setgrid select { min-width: 0; height: 42px; }
 .brandmarkpreview { display: flex; align-items: center; gap: var(--space-12); }
 .brandmarkpreview img { max-width: 80px; max-height: 80px; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); }
@@ -1004,7 +1005,7 @@ function task(id, block, questId, what, done, steps, extra) {
 // record and id carry through candidate -> active -> vaulted, never a second
 // record.
 function quest(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, client: { org: "", poc: "", phone: "", email: "", address: "", website: "" } };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -1169,7 +1170,7 @@ function normalize(s) {
         // an id in this array, and nothing here ever traverses the graph.
         linkedQuestIds: Array.isArray(linked) ? linked.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : [],
         savedLinkIds: saved ? saved.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : null,
-        client: { org: S(xc.org, 200), poc: S(xc.poc, 200), phone: S(xc.phone, 200), email: S(xc.email, 200), address: S(xc.address, 500), website: S(xc.website, 200) }
+        client: { org: S(xc.org, 200), poc: S(xc.poc, 200), phone: S(xc.phone, 200), email: S(xc.email, 200), address: S(xc.address, 500), website: S(xc.website, 200), coin: (typeof xc.coin === "number" && xc.coin >= 0 && xc.coin <= 999999) ? xc.coin : "", per: (xc.per === "Hour" || xc.per === "Quest") ? xc.per : "Hour" }
       };
     });
   }
@@ -1886,7 +1887,9 @@ function buildExportSnapshot(p) {
   var tree = buildExportTree(p);
   var sections = flattenSections(tree);
   var contact = filledOrNull(state.settings.contact);
-  var client = filledOrNull(p.client);
+  // coin/per (the pay rate) never print on the export -- excluded here so they
+  // can't make filledOrNull treat an otherwise-empty Quest Giver as filled in.
+  var client = filledOrNull({ org: p.client.org, poc: p.client.poc, phone: p.client.phone, email: p.client.email, address: p.client.address, website: p.client.website });
   return { exportedAt: fmtY(TODAY), root: tree, sections: sections, contact: contact, client: client, brandmark: state.settings.brandmark || "" };
 }
 
@@ -2511,10 +2514,14 @@ function questDialog() {
     { key: "giverPhone", label: "Phone", type: "tel" },
     { key: "giverEmail", label: "Email", type: "email" },
     { key: "giverWebsite", label: "Website", type: "url" },
-    { key: "giverAddress", label: "Address", type: "textarea", rows: 3 }
+    { key: "giverAddress", label: "Address", type: "textarea", rows: 3 },
+    { key: "giverCoin", label: "Coin", type: "number", min: "0", max: "999999", step: "1" },
+    { key: "giverPer", label: "Per", type: "select", options: [{ value: "Hour", label: "Hour" }, { value: "Quest", label: "Quest" }] }
   ], "Add quest", function (v) {
     if (!v.name) return "Enter a quest name.";
-    var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200) };
+    var coinN = v.giverCoin === "" ? "" : parseInt(v.giverCoin, 10);
+    var coin = (coinN === "" || isNaN(coinN) || coinN < 0) ? "" : Math.min(999999, coinN);
+    var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200), coin: coin, per: v.giverPer === "Quest" ? "Quest" : "Hour" };
     state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000), client: client })); changed();
     return { msg: v.name + " added as a candidate for the next slot." };
   }, "It joins the candidates for the next slot. You can workshop it later.");
@@ -3365,7 +3372,7 @@ function renderQuestPage(root, id) {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
     root.appendChild(el("h2", null, "Quest Giver"));
-    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website].filter(Boolean);
+    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Coin: " + p.client.coin + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
     root.appendChild(el("p", { "class": "hint notetext" }, cgLines.length ? cgLines.join("\n") : "Nothing filled in."));
     return;
   }
@@ -3427,13 +3434,13 @@ function renderQuestPage(root, id) {
   root.appendChild(el("h2", null, "Quest Giver"));
   root.appendChild(el("p", { "class": "hint" }, "Optional. The client or contact for this quest."));
   if (readOnly) {
-    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website].filter(Boolean);
+    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website, gc.coin !== "" ? "Coin: " + gc.coin + " per " + gc.per.toLowerCase() : ""].filter(Boolean);
     root.appendChild(el("p", { "class": "hint notetext" }, glines.length ? glines.join("\n") : "Nothing filled in."));
   } else {
     var giverBox = el("div", { "class": "box", style: "margin-top:10px" });
     var gg = el("div", { "class": "setgrid" });
-    function gfield(key, id, label, type) {
-      var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label));
+    function gfield(key, id, label, type, full) {
+      var w = el("div", { "class": "field" + (full ? " full" : "") }); w.appendChild(el("label", { "for": id }, label));
       var inp = el("input", { type: type || "text", id: id });
       inp.value = p.client[key];
       on(inp, "input", function () { p.client[key] = inp.value.slice(0, 200); save(); });
@@ -3443,12 +3450,29 @@ function renderQuestPage(root, id) {
     gfield("poc", "giver-poc-" + p.id, "POC");
     gfield("phone", "giver-phone-" + p.id, "Phone", "tel");
     gfield("email", "giver-email-" + p.id, "Email", "email");
-    gfield("website", "giver-website-" + p.id, "Website", "url");
+    gfield("website", "giver-website-" + p.id, "Website", "url", true);
     giverBox.appendChild(gg);
     var gaw = el("div", { "class": "field" }); gaw.appendChild(el("label", { "for": "giver-address-" + p.id }, "Address"));
     var gaddr = el("textarea", { id: "giver-address-" + p.id, rows: 3 }); gaddr.value = p.client.address;
     on(gaddr, "input", function () { p.client.address = gaddr.value.slice(0, 500); save(); });
     gaw.appendChild(gaddr); giverBox.appendChild(gaw);
+    var gg2 = el("div", { "class": "setgrid", style: "margin-top:10px" });
+    var gcw = el("div", { "class": "field" }); gcw.appendChild(el("label", { "for": "giver-coin-" + p.id }, "Coin"));
+    var gcoin = el("input", { type: "number", id: "giver-coin-" + p.id, min: "0", max: "999999", step: "1" });
+    gcoin.value = p.client.coin === "" ? "" : String(p.client.coin);
+    on(gcoin, "input", function () {
+      if (gcoin.value === "") { p.client.coin = ""; save(); return; }
+      var n = parseInt(gcoin.value, 10);
+      p.client.coin = (isNaN(n) || n < 0) ? "" : Math.min(999999, n);
+      save();
+    });
+    gcw.appendChild(gcoin); gg2.appendChild(gcw);
+    var gpw = el("div", { "class": "field" }); gpw.appendChild(el("label", { "for": "giver-per-" + p.id }, "Per"));
+    var gper = el("select", { id: "giver-per-" + p.id, "class": "plain" });
+    ["Hour", "Quest"].forEach(function (o) { var op = el("option", { value: o }, o); if (o === p.client.per) op.selected = true; gper.appendChild(op); });
+    on(gper, "change", function () { p.client.per = gper.value; save(); });
+    gpw.appendChild(gper); gg2.appendChild(gpw);
+    giverBox.appendChild(gg2);
     root.appendChild(giverBox);
   }
 
@@ -3874,7 +3898,7 @@ function helpTopics() {
       "Every quest has its own page. Open **Quests** and select its name. The pencil beside the title renames it; the Notes field below is yours to use however you like. Further down: Tasks, the Before you launch checklist, Notes, and Quest links, in that order, with its Schedule, Timeline, and Burndown running alongside (below, on a phone). Change the schedule and the Timeline and Burndown redraw to match. On the Timeline, a pale band behind each task’s bar marks the " + w + " it falls in. **Expand**, on a wide screen, makes all three large.",
       "**In progress**, on the Quests page, lists each active quest with its next task. **Pin** keeps one in the sidebar for quick access. Unpinning only hides it there; it’s still listed on this page either way. A quest that’s Complete loses its pin automatically, since there’s nothing left to jump to, and Reopen brings the pin back along with everything else.",
       "Below In progress, the Quests page lists anything complete or not yet started, under whichever heading fits what’s actually there: Pending, Completed, or Pending & completed.",
-      "**Quest Giver Export**, on an active or complete quest’s page, downloads one self-contained web page with that quest’s tasks, notes, and a working schedule and burndown, meant for sharing outside the app. A linked quest that’s also active or complete rides along with its own section. Fill in **Your contact info** in Settings and this quest’s own **Quest Giver** section, and both print at the top as Prepared by and Prepared for. **Add brandmark**, also in Settings, uploads a small image that prints above Prepared by."]],
+      "**Quest Giver Export**, on an active or complete quest’s page, downloads one self-contained web page with that quest’s tasks, notes, and a working schedule and burndown, meant for sharing outside the app. A linked quest that’s also active or complete rides along with its own section. Fill in **Your contact info** in Settings and this quest’s own **Quest Giver** section, and both print at the top as Prepared by and Prepared for. **Add brandmark**, also in Settings, uploads a small image that prints above Prepared by. **Coin** and **Per**, at the bottom of a quest’s own Quest Giver section, track a contract pay rate for your own reference. They never print on the export."]],
     ["Finish or vault a quest", [
       "**Mark complete** works even with tasks still open. A quest also completes on its own once every task actually is. Either way you’re offered the Vault right away, or you can leave it sitting in Quests.",
       "A completed quest wears a **Complete** badge and drops out of In progress. Its tasks leave Tasks, the main Timeline, Today, and the main burndown too, though they’re still right there on the quest’s own page. **Reopen** undoes all of it: back to active, tasks back everywhere, pin restored if it had one.",
@@ -4016,8 +4040,8 @@ function renderSettings(page) {
   side.appendChild(el("p", { "class": "hint" }, "Optional. Anything filled in here prints on a Quest Giver Export."));
   var contactBox = el("div", { "class": "box", style: "margin-top:10px" });
   var cg = el("div", { "class": "setgrid" });
-  function cfield(key, id, label, type) {
-    var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label));
+  function cfield(key, id, label, type, full) {
+    var w = el("div", { "class": "field" + (full ? " full" : "") }); w.appendChild(el("label", { "for": id }, label));
     var inp = el("input", { type: type || "text", id: id });
     inp.value = state.settings.contact[key];
     on(inp, "input", function () { state.settings.contact[key] = inp.value.slice(0, 200); save(); });
@@ -4027,7 +4051,7 @@ function renderSettings(page) {
   cfield("name", "set-contact-name", "Name");
   cfield("phone", "set-contact-phone", "Phone", "tel");
   cfield("email", "set-contact-email", "Email", "email");
-  cfield("website", "set-contact-website", "Website", "url");
+  cfield("website", "set-contact-website", "Website", "url", true);
   contactBox.appendChild(cg);
   var aw = el("div", { "class": "field" }); aw.appendChild(el("label", { "for": "set-contact-address" }, "Address"));
   var addr = el("textarea", { id: "set-contact-address", rows: 3 }); addr.value = state.settings.contact.address;
@@ -4238,100 +4262,100 @@ var SVG_NS = "http://www.w3.org/2000/svg";
 // Short, plain, low-pressure phrases. Each must fit on one line in the splash
 // box (--q in css/styles.css, in em); longer ones are commented out below.
 var AFFIRMATIONS = [
-  "Small steps still count.",
-  "Progress, not perfection.",
-  "One task at a time.",
-  "Done is better than perfect.",
-  "Keep the momentum.",
-  "A little today adds up.",
-  // "You don’t have to finish, just start.",
-  "Forward is forward.",
-  "Action over overthinking.",
-  "Start now, figure it out later.",
-  "Execute without delay.",
-  "Motion creates motivation.",
-  "Just do the next small step.",
-  "Built to finish things.",
-  "Less talking, more doing.",
-  "Distractions lose, you win.",
-  "Eyes on the prize.",
-  "Your focus is unbreakable.",
-  "Own this hour.",
-  "Laser precision, zero excuses.",
-  "Deep work mode activated.",
-  // "Build momentum every minute.",
-  // "Consistency is your superpower.",
-  "Tick it off the list.",
-  "You are a finishing machine.",
-  "Sustained effort yields results.",
-  "Every small win counts.",
-  "Choose productivity today.",
-  "Discipline beats motivation.",
-  "You are in total control.",
-  "Obstacles are just detours.",
-  "You have everything you need.",
-  "Thrive under pressure.",
-  "Decide to make it happen.",
-  "Do it now.",
-  "Break the friction.",
-  "Execution over excuses.",
-  "Inertia ends today.",
-  "Step up.",
-  "Make the move.",
-  "Show up for the work.",
-  "Run the day.",
-  "Fueled by pure drive.",
-  "Dominate the checklist.",
-  "Nothing holds you back.",
-  "Unstoppable work ethic.",
-  "Set the pace.",
-  "Claim the win early.",
-  "Massive action, minimal noise.",
-  "Produce results, not excuses.",
-  "Efficiency is the standard.",
-  "Deliver on time.",
-  "Output beats hesitation.",
-  "Crush the tasks.",
-  "Streamline and succeed.",
-  "Lock in.",
-  "Silent work, loud results.",
-  "No room for doubt.",
-  "Push through it.",
-  "The path is clear.",
-  "Finish what you started.",
-  "Stay with it.",
-  "Prioritize impact over activity.",
-  "Clear, focused, and adaptable.",
-  "Fall in love with the problem.",
-  "Embrace ambiguity.",
-  "Ship, learn, iterate, repeat.",
-  "You are skilled and effective.",
-  "Continuously seek to learn.",
-  // "Be adaptable and open to change.",
-  "Embrace feedback.",
-  "Prioritize tasks effectively.",
-  "Create value.",
-  "You have clear vision.",
-  "You are resourceful.",
-  "Focus.",
-  "Be patient and persistent.",
-  "Celebrate your successes.",
-  "Don’t let time manage you.",
-  "Drive innovation.",
-  "Be decisive and assertive.",
-  "Inspire.",
-  "Calm and composed.",
-  "Lead by example.",
-  "Foster collaboration.",
-  "Time to deliver.",
-  "Leverage insights.",
-  "Smash potential risks.",
-  "Uphold transparency.",
-  "Be open to experimentation.",
-  "You are the actionable item.",
-  "Look for feedback loops.",
-  "Be adaptable.",
-  "Open to change."
+"Even the smallest step carrieth thee onward.",
+"Strive for progress, not perfection.",
+"One task; then the next.",
+"Better a deed completed than a perfect deed forever unmade.",
+"Keep thy momentum; let not thy stride falter.",
+"That which thou dost today shall compound ere long.",
+"Thou needst not finish; only take the first step.",
+"Ever onward.",
+"Deeds before doubts.",
+"Begin now; the rest shall reveal itself in time.",
+"Delay not; see the deed done.",
+"Move, and motivation shall follow.",
+"Take but the next step; thou needst no more.",
+"Thou art made to bring things to completion.",
+"Fewer words; more deeds.",
+"Let distraction be vanquished; thou shalt prevail.",
+"Set thine eyes upon the prize.",
+"Let nothing break thy focus.",
+"Claim this hour as thine own.",
+"Let thy aim be true; make no room for excuses.",
+"Enter now the realm of deep work.",
+"With every passing minute, strengthen thy momentum.",
+"Consistency is thy hidden strength.",
+"Strike it from the list and be done with it.",
+"Thou art a tireless finisher.",
+"Steady labor bringeth forth mighty results.",
+"Count every victory, however small.",
+"Choose the path of productivity this day.",
+"Discipline shall carry thee where motivation cannot.",
+"Thou holdest the reins; steer thy course.",
+"Let obstacles be but bends upon thy road.",
+"Thou hast all that thou needest.",
+"Stand firm when the pressure riseth.",
+"Make thy decision, and bring it to pass.",
+"Do it now; why tarry?",
+"Break asunder that which standeth between thee and the deed.",
+"Let excuses perish; let execution prevail.",
+"Let inertia end here and now.",
+"Rise and take thy place.",
+"Make thy move.",
+"Show thyself to the work, and let the work know thee.",
+"Seize the day and command its course.",
+"Let thy drive be thy fuel.",
+"Conquer the list, task by task.",
+"Naught shall bar thy way.",
+"Let thy work be relentless.",
+"Set the pace; let the rest follow.",
+"Take the victory whilst it is yet within reach.",
+"Do much; speak little.",
+"Bring forth results, and leave excuses behind.",
+"Let efficiency be thy standard.",
+"Deliver what thou hast promised, and deliver it in due time.",
+"Deeds shall conquer hesitation.",
+"Lay low thy tasks, one by one.",
+"Make the path clear, then walk it swiftly.",
+"Hold fast to the work.",
+"Let thy labor be quiet and thy results thunderous.",
+"Give doubt no seat at thy table.",
+"Press onward; thou art not yet beaten.",
+"The road lieth open before thee.",
+"Finish what thy hands have begun.",
+"Stay the course, though the road be long.",
+"Seek the deed that mattereth, not merely the deed that occupieth thee.",
+"Keep thy mind clear, thy purpose fixed, and thy course ready to change.",
+"Come to know the problem, and thou shalt learn to love it.",
+"Make peace with uncertainty; it is oft the road to discovery.",
+"Deliver, learn, refine, and ride forth again.",
+"Thou knowest thy craft, and thou wieldest it well.",
+"Be ever a student; seek what thou dost not yet know.",
+"Bend with the wind, and welcome the changing tide.",
+"Welcome counsel; let good feedback sharpen thy blade.",
+"Set thy tasks in their rightful order.",
+"Create something worthy of being made.",
+"Thy vision is clear; trust the road before thee.",
+"Thou hast more resource than thou thinkest.",
+"Still thy mind, and focus thy sight.",
+"Be patient in the waiting, and steadfast in the doing.",
+"Mark thy victories; thou hast earned them.",
+"Let not the clock become thy master.",
+"Make bold the path of innovation.",
+"Choose thy course, then stand by it.",
+"Kindle the fire in those around thee.",
+"Be still of mind and steady of hand.",
+"Let thy deeds teach others how it is done.",
+"Build bridges; great works are seldom wrought alone.",
+"The hour hath come; deliver what thou hast made.",
+"Use what thou hast learned; wisdom unused is wisdom wasted.",
+"Find the danger ere it findeth thee.",
+"Let truth be thy banner and transparency thy shield.",
+"Try boldly; learn from what followeth.",
+"Thou art the deed that awaiteth doing.",
+"Seek the loop: act, observe, learn, and act again.",
+"Change thy course when the road demandeth it.",
+"Welcome change; it may yet show thee a better road."
 ];
 
 function svgEl(tag, attrs) {
