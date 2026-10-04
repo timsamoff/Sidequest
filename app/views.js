@@ -654,7 +654,7 @@ export function renderQuestPage(root, id) {
         // Restore a pin completionDialog() auto-removed on completion.
         if (p.wasPinned) { var key = "quest:" + p.id; if (!isPinned(key)) state.pins.push(key); p.wasPinned = false; }
         changed(); notify("Reopened.");
-        if (state.settings.audio) playSfx("assets/sfx/splash.mp3");
+        if (state.settings.audio) playSfx("assets/sfx/quest.mp3");
       }));
     }
     ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Send this quest to the Vault" }, "Vault"), "click", function () {
@@ -753,7 +753,7 @@ export function promoteToActive(id) {
   var t = state.tasks.filter(function (x) { return x.isNext; })[0];
   if (t) t.status = "Completed";
   changed();
-  if (state.settings.audio) playSfx("assets/sfx/splash.mp3");
+  if (state.settings.audio) playSfx("assets/sfx/quest.mp3");
 }
 // Sends an active quest back to Candidates. A candidate isn't a real link
 // target, so its links are set aside (not just dropped) in savedLinkIds and

@@ -251,7 +251,7 @@ export function playSplash(showSplash, done, audio) {
   });
   timers.push(setTimeout(function () { root.classList.add("artBlurred"); }, artBlurAt));
   // Disabled: browsers block Audio.play() here outside a real click/tap/keydown handler.
-  // if (audio) timers.push(setTimeout(function () { playSfx("assets/sfx/splash.mp3"); }, Math.max(0, textAt + TIMING.soundOffset)));
+  // if (audio) timers.push(setTimeout(function () { playSfx("assets/sfx/quest.mp3"); }, Math.max(0, textAt + TIMING.soundOffset)));
   timers.push(setTimeout(function () { root.classList.add("textIn"); }, textAt));
   timers.push(setTimeout(function () {
     root.classList.add("fading");

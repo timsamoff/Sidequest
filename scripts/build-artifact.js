@@ -112,8 +112,8 @@ function stripModuleSyntax(source, filename) {
 // way: each literal string reference in the bundled JS is swapped for a
 // variable name, with one real `var SFX_...` declaration holding the actual
 // base64 data URI -- a file referenced from more than one call site (the
-// splash sound currently is) is only embedded once, not once per reference.
-var SFX_FILES = { "assets/sfx/splash.mp3": "SFX_SPLASH", "assets/sfx/complete.mp3": "SFX_COMPLETE" };
+// quest sound currently is) is only embedded once, not once per reference.
+var SFX_FILES = { "assets/sfx/quest.mp3": "SFX_QUEST", "assets/sfx/complete.mp3": "SFX_COMPLETE" };
 
 function buildSfxDataUris() {
   var map = {};

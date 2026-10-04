@@ -1720,7 +1720,7 @@ async function exportClick(k, projectName) {
   ok(!played, "Mark complete plays no sound when Audio is off");
 }
 {
-  // Promoting a candidate to a quest plays the splash sound, since that
+  // Promoting a candidate to a quest plays the quest sound, since that
   // click is a real user gesture a browser will actually allow audio from
   // (unlike the splash's own setTimeout-driven moment -- see app/splash.js).
   const saved = { settings: { audio: true }, quests: [{ id: "pCand", name: "Candidate Quest", status: "candidate" }], tasks: [] };
@@ -1731,7 +1731,7 @@ async function exportClick(k, projectName) {
   k.tab("projects");
   k.click(k.btn(k.$("view"), "Promote"));
   k.w.Audio = RealAudio;
-  ok(played === "assets/sfx/splash.mp3", "promoting a candidate plays the splash sound when Audio is on (" + played + ")");
+  ok(played === "assets/sfx/quest.mp3", "promoting a candidate plays the quest sound when Audio is on (" + played + ")");
   ok(k.saved().quests.find((q) => q.id === "pCand").status === "active", "and the quest is actually promoted");
 }
 {
@@ -1747,7 +1747,7 @@ async function exportClick(k, projectName) {
 }
 {
   // Reopening a Complete quest is also a real click, so it plays the same
-  // splash sound as Promote.
+  // quest sound as Promote.
   const saved = { settings: { audio: true }, quests: [{ id: "pReo", name: "Reopen Quest", status: "complete" }], tasks: [] };
   const k = kit(await mk(saved));
   let played = null;
@@ -1756,7 +1756,7 @@ async function exportClick(k, projectName) {
   k.tab("projects"); k.click(k.btn(k.$("view"), "Reopen Quest"));
   k.click(k.btn(k.$("view"), "Reopen"));
   k.w.Audio = RealAudio;
-  ok(played === "assets/sfx/splash.mp3", "reopening a Complete quest plays the splash sound when Audio is on (" + played + ")");
+  ok(played === "assets/sfx/quest.mp3", "reopening a Complete quest plays the quest sound when Audio is on (" + played + ")");
   ok(k.saved().quests.find((q) => q.id === "pReo").status === "active", "and the quest is actually reopened");
 }
 {
