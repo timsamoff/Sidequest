@@ -165,10 +165,8 @@ export function questDialog() {
     return { msg: v.name + " added as a candidate for the next slot." };
   }, "It joins the candidates for the next slot. You can workshop it later.");
 }
-// With an idea passed in, edits it in place (same record, same id); with none,
-// adds a new one.
-// Links are bidirectional (see linkQuests()), so the chosen quest shows
-// this one too. Only quests not already linked are offered.
+// Links are bidirectional, so the chosen quest shows this one too. Only
+// quests not already linked are offered.
 export function linkQuestDialog(p) {
   var opts = liveQuests().filter(function (x) { return x.id !== p.id && p.linkedQuestIds.indexOf(x.id) < 0; }).map(function (x) { return { value: x.id, label: x.name }; });
   if (!opts.length) { notify("Every other quest is already linked."); return; }
@@ -179,10 +177,7 @@ export function linkQuestDialog(p) {
     return { msg: "Linked to " + other.name + "." };
   }, "The link goes both ways: that quest will show this one too.");
 }
-// Edits a candidate quest's own fields in place: Notes, Start date, Due
-// date, and its own block/sprint length. Promotion (Candidate -> Active) is a
-// separate row action on the Candidates list, not a button in this dialog --
-// this dialog only saves, matching ideaDialog's own Edit/Save pattern.
+// With an idea passed in, edits it in place; with none, adds a new one.
 export function ideaDialog(idea) {
   formDialog(idea ? "Edit idea" : "New idea", [
     { key: "text", label: "Idea", value: idea ? idea.text : undefined },
@@ -194,10 +189,7 @@ export function ideaDialog(idea) {
     return { msg: "Added to the Workshop." };
   });
 }
-// prefill is a quest id or { step } (already chosen). A decision must
-// belong to a step (Quest -> Task -> Step -> Decision), at most one.
-// Steps with no decision yet, for one task -- shared by the cascade below and
-// by the quest-level re-check once a task is chosen.
+// Steps with no decision yet, for one task -- shared by the cascade below.
 function openStepOptions(taskId) {
   return stepOptionsForTask(taskId).filter(function (o) { return !decisionFor(o.value); });
 }
@@ -258,10 +250,8 @@ export function decisionDialog(prefill) {
     on(taskSel, "change", function () { fillSteps(taskSel.value); });
   }
 }
-// Edits a decision in place: its question and its answer. Removal is supplied by the
-// caller (it lives in views.js). Answering ticks the linked step and clearing the
-// answer unticks it, but only when the answer itself changed, so fixing a typo in
-// the question never flips a step the user set by hand.
+// Answering ticks the linked step; clearing it unticks -- but only when the
+// answer itself changed, so fixing a typo in the question never flips the step.
 export function decisionEditDialog(dec, onRemove) {
   var ls = findStep(dec.step);
   formDialog("Decision", [
@@ -339,11 +329,8 @@ export function milestoneDialog(m, onRemove) {
     return { msg: "Milestone added to the Timeline." };
   }, undefined, m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
 }
-// Slips one quest's incomplete tasks later by N days each: start and due
-// both move, and each task's block is re-derived from its new due date. Completed tasks
-// and Backlog items have no date to shift, so they're left untouched, and the
-// quest's own start date is never touched either -- shifting that would
-// move already-finished work too, which isn't really "catching up."
+// Slips only incomplete, scheduled tasks later by N days -- Completed tasks,
+// the Backlog, and the quest's own start date are never touched.
 export function slipDialog(p) {
   openModal("Slip " + p.name + "'s schedule", function (body) {
     body.appendChild(el("p", { "class": "hint first" }, "This moves incomplete tasks later by the same number of days. Completed tasks and the Backlog are not affected."));

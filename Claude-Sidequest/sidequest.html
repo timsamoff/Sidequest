@@ -629,11 +629,8 @@ function el(tag, attrs, text) {
   return e;
 }
 function on(node, ev, fn) { node.addEventListener(ev, fn); return node; }
-// Plays a short sound effect. Caller decides whether sound is wanted (the
-// audio setting) -- this just plays `src`, silently giving up on any
-// failure (a browser blocking autoplay before the user has interacted with
-// the page, a missing file, an unsupported format), since a sound effect is
-// never worth surfacing an error over.
+// Plays a short sound effect, silently giving up on any failure (autoplay
+// blocked, missing file) since a sound effect is never worth surfacing an error over.
 function playSfx(src) {
   try {
     var a = new window.Audio(src), p = a.play();
@@ -649,8 +646,7 @@ function pencilButton(label, title, onClick) {
   return b;
 }
 // Turns the text in `display` into an input in place. Enter or clicking away saves,
-// Esc cancels. opts: { label, max, value(), onSave(v), onEmpty(), onDone() }. onDone
-// runs first (so callers can restore their pencil), then onSave.
+// Esc cancels. onDone runs first (so callers can restore their pencil), then onSave.
 function editInline(display, opts) {
   var input = el("input", { type: "text", "class": "inlineedit", "aria-label": opts.label, maxlength: String(opts.max || 200), autocomplete: "off" });
   input.value = opts.value();
@@ -711,25 +707,18 @@ var WORDS = { Block: ["block", "blocks"], Sprint: ["sprint", "sprints"], Iterati
 function wd() { return state.settings.blockWord in WORDS ? state.settings.blockWord : "Block"; }
 function wl() { return WORDS[wd()][0]; }
 function wpC() { var w = WORDS[wd()][1]; return w.charAt(0).toUpperCase() + w.slice(1); }
-/* quest helpers -- Quest (formerly called Project) is the top-tier entity every
-   task/decision/milestone attaches to by id. A quest is promoted in place from
-   candidate to active, one id for its whole life, so "the active quest named X"
-   and "the candidate named X" are never two different records. The "projects"
-   page key stays unchanged -- it's an internal routing id, not shown to the user. */
+/* quest helpers -- Quest is the top-tier entity every task/decision/milestone
+   attaches to by id, promoted in place from candidate to active. */
 function live(a) { return a.filter(function (x) { return !x.vault; }); }
 function liveQuests() { return live(state.quests); }
 function activeQuests() { return liveQuests().filter(function (p) { return p.status === "active"; }); }
 function candidateQuests() { return liveQuests().filter(function (p) { return p.status === "candidate"; }); }
 function completeQuests() { return liveQuests().filter(function (p) { return p.status === "complete"; }); }
-// A Complete-but-not-vaulted quest's tasks stay in the quest itself but
-// drop out of every cross-quest surface (Tasks, Today, the global burndown
-// and Timeline) -- reversible the instant the quest's status changes back,
-// since this reads the quest's live status rather than a stored flag.
+// A Complete-but-not-vaulted quest's tasks drop out of every cross-quest
+// surface (Tasks, Today, the burndown/Timeline), reversible the instant its status changes back.
 function isHiddenComplete(t) { var p = findQuest(t.questId); return !!p && p.status === "complete" && !p.vault; }
 // Searches every quest, vaulted or not -- a vaulted quest's own page
-// must stay reachable, read-only, until restored. Safe to search past
-// liveQuests() here because every caller either wants a vaulted match
-// right now, or already filters to live quests one level up.
+// must stay reachable, read-only, until restored.
 function findQuest(id) { for (var i = 0; i < state.quests.length; i++) if (state.quests[i].id === id) return state.quests[i]; return null; }
 function findAnyQuest(id) { return findQuest(id); }
 // True only when the quest has at least one counted task and every one of
@@ -758,10 +747,8 @@ function pset(questId) { var p = findQuest(questId); return { start: (p && p.sta
 function offsetFor(questId, n) { return n * pset(questId).days; }
 function blockStartFor(questId, b) { return addDays(parseISO(pset(questId).start), offsetFor(questId, b - 1)); }
 function blockEndFor(questId, b) { return addDays(parseISO(pset(questId).start), offsetFor(questId, b) - 1); }
-// The inverse of blockStartFor/blockEndFor: which block a given date falls
-// in, so a task can be scheduled by picking a due date instead of having to
-// know or look up a block number. Returns null for a date before the
-// quest's own start (there's no block before Block 1 to place it in).
+// The inverse of blockStartFor/blockEndFor: which block a given date falls in,
+// so a task can be scheduled by picking a due date. Null before the quest's own start.
 function blockForDate(questId, dateMs) {
   var eff = pset(questId), start = parseISO(eff.start);
   if (dateMs < start) return null;
@@ -811,10 +798,7 @@ function checkpointStep() {
 function checkpoints() { var out = [], s = chartStart(), d = checkpointStep(); for (var i = 0; i < CHECKPOINTS; i++) out.push(addDays(s, d * i)); return out; }
 
 /* burndown history -- { "<ISO day>": [tasks in scope, tasks still open] }.
-   Written only on a day something changed, and only when it differs from the
-   last record before it. Every change to the data happens in the app, so a
-   day with no record means nothing changed: read it as the latest earlier
-   record (carry forward), not as a gap. */
+   Written only when it differs from the prior record; a day with no record carries forward, not a gap. */
 function recordHist(hist, scope, left) {
   var key = iso(TODAY), prior = Object.keys(hist).filter(function (k) { return k < key; }).sort();
   var prev = prior.length ? hist[prior[prior.length - 1]] : null;
@@ -842,9 +826,8 @@ function globalActual(cps) {
 
 /* task helpers */
 function counted() { return state.tasks.filter(function (t) { return !t.vault || t.vault.why === "done"; }); }
-// The "chosen" quest is just the first active one with no tasks yet -- a
-// quest's own status carries this, so there's no separate pointer to keep
-// in sync. If two are both task-less, whichever was promoted first wins.
+// The "chosen" quest is the first active one with no tasks yet. If two are
+// both task-less, whichever was promoted first wins.
 function chosen() { var a = activeQuests(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.questId === a[i].id; })) return a[i]; return null; }
 function dispQuest(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next quest"; } var p = findQuest(t.questId); return p ? p.name : ""; }
 function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next quest. Add its first tasks with the + button."; return t.what; }
@@ -868,19 +851,13 @@ function orderedAll() { return sortTasks(live(state.tasks)); }
 function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0 && !isHiddenComplete(t); })); }
 function burnTasks() { return counted().filter(function (t) { return t.block > 0 && !isHiddenComplete(t); }); }
 // --- One quest's own burndown ---
-// From counted(), not burnTasks() -- a Complete-but-kept quest's own page
-// must keep showing its own burndown even while its tasks are hidden from
-// every cross-quest surface that burnTasks() feeds.
+// From counted(), not burnTasks() -- a Complete quest's own page keeps
+// showing its burndown even while its tasks are hidden cross-quest.
 function questBurnTasks(p) { return counted().filter(function (t) { return t.block > 0 && t.questId === p.id; }); }
 function questTotalUnits(p) { return questBurnTasks(p).length; }
 function questRemainingUnits(p) { return questBurnTasks(p).filter(isOpen).length; }
-// Points are days when the quest's schedule is 21 days or shorter (and today is within
-// 45 days of its start), otherwise
-// Mondays from the week of its first task to the week after its last (stretched
-// to include today if it has overrun). Planned is exact, like the global
-// chart's. Actual is read from the quest's own recorded history, except the
-// point covering today, which is always computed live. Returns null if nothing
-// is scheduled.
+// Points are daily for a short/near-term schedule, otherwise weekly Mondays
+// stretched to include today if overrun. Returns null if nothing is scheduled.
 function questBurn(p) {
   var ts = questBurnTasks(p);
   if (!ts.length) return null;
@@ -917,8 +894,7 @@ function syncFromSteps(t) {
 function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Completed") return o[i]; return null; }
 function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
 // "quest:" + id routes to a quest's own page -- id-based, not name-based, so
-// renaming a quest never breaks its pin or an in-flight link to it. Every
-// status, including a live candidate, has a page now.
+// renaming a quest never breaks its pin or an in-flight link to it.
 function validPage(key) {
   if (typeof key !== "string" || key.indexOf("quest:") !== 0) return false;
   return !!findQuest(key.slice(6));
@@ -1003,10 +979,8 @@ function task(id, block, questId, what, done, steps, extra) {
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
   return t;
 }
-// A quest's own lifecycle: "candidate" (competing for the next slot, not yet
-// started) or "active" (chosen, has tasks). Promoted in place -- the same
-// record and id carry through candidate -> active -> vaulted, never a second
-// record.
+// A quest's own lifecycle: "candidate" or "active". Promoted in place -- the
+// same record and id carry through candidate -> active -> vaulted, never a second record.
 function quest(id, name, status, extra) {
   var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
@@ -1019,15 +993,11 @@ function sampleData() {
   function day(k) { return new Date(m0 + k * D).toISOString().slice(0, 10); }
   var yest = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 1)).toISOString().slice(0, 10);
   var lastWeek = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 7)).toISOString().slice(0, 10);
-  // Burndown history entries are [tasks in scope, tasks still open], keyed by the
-  // day recorded. Sample App started two Mondays ago with four scheduled tasks and gained a fifth; its
-  // second one is running late, so the burndown sits above the plan.
+  // History entries are [tasks in scope, tasks still open], keyed by the day recorded.
   var appHistory = {}; appHistory[day(0)] = [4, 4]; appHistory[day(5)] = [4, 3]; appHistory[day(9)] = [5, 4];
-  // Sample Finished Quest runs a little late, then ahead, then lands on time,
-  // so its full-quest Burndown crosses the planned line instead of tracking it.
+  // Runs a little late, then ahead, then lands on time, so its Burndown crosses the planned line.
   var doneHistory = {}; doneHistory[day(-28)] = [4, 4]; doneHistory[day(-20)] = [4, 3]; doneHistory[day(-15)] = [4, 2]; doneHistory[day(-12)] = [4, 1]; doneHistory[day(-1)] = [4, 0];
-  // The main burndown counts every scheduled task that isn't hidden with a Complete quest;
-  // a twelfth task was added on day 9, so its line steps up once.
+  // A twelfth task was added on day 9, so the main burndown's scope line steps up once.
   var allHistory = {}; allHistory[day(0)] = [11, 11]; allHistory[day(5)] = [11, 10]; allHistory[day(9)] = [12, 11];
   var quests = [
     // pApp <-> pSite demonstrates a bidirectional quest link.
@@ -1037,12 +1007,9 @@ function sampleData() {
     quest("pGame", "Sample Game", "active", { start: day(21), days: 14, due: day(21 + 122) }),
     quest("pExt", "Sample Browser Extension", "candidate", { notes: "A small tool that could ship in a month" }),
     quest("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own quests" }),
-    // Demonstrates a Complete quest: drops out of In progress but still
-    // shows in the plain Quests list with its Complete badge.
+    // Demonstrates a Complete quest: drops out of In progress but still shows in the plain Quests list.
     quest("pDone", "Sample Finished Quest", "complete", { start: day(-28), notes: "Shipped and wrapped up.", hist: doneHistory }),
-    // Demonstrates a promoted-but-task-less Active quest: since In progress
-    // is built entirely from tasks, this one never appears there and lands in
-    // the plain Quests list under Pending instead -- no start date needed.
+    // Demonstrates a promoted-but-task-less Active quest, which lands under Pending instead of In progress.
     quest("pNext", "Sample Next Quest", "active", { notes: "Chosen, but nothing scheduled yet." })
   ];
   var tasks = [
@@ -1060,9 +1027,8 @@ function sampleData() {
     task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid", true), st("g3c", "Record a trailer", true)]),
     task("g4", 0, "pGame", "Add a level editor", "Players can build, save, and share a level"),
     task("n1", 6, null, "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true }),
-    // pDone's own tasks, all finished -- a Complete quest keeps its task
-    // history rather than clearing it out. Four weekly tasks at weight 2 each
-    // give an even planned line, which doneHistory above then zig-zags around.
+    // pDone's own tasks, all finished. Four weekly tasks at weight 2 each give
+    // an even planned line, which doneHistory above then zig-zags around.
     task("d1", 1, "pDone", "Design the feature", "The design is agreed", [st("d1a", "Sketch the approach", false, true), st("d1b", "Get sign-off", false, true)], { status: "Completed", doneAt: day(-22) }),
     task("d2", 2, "pDone", "Build the core feature", "It works end to end", [st("d2a", "Build the happy path", false, true), st("d2b", "Handle errors", false, true)], { status: "Completed", doneAt: day(-15) }),
     task("d3", 3, "pDone", "Test it", "The top bugs are fixed", [st("d3a", "Run through every screen", false, true), st("d3b", "Fix what’s broken", false, true)], { status: "Completed", doneAt: day(-8) }),
@@ -1073,13 +1039,8 @@ function sampleData() {
   // When the finished tasks were completed (Sample Finished Quest's are a bit late, early, then on time).
   var DONE = { a1: day(5), d1: day(-20), d2: day(-15), d3: day(-12), d4: day(-1) };
   tasks.forEach(function (t) { if (DONE[t.id]) t.doneAt = DONE[t.id]; });
-  // Explicit start/due dates for every scheduled task, matching the real way
-  // a task is scheduled today (pick a due date, the block is derived from it)
-  // instead of the old block-number-only sample shape. Each due date lands on
-  // the same day its block number already implied, so none of the tuned
-  // demonstrations above (the late a2, the scope-added a5, the zig-zag
-  // doneHistory) shift. A start date is only set when the task's own estimate
-  // is light enough that the whole block would otherwise look misleadingly full.
+  // Explicit start/due dates for every scheduled task. A start date is only
+  // set when the task's own estimate is light enough the block would otherwise look misleadingly full.
   var SCHEDULE = {
     a1: { start: day(2), due: day(4) }, a2: { start: day(9), due: day(12) }, a3: { start: day(18), due: day(20) },
     a4: { start: day(25), due: day(27) }, a5: { start: day(31), due: day(34) },
@@ -1132,11 +1093,8 @@ function defaults() {
 
 function validVault(a) { return (a && typeof a === "object" && isISO(a.at) && (a.why === "done" || a.why === "removed")) ? { at: a.at, why: a.why } : null; }
 function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
-// A slip's own undo snapshot: each affected task's own block number right
-// before the slip, so Undo can put every one of them back exactly where it was.
-// Burndown history: { "<ISO day>": [tasks in scope, tasks still open] }. Anything
-// malformed is dropped; the newest 1000 entries are kept. Saved data from before
-// history counted tasks (an `actual` field in step units) is not carried over.
+// Burndown history: { "<ISO day>": [tasks in scope, tasks still open] }.
+// Malformed entries are dropped; the newest 1000 are kept.
 function cleanHist(v) {
   var out = {};
   if (!v || typeof v !== "object" || Array.isArray(v)) return out;
@@ -1146,6 +1104,7 @@ function cleanHist(v) {
   });
   return out;
 }
+// A slip's own undo snapshot: each affected task's prior block number, so Undo can restore it exactly.
 function cleanSlip(v) {
   if (!v || typeof v !== "object" || typeof v.days !== "number" || !Array.isArray(v.snap)) return null;
   var snap = v.snap.slice(0, 500).filter(function (s) { return s && typeof s.id === "string" && typeof s.block === "number" && s.block >= 0 && s.block <= 5000; }).map(function (s) { return { id: S(s.id, 40), block: Math.round(s.block), start: isISO(s.start) ? s.start : "", due: isISO(s.due) ? s.due : "" }; });
@@ -1157,24 +1116,17 @@ function normalize(s) {
   if (!s || typeof s !== "object") return d;
   if (isISO(s.start)) d.start = s.start;
   if (typeof s.days === "number" && s.days >= 1 && s.days <= 30) d.days = Math.round(s.days);
-  // Quests used to be called Projects. Saved data from before the rename has
-  // state.projects (not state.quests), p.linkedProjectIds (not linkedQuestIds),
-  // and pins/task/milestone links spelled "proj:"/projectId. Read whichever
-  // shape is present so nobody's existing save is silently dropped.
+  // Quests used to be called Projects; read whichever old or new field name is present.
   var rawQuests = Array.isArray(s.quests) ? s.quests : s.projects;
   if (Array.isArray(rawQuests)) {
     d.quests = rawQuests.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) {
-      // A quest used to have a separate short description (`note`) as well
-      // as `notes`. They are one field now: fold a saved `note` into the front
-      // of `notes` so nothing is lost. Once saved, `note` no longer exists.
+      // `note` and `notes` used to be separate fields; fold a saved `note` into the front of `notes`.
       var oldNote = S(x.note, 5000), body = S(x.notes, 5000);
-      // Old saved data may still have `mult`, a multiplier on the global
-      // block length instead of its own day count -- convert once on load.
+      // Old saved data may have `mult` (a multiplier on the global block length) instead of its own day count.
       var days = (typeof x.days === "number" && x.days >= 1 && x.days <= 90) ? Math.round(x.days)
         : (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? Math.max(1, Math.round(d.days * x.mult)) : d.days;
       var linked = Array.isArray(x.linkedQuestIds) ? x.linkedQuestIds : x.linkedProjectIds;
-      // Set aside while demoted to candidate (see demoteToCandidate() in
-      // views.js), so a later promotion can restore the same links.
+      // Set aside while demoted to candidate, so a later promotion can restore the same links.
       var saved = Array.isArray(x.savedLinkIds) ? x.savedLinkIds : null;
       var xc = x.client && typeof x.client === "object" ? x.client : {};
       return {
@@ -1186,10 +1138,7 @@ function normalize(s) {
         lastSlip: cleanSlip(x.lastSlip),
         // Set aside by completionDialog()'s auto-unpin so Reopen can restore it.
         wasPinned: x.wasPinned === true,
-        // Validated below, once every quest's real id is known -- a link
-        // can only point at another quest that actually exists in the final
-        // set. Arbitrary depth or cycles are fine; each side of a link is just
-        // an id in this array, and nothing here ever traverses the graph.
+        // Validated below, once every quest's real id is known.
         linkedQuestIds: Array.isArray(linked) ? linked.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : [],
         savedLinkIds: saved ? saved.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : null,
         client: { org: S(xc.org, 200), poc: S(xc.poc, 200), phone: S(xc.phone, 200), email: S(xc.email, 200), address: S(xc.address, 500), website: S(xc.website, 200), coin: (typeof xc.coin === "number" && xc.coin >= 0 && xc.coin <= 999999) ? xc.coin : "", per: (xc.per === "Hour" || xc.per === "Quest") ? xc.per : "Hour" }
@@ -1205,10 +1154,8 @@ function normalize(s) {
     var ts = [];
     s.tasks.forEach(function (t) {
       if (!t || typeof t !== "object" || typeof t.id !== "string") return;
-      // A task's questId must match a real quest, or (for the "Next
-      // quest" placeholder only) be null/absent. An orphaned questId --
-      // pointing at nothing -- drops the task rather than keeping it around
-      // unreachable. Saved data from before the rename has projectId instead.
+      // A task's questId must match a real quest, or (for the "Next quest"
+      // placeholder only) be null/absent; an orphaned questId drops the task.
       var rawId = typeof t.questId === "string" ? t.questId : t.projectId;
       var pid = (typeof rawId === "string" && questIds[rawId]) ? rawId : null;
       if (!pid && !t.isNext) return;
@@ -1237,11 +1184,8 @@ function normalize(s) {
   // used below to require a decision's step link points at something real.
   var liveStepIds = {};
   d.tasks.forEach(function (t) { if (!t.vault) t.steps.forEach(function (x) { liveStepIds[x.id] = true; }); });
-  // Decisions require a real step link (Quest -> Task -> Step -> Decision) --
-  // a decision with no step, or one pointing at a step that doesn't exist, is
-  // dropped rather than kept in a state the UI can't render meaningfully.
-  // Only Quests and Ideas go to the Vault independently, so there's no "vaulted,
-  // exempt from this rule" case: every decision must resolve to a real, live step.
+  // Decisions require a real step link; one with no step, or a step that
+  // doesn't exist, is dropped rather than kept unrenderable.
   if (Array.isArray(s.decisions)) {
     d.decisions = s.decisions.filter(function (x) {
       return x && typeof x.id === "string" && typeof x.step === "string" && liveStepIds[x.step];
@@ -1250,9 +1194,7 @@ function normalize(s) {
   // The Workshop array used to be called `parked`; read whichever is present.
   var rawWorkshop = Array.isArray(s.workshop) ? s.workshop : s.parked;
   if (Array.isArray(rawWorkshop)) d.workshop = rawWorkshop.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 5000), vault: validVault(x.vault || x.arch) }; });
-  // Milestones require a direct quest link (no task/step chain to derive it
-  // from) -- one pointing at a quest that no longer exists is dropped. Saved
-  // data from before the rename has projectId instead of questId.
+  // Milestones require a direct quest link; one pointing at a quest that no longer exists is dropped.
   if (Array.isArray(s.milestones)) {
     d.milestones = s.milestones.filter(function (x) {
       var mid = typeof x.questId === "string" ? x.questId : x.projectId;
@@ -1275,10 +1217,7 @@ function normalize(s) {
       var c = s.settings.contact;
       d.settings.contact = { name: S(c.name, 200), company: S(c.company, 200), phone: S(c.phone, 200), email: S(c.email, 200), address: S(c.address, 500), website: S(c.website, 200) };
     }
-    // A data: URI, capped well above the 300 KB upload limit to allow for
-    // base64's own ~33% size increase -- anything else (including a stale
-    // URL-style value from before this existed) is dropped, not truncated,
-    // since a cut-off image would just fail to decode.
+    // A data: URI, capped well above the 300 KB upload limit for base64 overhead; anything else is dropped, not truncated.
     if (typeof s.settings.brandmark === "string" && /^data:image\//.test(s.settings.brandmark) && s.settings.brandmark.length <= 500000) d.settings.brandmark = s.settings.brandmark;
     if (typeof s.settings.audio === "boolean") d.settings.audio = s.settings.audio;
     if (typeof s.settings.completionFx === "boolean") d.settings.completionFx = s.settings.completionFx;
@@ -1288,19 +1227,8 @@ function normalize(s) {
   if (Array.isArray(s.pins)) d.pins = s.pins.filter(function (k) { return typeof k === "string" && k.length < 130; }).map(function (k) { return k.indexOf("proj:") === 0 ? "quest:" + k.slice(5) : k; }).slice(0, 30);
   return d;
 }
-// Storage adapter: localStorage (web app) is synchronous and always available;
-// Claude's db capability (artifact version) is asynchronous and may resolve
-// null (not a published artifact, not granted, or failed to load --
-// indistinguishable by design). Rather than make every call site across
-// app/*.js that reads `state.x` deal with that, the whole app keeps reading
-// `state` as a plain, already-populated object -- this adapter is the only
-// place that knows storage might be async, at the load/save boundary alone.
-//
-// Once resolved, db stays a live reference for the rest of the page's life
-// (awaiting use('db') again is free, per its own contract). A null db means
-// either "not a published artifact with db granted" or "db failed to load" --
-// both fall back to localStorage identically, since a page that can't reach
-// the network shouldn't lose the ability to save at all.
+// Storage adapter: localStorage is synchronous and always available; Claude's
+// db capability is async and may resolve null, which falls back to localStorage identically either way.
 var dbPromise = null;
 function getDb() {
   if (dbPromise) return dbPromise;
@@ -1310,16 +1238,11 @@ function getDb() {
   return dbPromise;
 }
 
-// One write in flight at a time per the db capability's own contract ("ONE
-// WRITE AT A TIME per document... await each set/update before the next").
-// A rapid burst of saves (e.g. several quick edits) coalesces into: whichever
-// write is already running finishes, then exactly one more write carrying
-// the LATEST state runs after it -- never a growing backlog of queued writes,
-// and never two writes racing on the same document.
+// One write in flight at a time (the db capability's own contract); a burst
+// of saves coalesces into the running write plus exactly one more carrying the latest state.
 var dbWriteInFlight = null, dbWritePending = false;
-// Nothing is written to the db until it has been read once. A device with empty
-// local storage would otherwise save its own sample data over the real data
-// before loading it. A change made before then waits in dbWritePending.
+// Nothing is written to the db until it has been read once, or an empty
+// device would overwrite real data with its own sample data.
 var dbReadDone = false, dbLoadTries = 0;
 function dbSave(rawState) {
   if (!dbReadDone || dbWriteInFlight) { dbWritePending = true; return; }
@@ -1342,10 +1265,8 @@ function load() {
   return defaults();
 }
 var state = load();
-// When this device's data last really changed, kept beside the state (not in it, so backups
-// are unchanged). bootSavedAt is what an earlier session left, read before this boot saves
-// anything: it is what gets compared with the db's stamp, so a fresh device (no stamp)
-// can never look newer than the db, and a boot that changes nothing never refreshes it.
+// When this device's data last really changed, kept beside the state (not in
+// it) so a fresh device's stamp can never look newer than the db's.
 var SAVED_AT_KEY = KEY2 + "-saved-at";
 function readSavedAt() { try { return window.localStorage.getItem(SAVED_AT_KEY) || ""; } catch (e) { return ""; } }
 var bootSavedAt = readSavedAt(), localSavedAt = bootSavedAt, savesSeen = 0, editedAfterBoot = false;
@@ -1364,11 +1285,8 @@ function save() {
   dbSave(state);
 }
 
-// Runs once at boot (called from app.js's deferred boot sequence, after the
-// page has already rendered from load()'s synchronous localStorage/defaults
-// result -- never blocks the initial paint on this). If db is available and
-// holds real saved data, swap it in and ask the caller to re-render. Resolves
-// to true if state was swapped (caller should re-render), false otherwise.
+// Runs once at boot, after the initial paint. Swaps in the db's state if
+// available and newer, and resolves true when the caller should re-render.
 function loadFromDbIfAvailable() {
   return getDb().then(function (db) {
     if (!db) { dbReadDone = true; dbWritePending = false; return false; }
@@ -1400,10 +1318,8 @@ var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", se
 // Always opens on Today -- no-op.
 function saveUI() { /* nothing to save */ }
 
-// Stamps a task's completion date the moment its status becomes Done, and
-// clears it if the task is reopened. Only Quests and Ideas go to the Vault
-// independently -- a completed task just stays visible, marked Done, inside
-// its live quest; this function never moves anything to the Vault itself.
+// Stamps a task's completion date when it becomes Done, clears it if reopened.
+// Never moves anything to the Vault itself -- only Quests and Ideas do that.
 function autoVault() {
   state.tasks.forEach(function (t) {
     if (t.status !== "Completed") { t.doneAt = ""; return; }
@@ -1411,10 +1327,7 @@ function autoVault() {
   });
 }
 // Permanently deletes Vault entries older than settings.vaultPurgeDays,
-// checked once at boot (not every save) since it only matters at day
-// granularity. Age is time since vault.at, so a restored-then-re-vaulted
-// item gets a fresh clock. 0 means Never; no confirmation is shown, since
-// the Settings control itself is the user's standing consent.
+// checked once at boot. 0 means Never; no confirmation, the Settings control itself is standing consent.
 function purgeOldVault() {
   var days = state.settings.vaultPurgeDays;
   if (!days) return;
@@ -1470,11 +1383,8 @@ function renderBurn(host, wide, cfg) {
   // Thin the date labels on a long axis so they never run together.
   var every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 70))));
   cps.forEach(function (ms, i) { if (i % every === 0 || i === n - 1) svg.appendChild(svgEl("text", { "class": "axis", x: x(i), y: H - 16, "text-anchor": "middle" }, fmt(ms))); });
-  // Animated draw-in: each line sits in its own clipped group that reveals left
-  // to right, so a dashed line (Ideal) and a multi-segment line (Actual) both
-  // work the same way -- a clip-rect, not stroke-dasharray, which Ideal's own
-  // dash pattern would otherwise fight. Sequenced Ideal, then Actual, then
-  // Scope, matching the legend's own left-to-right order.
+  // Each line reveals left to right via its own clipped group (a clip-rect,
+  // not stroke-dasharray, which would fight Ideal's own dash pattern).
   var animate = state.settings.animatedBurndown;
   var revealGroups = [];
   function revealGroup(clipId) {
@@ -1534,18 +1444,8 @@ function renderBurn(host, wide, cfg) {
   var tip = el("div", { "class": "charttip", role: "status", "aria-live": "polite" }); tip.hidden = true;
   host.appendChild(svg); host.appendChild(tip);
 
-  // Reveal each rect in turn: Ideal, then Actual, then Scope. A real
-  // transition on the rect's own width, not a CSS custom property, so
-  // reduced-motion's existing blanket `transition: none` rule covers it for
-  // free -- no extra media-query handling needed here. Must come after the
-  // svg is actually appended to the DOM above -- observe() on a detached
-  // element never fires. Starts once the chart is at least half visible,
-  // not merely touching the viewport edge, so scrolling past it quickly
-  // doesn't trigger it; also waits for the splash to finish (IntersectionObserver
-  // has no concept of the splash overlay sitting on top of it, since that's a
-  // z-index/opacity thing, not a layout one -- a chart under the splash still
-  // reads as "intersecting" -- so #splash's own `hidden` is checked too,
-  // polled briefly if it's still up rather than firing underneath it).
+  // Reveals each rect via a real width transition, once the chart is at least
+  // half visible and the splash overlay, if any, has finished.
   if (animate && revealGroups.length) {
     var fullW = W - R - L, stepMs = 525, started = false;
     function splashGone() { var s = document.getElementById("splash"); return !s || s.hidden; }
@@ -1773,11 +1673,7 @@ function questRangeBlock(p) {
 
 
 /* Client export: a single, self-contained, read-only HTML file for sharing one
-   quest (and its Active/Complete linked quests, recursively) outside the
-   app. See sentinel-notes/client-project-export-design-brief.md for the
-   settled shape. Chart points are precomputed here, once, from the live data
-   -- the exported file never recomputes scheduling math, it only draws the
-   numbers it was given. */
+   quest, with chart data precomputed here so the exported file only draws numbers, never recomputes scheduling math. */
 
 // Tasks, steps, and the quest's own fields, frozen to plain data. Does not
 // walk linked quests -- buildExportTree() does that, with the cycle guard.
@@ -1801,8 +1697,7 @@ function questBurnTasksOrdered(p) {
 function fmtRange(t) { return t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)); }
 
 // Precomputed chart data for one quest: the burndown's points (with tooltip
-// text baked in) and the timeline's lanes. No live recomputation happens in
-// the exported file -- see the design brief's leaning on this.
+// text baked in) and the timeline's lanes.
 function snapshotCharts(p) {
   var bd = questBurn(p);
   if (!bd) return null;
@@ -1854,10 +1749,8 @@ function snapshotLanes(p, bd) {
   return { lanes: lanes, rangeStart: first, rangeEnd: last };
 }
 
-// Walks a quest and its Active/Complete linked quests, recursively, with
-// a cycle guard (a quest already in the chain is not expanded again -- it's
-// linked to the section that already covers it instead). Candidate and
-// vaulted linked quests are skipped entirely, per the design brief.
+// Walks a quest and its Active/Complete linked quests, recursively, with a
+// cycle guard. Candidate and vaulted linked quests are skipped entirely.
 function buildExportTree(p, seen) {
   seen = seen || {};
   seen[p.id] = true;
@@ -1897,8 +1790,6 @@ function flattenSections(node, out) {
   return out;
 }
 
-// Builds the full snapshot for one quest's export: the root quest plus
-// everything reachable through Active/Complete links.
 // Resolves a field set to null when every value is blank, so a caller can
 // tell "nothing filled in" apart from "filled in but empty" with one check.
 function filledOrNull(fields) {
@@ -1918,10 +1809,8 @@ function buildExportSnapshot(p) {
 var EXPORT_TEST_HOOKS = { buildExportTree: buildExportTree, flattenSections: flattenSections };
 
 /* ---- standalone document ---- */
-// Everything below builds the actual downloadable HTML string. It knows
-// nothing about live state -- it only ever reads the plain snapshot object
-// built above, so there's no way for it to accidentally reach back into the
-// app's own data after the file is downloaded.
+// Everything below builds the downloadable HTML string from the plain
+// snapshot object alone -- no live-state access.
 
 function escHtml(s) {
   return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; });
@@ -1971,8 +1860,7 @@ function renderLinks(node) {
 }
 
 // One burndown + timeline, as a <div data-chart="..."> the runtime script
-// fills in client-side from the embedded JSON -- keeps this function's own
-// output to plain, inspectable HTML and the drawing code to one shared place.
+// fills in client-side from the embedded JSON.
 function renderCharts(node) {
   if (!node.charts) return '<p class="hint">Nothing is scheduled yet.</p>';
   var id = sectionId(node.id);
@@ -1987,9 +1875,8 @@ function renderCharts(node) {
   return html;
 }
 
-// Every linked quest gets its own full, flat section (not literally nested
-// HTML, even though the link graph that produced it is a tree), so headings
-// use one fixed level throughout rather than growing with link depth.
+// Every linked quest gets its own full, flat section, so headings use one
+// fixed level throughout rather than growing with link depth.
 function renderSection(node) {
   var html = '<section class="esection" id="' + sectionId(node.id) + '">';
   html += "<h2>" + escHtml(node.name) + (node.status === "complete" ? ' <span class="chip questcomplete">Complete</span>' : "") + "</h2>";
@@ -2082,10 +1969,8 @@ svg.echart { display: block; width: 100%; height: auto; }\
 .efoot { margin-top: 30px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }\
 ";
 
-// Reimplements renderBurn()'s and timelineNode()'s drawing and tooltip
-// interaction against the embedded, precomputed snapshot -- see the design
-// brief on why this is a second, standalone implementation rather than an
-// import of chart.js (which reads live state directly).
+// A second, standalone reimplementation of renderBurn()/timelineNode()'s
+// drawing and tooltip interaction, since chart.js reads live state directly.
 var RUNTIME_JS = "\
 (function(){\
 function svgEl(t,a){var e=document.createElementNS('http://www.w3.org/2000/svg',t);for(var k in a)e.setAttribute(k,a[k]);return e;}\
@@ -2163,36 +2048,21 @@ var burnHost=document.getElementById(id+'-burn');if(burnHost)drawBurn(burnHost,c
 })();\
 ";
 
-// Produces the complete file as a string. `snapshot` is buildExportSnapshot()'s
-// output. No DOM, no live state, no imports beyond what's already above --
-// everything the output needs is baked into this one string.
-// The real icon's own path data (assets/sidequest-icon.svg, via index.html's
-// #sqLogo symbol), not invented geometry. Uses the export's own CSS tokens so
-// it follows light/dark mode the same way the live app's sidebar logo does.
+// The real icon's own path data (assets/sidequest-icon.svg), not invented
+// geometry, using the export's own CSS tokens so it follows light/dark mode.
 var EXPORT_BRAND = '<div class="ebrand"><svg viewBox="0 0 512 512" aria-hidden="true" focusable="false"><defs><clipPath id="eLogoClip"><rect width="512" height="512" rx="112"/></clipPath></defs><rect width="512" height="512" rx="112" fill="var(--est)"/><g clip-path="url(#eLogoClip)"><path d="M115.88-30.43l30.33,154.2" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M102.47,177.65l-23.25,4.57c-36.81,7.24-51.6,29.27-44.36,66.08l28.7,145.94" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M207.09,157.08l52.31-10.29c34.87-6.86,55.74,7.15,62.6,42.02l9.64,49.01" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M295.51,299.68l-23.25,4.57c-25.19,4.95-35.3,20.02-30.35,45.21l19.38,98.53" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M388.51,281.39l29.06-5.72c32.94-6.48,52.64,6.75,59.12,39.69l4,20.34" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><circle cx="154.78" cy="167.37" r="53.31" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/><circle cx="342.01" cy="290.53" r="47.39" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/><rect x="31.22" y="387.08" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-80.82 21.45) rotate(-11.13)" fill="var(--planned)"/><rect x="227.98" y="435.92" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-86.54 60.34) rotate(-11.13)" fill="var(--planned)"/><rect x="432.89" y="334.59" width="118.48" height="118.48" rx="9" ry="9" transform="translate(-109.15 582.92) rotate(-56.13)" fill="var(--burn)"/></g></svg><span>Sidequest</span></div>\n';
 
 function addrLine(v) { return '<div class="econtactaddr">' + escHtml(v).replace(/\n/g, "<br>") + "</div>"; }
 function plainLine(v) { return "<div>" + escHtml(v) + "</div>"; }
 function linkLine(href, text) { return '<div><a href="' + escAttr(href) + '">' + escHtml(text) + "</a></div>"; }
 function emailLine(v) { return linkLine("mailto:" + v, v); }
-// A typed phone number is kept as-is for display; the tel: link strips
-// everything but digits and a leading "+", since letters/punctuation in a
-// href would make some phones refuse to dial it.
+// The tel: link strips everything but digits and a leading "+" so phones don't refuse to dial it.
 function phoneLine(v) { return linkLine("tel:" + v.replace(/[^\d+]/g, ""), v); }
-// A typed website is kept as-is for display; a scheme is added to the link
-// only if the user didn't already type one, since "example.com" alone is a
-// relative link, not the page it looks like.
+// A scheme is added only if the user didn't already type one ("example.com" alone is relative, not a real link).
 function websiteLine(v) { return linkLine(/^[a-z][a-z0-9+.-]*:/i.test(v) ? v : "https://" + v, v); }
 
-// One letterhead column: a heading ("Prepared by"/"Prepared for"), an
-// optional brandmark image, a bold name line, then whatever else was filled
-// in. Returns "" if there is nothing at all to show (fields is null AND no
-// brandmark) -- a brandmark alone is enough reason to show the column, even
-// with every text field left blank.
-// `nameKey` is the field that leads the column in bold (the user's own
-// company for "Prepared by", the Quest Giver's organization for "Prepared
-// for" -- both sides lead with the organization, not the person).
-// `secondKey` is the contact person, shown plain right after it.
+// One letterhead column. A brandmark alone (no fields) is reason enough to
+// show it; `nameKey` leads in bold (the organization, not the person), `secondKey` follows plain.
 function renderLetterColumn(heading, fields, nameKey, secondKey, brandmark) {
   if (!fields && !brandmark) return "";
   var lines = [];
@@ -2206,11 +2076,8 @@ function renderLetterColumn(heading, fields, nameKey, secondKey, brandmark) {
   return '<div class="ecol"><div class="echead">' + heading + "</div>" + lines.join("") + "</div>";
 }
 
-// "Prepared by" is the user's own Settings contact info (plus an optional
-// uploaded brandmark); "Prepared for" is the quest's own Quest Giver info.
-// Either side can be empty on its own: with no Quest Giver info, "Prepared
-// for" is simply left out; with no user info or brandmark at all, "Prepared
-// for" takes the left (only) position instead of sitting stranded on the right.
+// "Prepared by" is the user's own Settings info; "Prepared for" is the quest's
+// Quest Giver info. Either side can be empty; if only one is filled, it takes the left position alone.
 function renderLetterhead(contact, client, brandmark) {
   var by = renderLetterColumn("Prepared by", contact, "company", "name", brandmark);
   var forWhom = renderLetterColumn("Prepared for", client, "org", "poc");
@@ -2239,8 +2106,7 @@ function renderExportDocument(snapshot) {
 }
 
 // Safe-ish filename: the quest's name, lowercased and slugged, plus today's
-// date in plain ISO (the design brief left the date format open; ISO sorts
-// correctly in a file listing regardless of the user's own display setting).
+// date in plain ISO (sorts correctly regardless of the user's display setting).
 function exportFileName(p) {
   var slug = p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "quest";
   return slug + "-" + iso(TODAY) + ".html";
@@ -2548,10 +2414,8 @@ function questDialog() {
     return { msg: v.name + " added as a candidate for the next slot." };
   }, "It joins the candidates for the next slot. You can workshop it later.");
 }
-// With an idea passed in, edits it in place (same record, same id); with none,
-// adds a new one.
-// Links are bidirectional (see linkQuests()), so the chosen quest shows
-// this one too. Only quests not already linked are offered.
+// Links are bidirectional, so the chosen quest shows this one too. Only
+// quests not already linked are offered.
 function linkQuestDialog(p) {
   var opts = liveQuests().filter(function (x) { return x.id !== p.id && p.linkedQuestIds.indexOf(x.id) < 0; }).map(function (x) { return { value: x.id, label: x.name }; });
   if (!opts.length) { notify("Every other quest is already linked."); return; }
@@ -2562,10 +2426,7 @@ function linkQuestDialog(p) {
     return { msg: "Linked to " + other.name + "." };
   }, "The link goes both ways: that quest will show this one too.");
 }
-// Edits a candidate quest's own fields in place: Notes, Start date, Due
-// date, and its own block/sprint length. Promotion (Candidate -> Active) is a
-// separate row action on the Candidates list, not a button in this dialog --
-// this dialog only saves, matching ideaDialog's own Edit/Save pattern.
+// With an idea passed in, edits it in place; with none, adds a new one.
 function ideaDialog(idea) {
   formDialog(idea ? "Edit idea" : "New idea", [
     { key: "text", label: "Idea", value: idea ? idea.text : undefined },
@@ -2577,10 +2438,7 @@ function ideaDialog(idea) {
     return { msg: "Added to the Workshop." };
   });
 }
-// prefill is a quest id or { step } (already chosen). A decision must
-// belong to a step (Quest -> Task -> Step -> Decision), at most one.
-// Steps with no decision yet, for one task -- shared by the cascade below and
-// by the quest-level re-check once a task is chosen.
+// Steps with no decision yet, for one task -- shared by the cascade below.
 function openStepOptions(taskId) {
   return stepOptionsForTask(taskId).filter(function (o) { return !decisionFor(o.value); });
 }
@@ -2641,10 +2499,8 @@ function decisionDialog(prefill) {
     on(taskSel, "change", function () { fillSteps(taskSel.value); });
   }
 }
-// Edits a decision in place: its question and its answer. Removal is supplied by the
-// caller (it lives in views.js). Answering ticks the linked step and clearing the
-// answer unticks it, but only when the answer itself changed, so fixing a typo in
-// the question never flips a step the user set by hand.
+// Answering ticks the linked step; clearing it unticks -- but only when the
+// answer itself changed, so fixing a typo in the question never flips the step.
 function decisionEditDialog(dec, onRemove) {
   var ls = findStep(dec.step);
   formDialog("Decision", [
@@ -2722,11 +2578,8 @@ function milestoneDialog(m, onRemove) {
     return { msg: "Milestone added to the Timeline." };
   }, undefined, m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
 }
-// Slips one quest's incomplete tasks later by N days each: start and due
-// both move, and each task's block is re-derived from its new due date. Completed tasks
-// and Backlog items have no date to shift, so they're left untouched, and the
-// quest's own start date is never touched either -- shifting that would
-// move already-finished work too, which isn't really "catching up."
+// Slips only incomplete, scheduled tasks later by N days -- Completed tasks,
+// the Backlog, and the quest's own start date are never touched.
 function slipDialog(p) {
   openModal("Slip " + p.name + "'s schedule", function (body) {
     body.appendChild(el("p", { "class": "hint first" }, "This moves incomplete tasks later by the same number of days. Completed tasks and the Backlog are not affected."));
@@ -2774,8 +2627,7 @@ function confirmDialog(title, text, label, onConfirm) {
 
 // ---- confetti.js ----
 // One-shot full-page confetti burst for quest completion, gated by
-// settings.completionFx. Builds its own canvas on demand and removes it once
-// every particle finishes -- nothing persists in the DOM between bursts.
+// settings.completionFx. Builds its own canvas on demand and removes it once every particle finishes.
 var TWO_PI = Math.PI * 2;
 var HALF_PI = Math.PI * 0.5;
 // Read from css/tokens.css rather than hardcoded here, so a palette change in
@@ -2788,8 +2640,7 @@ function confettiColors() {
 }
 
 // Each particle starts somewhere along the top edge, not one shared center
-// point, so the burst reads as falling across the whole width from the start
-// rather than exploding outward from a single spot.
+// point, so the burst falls across the whole width instead of exploding outward.
 function Particle(w, h, colors) {
   var sx = Math.random() * w, sy = -20 - Math.random() * 40;
   this.p0 = { x: sx, y: sy };
@@ -2982,11 +2833,7 @@ function vaultQuest(p) {
   });
 }
 // Builds the standalone read-only export and offers it for saving, same
-// fallback order as saveBackupFile(): the Claude downloads capability, then a
-// real Save As dialog, then a plain download. Scoped to Active/Complete
-// quests, matching where the button itself lives (see renderQuestPage())
-// -- Candidate and vaulted export layouts are unscoped, left for a future
-// pass per the design brief.
+// fallback order as saveBackupFile(). Scoped to Active/Complete quests only.
 function exportQuestForClient(p) {
   var snapshot = buildExportSnapshot(p);
   var html = renderExportDocument(snapshot);
@@ -3015,10 +2862,8 @@ function exportQuestForClient(p) {
 // Offers vaulting now or leaving it in Quests. Launch-critical warning is soft, never blocking.
 function completionDialog(p) {
   var warn = incompleteLaunchCriticalLinks(p);
-  // A Complete quest is out of active rotation, so it no longer needs a
-  // sidebar shortcut -- remembered here, not just dropped, so Reopen can
-  // restore the pin rather than making the user redo it. Unpinned directly,
-  // not via unpinPage(), since its own toast would compete with this dialog.
+  // Unpinned directly (not unpinPage(), whose toast would compete with this
+  // dialog), remembered via wasPinned so Reopen can restore it.
   var key = "quest:" + p.id;
   if (isPinned(key)) { p.wasPinned = true; state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); }
   if (state.settings.audio) playSfx(SFX_COMPLETE);
@@ -3365,10 +3210,8 @@ function pagesSection(excludeIds) {
   });
   sec.appendChild(ul); return sec;
 }
-// A quest's own lifecycle status decides how much of the page renders:
-// "candidate" isn't started yet, "active" has its own Tasks/Schedule/Notes/
-// Launch sections. Promotion is in-place -- the same record and id carry
-// through, never a second record.
+// A quest's own lifecycle status decides how much of the page renders.
+// Promotion is in-place -- the same record and id carry through, never a second record.
 function renderQuestPage(root, id) {
   var p = findQuest(id);
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Quest not found.")); return; }
@@ -3409,9 +3252,8 @@ function renderQuestPage(root, id) {
   root.appendChild(metaRow);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "In the Vault. Restore it to make changes."));
   else if (p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this quest is Complete. Reopen it to bring them back."));
-  // orderedAll(), not ordered()/backlogTasks() -- a quest's own page must
-  // keep showing its own tasks even while Complete, when those cross-quest
-  // lists start excluding them.
+  // orderedAll(), not ordered()/backlogTasks() -- a quest's own page keeps
+  // showing its tasks even while Complete, when cross-quest lists exclude them.
   var ts = sortTasks(live(state.tasks).filter(function (t) { return !t.isNext && t.questId === p.id; }));
   if (ts.length) {
     var ul = el("ul", { "class": "tlist" });
@@ -3587,8 +3429,7 @@ function questChartsPanel(p) {
 }
 function questCharts(p, wide, expandBtn, first) {
   var out = el("div");
-  // Schedule keeps its own single "Schedule" heading from scheduleSection() -- the
-  // Expand button rides along on that same heading row, no separate heading added.
+  // Schedule keeps its own heading from scheduleSection(); Expand rides along on that same row.
   scheduleSection(out, p, false, first, expandBtn);
   var tl = questRangeBlock(p);
   if (tl.empty) {
@@ -3609,9 +3450,8 @@ function questCharts(p, wide, expandBtn, first) {
   return out;
 }
 
-// Promotes in place -- same record, same id. Restores any links that were
-// set aside by a prior demoteToCandidate() -- only ones still pointing at a
-// quest that still exists.
+// Promotes in place -- same record, same id. Restores any links set aside by
+// a prior demoteToCandidate(), only ones still pointing at a quest that still exists.
 function promoteToActive(id) {
   var p = findAnyQuest(id);
   if (!p) return;
@@ -3626,9 +3466,7 @@ function promoteToActive(id) {
   if (state.settings.audio) playSfx(SFX_QUEST);
 }
 // Sends an active quest back to Candidates. A candidate isn't a real link
-// target, so its links are set aside (not just dropped) in savedLinkIds and
-// removed from both sides -- restored by promoteToActive() above if it's
-// promoted again.
+// target, so its links are set aside in savedLinkIds (restored on re-promotion), not just dropped.
 function demoteToCandidate(id) {
   var p = findAnyQuest(id);
   if (!p) return;
@@ -4002,9 +3840,8 @@ function startFreshDialog() {
 }
 var BRANDMARK_MAX_DIM = 320;
 var BRANDMARK_MAX_BYTES = 300 * 1024;
-// Reads a chosen image file, rejects it outright if it is too large in
-// bytes or too large in either pixel dimension -- no cropping or resizing,
-// since either would mean guessing what the user actually wants kept.
+// Reads a chosen image file, rejecting it outright (no cropping or resizing)
+// if it's too large in bytes or in either pixel dimension.
 function readBrandmarkFile(file, msg, onDone) {
   if (file.size > BRANDMARK_MAX_BYTES) { msg.textContent = "File is larger than " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."; return; }
   var r = new FileReader();
@@ -4051,9 +3888,8 @@ function brandmarkField() {
   return w;
 }
 function renderSettings(page) {
-  // Split like a quest's own page, but the side panel comes FIRST in DOM
-  // order so it stacks above the main settings on a phone, not below --
-  // the opposite of .questsplit, where the charts column trails.
+  // Side panel comes FIRST in DOM order so it stacks above the main settings
+  // on a phone -- the opposite of .questsplit, where the charts column trails.
   var split = el("div", { "class": "setsplit" });
   var side = el("aside", { "class": "setside" });
   var root = el("div", { "class": "setmain" });
@@ -4256,8 +4092,7 @@ function backupControls(host, msg, onDone) {
   return acts;
 }
 // `hintHost`, if given, is where the leading description sentence goes instead
-// of `root` -- lets a caller keep that sentence outside a card wrapper around
-// the rest, matching this page's own heading/hint-outside-the-box convention.
+// of `root`, so a caller can keep it outside the card wrapping the rest.
 function backupPanel(root, hintHost) {
   (hintHost || root).appendChild(el("p", { "class": "hint" }, "Everything is saved in this browser on this device only. Save a backup now and then, and keep the file somewhere safe."));
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
@@ -4275,15 +4110,12 @@ function backupPanel(root, hintHost) {
 
 // ---- splash.js ----
 // Splash overlay atop the already-rendered app, gated by showSplash. Fixed,
-// hand-composed artwork (the icon's own 5 branches, not procedural).
-// Sequence: blur -> branches draw -> blur -> the "Sidequest" title (shown from
-// first paint via static HTML) wipes into the affirmation -> fade out.
+// hand-composed artwork (the icon's own 5 branches): blur, branches draw, title wipes into an affirmation, fade out.
 
 var SVG_NS = "http://www.w3.org/2000/svg";
 
-// Short, plain, low-pressure phrases. Each must fit in two lines in the
-// splash box (--q in css/styles.css, in em); longer ones are commented out
-// below, confirmed by measuring real line counts at mobile width.
+// Short, plain, low-pressure phrases. Each must fit the splash box's fixed
+// width (--q in css/styles.css); longer ones are commented out below.
 var AFFIRMATIONS = [
   "Even the smallest step carrieth thee onward.",
   "Strive for progress, not perfection.",
@@ -4405,14 +4237,11 @@ function svgEl(tag, attrs) {
   return e;
 }
 
-// Verbatim from assets/sidequest-icon.svg -- the icon's real 5 branches, exact
-// coordinates. Endpoints are given explicitly (not computed from the
-// relative path commands) since that's what caused a real endpoint-mismatch
-// bug before.
+// Verbatim from assets/sidequest-icon.svg. Endpoints are given explicitly
+// (not computed from the relative path commands) to avoid an endpoint-mismatch bug.
 function buildTree() {
-  // Each path embeds its own terminal node, so line and node stay paired.
-  // `parent` is the index this line grows from (null for the root).
-  // `len` is Chromium's getTotalLength() of the icon's own paths.
+  // Each path embeds its own terminal node; `parent` is the index it grows
+  // from (null for the root), and `len` is Chromium's getTotalLength().
   return {
     paths: [
       // Top_Path -> Node_1 (circle)
@@ -4468,11 +4297,7 @@ var TIMING = {
   textDelay: 500,   // after blur starts
   holdDur: 2150,    // text fully visible before fade-out starts
   fadeOutDur: 500,
-  // Where the splash sound starts, relative to the text-wipe (textAt):
-  // negative fires it that many ms before the wipe begins (to cover the
-  // small real-world lag between calling play() and sound actually
-  // starting), positive fires it after, 0 fires it exactly at the wipe.
-  // Change this one number to move the sound without touching anything else.
+  // Ms relative to the text-wipe when the splash sound starts (negative fires early, covering play()'s own lag).
   soundOffset: -10
 };
 
@@ -4488,14 +4313,8 @@ function schedule(pairs) {
   return drawEnd;
 }
 
-// Plays the splash sequence, then removes/hides the overlay and calls done()
-// (if given) once the fade-out finishes. No-op (calls done() immediately) if
-// showSplash is off or the element isn't present. When `audio` is true, the
-// affirmation's text-wipe sound is scheduled a few ms ahead of the wipe
-// itself, for the small real-world lag between calling play() and sound
-// actually starting -- best effort only: a browser that has not yet seen any
-// interaction on this page blocks it outright, with no retry, since a sound
-// played later than the wipe it's meant to accompany would be worse than none.
+// Plays the splash sequence, then hides the overlay and calls done() once the
+// fade-out finishes. No-op if showSplash is off or the element isn't present.
 function playSplash(showSplash, done, audio) {
   var root = $("splash");
   // Markup ships pre-blurred in plain HTML, before any JS runs -- avoids a
@@ -4666,11 +4485,7 @@ function wireMenu(btnId, menuId) {
   });
 }
 
-// The splash's own pending timers, exposed so a test can cancel them after
-// itself -- otherwise a splash scheduled during one test's boot keeps firing
-// (including its sound) well after that test has moved on, since nothing
-// else ever calls this normally (a real page load is torn down by navigating
-// away, not by anything in-page).
+// Exposed so a test can cancel the splash's own pending timers after itself.
 var cancelSplash = function () {};
 
 // Deferred one microtask so the whole import cycle (state.js etc.) finishes evaluating first.

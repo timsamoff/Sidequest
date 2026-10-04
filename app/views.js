@@ -112,11 +112,7 @@ export function vaultQuest(p) {
   });
 }
 // Builds the standalone read-only export and offers it for saving, same
-// fallback order as saveBackupFile(): the Claude downloads capability, then a
-// real Save As dialog, then a plain download. Scoped to Active/Complete
-// quests, matching where the button itself lives (see renderQuestPage())
-// -- Candidate and vaulted export layouts are unscoped, left for a future
-// pass per the design brief.
+// fallback order as saveBackupFile(). Scoped to Active/Complete quests only.
 export function exportQuestForClient(p) {
   var snapshot = buildExportSnapshot(p);
   var html = renderExportDocument(snapshot);
@@ -145,10 +141,8 @@ export function exportQuestForClient(p) {
 // Offers vaulting now or leaving it in Quests. Launch-critical warning is soft, never blocking.
 export function completionDialog(p) {
   var warn = incompleteLaunchCriticalLinks(p);
-  // A Complete quest is out of active rotation, so it no longer needs a
-  // sidebar shortcut -- remembered here, not just dropped, so Reopen can
-  // restore the pin rather than making the user redo it. Unpinned directly,
-  // not via unpinPage(), since its own toast would compete with this dialog.
+  // Unpinned directly (not unpinPage(), whose toast would compete with this
+  // dialog), remembered via wasPinned so Reopen can restore it.
   var key = "quest:" + p.id;
   if (isPinned(key)) { p.wasPinned = true; state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); }
   if (state.settings.audio) playSfx("assets/sfx/complete.mp3");
@@ -495,10 +489,8 @@ export function pagesSection(excludeIds) {
   });
   sec.appendChild(ul); return sec;
 }
-// A quest's own lifecycle status decides how much of the page renders:
-// "candidate" isn't started yet, "active" has its own Tasks/Schedule/Notes/
-// Launch sections. Promotion is in-place -- the same record and id carry
-// through, never a second record.
+// A quest's own lifecycle status decides how much of the page renders.
+// Promotion is in-place -- the same record and id carry through, never a second record.
 export function renderQuestPage(root, id) {
   var p = findQuest(id);
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Quest not found.")); return; }
@@ -539,9 +531,8 @@ export function renderQuestPage(root, id) {
   root.appendChild(metaRow);
   if (readOnly) root.appendChild(el("p", { "class": "hint" }, "In the Vault. Restore it to make changes."));
   else if (p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this quest is Complete. Reopen it to bring them back."));
-  // orderedAll(), not ordered()/backlogTasks() -- a quest's own page must
-  // keep showing its own tasks even while Complete, when those cross-quest
-  // lists start excluding them.
+  // orderedAll(), not ordered()/backlogTasks() -- a quest's own page keeps
+  // showing its tasks even while Complete, when cross-quest lists exclude them.
   var ts = sortTasks(live(state.tasks).filter(function (t) { return !t.isNext && t.questId === p.id; }));
   if (ts.length) {
     var ul = el("ul", { "class": "tlist" });
@@ -717,8 +708,7 @@ function questChartsPanel(p) {
 }
 function questCharts(p, wide, expandBtn, first) {
   var out = el("div");
-  // Schedule keeps its own single "Schedule" heading from scheduleSection() -- the
-  // Expand button rides along on that same heading row, no separate heading added.
+  // Schedule keeps its own heading from scheduleSection(); Expand rides along on that same row.
   scheduleSection(out, p, false, first, expandBtn);
   var tl = questRangeBlock(p);
   if (tl.empty) {
@@ -739,9 +729,8 @@ function questCharts(p, wide, expandBtn, first) {
   return out;
 }
 
-// Promotes in place -- same record, same id. Restores any links that were
-// set aside by a prior demoteToCandidate() -- only ones still pointing at a
-// quest that still exists.
+// Promotes in place -- same record, same id. Restores any links set aside by
+// a prior demoteToCandidate(), only ones still pointing at a quest that still exists.
 export function promoteToActive(id) {
   var p = findAnyQuest(id);
   if (!p) return;
@@ -756,9 +745,7 @@ export function promoteToActive(id) {
   if (state.settings.audio) playSfx("assets/sfx/quest.mp3");
 }
 // Sends an active quest back to Candidates. A candidate isn't a real link
-// target, so its links are set aside (not just dropped) in savedLinkIds and
-// removed from both sides -- restored by promoteToActive() above if it's
-// promoted again.
+// target, so its links are set aside in savedLinkIds (restored on re-promotion), not just dropped.
 export function demoteToCandidate(id) {
   var p = findAnyQuest(id);
   if (!p) return;
@@ -1132,9 +1119,8 @@ export function startFreshDialog() {
 }
 var BRANDMARK_MAX_DIM = 320;
 var BRANDMARK_MAX_BYTES = 300 * 1024;
-// Reads a chosen image file, rejects it outright if it is too large in
-// bytes or too large in either pixel dimension -- no cropping or resizing,
-// since either would mean guessing what the user actually wants kept.
+// Reads a chosen image file, rejecting it outright (no cropping or resizing)
+// if it's too large in bytes or in either pixel dimension.
 function readBrandmarkFile(file, msg, onDone) {
   if (file.size > BRANDMARK_MAX_BYTES) { msg.textContent = "File is larger than " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."; return; }
   var r = new FileReader();
@@ -1181,9 +1167,8 @@ function brandmarkField() {
   return w;
 }
 export function renderSettings(page) {
-  // Split like a quest's own page, but the side panel comes FIRST in DOM
-  // order so it stacks above the main settings on a phone, not below --
-  // the opposite of .questsplit, where the charts column trails.
+  // Side panel comes FIRST in DOM order so it stacks above the main settings
+  // on a phone -- the opposite of .questsplit, where the charts column trails.
   var split = el("div", { "class": "setsplit" });
   var side = el("aside", { "class": "setside" });
   var root = el("div", { "class": "setmain" });
@@ -1386,8 +1371,7 @@ export function backupControls(host, msg, onDone) {
   return acts;
 }
 // `hintHost`, if given, is where the leading description sentence goes instead
-// of `root` -- lets a caller keep that sentence outside a card wrapper around
-// the rest, matching this page's own heading/hint-outside-the-box convention.
+// of `root`, so a caller can keep it outside the card wrapping the rest.
 export function backupPanel(root, hintHost) {
   (hintHost || root).appendChild(el("p", { "class": "hint" }, "Everything is saved in this browser on this device only. Save a backup now and then, and keep the file somewhere safe."));
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });

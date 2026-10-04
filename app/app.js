@@ -127,11 +127,7 @@ export function wireMenu(btnId, menuId) {
   });
 }
 
-// The splash's own pending timers, exposed so a test can cancel them after
-// itself -- otherwise a splash scheduled during one test's boot keeps firing
-// (including its sound) well after that test has moved on, since nothing
-// else ever calls this normally (a real page load is torn down by navigating
-// away, not by anything in-page).
+// Exposed so a test can cancel the splash's own pending timers after itself.
 export var cancelSplash = function () {};
 
 // Deferred one microtask so the whole import cycle (state.js etc.) finishes evaluating first.

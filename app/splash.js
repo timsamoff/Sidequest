@@ -1,14 +1,11 @@
 // Splash overlay atop the already-rendered app, gated by showSplash. Fixed,
-// hand-composed artwork (the icon's own 5 branches, not procedural).
-// Sequence: blur -> branches draw -> blur -> the "Sidequest" title (shown from
-// first paint via static HTML) wipes into the affirmation -> fade out.
+// hand-composed artwork (the icon's own 5 branches): blur, branches draw, title wipes into an affirmation, fade out.
 import { $, playSfx } from "./dom.js";
 
 var SVG_NS = "http://www.w3.org/2000/svg";
 
-// Short, plain, low-pressure phrases. Each must fit in two lines in the
-// splash box (--q in css/styles.css, in em); longer ones are commented out
-// below, confirmed by measuring real line counts at mobile width.
+// Short, plain, low-pressure phrases. Each must fit the splash box's fixed
+// width (--q in css/styles.css); longer ones are commented out below.
 export var AFFIRMATIONS = [
   "Even the smallest step carrieth thee onward.",
   "Strive for progress, not perfection.",
@@ -130,14 +127,11 @@ function svgEl(tag, attrs) {
   return e;
 }
 
-// Verbatim from assets/sidequest-icon.svg -- the icon's real 5 branches, exact
-// coordinates. Endpoints are given explicitly (not computed from the
-// relative path commands) since that's what caused a real endpoint-mismatch
-// bug before.
+// Verbatim from assets/sidequest-icon.svg. Endpoints are given explicitly
+// (not computed from the relative path commands) to avoid an endpoint-mismatch bug.
 function buildTree() {
-  // Each path embeds its own terminal node, so line and node stay paired.
-  // `parent` is the index this line grows from (null for the root).
-  // `len` is Chromium's getTotalLength() of the icon's own paths.
+  // Each path embeds its own terminal node; `parent` is the index it grows
+  // from (null for the root), and `len` is Chromium's getTotalLength().
   return {
     paths: [
       // Top_Path -> Node_1 (circle)
@@ -193,11 +187,7 @@ var TIMING = {
   textDelay: 500,   // after blur starts
   holdDur: 2150,    // text fully visible before fade-out starts
   fadeOutDur: 500,
-  // Where the splash sound starts, relative to the text-wipe (textAt):
-  // negative fires it that many ms before the wipe begins (to cover the
-  // small real-world lag between calling play() and sound actually
-  // starting), positive fires it after, 0 fires it exactly at the wipe.
-  // Change this one number to move the sound without touching anything else.
+  // Ms relative to the text-wipe when the splash sound starts (negative fires early, covering play()'s own lag).
   soundOffset: -10
 };
 
@@ -213,14 +203,8 @@ function schedule(pairs) {
   return drawEnd;
 }
 
-// Plays the splash sequence, then removes/hides the overlay and calls done()
-// (if given) once the fade-out finishes. No-op (calls done() immediately) if
-// showSplash is off or the element isn't present. When `audio` is true, the
-// affirmation's text-wipe sound is scheduled a few ms ahead of the wipe
-// itself, for the small real-world lag between calling play() and sound
-// actually starting -- best effort only: a browser that has not yet seen any
-// interaction on this page blocks it outright, with no retry, since a sound
-// played later than the wipe it's meant to accompany would be worse than none.
+// Plays the splash sequence, then hides the overlay and calls done() once the
+// fade-out finishes. No-op if showSplash is off or the element isn't present.
 export function playSplash(showSplash, done, audio) {
   var root = $("splash");
   // Markup ships pre-blurred in plain HTML, before any JS runs -- avoids a

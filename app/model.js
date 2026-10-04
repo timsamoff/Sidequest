@@ -8,25 +8,18 @@ export var WORDS = { Block: ["block", "blocks"], Sprint: ["sprint", "sprints"], 
 export function wd() { return state.settings.blockWord in WORDS ? state.settings.blockWord : "Block"; }
 export function wl() { return WORDS[wd()][0]; }
 export function wpC() { var w = WORDS[wd()][1]; return w.charAt(0).toUpperCase() + w.slice(1); }
-/* quest helpers -- Quest (formerly called Project) is the top-tier entity every
-   task/decision/milestone attaches to by id. A quest is promoted in place from
-   candidate to active, one id for its whole life, so "the active quest named X"
-   and "the candidate named X" are never two different records. The "projects"
-   page key stays unchanged -- it's an internal routing id, not shown to the user. */
+/* quest helpers -- Quest is the top-tier entity every task/decision/milestone
+   attaches to by id, promoted in place from candidate to active. */
 export function live(a) { return a.filter(function (x) { return !x.vault; }); }
 export function liveQuests() { return live(state.quests); }
 export function activeQuests() { return liveQuests().filter(function (p) { return p.status === "active"; }); }
 export function candidateQuests() { return liveQuests().filter(function (p) { return p.status === "candidate"; }); }
 export function completeQuests() { return liveQuests().filter(function (p) { return p.status === "complete"; }); }
-// A Complete-but-not-vaulted quest's tasks stay in the quest itself but
-// drop out of every cross-quest surface (Tasks, Today, the global burndown
-// and Timeline) -- reversible the instant the quest's status changes back,
-// since this reads the quest's live status rather than a stored flag.
+// A Complete-but-not-vaulted quest's tasks drop out of every cross-quest
+// surface (Tasks, Today, the burndown/Timeline), reversible the instant its status changes back.
 export function isHiddenComplete(t) { var p = findQuest(t.questId); return !!p && p.status === "complete" && !p.vault; }
 // Searches every quest, vaulted or not -- a vaulted quest's own page
-// must stay reachable, read-only, until restored. Safe to search past
-// liveQuests() here because every caller either wants a vaulted match
-// right now, or already filters to live quests one level up.
+// must stay reachable, read-only, until restored.
 export function findQuest(id) { for (var i = 0; i < state.quests.length; i++) if (state.quests[i].id === id) return state.quests[i]; return null; }
 export function findAnyQuest(id) { return findQuest(id); }
 // True only when the quest has at least one counted task and every one of
@@ -55,10 +48,8 @@ export function pset(questId) { var p = findQuest(questId); return { start: (p &
 export function offsetFor(questId, n) { return n * pset(questId).days; }
 export function blockStartFor(questId, b) { return addDays(parseISO(pset(questId).start), offsetFor(questId, b - 1)); }
 export function blockEndFor(questId, b) { return addDays(parseISO(pset(questId).start), offsetFor(questId, b) - 1); }
-// The inverse of blockStartFor/blockEndFor: which block a given date falls
-// in, so a task can be scheduled by picking a due date instead of having to
-// know or look up a block number. Returns null for a date before the
-// quest's own start (there's no block before Block 1 to place it in).
+// The inverse of blockStartFor/blockEndFor: which block a given date falls in,
+// so a task can be scheduled by picking a due date. Null before the quest's own start.
 export function blockForDate(questId, dateMs) {
   var eff = pset(questId), start = parseISO(eff.start);
   if (dateMs < start) return null;
@@ -108,10 +99,7 @@ export function checkpointStep() {
 export function checkpoints() { var out = [], s = chartStart(), d = checkpointStep(); for (var i = 0; i < CHECKPOINTS; i++) out.push(addDays(s, d * i)); return out; }
 
 /* burndown history -- { "<ISO day>": [tasks in scope, tasks still open] }.
-   Written only on a day something changed, and only when it differs from the
-   last record before it. Every change to the data happens in the app, so a
-   day with no record means nothing changed: read it as the latest earlier
-   record (carry forward), not as a gap. */
+   Written only when it differs from the prior record; a day with no record carries forward, not a gap. */
 export function recordHist(hist, scope, left) {
   var key = iso(TODAY), prior = Object.keys(hist).filter(function (k) { return k < key; }).sort();
   var prev = prior.length ? hist[prior[prior.length - 1]] : null;
@@ -139,9 +127,8 @@ export function globalActual(cps) {
 
 /* task helpers */
 export function counted() { return state.tasks.filter(function (t) { return !t.vault || t.vault.why === "done"; }); }
-// The "chosen" quest is just the first active one with no tasks yet -- a
-// quest's own status carries this, so there's no separate pointer to keep
-// in sync. If two are both task-less, whichever was promoted first wins.
+// The "chosen" quest is the first active one with no tasks yet. If two are
+// both task-less, whichever was promoted first wins.
 export function chosen() { var a = activeQuests(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.questId === a[i].id; })) return a[i]; return null; }
 export function dispQuest(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next quest"; } var p = findQuest(t.questId); return p ? p.name : ""; }
 export function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next quest. Add its first tasks with the + button."; return t.what; }
@@ -165,19 +152,13 @@ export function orderedAll() { return sortTasks(live(state.tasks)); }
 export function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0 && !isHiddenComplete(t); })); }
 export function burnTasks() { return counted().filter(function (t) { return t.block > 0 && !isHiddenComplete(t); }); }
 // --- One quest's own burndown ---
-// From counted(), not burnTasks() -- a Complete-but-kept quest's own page
-// must keep showing its own burndown even while its tasks are hidden from
-// every cross-quest surface that burnTasks() feeds.
+// From counted(), not burnTasks() -- a Complete quest's own page keeps
+// showing its burndown even while its tasks are hidden cross-quest.
 export function questBurnTasks(p) { return counted().filter(function (t) { return t.block > 0 && t.questId === p.id; }); }
 export function questTotalUnits(p) { return questBurnTasks(p).length; }
 export function questRemainingUnits(p) { return questBurnTasks(p).filter(isOpen).length; }
-// Points are days when the quest's schedule is 21 days or shorter (and today is within
-// 45 days of its start), otherwise
-// Mondays from the week of its first task to the week after its last (stretched
-// to include today if it has overrun). Planned is exact, like the global
-// chart's. Actual is read from the quest's own recorded history, except the
-// point covering today, which is always computed live. Returns null if nothing
-// is scheduled.
+// Points are daily for a short/near-term schedule, otherwise weekly Mondays
+// stretched to include today if overrun. Returns null if nothing is scheduled.
 export function questBurn(p) {
   var ts = questBurnTasks(p);
   if (!ts.length) return null;
@@ -214,8 +195,7 @@ export function syncFromSteps(t) {
 export function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Completed") return o[i]; return null; }
 export function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
 // "quest:" + id routes to a quest's own page -- id-based, not name-based, so
-// renaming a quest never breaks its pin or an in-flight link to it. Every
-// status, including a live candidate, has a page now.
+// renaming a quest never breaks its pin or an in-flight link to it.
 export function validPage(key) {
   if (typeof key !== "string" || key.indexOf("quest:") !== 0) return false;
   return !!findQuest(key.slice(6));

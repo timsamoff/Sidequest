@@ -8,11 +8,8 @@ export function el(tag, attrs, text) {
   return e;
 }
 export function on(node, ev, fn) { node.addEventListener(ev, fn); return node; }
-// Plays a short sound effect. Caller decides whether sound is wanted (the
-// audio setting) -- this just plays `src`, silently giving up on any
-// failure (a browser blocking autoplay before the user has interacted with
-// the page, a missing file, an unsupported format), since a sound effect is
-// never worth surfacing an error over.
+// Plays a short sound effect, silently giving up on any failure (autoplay
+// blocked, missing file) since a sound effect is never worth surfacing an error over.
 export function playSfx(src) {
   try {
     var a = new window.Audio(src), p = a.play();
@@ -28,8 +25,7 @@ export function pencilButton(label, title, onClick) {
   return b;
 }
 // Turns the text in `display` into an input in place. Enter or clicking away saves,
-// Esc cancels. opts: { label, max, value(), onSave(v), onEmpty(), onDone() }. onDone
-// runs first (so callers can restore their pencil), then onSave.
+// Esc cancels. onDone runs first (so callers can restore their pencil), then onSave.
 export function editInline(display, opts) {
   var input = el("input", { type: "text", "class": "inlineedit", "aria-label": opts.label, maxlength: String(opts.max || 200), autocomplete: "off" });
   input.value = opts.value();

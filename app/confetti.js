@@ -1,6 +1,5 @@
 // One-shot full-page confetti burst for quest completion, gated by
-// settings.completionFx. Builds its own canvas on demand and removes it once
-// every particle finishes -- nothing persists in the DOM between bursts.
+// settings.completionFx. Builds its own canvas on demand and removes it once every particle finishes.
 var TWO_PI = Math.PI * 2;
 var HALF_PI = Math.PI * 0.5;
 // Read from css/tokens.css rather than hardcoded here, so a palette change in
@@ -13,8 +12,7 @@ function confettiColors() {
 }
 
 // Each particle starts somewhere along the top edge, not one shared center
-// point, so the burst reads as falling across the whole width from the start
-// rather than exploding outward from a single spot.
+// point, so the burst falls across the whole width instead of exploding outward.
 function Particle(w, h, colors) {
   var sx = Math.random() * w, sy = -20 - Math.random() * 40;
   this.p0 = { x: sx, y: sy };

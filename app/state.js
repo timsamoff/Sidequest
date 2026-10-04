@@ -17,10 +17,8 @@ export function task(id, block, questId, what, done, steps, extra) {
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
   return t;
 }
-// A quest's own lifecycle: "candidate" (competing for the next slot, not yet
-// started) or "active" (chosen, has tasks). Promoted in place -- the same
-// record and id carry through candidate -> active -> vaulted, never a second
-// record.
+// A quest's own lifecycle: "candidate" or "active". Promoted in place -- the
+// same record and id carry through candidate -> active -> vaulted, never a second record.
 export function quest(id, name, status, extra) {
   var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
@@ -33,15 +31,11 @@ export function sampleData() {
   function day(k) { return new Date(m0 + k * D).toISOString().slice(0, 10); }
   var yest = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 1)).toISOString().slice(0, 10);
   var lastWeek = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 7)).toISOString().slice(0, 10);
-  // Burndown history entries are [tasks in scope, tasks still open], keyed by the
-  // day recorded. Sample App started two Mondays ago with four scheduled tasks and gained a fifth; its
-  // second one is running late, so the burndown sits above the plan.
+  // History entries are [tasks in scope, tasks still open], keyed by the day recorded.
   var appHistory = {}; appHistory[day(0)] = [4, 4]; appHistory[day(5)] = [4, 3]; appHistory[day(9)] = [5, 4];
-  // Sample Finished Quest runs a little late, then ahead, then lands on time,
-  // so its full-quest Burndown crosses the planned line instead of tracking it.
+  // Runs a little late, then ahead, then lands on time, so its Burndown crosses the planned line.
   var doneHistory = {}; doneHistory[day(-28)] = [4, 4]; doneHistory[day(-20)] = [4, 3]; doneHistory[day(-15)] = [4, 2]; doneHistory[day(-12)] = [4, 1]; doneHistory[day(-1)] = [4, 0];
-  // The main burndown counts every scheduled task that isn't hidden with a Complete quest;
-  // a twelfth task was added on day 9, so its line steps up once.
+  // A twelfth task was added on day 9, so the main burndown's scope line steps up once.
   var allHistory = {}; allHistory[day(0)] = [11, 11]; allHistory[day(5)] = [11, 10]; allHistory[day(9)] = [12, 11];
   var quests = [
     // pApp <-> pSite demonstrates a bidirectional quest link.
@@ -51,12 +45,9 @@ export function sampleData() {
     quest("pGame", "Sample Game", "active", { start: day(21), days: 14, due: day(21 + 122) }),
     quest("pExt", "Sample Browser Extension", "candidate", { notes: "A small tool that could ship in a month" }),
     quest("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own quests" }),
-    // Demonstrates a Complete quest: drops out of In progress but still
-    // shows in the plain Quests list with its Complete badge.
+    // Demonstrates a Complete quest: drops out of In progress but still shows in the plain Quests list.
     quest("pDone", "Sample Finished Quest", "complete", { start: day(-28), notes: "Shipped and wrapped up.", hist: doneHistory }),
-    // Demonstrates a promoted-but-task-less Active quest: since In progress
-    // is built entirely from tasks, this one never appears there and lands in
-    // the plain Quests list under Pending instead -- no start date needed.
+    // Demonstrates a promoted-but-task-less Active quest, which lands under Pending instead of In progress.
     quest("pNext", "Sample Next Quest", "active", { notes: "Chosen, but nothing scheduled yet." })
   ];
   var tasks = [
@@ -74,9 +65,8 @@ export function sampleData() {
     task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid", true), st("g3c", "Record a trailer", true)]),
     task("g4", 0, "pGame", "Add a level editor", "Players can build, save, and share a level"),
     task("n1", 6, null, "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true }),
-    // pDone's own tasks, all finished -- a Complete quest keeps its task
-    // history rather than clearing it out. Four weekly tasks at weight 2 each
-    // give an even planned line, which doneHistory above then zig-zags around.
+    // pDone's own tasks, all finished. Four weekly tasks at weight 2 each give
+    // an even planned line, which doneHistory above then zig-zags around.
     task("d1", 1, "pDone", "Design the feature", "The design is agreed", [st("d1a", "Sketch the approach", false, true), st("d1b", "Get sign-off", false, true)], { status: "Completed", doneAt: day(-22) }),
     task("d2", 2, "pDone", "Build the core feature", "It works end to end", [st("d2a", "Build the happy path", false, true), st("d2b", "Handle errors", false, true)], { status: "Completed", doneAt: day(-15) }),
     task("d3", 3, "pDone", "Test it", "The top bugs are fixed", [st("d3a", "Run through every screen", false, true), st("d3b", "Fix what’s broken", false, true)], { status: "Completed", doneAt: day(-8) }),
@@ -87,13 +77,8 @@ export function sampleData() {
   // When the finished tasks were completed (Sample Finished Quest's are a bit late, early, then on time).
   var DONE = { a1: day(5), d1: day(-20), d2: day(-15), d3: day(-12), d4: day(-1) };
   tasks.forEach(function (t) { if (DONE[t.id]) t.doneAt = DONE[t.id]; });
-  // Explicit start/due dates for every scheduled task, matching the real way
-  // a task is scheduled today (pick a due date, the block is derived from it)
-  // instead of the old block-number-only sample shape. Each due date lands on
-  // the same day its block number already implied, so none of the tuned
-  // demonstrations above (the late a2, the scope-added a5, the zig-zag
-  // doneHistory) shift. A start date is only set when the task's own estimate
-  // is light enough that the whole block would otherwise look misleadingly full.
+  // Explicit start/due dates for every scheduled task. A start date is only
+  // set when the task's own estimate is light enough the block would otherwise look misleadingly full.
   var SCHEDULE = {
     a1: { start: day(2), due: day(4) }, a2: { start: day(9), due: day(12) }, a3: { start: day(18), due: day(20) },
     a4: { start: day(25), due: day(27) }, a5: { start: day(31), due: day(34) },
@@ -146,11 +131,8 @@ export function defaults() {
 
 export function validVault(a) { return (a && typeof a === "object" && isISO(a.at) && (a.why === "done" || a.why === "removed")) ? { at: a.at, why: a.why } : null; }
 export function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
-// A slip's own undo snapshot: each affected task's own block number right
-// before the slip, so Undo can put every one of them back exactly where it was.
-// Burndown history: { "<ISO day>": [tasks in scope, tasks still open] }. Anything
-// malformed is dropped; the newest 1000 entries are kept. Saved data from before
-// history counted tasks (an `actual` field in step units) is not carried over.
+// Burndown history: { "<ISO day>": [tasks in scope, tasks still open] }.
+// Malformed entries are dropped; the newest 1000 are kept.
 function cleanHist(v) {
   var out = {};
   if (!v || typeof v !== "object" || Array.isArray(v)) return out;
@@ -160,6 +142,7 @@ function cleanHist(v) {
   });
   return out;
 }
+// A slip's own undo snapshot: each affected task's prior block number, so Undo can restore it exactly.
 function cleanSlip(v) {
   if (!v || typeof v !== "object" || typeof v.days !== "number" || !Array.isArray(v.snap)) return null;
   var snap = v.snap.slice(0, 500).filter(function (s) { return s && typeof s.id === "string" && typeof s.block === "number" && s.block >= 0 && s.block <= 5000; }).map(function (s) { return { id: S(s.id, 40), block: Math.round(s.block), start: isISO(s.start) ? s.start : "", due: isISO(s.due) ? s.due : "" }; });
@@ -171,24 +154,17 @@ export function normalize(s) {
   if (!s || typeof s !== "object") return d;
   if (isISO(s.start)) d.start = s.start;
   if (typeof s.days === "number" && s.days >= 1 && s.days <= 30) d.days = Math.round(s.days);
-  // Quests used to be called Projects. Saved data from before the rename has
-  // state.projects (not state.quests), p.linkedProjectIds (not linkedQuestIds),
-  // and pins/task/milestone links spelled "proj:"/projectId. Read whichever
-  // shape is present so nobody's existing save is silently dropped.
+  // Quests used to be called Projects; read whichever old or new field name is present.
   var rawQuests = Array.isArray(s.quests) ? s.quests : s.projects;
   if (Array.isArray(rawQuests)) {
     d.quests = rawQuests.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) {
-      // A quest used to have a separate short description (`note`) as well
-      // as `notes`. They are one field now: fold a saved `note` into the front
-      // of `notes` so nothing is lost. Once saved, `note` no longer exists.
+      // `note` and `notes` used to be separate fields; fold a saved `note` into the front of `notes`.
       var oldNote = S(x.note, 5000), body = S(x.notes, 5000);
-      // Old saved data may still have `mult`, a multiplier on the global
-      // block length instead of its own day count -- convert once on load.
+      // Old saved data may have `mult` (a multiplier on the global block length) instead of its own day count.
       var days = (typeof x.days === "number" && x.days >= 1 && x.days <= 90) ? Math.round(x.days)
         : (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? Math.max(1, Math.round(d.days * x.mult)) : d.days;
       var linked = Array.isArray(x.linkedQuestIds) ? x.linkedQuestIds : x.linkedProjectIds;
-      // Set aside while demoted to candidate (see demoteToCandidate() in
-      // views.js), so a later promotion can restore the same links.
+      // Set aside while demoted to candidate, so a later promotion can restore the same links.
       var saved = Array.isArray(x.savedLinkIds) ? x.savedLinkIds : null;
       var xc = x.client && typeof x.client === "object" ? x.client : {};
       return {
@@ -200,10 +176,7 @@ export function normalize(s) {
         lastSlip: cleanSlip(x.lastSlip),
         // Set aside by completionDialog()'s auto-unpin so Reopen can restore it.
         wasPinned: x.wasPinned === true,
-        // Validated below, once every quest's real id is known -- a link
-        // can only point at another quest that actually exists in the final
-        // set. Arbitrary depth or cycles are fine; each side of a link is just
-        // an id in this array, and nothing here ever traverses the graph.
+        // Validated below, once every quest's real id is known.
         linkedQuestIds: Array.isArray(linked) ? linked.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : [],
         savedLinkIds: saved ? saved.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : null,
         client: { org: S(xc.org, 200), poc: S(xc.poc, 200), phone: S(xc.phone, 200), email: S(xc.email, 200), address: S(xc.address, 500), website: S(xc.website, 200), coin: (typeof xc.coin === "number" && xc.coin >= 0 && xc.coin <= 999999) ? xc.coin : "", per: (xc.per === "Hour" || xc.per === "Quest") ? xc.per : "Hour" }
@@ -219,10 +192,8 @@ export function normalize(s) {
     var ts = [];
     s.tasks.forEach(function (t) {
       if (!t || typeof t !== "object" || typeof t.id !== "string") return;
-      // A task's questId must match a real quest, or (for the "Next
-      // quest" placeholder only) be null/absent. An orphaned questId --
-      // pointing at nothing -- drops the task rather than keeping it around
-      // unreachable. Saved data from before the rename has projectId instead.
+      // A task's questId must match a real quest, or (for the "Next quest"
+      // placeholder only) be null/absent; an orphaned questId drops the task.
       var rawId = typeof t.questId === "string" ? t.questId : t.projectId;
       var pid = (typeof rawId === "string" && questIds[rawId]) ? rawId : null;
       if (!pid && !t.isNext) return;
@@ -251,11 +222,8 @@ export function normalize(s) {
   // used below to require a decision's step link points at something real.
   var liveStepIds = {};
   d.tasks.forEach(function (t) { if (!t.vault) t.steps.forEach(function (x) { liveStepIds[x.id] = true; }); });
-  // Decisions require a real step link (Quest -> Task -> Step -> Decision) --
-  // a decision with no step, or one pointing at a step that doesn't exist, is
-  // dropped rather than kept in a state the UI can't render meaningfully.
-  // Only Quests and Ideas go to the Vault independently, so there's no "vaulted,
-  // exempt from this rule" case: every decision must resolve to a real, live step.
+  // Decisions require a real step link; one with no step, or a step that
+  // doesn't exist, is dropped rather than kept unrenderable.
   if (Array.isArray(s.decisions)) {
     d.decisions = s.decisions.filter(function (x) {
       return x && typeof x.id === "string" && typeof x.step === "string" && liveStepIds[x.step];
@@ -264,9 +232,7 @@ export function normalize(s) {
   // The Workshop array used to be called `parked`; read whichever is present.
   var rawWorkshop = Array.isArray(s.workshop) ? s.workshop : s.parked;
   if (Array.isArray(rawWorkshop)) d.workshop = rawWorkshop.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 5000), vault: validVault(x.vault || x.arch) }; });
-  // Milestones require a direct quest link (no task/step chain to derive it
-  // from) -- one pointing at a quest that no longer exists is dropped. Saved
-  // data from before the rename has projectId instead of questId.
+  // Milestones require a direct quest link; one pointing at a quest that no longer exists is dropped.
   if (Array.isArray(s.milestones)) {
     d.milestones = s.milestones.filter(function (x) {
       var mid = typeof x.questId === "string" ? x.questId : x.projectId;
@@ -289,10 +255,7 @@ export function normalize(s) {
       var c = s.settings.contact;
       d.settings.contact = { name: S(c.name, 200), company: S(c.company, 200), phone: S(c.phone, 200), email: S(c.email, 200), address: S(c.address, 500), website: S(c.website, 200) };
     }
-    // A data: URI, capped well above the 300 KB upload limit to allow for
-    // base64's own ~33% size increase -- anything else (including a stale
-    // URL-style value from before this existed) is dropped, not truncated,
-    // since a cut-off image would just fail to decode.
+    // A data: URI, capped well above the 300 KB upload limit for base64 overhead; anything else is dropped, not truncated.
     if (typeof s.settings.brandmark === "string" && /^data:image\//.test(s.settings.brandmark) && s.settings.brandmark.length <= 500000) d.settings.brandmark = s.settings.brandmark;
     if (typeof s.settings.audio === "boolean") d.settings.audio = s.settings.audio;
     if (typeof s.settings.completionFx === "boolean") d.settings.completionFx = s.settings.completionFx;
@@ -302,19 +265,8 @@ export function normalize(s) {
   if (Array.isArray(s.pins)) d.pins = s.pins.filter(function (k) { return typeof k === "string" && k.length < 130; }).map(function (k) { return k.indexOf("proj:") === 0 ? "quest:" + k.slice(5) : k; }).slice(0, 30);
   return d;
 }
-// Storage adapter: localStorage (web app) is synchronous and always available;
-// Claude's db capability (artifact version) is asynchronous and may resolve
-// null (not a published artifact, not granted, or failed to load --
-// indistinguishable by design). Rather than make every call site across
-// app/*.js that reads `state.x` deal with that, the whole app keeps reading
-// `state` as a plain, already-populated object -- this adapter is the only
-// place that knows storage might be async, at the load/save boundary alone.
-//
-// Once resolved, db stays a live reference for the rest of the page's life
-// (awaiting use('db') again is free, per its own contract). A null db means
-// either "not a published artifact with db granted" or "db failed to load" --
-// both fall back to localStorage identically, since a page that can't reach
-// the network shouldn't lose the ability to save at all.
+// Storage adapter: localStorage is synchronous and always available; Claude's
+// db capability is async and may resolve null, which falls back to localStorage identically either way.
 var dbPromise = null;
 function getDb() {
   if (dbPromise) return dbPromise;
@@ -324,16 +276,11 @@ function getDb() {
   return dbPromise;
 }
 
-// One write in flight at a time per the db capability's own contract ("ONE
-// WRITE AT A TIME per document... await each set/update before the next").
-// A rapid burst of saves (e.g. several quick edits) coalesces into: whichever
-// write is already running finishes, then exactly one more write carrying
-// the LATEST state runs after it -- never a growing backlog of queued writes,
-// and never two writes racing on the same document.
+// One write in flight at a time (the db capability's own contract); a burst
+// of saves coalesces into the running write plus exactly one more carrying the latest state.
 var dbWriteInFlight = null, dbWritePending = false;
-// Nothing is written to the db until it has been read once. A device with empty
-// local storage would otherwise save its own sample data over the real data
-// before loading it. A change made before then waits in dbWritePending.
+// Nothing is written to the db until it has been read once, or an empty
+// device would overwrite real data with its own sample data.
 var dbReadDone = false, dbLoadTries = 0;
 function dbSave(rawState) {
   if (!dbReadDone || dbWriteInFlight) { dbWritePending = true; return; }
@@ -356,10 +303,8 @@ export function load() {
   return defaults();
 }
 export var state = load();
-// When this device's data last really changed, kept beside the state (not in it, so backups
-// are unchanged). bootSavedAt is what an earlier session left, read before this boot saves
-// anything: it is what gets compared with the db's stamp, so a fresh device (no stamp)
-// can never look newer than the db, and a boot that changes nothing never refreshes it.
+// When this device's data last really changed, kept beside the state (not in
+// it) so a fresh device's stamp can never look newer than the db's.
 var SAVED_AT_KEY = KEY2 + "-saved-at";
 function readSavedAt() { try { return window.localStorage.getItem(SAVED_AT_KEY) || ""; } catch (e) { return ""; } }
 var bootSavedAt = readSavedAt(), localSavedAt = bootSavedAt, savesSeen = 0, editedAfterBoot = false;
@@ -378,11 +323,8 @@ export function save() {
   dbSave(state);
 }
 
-// Runs once at boot (called from app.js's deferred boot sequence, after the
-// page has already rendered from load()'s synchronous localStorage/defaults
-// result -- never blocks the initial paint on this). If db is available and
-// holds real saved data, swap it in and ask the caller to re-render. Resolves
-// to true if state was swapped (caller should re-render), false otherwise.
+// Runs once at boot, after the initial paint. Swaps in the db's state if
+// available and newer, and resolves true when the caller should re-render.
 export function loadFromDbIfAvailable() {
   return getDb().then(function (db) {
     if (!db) { dbReadDone = true; dbWritePending = false; return false; }
@@ -414,10 +356,8 @@ export var ui = { view: "today", sel: null, detail: false, query: "", prev: "tod
 // Always opens on Today -- no-op.
 export function saveUI() { /* nothing to save */ }
 
-// Stamps a task's completion date the moment its status becomes Done, and
-// clears it if the task is reopened. Only Quests and Ideas go to the Vault
-// independently -- a completed task just stays visible, marked Done, inside
-// its live quest; this function never moves anything to the Vault itself.
+// Stamps a task's completion date when it becomes Done, clears it if reopened.
+// Never moves anything to the Vault itself -- only Quests and Ideas do that.
 export function autoVault() {
   state.tasks.forEach(function (t) {
     if (t.status !== "Completed") { t.doneAt = ""; return; }
@@ -425,10 +365,7 @@ export function autoVault() {
   });
 }
 // Permanently deletes Vault entries older than settings.vaultPurgeDays,
-// checked once at boot (not every save) since it only matters at day
-// granularity. Age is time since vault.at, so a restored-then-re-vaulted
-// item gets a fresh clock. 0 means Never; no confirmation is shown, since
-// the Settings control itself is the user's standing consent.
+// checked once at boot. 0 means Never; no confirmation, the Settings control itself is standing consent.
 export function purgeOldVault() {
   var days = state.settings.vaultPurgeDays;
   if (!days) return;

@@ -36,11 +36,8 @@ function renderBurn(host, wide, cfg) {
   // Thin the date labels on a long axis so they never run together.
   var every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 70))));
   cps.forEach(function (ms, i) { if (i % every === 0 || i === n - 1) svg.appendChild(svgEl("text", { "class": "axis", x: x(i), y: H - 16, "text-anchor": "middle" }, fmt(ms))); });
-  // Animated draw-in: each line sits in its own clipped group that reveals left
-  // to right, so a dashed line (Ideal) and a multi-segment line (Actual) both
-  // work the same way -- a clip-rect, not stroke-dasharray, which Ideal's own
-  // dash pattern would otherwise fight. Sequenced Ideal, then Actual, then
-  // Scope, matching the legend's own left-to-right order.
+  // Each line reveals left to right via its own clipped group (a clip-rect,
+  // not stroke-dasharray, which would fight Ideal's own dash pattern).
   var animate = state.settings.animatedBurndown;
   var revealGroups = [];
   function revealGroup(clipId) {
@@ -100,18 +97,8 @@ function renderBurn(host, wide, cfg) {
   var tip = el("div", { "class": "charttip", role: "status", "aria-live": "polite" }); tip.hidden = true;
   host.appendChild(svg); host.appendChild(tip);
 
-  // Reveal each rect in turn: Ideal, then Actual, then Scope. A real
-  // transition on the rect's own width, not a CSS custom property, so
-  // reduced-motion's existing blanket `transition: none` rule covers it for
-  // free -- no extra media-query handling needed here. Must come after the
-  // svg is actually appended to the DOM above -- observe() on a detached
-  // element never fires. Starts once the chart is at least half visible,
-  // not merely touching the viewport edge, so scrolling past it quickly
-  // doesn't trigger it; also waits for the splash to finish (IntersectionObserver
-  // has no concept of the splash overlay sitting on top of it, since that's a
-  // z-index/opacity thing, not a layout one -- a chart under the splash still
-  // reads as "intersecting" -- so #splash's own `hidden` is checked too,
-  // polled briefly if it's still up rather than firing underneath it).
+  // Reveals each rect via a real width transition, once the chart is at least
+  // half visible and the splash overlay, if any, has finished.
   if (animate && revealGroups.length) {
     var fullW = W - R - L, stepMs = 525, started = false;
     function splashGone() { var s = document.getElementById("splash"); return !s || s.hidden; }
