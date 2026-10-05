@@ -2,6 +2,8 @@
 
 `sidequest.html` is a single self-contained file. Publishing it as your own Claude artifact gives you a version of Sidequest that saves your data to your Claude account instead of your browser, so it works the same across your devices.
 
+This version needs no Sidequest account — there still isn't one, and never will be — but it does need your own Claude account, since publishing it and storing its data both happen through Claude. That's different from the plain web version (`index.html`), which needs no account of any kind.
+
 ## First-time setup
 
 ### If you just want it working (recommended for most people)
@@ -46,3 +48,5 @@ If you do grant someone edit access, keep in mind this version has no conflict h
 ## What doesn't carry over from the web version
 
 This file has no Claude or AI branding of its own — that's intentional, so the file itself is portable. This README is the only place that explains the Claude-specific setup, since using this version requires a Claude account and a Claude conversation to publish it.
+
+Your data also doesn't stay only on your own device the way the plain web version's does — it lives with your Claude account, in Claude's own storage, not in your browser.
