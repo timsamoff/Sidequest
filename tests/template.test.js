@@ -1035,11 +1035,13 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const board = {
     name: "Launch Plan",
     cards: [
-      { id: "c1", name: "Design landing page", desc: "Hero + pricing", due: "2026-11-01T17:00:00.000Z", closed: false, idChecklists: ["cl1"], idLabels: ["lab1"], idMembers: ["m1"] },
+      { id: "c1", name: "Design landing page", desc: "Hero + pricing", due: "2026-11-01T17:00:00.000Z", closed: false, idChecklists: ["cl1"], idLabels: ["lab1"], idMembers: ["m1"], checkItemStates: [{ idCheckItem: "ci1", state: "complete" }] },
       { id: "c2", name: "Write copy", desc: "", due: null, closed: false, idChecklists: [], idLabels: [], idMembers: [] },
       { id: "c3", name: "Old, skipped", desc: "", due: null, closed: true, idChecklists: [], idLabels: [], idMembers: [] }
     ],
-    checklists: [{ id: "cl1", idCard: "c1", checkItems: [{ id: "ci1", name: "Pick palette", state: "complete" }, { id: "ci2", name: "Draft hero copy", state: "incomplete" }] }],
+    // Real Trello exports put completion on the card's own checkItemStates
+    // (by idCheckItem), not on the checklist's checkItems themselves.
+    checklists: [{ id: "cl1", idCard: "c1", checkItems: [{ id: "ci1", name: "Pick palette" }, { id: "ci2", name: "Draft hero copy" }] }],
     labels: [{ id: "lab1", name: "Design", color: "blue" }],
     members: [{ id: "m1", fullName: "Someone" }]
   };

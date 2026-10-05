@@ -1067,7 +1067,7 @@ export function helpTopics() {
       "**Vault** items can delete themselves automatically, 7, 30, 60, or 90 days after being vaulted, or never, if you leave it there. Sidequest checks this once, each time it opens, with no second warning once the setting is on.",
       "**Start fresh** erases everything, after one warning. Back it up first if there’s anything worth keeping. You can start completely empty, or with the sample quests back in place."]],
     ["Import from Trello", [
-      "In Settings, **Import from Trello** reads a board exported from Trello (its own Export JSON option) and turns it into a new quest here. It never touches your existing quests or tasks.",
+      "In Settings, **Import from Trello** turns a Trello board into a new quest here. It needs the JSON file from Trello’s own board menu, Print, Export, and Share, then Export as JSON: a CSV export will not work. It never touches your existing quests or tasks.",
       "Before anything happens, a dialog shows how many cards and checklist items it found and names what is left out: labels, members, comments, and attachments have no place in Sidequest, so they are simply not brought in rather than half-imported.",
       "A card becomes a task, its description becomes the task note, and its checklist items become steps, already ticked if they were. A card with a due date is scheduled on it; a card with none goes to the Backlog. Cards you had archived in Trello are skipped."]],
     ["Install Sidequest on this device", [
@@ -1310,7 +1310,7 @@ export function renderSettings(page) {
   root.appendChild(backupBox);
 
   root.appendChild(el("h2", null, "Import from Trello"));
-  root.appendChild(el("p", { "class": "hint" }, "Bring in a board exported from Trello as a new quest. Labels, members, comments, and attachments are left out."));
+  root.appendChild(el("p", { "class": "hint" }, "Bring in a board exported from Trello as a new quest. In Trello, use the board menu’s Print, Export, and Share, then Export as JSON: this only accepts that .json file, not a CSV. Labels, members, comments, and attachments are left out."));
   var importBox = el("div", { "class": "box", style: "margin-top:10px" });
   importPanel(importBox);
   root.appendChild(importBox);
@@ -1397,10 +1397,14 @@ function parseTrelloExport(obj) {
   if ((obj.labels || []).length) dropped += obj.labels.length;
   if ((obj.members || []).length) dropped += obj.members.length;
   var cards = (obj.cards || []).filter(function (c) { return !c.closed; }).map(function (c) {
+    // Completion can live directly on a checkItem (state) or, in a real
+    // Trello export, on the card's own checkItemStates by idCheckItem -- check both.
+    var completedIds = {};
+    (c.checkItemStates || []).forEach(function (s) { if (s.state === "complete") completedIds[s.idCheckItem] = true; });
     var steps = [];
     (c.idChecklists || []).forEach(function (clId) {
       var cl = checklistsById[clId]; if (!cl) return;
-      (cl.checkItems || []).forEach(function (ci) { steps.push({ text: S(ci.name, 300), done: ci.state === "complete" }); });
+      (cl.checkItems || []).forEach(function (ci) { steps.push({ text: S(ci.name, 300), done: ci.state === "complete" || !!completedIds[ci.id] }); });
     });
     if (Array.isArray(c.idLabels) && c.idLabels.length) dropped++;
     if (Array.isArray(c.idMembers) && c.idMembers.length) dropped++;
