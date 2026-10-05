@@ -4033,7 +4033,7 @@ function renderSettings(page) {
   root.appendChild(backupBox);
 
   root.appendChild(el("h2", null, "Import"));
-  root.appendChild(el("p", { "class": "hint" }, "Bring in tasks from Trello or Todoist as a new quest. Each needs the real exported file from that tool, not a copy-pasted list."));
+  root.appendChild(el("p", { "class": "hint" }, "Bring in tasks from Trello (JSON) or Todoist (CSV) as a new quest."));
   var importBox = el("div", { "class": "box", style: "margin-top:10px" });
   importPanel(importBox);
   root.appendChild(importBox);
