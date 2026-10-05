@@ -270,7 +270,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
-  ok(titles.length === 15 && titles.includes("Launch checklist and decisions"), "template Help has the Launch checklist topic (" + titles.length + " topics)");
+  ok(titles.length === 16 && titles.includes("Launch checklist and decisions"), "template Help has the Launch checklist topic (" + titles.length + " topics)");
   ok(titles.includes("From idea to quest: the whole path"), "Help has a dedicated topic walking through the full idea-to-quest lifecycle");
   ok(k.$("view").textContent.includes("beside any step") && k.$("view").textContent.includes("Add decision"), "and the topic explains the step pencil and adding a decision from a step");
   const helpText = k.$("view").textContent;
@@ -1024,6 +1024,49 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("toast").textContent.includes("Backup restored.") && !!k.btn(k.$("toast"), "Undo"), "and offers Undo for a few seconds");
   k.click(k.btn(k.$("toast"), "Undo"));
   ok(k.saved().tasks.length === before && k.saved().quests.some(p => p.name === "Sample Game"), "Undo puts the previous data back");
+}
+{
+  // Import from Trello: a board export becomes a new quest, archived cards and
+  // dateless cards both behave correctly, checklist items become steps.
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.tab("settings");
+  const qBefore = k.saved().quests.length, tBefore = k.saved().tasks.length;
+  const board = {
+    name: "Launch Plan",
+    cards: [
+      { id: "c1", name: "Design landing page", desc: "Hero + pricing", due: "2026-11-01T17:00:00.000Z", closed: false, idChecklists: ["cl1"], idLabels: ["lab1"], idMembers: ["m1"] },
+      { id: "c2", name: "Write copy", desc: "", due: null, closed: false, idChecklists: [], idLabels: [], idMembers: [] },
+      { id: "c3", name: "Old, skipped", desc: "", due: null, closed: true, idChecklists: [], idLabels: [], idMembers: [] }
+    ],
+    checklists: [{ id: "cl1", idCard: "c1", checkItems: [{ id: "ci1", name: "Pick palette", state: "complete" }, { id: "ci2", name: "Draft hero copy", state: "incomplete" }] }],
+    labels: [{ id: "lab1", name: "Design", color: "blue" }],
+    members: [{ id: "m1", fullName: "Someone" }]
+  };
+  const pickTrello = async (text) => {
+    const input = k.$("importTrelloFile");
+    Object.defineProperty(input, "files", { value: [new k.w.File([text], "b.json")], configurable: true });
+    k.fire(input, "change"); await new Promise(r => setTimeout(r, 40));
+  };
+  await pickTrello("not json");
+  ok(k.$("overlay").hidden && k.$("view").textContent.includes("That does not look like a Trello board export."), "a file that is not a Trello export is refused without a dialog");
+  await pickTrello(JSON.stringify(board));
+  ok(k.$("modalTitle").textContent === "Import “Launch Plan”?" && /2 cards and 2 checklist items/.test(k.$("modalBody").textContent) && /new quest named/.test(k.$("modalBody").textContent) && /not imported/.test(k.$("modalBody").textContent), "the preview names the board, its counts, and what is left out (" + k.$("modalBody").textContent.slice(0, 120) + ")");
+  ok(k.saved().quests.length === qBefore, "nothing has changed yet");
+  k.click(k.btn(k.$("modalBody"), "Cancel"));
+  ok(k.saved().quests.length === qBefore, "Cancel imports nothing");
+  await pickTrello(JSON.stringify(board));
+  k.click(k.btn(k.$("modalBody"), "Import"));
+  const qp = k.saved().quests.find(p => p.name === "Launch Plan");
+  ok(!!qp && k.saved().quests.length === qBefore + 1, "Import creates exactly one new quest, existing quests untouched");
+  const its = k.saved().tasks.filter(t => t.questId === qp.id);
+  ok(its.length === 2, "the closed card was skipped, the other two became tasks");
+  const dated = its.find(t => t.what === "Design landing page"), undated = its.find(t => t.what === "Write copy");
+  ok(dated.due === "2026-11-01" && dated.block === 1 && dated.notes === "Hero + pricing", "a card with a due date keeps its date, note, and lands in a real block");
+  ok(undated.due === "" && undated.block === 0, "a card with no due date goes to the Backlog");
+  ok(dated.steps.length === 2 && dated.steps[0].done === true && dated.steps[1].done === false, "checklist items become steps with their done state kept");
+  ok(qp.start === "2026-11-01", "the new quest starts on the earliest due date found");
+  ok(k.saved().tasks.length === tBefore + 2, "existing tasks are untouched");
 }
 {
   // a task's Timeline bar takes its status: Not started, In progress, Completed

@@ -3788,6 +3788,10 @@ function helpTopics() {
       "Everything lives in this browser only, so **Backup and restore** matters. **Save backup** writes a file wherever you choose. **Restore backup** reads one back in, after warning you it replaces everything currently here, with a few seconds to undo if you change your mind. Go two weeks without a backup and Today will say so, quietly.",
       "**Vault** items can delete themselves automatically, 7, 30, 60, or 90 days after being vaulted, or never, if you leave it there. Sidequest checks this once, each time it opens, with no second warning once the setting is on.",
       "**Start fresh** erases everything, after one warning. Back it up first if there’s anything worth keeping. You can start completely empty, or with the sample quests back in place."]],
+    ["Import from Trello", [
+      "In Settings, **Import from Trello** reads a board exported from Trello (its own Export JSON option) and turns it into a new quest here. It never touches your existing quests or tasks.",
+      "Before anything happens, a dialog shows how many cards and checklist items it found and names what is left out: labels, members, comments, and attachments have no place in Sidequest, so they are simply not brought in rather than half-imported.",
+      "A card becomes a task, its description becomes the task note, and its checklist items become steps, already ticked if they were. A card with a due date is scheduled on it; a card with none goes to the Backlog. Cards you had archived in Trello are skipped."]],
     ["Install Sidequest on this device", [
       "Settings has an **Install Sidequest** section. On a computer running Chrome or Edge, or on Android, it shows a real **Install Sidequest** button. Selecting it puts Sidequest on this device with its own icon and its own window, separate from the browser, and it keeps working without a connection once you have opened it there at least once.",
       "On an iPhone or iPad there is no such button anywhere, in Settings or in the browser itself. Tap the Share icon in Safari, then **Add to Home Screen**, and it installs the same way.",
@@ -4027,6 +4031,12 @@ function renderSettings(page) {
   backupPanel(backupBox, root);
   root.appendChild(backupBox);
 
+  root.appendChild(el("h2", null, "Import from Trello"));
+  root.appendChild(el("p", { "class": "hint" }, "Bring in a board exported from Trello as a new quest. Labels, members, comments, and attachments are left out."));
+  var importBox = el("div", { "class": "box", style: "margin-top:10px" });
+  importPanel(importBox);
+  root.appendChild(importBox);
+
   root.appendChild(el("h2", null, "Start fresh"));
   var box = el("div", { "class": "dangerbox" });
   box.appendChild(el("p", { "class": "first" }, "Erase everything in this browser and begin again. You will see a warning and a chance to save a backup first."));
@@ -4097,6 +4107,90 @@ function saveBackupFile(msg, onDone) {
   });
 }
 // Reads the chosen file, then asks before replacing everything with it.
+// Reads a Trello JSON board export into a plain summary Sidequest can act on.
+// Only name/desc/due/checklist-items survive; labels, members, comments,
+// attachments, and custom fields are dropped by design, not by oversight.
+function parseTrelloExport(obj) {
+  if (!obj || typeof obj !== "object" || !Array.isArray(obj.cards)) return null;
+  var boardName = typeof obj.name === "string" && obj.name ? obj.name : "Imported board";
+  var checklistsById = {};
+  (obj.checklists || []).forEach(function (c) { checklistsById[c.id] = c; });
+  var dropped = 0;
+  if ((obj.labels || []).length) dropped += obj.labels.length;
+  if ((obj.members || []).length) dropped += obj.members.length;
+  var cards = (obj.cards || []).filter(function (c) { return !c.closed; }).map(function (c) {
+    var steps = [];
+    (c.idChecklists || []).forEach(function (clId) {
+      var cl = checklistsById[clId]; if (!cl) return;
+      (cl.checkItems || []).forEach(function (ci) { steps.push({ text: S(ci.name, 300), done: ci.state === "complete" }); });
+    });
+    if (Array.isArray(c.idLabels) && c.idLabels.length) dropped++;
+    if (Array.isArray(c.idMembers) && c.idMembers.length) dropped++;
+    return { name: S(c.name, 300) || "Untitled card", desc: S(c.desc, 5000), due: isISOInstant(c.due) ? c.due.slice(0, 10) : "", steps: steps };
+  });
+  return { boardName: boardName, cards: cards, droppedCount: dropped };
+}
+function isISOInstant(v) { return typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v); }
+// Builds a new quest from a parsed Trello summary: start is the earliest due
+// date found (or today, with nothing to anchor to), so every card's own due
+// date is guaranteed on or after the quest's start and never gets rejected.
+function buildQuestFromTrello(summary) {
+  var dues = summary.cards.map(function (c) { return c.due; }).filter(Boolean).sort();
+  var start = dues.length ? dues[0] : iso(TODAY);
+  var p = makeQuest(uid(), S(summary.boardName, 120) || "Imported board", "active", { start: start });
+  var tasks = summary.cards.map(function (c) {
+    var blk = 0, due = "";
+    if (c.due) { var b = blockForDate(p.id, parseISO(c.due)); if (b !== null) { blk = b; due = c.due; } }
+    var t = task(uid(), blk, p.id, S(c.name, 300), false, c.steps.map(function (s) { return st(uid(), s.text, false, s.done); }));
+    t.notes = c.desc; t.due = due; t.added = due ? iso(TODAY) : "";
+    return t;
+  });
+  return { quest: p, tasks: tasks };
+}
+function importTrelloFile(file, msg) {
+  var r = new FileReader();
+  r.onerror = function () { msg.textContent = "The file could not be read."; };
+  r.onload = function () {
+    var obj = null;
+    try { obj = JSON.parse(String(r.result || "")); } catch (e) { obj = null; }
+    var summary = obj && parseTrelloExport(obj);
+    if (!summary) { msg.textContent = "That does not look like a Trello board export."; return; }
+    msg.textContent = "";
+    var nc = summary.cards.length, ns = summary.cards.reduce(function (n, c) { return n + c.steps.length; }, 0);
+    openModal("Import “" + summary.boardName + "”?", function (body) {
+      var lines = [nc + (nc === 1 ? " card" : " cards") + " and " + ns + (ns === 1 ? " checklist item" : " checklist items") + " were found."];
+      lines.push("This creates a new quest named “" + summary.boardName + ".” Your existing quests and tasks are not changed.");
+      if (summary.droppedCount) lines.push("Labels, members, comments, and attachments on this board are not imported.");
+      lines.forEach(function (t, i) { body.appendChild(el("p", { "class": i === 0 ? "first" : "" }, t)); });
+      var acts = el("div", { "class": "actions" });
+      var no = el("button", { type: "button", title: "Cancel this import" }, "Cancel");
+      var yes = el("button", { type: "button", "class": "primary", title: "Create a new quest from this board" }, "Import");
+      on(no, "click", closeModal);
+      on(yes, "click", function () {
+        closeModal();
+        var built = buildQuestFromTrello(summary);
+        state.quests.push(built.quest);
+        built.tasks.forEach(function (t) { state.tasks.push(t); });
+        changed(); go("quest:" + built.quest.id);
+        notify("Imported “" + summary.boardName + ".”");
+      });
+      acts.appendChild(no); acts.appendChild(yes); body.appendChild(acts);
+    });
+  };
+  r.readAsText(file);
+}
+function importPanel(root) {
+  var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
+  var file = el("input", { type: "file", id: "importTrelloFile", accept: ".json,application/json", hidden: "hidden", "aria-label": "Choose a Trello board export to import" });
+  var btn = el("button", { type: "button", id: "importTrelloBtn", title: "Choose a Trello board export (.json) to import" }, "Import from Trello");
+  on(btn, "click", function () { file.click(); });
+  on(file, "change", function () {
+    var f = file.files && file.files[0]; if (!f) return;
+    importTrelloFile(f, msg); file.value = "";
+  });
+  root.appendChild(btn); root.appendChild(file); root.appendChild(msg);
+}
+
 function restoreBackupFile(file, msg) {
   var r = new FileReader();
   r.onerror = function () { msg.textContent = "The file could not be read."; };
