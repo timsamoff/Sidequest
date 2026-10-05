@@ -4,7 +4,7 @@ import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline } from 
 import { lateTasks } from "./model.js";
 import {
   renderToday, renderSchedule, renderQuests, renderWorkshop,
-  renderVault, renderSettings, renderHelp, renderQuestPage, renderTimeline
+  renderVault, renderSettings, renderHelp, renderQuestPage, renderTimeline, setDeferredInstallPrompt
 } from "./views.js";
 import { renderSearch, openSearch, closeSearch, wireSearchInput, focusSearch } from "./search.js";
 import {
@@ -146,6 +146,20 @@ Promise.resolve().then(function () {
     autoVault(); purgeOldVault(); save();
     renderAll();
   });
+
+  // PWA install path is web-build only -- a Claude artifact has no sw.js/manifest.json alongside it.
+  var inClaude = !!(window.claude && typeof window.claude.use === "function");
+  if (!inClaude && "serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  }
+  // Chrome/Edge/Android fire this once installable; stored in views.js so
+  // Settings can offer a real Install button instead of guessing readiness.
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    setDeferredInstallPrompt(e);
+    renderChrome();
+  });
+  window.addEventListener("appinstalled", function () { setDeferredInstallPrompt(null); renderChrome(); });
 
   wireMenu("newBtn", "newMenu"); wireMenu("moreBtn", "moreMenu");
   wireSearchInput($("searchBox"), "side");

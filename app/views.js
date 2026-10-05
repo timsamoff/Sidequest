@@ -1065,6 +1065,7 @@ export function helpTopics() {
       "**Settings** covers how Sidequest looks and schedules by default: the length of a " + w + " in days, what to call it (Block, Sprint, and so on), date format, theme, whether the splash plays on open, whether a burndown draws its lines in when it comes into view (**Animated burndown**), whether **Sound Effects** play at all, and whether finishing a quest sets off a **Completion FX** confetti burst.",
       "Everything lives in this browser only, so **Backup and restore** matters. **Save backup** writes a file wherever you choose. **Restore backup** reads one back in, after warning you it replaces everything currently here, with a few seconds to undo if you change your mind. Go two weeks without a backup and Today will say so, quietly.",
       "**Vault** items can delete themselves automatically, 7, 30, 60, or 90 days after being vaulted, or never, if you leave it there. Sidequest checks this once, each time it opens, with no second warning once the setting is on.",
+      "**Install Sidequest** puts it on this device like any other app, with its own icon and window, still working without a connection once you have opened it at least once. Chrome and Edge show a real Install button here; on an iPhone or iPad there is no such button anywhere, so tap Share and then Add to Home Screen instead.",
       "**Start fresh** erases everything, after one warning. Back it up first if there’s anything worth keeping. You can start completely empty, or with the sample quests back in place."]]
   ];
 }
@@ -1166,6 +1167,17 @@ function brandmarkField() {
   w.appendChild(preview); w.appendChild(msg);
   return w;
 }
+// Set by app.js's beforeinstallprompt listener; null once installed or triggered.
+var deferredInstallPrompt = null;
+export function setDeferredInstallPrompt(e) { deferredInstallPrompt = e; }
+function triggerInstall() {
+  if (!deferredInstallPrompt) return;
+  var p = deferredInstallPrompt;
+  deferredInstallPrompt = null;
+  p.prompt();
+  renderChrome();
+}
+
 export function renderSettings(page) {
   // Side panel comes FIRST in DOM order so it stacks above the main settings
   // on a phone -- the opposite of .questsplit, where the charts column trails.
@@ -1268,6 +1280,22 @@ export function renderSettings(page) {
   vaultBox.appendChild(pg);
   if (state.settings.vaultPurgeDays) vaultBox.appendChild(el("p", { "class": "hint" }, "Checked each time Sidequest opens. An item older than this, counted from when it was vaulted, is deleted permanently with no further warning."));
   root.appendChild(vaultBox);
+
+  var inClaudeNow = false;
+  try { inClaudeNow = !!(window.claude && typeof window.claude.use === "function"); } catch (e) { inClaudeNow = false; }
+  if (!inClaudeNow) {
+    root.appendChild(el("h2", null, "Install Sidequest"));
+    var installBox = el("div", { "class": "box", style: "margin-top:10px" });
+    if (deferredInstallPrompt) {
+      installBox.appendChild(el("p", { "class": "hint first" }, "Install Sidequest so it opens like any other app on this device."));
+      installBox.appendChild(on(el("button", { type: "button", id: "installBtn" }, "Install Sidequest"), "click", triggerInstall));
+    } else if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+      installBox.appendChild(el("p", { "class": "hint first" }, "On iPhone or iPad: tap Share, then Add to Home Screen."));
+    } else {
+      installBox.appendChild(el("p", { "class": "hint first" }, "Already installed, or your browser does not offer it here."));
+    }
+    root.appendChild(installBox);
+  }
 
   root.appendChild(el("h2", null, "Backup and restore"));
   var backupBox = el("div", { "class": "box", style: "margin-top:10px" });
