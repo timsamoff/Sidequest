@@ -1071,6 +1071,74 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.saved().tasks.length === tBefore + 2, "existing tasks are untouched");
 }
 {
+  // Import from Todoist: a real per-project CSV export becomes a new quest
+  // named after the file, with sections, subtasks, labels, and completed
+  // tasks all handled per the documented limitations.
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.tab("settings");
+  const qBefore = k.saved().quests.length, tBefore = k.saved().tasks.length;
+  const td = new Date(), iso = new Date(Date.UTC(td.getFullYear(), td.getMonth(), td.getDate())).toISOString().slice(0, 10);
+  const csv = [
+    "TYPE,CONTENT,DESCRIPTION,IS_COLLAPSED,PRIORITY,INDENT,AUTHOR,RESPONSIBLE,DATE,DATE_LANG,TIMEZONE,DURATION,DURATION_UNIT,DEADLINE,DEADLINE_LANG",
+    "meta,view_style=list,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,",
+    "task,Read Week 4 content,,,4,1,Tim,,,,America/Los_Angeles,,,,",
+    "task,Do Week 4 homework,,,4,1,Tim,,,,America/Los_Angeles,,,,",
+    "task,Email about continuing @Math,,,2,1,,,today,en,America/Los_Angeles,,,,",
+    ",,,,,,,,,,,,,,"
+  ].join("\r\n");
+  const pickTodoist = async (text, name) => {
+    const input = k.$("importTodoistFile");
+    Object.defineProperty(input, "files", { value: [new k.w.File([text], name || "School.csv")], configurable: true });
+    k.fire(input, "change"); await new Promise(r => setTimeout(r, 40));
+  };
+  await pickTodoist("not,a,todoist,file\n1,2,3,4");
+  ok(k.$("overlay").hidden && k.$("view").textContent.includes("That does not look like a Todoist project export."), "a file with no recognizable Todoist header is refused without a dialog");
+  await pickTodoist(csv);
+  ok(k.$("modalTitle").textContent === "Import “School”?" && /3 tasks were found/.test(k.$("modalBody").textContent) && /Completed tasks are not in this file/.test(k.$("modalBody").textContent) && /new quest named/.test(k.$("modalBody").textContent), "the preview names the quest after the filename and states the completed-tasks limitation (" + k.$("modalBody").textContent.slice(0, 160) + ")");
+  ok(k.saved().quests.length === qBefore, "nothing has changed yet");
+  k.click(k.btn(k.$("modalBody"), "Cancel"));
+  ok(k.saved().quests.length === qBefore, "Cancel imports nothing");
+  await pickTodoist(csv);
+  k.click(k.btn(k.$("modalBody"), "Import"));
+  const qp = k.saved().quests.find(p => p.name === "School");
+  ok(!!qp && k.saved().quests.length === qBefore + 1, "Import creates exactly one new quest, named after the file, existing quests untouched");
+  const its = k.saved().tasks.filter(t => t.questId === qp.id);
+  ok(its.length === 3, "the meta row and blank lines were skipped, all three tasks came through");
+  const dated = its.find(t => t.what === "Email about continuing");
+  ok(!!dated && dated.due === iso && dated.block === 1, "the @label tag is stripped from the task name, and Todoist's \"today\" resolves to the real current date");
+  const undated = its.filter(t => t.due === "" && t.block === 0);
+  ok(undated.length === 2, "tasks with no date go to the Backlog");
+  ok(qp.start === iso, "the new quest starts on the earliest due date found");
+  ok(k.saved().tasks.length === tBefore + 3, "existing tasks are untouched");
+}
+{
+  // Todoist's natural-language DATE field: "tomorrow" and "in N days" are
+  // unambiguous and resolved; a recurrence phrase is left unscheduled, not guessed at.
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.tab("settings");
+  const td = new Date(), base = Date.UTC(td.getFullYear(), td.getMonth(), td.getDate());
+  const iso = n => new Date(base + n * 86400000).toISOString().slice(0, 10);
+  const csv = [
+    "TYPE,CONTENT,DESCRIPTION,IS_COLLAPSED,PRIORITY,INDENT,AUTHOR,RESPONSIBLE,DATE,DATE_LANG,TIMEZONE,DURATION,DURATION_UNIT,DEADLINE,DEADLINE_LANG",
+    "task,Due tomorrow,,,4,1,,,tomorrow,en,America/Los_Angeles,,,,",
+    "task,Due in 3 days,,,4,1,,,in 3 days,en,America/Los_Angeles,,,,",
+    "task,Recurring task,,,4,1,,,every day,en,America/Los_Angeles,,,,"
+  ].join("\r\n");
+  const input = k.$("importTodoistFile");
+  Object.defineProperty(input, "files", { value: [new k.w.File([csv], "Dates.csv")], configurable: true });
+  k.fire(input, "change"); await new Promise(r => setTimeout(r, 40));
+  k.click(k.btn(k.$("modalBody"), "Import"));
+  const qp = k.saved().quests.find(p => p.name === "Dates");
+  const its = k.saved().tasks.filter(t => t.questId === qp.id);
+  ok(its.find(t => t.what === "Due tomorrow").due === iso(1), "\"tomorrow\" resolves to the real next day");
+  ok(its.find(t => t.what === "Due in 3 days").due === iso(3), "\"in 3 days\" resolves to the real date 3 days out");
+  const recurring = its.find(t => t.what === "Recurring task");
+  ok(recurring.due === "" && recurring.block === 0, "a recurrence phrase is not guessed at and goes to the Backlog instead");
+}
+{
   // a task's Timeline bar takes its status: Not started, In progress, Completed
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));

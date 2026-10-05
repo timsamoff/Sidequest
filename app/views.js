@@ -1,5 +1,5 @@
 import { state, ui, save, changed, autoVault, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, quest as makeQuest, task, st, S } from "./state.js";
-import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart } from "./dates.js";
+import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart, addDays } from "./dates.js";
 import {
   WORDS, wd, wl, pset, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
   checkpoints, live, counted, liveQuests, activeQuests, candidateQuests, completeQuests,
@@ -1066,10 +1066,11 @@ export function helpTopics() {
       "Everything lives in this browser only, so **Backup and restore** matters. **Save backup** writes a file wherever you choose. **Restore backup** reads one back in, after warning you it replaces everything currently here, with a few seconds to undo if you change your mind. Go two weeks without a backup and Today will say so, quietly.",
       "**Vault** items can delete themselves automatically, 7, 30, 60, or 90 days after being vaulted, or never, if you leave it there. Sidequest checks this once, each time it opens, with no second warning once the setting is on.",
       "**Start fresh** erases everything, after one warning. Back it up first if there’s anything worth keeping. You can start completely empty, or with the sample quests back in place."]],
-    ["Import from Trello", [
-      "In Settings, **Import from Trello** turns a Trello board into a new quest here. It needs the JSON file from Trello’s own board menu, Print, Export, and Share, then Export as JSON: a CSV export will not work. It never touches your existing quests or tasks.",
-      "Before anything happens, a dialog shows how many cards and checklist items it found and names what is left out: labels, members, comments, and attachments have no place in Sidequest, so they are simply not brought in rather than half-imported.",
-      "A card becomes a task, its description becomes the task note, and its checklist items become steps, already ticked if they were. A card with a due date is scheduled on it; a card with none goes to the Backlog. Cards you had archived in Trello are skipped."]],
+    ["Import from Trello or Todoist", [
+      "Settings has an **Import** section with two buttons, one for each tool. Either one turns a board or a project into a new quest here and never touches your existing quests or tasks.",
+      "**Import from Trello** needs the JSON file from Trello’s own board menu, Print, Export, and Share, then Export as JSON: a CSV export will not work. A card becomes a task, its description becomes the task note, and its checklist items become steps, already ticked if they were. Labels, members, comments, and attachments have no place in Sidequest, so they are left out rather than half-imported. A card with a due date is scheduled on it; a card with none goes to the Backlog, and a card you had archived in Trello is skipped.",
+      "**Import from Todoist** needs the CSV file from a project’s own Export option, and the new quest takes its name from that file. Todoist leaves finished work out of this file entirely, so only what is still open comes across, and a project with Todoist’s own 300-task limit may be missing some tasks from the file itself. A Todoist subtask comes in as its own task here, not nested under its parent, since Sidequest has no such nesting. A due date written as a real date, “today,” “tomorrow,” or “in a number of days” is understood; a repeating due date is left for the Backlog rather than guessed at.",
+      "Either import shows a dialog first, naming exactly what it found and what will be left out, before anything actually happens."]],
     ["Install Sidequest on this device", [
       "Settings has an **Install Sidequest** section. On a computer running Chrome or Edge, or on Android, it shows a real **Install Sidequest** button. Selecting it puts Sidequest on this device with its own icon and its own window, separate from the browser, and it keeps working without a connection once you have opened it there at least once.",
       "On an iPhone or iPad there is no such button anywhere, in Settings or in the browser itself. Tap the Share icon in Safari, then **Add to Home Screen**, and it installs the same way.",
@@ -1309,8 +1310,8 @@ export function renderSettings(page) {
   backupPanel(backupBox, root);
   root.appendChild(backupBox);
 
-  root.appendChild(el("h2", null, "Import from Trello"));
-  root.appendChild(el("p", { "class": "hint" }, "Bring in a board exported from Trello as a new quest. In Trello, use the board menu’s Print, Export, and Share, then Export as JSON: this only accepts that .json file, not a CSV. Labels, members, comments, and attachments are left out."));
+  root.appendChild(el("h2", null, "Import"));
+  root.appendChild(el("p", { "class": "hint" }, "Bring in tasks from Trello or Todoist as a new quest. Each needs the real exported file from that tool, not a copy-pasted list."));
   var importBox = el("div", { "class": "box", style: "margin-top:10px" });
   importPanel(importBox);
   root.appendChild(importBox);
@@ -1461,16 +1462,136 @@ function importTrelloFile(file, msg) {
   };
   r.readAsText(file);
 }
+// Minimal RFC-4180 CSV parser: handles quoted fields with embedded commas,
+// newlines, and doubled "" escapes. Blank lines are skipped by the caller.
+function parseCsv(text) {
+  var rows = [], row = [], field = "", inQuotes = false, i = 0;
+  while (i < text.length) {
+    var c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+        inQuotes = false; i++; continue;
+      }
+      field += c; i++; continue;
+    }
+    if (c === '"') { inQuotes = true; i++; continue; }
+    if (c === ",") { row.push(field); field = ""; i++; continue; }
+    if (c === "\r") { i++; continue; }
+    if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; i++; continue; }
+    field += c; i++;
+  }
+  row.push(field); rows.push(row);
+  return rows;
+}
+var TODOIST_HEADER_FIELDS = ["TYPE", "CONTENT", "DESCRIPTION", "PRIORITY", "INDENT", "DATE", "DEADLINE"];
+// Reads a Todoist per-project CSV export into a plain summary. Sections are
+// informational only; subtasks (INDENT > 1) flatten to their own tasks,
+// since Sidequest has no sub-task-of-a-task concept, only Task -> Step.
+function parseTodoistExport(text) {
+  var rows = parseCsv(text).filter(function (r) { return r.length > 1 || (r.length === 1 && r[0] !== ""); });
+  if (!rows.length) return null;
+  var header = rows[0].map(function (h) { return h.trim(); });
+  var idx = {};
+  header.forEach(function (h, i) { idx[h] = i; });
+  if (!TODOIST_HEADER_FIELDS.every(function (f) { return f in idx; })) return null;
+  var capped = rows.length - 1 >= 300;
+  var hasSubtasks = false, items = [], section = "";
+  for (var i = 1; i < rows.length; i++) {
+    var r = rows[i];
+    var type = (r[idx.TYPE] || "").trim();
+    if (type === "meta") continue;
+    if (type === "section") { section = S(r[idx.CONTENT], 120); continue; }
+    if (type !== "task") continue;
+    var indent = parseInt(r[idx.INDENT], 10) || 1;
+    if (indent > 1) hasSubtasks = true;
+    var content = (r[idx.CONTENT] || "").replace(/@\S+/g, "").replace(/\s+/g, " ").trim();
+    var date = (r[idx.DATE] || "").trim();
+    items.push({ name: S(content, 300) || "Untitled task", section: section, due: resolveTodoistDate(date) });
+  }
+  return { items: items, hasSubtasks: hasSubtasks, capped: capped };
+}
+function isPlainISODate(v) { return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v); }
+// Todoist's natural-language date field: a real ISO date is used as-is;
+// "today"/"tomorrow"/"in N day(s)" are unambiguous and resolved to a real
+// date; anything else (a recurrence phrase like "every day", or unrecognized
+// text) is left unscheduled rather than guessed at.
+function resolveTodoistDate(v) {
+  if (isPlainISODate(v)) return v;
+  var s = (v || "").trim().toLowerCase();
+  if (!s) return "";
+  if (s === "today") return iso(TODAY);
+  if (s === "tomorrow") return iso(addDays(TODAY, 1));
+  var m = s.match(/^in (\d+) days?$/);
+  if (m) return iso(addDays(TODAY, parseInt(m[1], 10)));
+  return "";
+}
+function buildQuestFromTodoist(summary, name) {
+  var dues = summary.items.map(function (c) { return c.due; }).filter(Boolean).sort();
+  var start = dues.length ? dues[0] : iso(TODAY);
+  var p = makeQuest(uid(), S(name, 120) || "Imported from Todoist", "active", { start: start });
+  var tasks = summary.items.map(function (c) {
+    var blk = 0, due = "";
+    if (c.due) { var b = blockForDate(p.id, parseISO(c.due)); if (b !== null) { blk = b; due = c.due; } }
+    var t = task(uid(), blk, p.id, c.name, false, []);
+    t.notes = c.section ? "Section: " + c.section : ""; t.due = due; t.added = due ? iso(TODAY) : "";
+    return t;
+  });
+  return { quest: p, tasks: tasks };
+}
+function importTodoistFile(file, msg) {
+  var name = file.name.replace(/\.csv$/i, "");
+  var r = new FileReader();
+  r.onerror = function () { msg.textContent = "The file could not be read."; };
+  r.onload = function () {
+    var summary = parseTodoistExport(String(r.result || ""));
+    if (!summary) { msg.textContent = "That does not look like a Todoist project export."; return; }
+    msg.textContent = "";
+    var nt = summary.items.length;
+    openModal("Import “" + name + "”?", function (body) {
+      var lines = [nt + (nt === 1 ? " task was" : " tasks were") + " found."];
+      lines.push("Completed tasks are not in this file, so only what is still open comes across.");
+      if (summary.capped) lines.push("This file has 300 tasks, Todoist’s own export limit, so some tasks may be missing from the file itself.");
+      if (summary.hasSubtasks) lines.push("Subtasks come in as their own tasks, not nested under their parent.");
+      lines.push("This creates a new quest named “" + name + ".” Your existing quests and tasks are not changed.");
+      lines.push("Labels and other Todoist-only details are not imported.");
+      lines.forEach(function (t, i) { body.appendChild(el("p", { "class": i === 0 ? "first" : "" }, t)); });
+      var acts = el("div", { "class": "actions" });
+      var no = el("button", { type: "button", title: "Cancel this import" }, "Cancel");
+      var yes = el("button", { type: "button", "class": "primary", title: "Create a new quest from this project" }, "Import");
+      on(no, "click", closeModal);
+      on(yes, "click", function () {
+        closeModal();
+        var built = buildQuestFromTodoist(summary, name);
+        state.quests.push(built.quest);
+        built.tasks.forEach(function (t) { state.tasks.push(t); });
+        changed(); go("quest:" + built.quest.id);
+        notify("Imported “" + name + ".”");
+      });
+      acts.appendChild(no); acts.appendChild(yes); body.appendChild(acts);
+    });
+  };
+  r.readAsText(file);
+}
 export function importPanel(root) {
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
-  var file = el("input", { type: "file", id: "importTrelloFile", accept: ".json,application/json", hidden: "hidden", "aria-label": "Choose a Trello board export to import" });
-  var btn = el("button", { type: "button", id: "importTrelloBtn", title: "Choose a Trello board export (.json) to import" }, "Import from Trello");
-  on(btn, "click", function () { file.click(); });
-  on(file, "change", function () {
-    var f = file.files && file.files[0]; if (!f) return;
-    importTrelloFile(f, msg); file.value = "";
+  var trelloFile = el("input", { type: "file", id: "importTrelloFile", accept: ".json,application/json", hidden: "hidden", "aria-label": "Choose a Trello board export to import" });
+  var trelloBtn = el("button", { type: "button", id: "importTrelloBtn", title: "Choose a Trello board export (.json) to import" }, "Import from Trello");
+  on(trelloBtn, "click", function () { trelloFile.click(); });
+  on(trelloFile, "change", function () {
+    var f = trelloFile.files && trelloFile.files[0]; if (!f) return;
+    importTrelloFile(f, msg); trelloFile.value = "";
   });
-  root.appendChild(btn); root.appendChild(file); root.appendChild(msg);
+  var todoistFile = el("input", { type: "file", id: "importTodoistFile", accept: ".csv,text/csv", hidden: "hidden", "aria-label": "Choose a Todoist project export to import" });
+  var todoistBtn = el("button", { type: "button", id: "importTodoistBtn", title: "Choose a Todoist project export (.csv) to import", style: "margin-left:8px" }, "Import from Todoist");
+  on(todoistBtn, "click", function () { todoistFile.click(); });
+  on(todoistFile, "change", function () {
+    var f = todoistFile.files && todoistFile.files[0]; if (!f) return;
+    importTodoistFile(f, msg); todoistFile.value = "";
+  });
+  root.appendChild(trelloBtn); root.appendChild(trelloFile);
+  root.appendChild(todoistBtn); root.appendChild(todoistFile);
+  root.appendChild(msg);
 }
 
 function restoreBackupFile(file, msg) {
