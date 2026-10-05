@@ -270,7 +270,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
-  ok(titles.length === 14 && titles.includes("Launch checklist and decisions"), "template Help has the Launch checklist topic (" + titles.length + " topics)");
+  ok(titles.length === 15 && titles.includes("Launch checklist and decisions"), "template Help has the Launch checklist topic (" + titles.length + " topics)");
   ok(titles.includes("From idea to quest: the whole path"), "Help has a dedicated topic walking through the full idea-to-quest lifecycle");
   ok(k.$("view").textContent.includes("beside any step") && k.$("view").textContent.includes("Add decision"), "and the topic explains the step pencil and adding a decision from a step");
   const helpText = k.$("view").textContent;

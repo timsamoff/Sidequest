@@ -3787,8 +3787,11 @@ function helpTopics() {
       "**Settings** covers how Sidequest looks and schedules by default: the length of a " + w + " in days, what to call it (Block, Sprint, and so on), date format, theme, whether the splash plays on open, whether a burndown draws its lines in when it comes into view (**Animated burndown**), whether **Sound Effects** play at all, and whether finishing a quest sets off a **Completion FX** confetti burst.",
       "Everything lives in this browser only, so **Backup and restore** matters. **Save backup** writes a file wherever you choose. **Restore backup** reads one back in, after warning you it replaces everything currently here, with a few seconds to undo if you change your mind. Go two weeks without a backup and Today will say so, quietly.",
       "**Vault** items can delete themselves automatically, 7, 30, 60, or 90 days after being vaulted, or never, if you leave it there. Sidequest checks this once, each time it opens, with no second warning once the setting is on.",
-      "**Install Sidequest** puts it on this device like any other app, with its own icon and window, still working without a connection once you have opened it at least once. Chrome and Edge show a real Install button here; on an iPhone or iPad there is no such button anywhere, so tap Share and then Add to Home Screen instead.",
-      "**Start fresh** erases everything, after one warning. Back it up first if there’s anything worth keeping. You can start completely empty, or with the sample quests back in place."]]
+      "**Start fresh** erases everything, after one warning. Back it up first if there’s anything worth keeping. You can start completely empty, or with the sample quests back in place."]],
+    ["Install Sidequest on this device", [
+      "Settings has an **Install Sidequest** section. On a computer running Chrome or Edge, or on Android, it shows a real **Install Sidequest** button. Selecting it puts Sidequest on this device with its own icon and its own window, separate from the browser, and it keeps working without a connection once you have opened it there at least once.",
+      "On an iPhone or iPad there is no such button anywhere, in Settings or in the browser itself. Tap the Share icon in Safari, then **Add to Home Screen**, and it installs the same way.",
+      "This only applies to the version of Sidequest running in its own browser tab. It has no meaning inside a published Claude artifact, so the section does not appear there at all."]]
   ];
 }
 function renderHelp(root) {
