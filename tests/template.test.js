@@ -1780,6 +1780,19 @@ async function exportClick(k, projectName) {
   ok(!!k.d.querySelector("canvas.confettiFx"), "Mark complete starts the confetti burst when Completion FX is on");
 }
 {
+  // Real bug, fixed 2026-10-06: reopening a Complete quest whose tasks are
+  // still all Completed immediately re-triggered the completion dialog
+  // (confetti/sound) via sweepQuestCompletion() seeing "all done" again.
+  const k = kit(await mk({ quests: [{ id: "pReoFx", name: "Reopen FX Quest", status: "complete" }], tasks: [
+    { id: "tReoFx", block: 0, questId: "pReoFx", what: "Done task", status: "Completed", steps: [] }
+  ] }));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Reopen FX Quest"));
+  k.click(k.btn(k.$("view"), "Reopen"));
+  ok(k.saved().quests.find(p => p.id === "pReoFx").status === "active", "the quest is actually reopened");
+  ok(!k.d.querySelector("canvas.confettiFx"), "reopening a quest whose tasks are still all Completed does not re-trigger the completion confetti");
+  ok(!k.$("modalTitle").textContent, "and does not reopen the completion dialog either");
+}
+{
   const k = kit(await mk({ settings: { completionFx: false }, quests: [{ id: "pFx2", name: "FX Quest Off", status: "active" }], tasks: [] }));
   k.tab("projects"); k.click(k.btn(k.d.querySelector("#view"), "FX Quest Off"));
   k.click(k.btn(k.$("view"), "Mark complete"));

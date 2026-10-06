@@ -95,9 +95,12 @@ export function recordQuestHistory() {
     if (total > 0 || Object.keys(p.hist).length) recordHist(p.hist, total, questRemainingUnits(p));
   });
 }
-// Auto-completion only -- runs on every changed(). Manual "Mark complete" is separate.
+// Auto-completion only -- runs on every changed(). Manual "Mark complete" is
+// separate. Skips a quest Reopen just reactivated, so completing() doesn't
+// immediately refire for a quest whose tasks are still all done.
 export function sweepQuestCompletion() {
   activeQuests().forEach(function (p) {
+    if (p.justReopened) { p.justReopened = false; return; }
     if (questTasksAllDone(p)) { p.status = "complete"; completionDialog(p); }
   });
 }
@@ -642,6 +645,9 @@ export function renderQuestPage(root, id) {
       // No auto-revert -- Reopen is the only way back to Active.
       ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Reopen this quest" }, "Reopen"), "click", function () {
         p.status = "active";
+        // Lets sweepQuestCompletion() skip this quest once, so reopening one
+        // whose tasks are all still Completed doesn't immediately re-fire it.
+        p.justReopened = true;
         // Restore a pin completionDialog() auto-removed on completion.
         if (p.wasPinned) { var key = "quest:" + p.id; if (!isPinned(key)) state.pins.push(key); p.wasPinned = false; }
         changed(); notify("Reopened.");

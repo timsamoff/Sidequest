@@ -20,7 +20,7 @@ export function task(id, block, questId, what, done, steps, extra) {
 // A quest's own lifecycle: "candidate" or "active". Promoted in place -- the
 // same record and id carry through candidate -> active -> vaulted, never a second record.
 export function quest(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, justReopened: false, client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
