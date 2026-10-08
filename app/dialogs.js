@@ -60,7 +60,9 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
         w.appendChild(el("span", { "class": "hint" }, f.label + ": " + f.value)); body.appendChild(w); return;
       }
       if (f.type === "heading") {
-        body.appendChild(el("h3", { "class": "dialogheading" }, f.label)); return;
+        body.appendChild(el("h3", { "class": "dialogheading" }, f.label));
+        if (f.hint) body.appendChild(el("p", { "class": "hint" }, f.hint));
+        return;
       }
       w.appendChild(el("label", { "for": id }, f.label));
       var inp;
@@ -116,7 +118,7 @@ export function taskDialog(prefillQuestId, backlog) {
   fields.push({ key: "done", label: "How you’ll know it’s done (optional)" });
   if (!backlog) {
     fields.push({ key: "start", label: "Start date (optional)", type: "date" });
-    fields.push({ key: "due", label: "Due date, or leave empty for the Backlog", type: "date", value: defaultDue });
+    fields.push({ key: "due", label: "Due date (leave empty to add to the quest’s backlog)", type: "date", value: defaultDue });
   }
   fields.push({ key: "est", label: "Estimated time in hours (optional)", type: "number", min: "0", max: "9999", step: "0.25" });
   formDialog(backlog ? "New backlog item" : "New task", fields, backlog ? "Add to Backlog" : "Add task", function (v) {
@@ -141,20 +143,20 @@ export function taskDialog(prefillQuestId, backlog) {
     var t = task("c" + uid(), blk, v.quest, v.what.slice(0, 400), v.done.slice(0, 200) || "It’s finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
     state.tasks.push(t); ui.sel = t.id; changed();
     return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ")." };
-  }, "Pick when this should be done and it’s placed in the right " + wl() + " automatically. Leave the due date empty to put the task in the Backlog.");
+  }, "Assign a new task to any open quest. Adding start and due dates will automatically place the task within the quest’s " + wl() + ".");
 }
 export function questDialog() {
-  formDialog("New quest", [
+  formDialog("New candidate quest", [
     { key: "name", label: "Quest name" },
-    { key: "notes", label: "Notes (optional)", type: "textarea", rows: 5 },
-    { key: "giverHeading", label: "Quest Giver", type: "heading" },
+    { key: "notes", label: "Notes", type: "textarea", rows: 5 },
+    { key: "giverHeading", label: "Quest Giver", type: "heading", hint: "The client or contact for this quest. If filled, this information will appear on the Quest Giver Export." },
     { key: "giverOrg", label: "Organization" },
     { key: "giverPoc", label: "POC" },
     { key: "giverPhone", label: "Phone", type: "tel" },
     { key: "giverEmail", label: "Email", type: "email" },
     { key: "giverWebsite", label: "Website", type: "url" },
     { key: "giverAddress", label: "Address", type: "textarea", rows: 3 },
-    { key: "giverCoin", label: "Coin", type: "number", min: "0", max: "999999", step: "1" },
+    { key: "giverCoin", label: "Bounty", type: "number", min: "0", max: "999999", step: "1" },
     { key: "giverPer", label: "Per", type: "select", options: [{ value: "Hour", label: "Hour" }, { value: "Quest", label: "Quest" }] }
   ], "Add quest", function (v) {
     if (!v.name) return "Enter a quest name.";
@@ -163,7 +165,7 @@ export function questDialog() {
     var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200), coin: coin, per: v.giverPer === "Quest" ? "Quest" : "Hour" };
     state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000), client: client })); changed();
     return { msg: v.name + " added as a candidate for the next slot." };
-  }, "It joins the candidates for the next slot. You can workshop it later.");
+  }, "New quests appear in the Candidate quests section on the Quests page. The quest name is the only required field.");
 }
 // Links are bidirectional, so the chosen quest shows this one too. Only
 // quests not already linked are offered.
@@ -187,7 +189,7 @@ export function ideaDialog(idea) {
     if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 5000); changed(); return { msg: "Idea saved." }; }
     state.workshop.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000) }); changed();
     return { msg: "Added to the Workshop." };
-  });
+  }, idea ? undefined : "New ideas go to the Workshop first. When ready, ideas can be made into candidate quests.");
 }
 // Steps with no decision yet, for one task -- shared by the cascade below.
 function openStepOptions(taskId) {
@@ -233,7 +235,7 @@ export function decisionDialog(prefill) {
     if (decisionFor(v.step)) return "That step already has a decision.";
     state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: v.step }); changed();
     return { msg: "Decision added." };
-  }, "A decision is something you need to figure out before you can move forward. Answering it automatically checks that step off.");
+  }, "A decision is something that needs to be figured out before completing a step. Answering a decision will automatically check the step off.");
   var questSel = $("f-quest"), taskSel = $("f-task"), stepSel = $("f-step");
   if (questSel && taskSel && stepSel) {
     function fillSteps(taskId) {
@@ -301,7 +303,7 @@ export function stepDialog(launchItem, prefillQuestId) {
     if (!t) return "Choose a task.";
     t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false, launch: !!launchItem }); syncFromSteps(t); changed();
     return { msg: "Step added to " + dispQuest(t) + (launchItem ? " and the launch checklist." : ".") };
-  }, launchItem ? "The step lives in a task and also shows on this quest’s launch checklist." : "");
+  }, launchItem ? "The step lives in a task and also shows on this quest’s launch checklist." : "Steps can be added on all tasks within a quest.");
   var questSel = $("f-quest"), taskSel = $("f-task");
   if (questSel && taskSel) {
     on(questSel, "change", function () {
@@ -327,7 +329,7 @@ export function milestoneDialog(m, onRemove) {
     if (m) { m.questId = v.quest; m.text = v.text.slice(0, 200); m.date = v.date; changed(); return { msg: "Milestone saved." }; }
     state.milestones.push({ id: uid(), text: v.text.slice(0, 200), date: v.date, questId: v.quest }); changed();
     return { msg: "Milestone added to the Timeline." };
-  }, undefined, m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
+  }, m ? undefined : "Milestones can be added to a quest and will appear in the schedule and burndown.", m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
 }
 // Slips only incomplete, scheduled tasks later by N days -- Completed tasks,
 // the Backlog, and the quest's own start date are never touched.

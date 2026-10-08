@@ -110,16 +110,16 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk());
   ok(k.$("viewTitle").textContent === "Today" && k.d.title.includes("Sidequest"), "opens on Today");
-  ok(k.$("view").textContent.includes("Welcome to Sidequest") && k.$("view").textContent.includes("samples") && !!k.$("welcomeSettings") && !!k.$("welcomeDismiss"), "welcome box explains the samples");
+  ok(k.$("view").textContent.includes("Welcome to Sidequest") && k.$("view").textContent.includes("sample quests") && !!k.$("welcomeSettings") && !!k.$("welcomeDismiss"), "welcome box explains the samples");
   ok(k.d.querySelector('.tab[data-view="quest:pApp"]').textContent.trim() === "Sample App" && k.d.querySelector("#nav").textContent.includes("Pinned"), "Sample App is the pinned quest");
   ok([...k.d.querySelectorAll("#nav .tab")].map(t => t.dataset.view).join() === "today,projects,schedule,timeline,quest:pApp", "sidebar: core pages + one pinned quest");
   // dismiss
   k.click(k.$("welcomeDismiss")); ok(!k.$("view").textContent.includes("Welcome to Sidequest") && k.saved().settings.hideWelcome === true, "dismissing hides it and remembers");
   // Today content
-  ok(k.$("view").textContent.includes("Next up") && k.d.querySelector("#view .chartbox svg") && /\d+ tasks remaining, out of \d+/.test(k.$("view").textContent), "Today works with sample data");
+  ok(k.$("view").textContent.includes("Next up") && k.d.querySelector("#view .chartbox svg") && /Remaining: \d+ of \d+ tasks/.test(k.$("view").textContent), "Today works with sample data");
   const next = k.d.querySelector("#view .panel .ptitle").textContent;
   ok(next === "Write the page copy", "Next up is the lowest-block open sample task: " + next);
-  ok(/1 task is overdue/.test(k.$("view").textContent) && k.$("view").textContent.includes("Build the sign-in flow") && /11 tasks remaining, out of 12/.test(k.$("view").textContent), "the samples include one overdue task, so the burndown sits above the plan");
+  ok(/1 task is overdue/.test(k.$("view").textContent) && k.$("view").textContent.includes("Build the sign-in flow") && /Remaining: 11 of 12 tasks/.test(k.$("view").textContent), "the samples include one overdue task, so the burndown sits above the plan");
   const projLink = k.btn(k.d.querySelector("#view .panel"), "Sample Website");
   ok(!!projLink && projLink.classList.contains("qlink"), "Next up names the quest as a link");
   k.click(projLink);
@@ -277,12 +277,12 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!helpText.includes("Mark done") && !helpText.includes("archive completed tasks") && !helpText.includes("View beside its name") && !helpText.includes("with its circle"), "Help no longer describes buttons and settings that were removed");
   const staleHelp = ["default start date", "Show backup text", "pasted text", "Restore from text", "copy your data as text", "Sprint 1", "Where things stand", "Next slot", "what used to be called", "used to be called a project"];
   ok(staleHelp.every(ph => !helpText.includes(ph)), "Help does not describe things that were removed (" + staleHelp.filter(ph => helpText.includes(ph)).join(", ") + ")");
-  const coveredHelp = ["Save backup", "Restore backup", "Est. 12 hours remaining", "Added tag", "Not started", "In progress", "Completed", "Pending, Completed", "leave Tasks, the main Timeline, Today, and the main burndown", "orange line", "Slip schedule", "length of a", "Main menu"];
+  const coveredHelp = ["Save backup", "Restore backup", "Est. 12 hours remaining", "Added tag", "Not started", "In progress", "Completed", "its own section", "leave Tasks, the main Timeline, Today, and the main burndown", "orange line", "Slip schedule", "length of a", "Main menu"];
   ok(coveredHelp.every(ph => helpText.includes(ph)), "Help covers the features that changed recently (missing: " + coveredHelp.filter(ph => !helpText.includes(ph)).join(", ") + ")");
   ok(!/\u2014/.test(helpText) && !helpText.includes("--"), "Help has no em dashes, real or double-hyphen");
   ok(!/[A-Za-z]'[A-Za-z]/.test(helpText), "Help uses smart apostrophes, not straight ones, in contractions and possessives");
   ok(["Finish or vault a quest", "Link quests", "Use the Workshop"].every(t => titles.includes(t)) && helpText.includes("Reopen") && helpText.includes("splash"), "Help covers Complete/Reopen, linking, the Workshop, and the splash setting");
-  ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Workshop,Vault,Help,Settings", "Help sits between Vault and Settings");
+  ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Workshop,Vault,Field guide,Options", "the Field guide sits between Vault and Options");
 }
 
 /* ---- vault samples: only Quests and Ideas go to the Vault now ---- */
@@ -315,7 +315,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk()); k.tab("settings");
   ok(k.$("view").textContent.includes("Start fresh"), "Start fresh is in Settings");
-  k.click(k.$("startFresh")); ok(k.$("modalBody").textContent.includes("The sample quests") && k.$("modalBody").textContent.includes("An empty planner"), "offers empty or sample quests");
+  k.click(k.$("startFresh")); ok(k.$("modalBody").textContent.includes("The sample quests") && k.$("modalBody").textContent.includes("A blank slate"), "offers empty or sample quests");
   const a = k.$("freshAck"); a.checked = true; k.fire(a); k.click(k.$("freshGo"));
   ok(k.$("view").textContent.includes("No tasks yet") && k.saved().tasks.length === 0 && k.saved().settings.hideWelcome === true, "empty planner: nothing left, welcome stays hidden");
   ok(k.saved().quests.length === 0 && k.saved().pins.length === 0, "no quests and no pins after a fresh start");
@@ -758,7 +758,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(svg.querySelectorAll(".dot").length === 3, "the actual line has its recorded weeks plus this week (" + svg.querySelectorAll(".dot").length + ")");
   ok(svg.querySelectorAll(".mark").length === 1 && svg.querySelectorAll("rect.hit").length >= 4, "a milestone marker and a hover column for each week are drawn");
   ok(!svg.querySelector("title"), "the chart has no native tooltips, which would double up with the new one and never reach a phone or keyboard");
-  ok(/4 tasks remaining, out of 5/.test(side.textContent), "the count line is this quest's own tasks");
+  ok(/Remaining: 4 of 5 tasks/.test(side.textContent), "the count line is this quest's own tasks");
   // Expand opens both charts in a full-size dialog, and closing restores normal dialogs
   k.click(k.btn(side, "Expand"));
   const modal = k.d.querySelector("#overlay .modal");
@@ -849,7 +849,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const th = [...k.d.querySelectorAll("#view .weekly th")].map(h => h.textContent);
   ok(th.join() === "Week starting,Planned remaining,Actual remaining,Tasks in scope,Scope change", "the counts table has a scope column (" + th.join() + ")");
   ok(!k.d.querySelector("#view .weekly input"), "nothing in the counts table is editable");
-  ok(!/Enter the number/.test(k.$("view").textContent) && /Recorded automatically/.test(k.$("view").textContent), "its hint says the counts are recorded automatically");
+  ok(!/Enter the number/.test(k.$("view").textContent) && /Task counts are recorded automatically/.test(k.$("view").textContent), "its hint says the counts are recorded automatically");
   const cells = [...k.d.querySelectorAll("#view .weekly tbody tr")].map(tr => [...tr.children].map(c => c.textContent));
   ok(cells[0][2] === "11" && cells[0][3] === "11" && cells[1][2] === "10" && cells[2][2] === "11", "past rows read back the recorded counts, carrying a quiet day forward (" + JSON.stringify(cells.slice(0, 3)) + ")");
   ok(cells[0][4] === "" && cells[1][4] === "" && cells[2][4] === "+1", "and the sample shows one scope change, a task added mid-way (" + JSON.stringify(cells.slice(0, 3).map(r => r[4])) + ")");
@@ -1687,7 +1687,7 @@ async function exportClick(k, projectName) {
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  ok(!!k.$("giver-coin-pApp") && k.d.querySelector('label[for="giver-coin-pApp"]').textContent === "Coin", "the quest page has a Coin field, under Address in the Quest Giver box");
+  ok(!!k.$("giver-coin-pApp") && k.d.querySelector('label[for="giver-coin-pApp"]').textContent === "Bounty", "the quest page has a Bounty field, under Address in the Quest Giver box");
   ok(!!k.$("giver-per-pApp") && k.d.querySelector('label[for="giver-per-pApp"]').textContent === "Per" && k.$("giver-per-pApp").value === "Hour", "and a Per select, defaulting to Hour");
   k.$("giver-coin-pApp").value = "25"; k.fire(k.$("giver-coin-pApp"), "input");
   k.$("giver-per-pApp").value = "Quest"; k.fire(k.$("giver-per-pApp"));
@@ -1696,7 +1696,7 @@ async function exportClick(k, projectName) {
   k.$("giver-coin-pApp").value = "not a number"; k.fire(k.$("giver-coin-pApp"), "input");
   ok(k.saved().quests.find(q => q.id === "pApp").client.coin === "", "a non-numeric Coin value is rejected back to empty, since the field only allows numbers");
   const { html } = await exportClick(k, "Sample App");
-  ok(!html.includes("Coin") && !html.includes('"per"') && !html.includes("giver-coin"), "Coin/Per never appear in the Quest Giver Export");
+  ok(!html.includes("Bounty") && !html.includes('"per"') && !html.includes("giver-coin"), "Bounty/Per never appear in the Quest Giver Export");
 }
 {
   // Old-shaped saved data with no `client` field at all still loads with a usable, empty one.

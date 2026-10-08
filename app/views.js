@@ -177,7 +177,7 @@ export function burnParts(o) {
   if (quest) drawQuestChart(host, quest, o.wide); else drawChart(host, o.wide);
   var rn = quest ? questRemainingUnits(quest) : remainingUnits(), tot = quest ? questTotalUnits(quest) : totalUnits(), rb = el("div", { "class": "box" });
   var nbk = quest ? counted().filter(function (t) { return t.questId === quest.id && !t.isNext && t.block === 0; }).length : backlogTasks().length;
-  rb.appendChild(el("p", { "class": "hint first remaining" }, rn + (rn === 1 ? " task" : " tasks") + " remaining, out of " + tot + (nbk ? ". " + nbk + (nbk === 1 ? " backlog task is" : " backlog tasks are") + " not counted until scheduled." : "")));
+  rb.appendChild(el("p", { "class": "hint first remaining" }, "Remaining: " + rn + " of " + tot + (tot === 1 ? " task" : " tasks") + (nbk ? " | Backlog: " + nbk + " unscheduled " + (nbk === 1 ? "task" : "tasks") : "")));
   return { h: h, chart: cb, count: rb };
 }
 export function burnPanel(o) {
@@ -189,9 +189,12 @@ export function burnPanel(o) {
 export function welcomeBox() {
   var box = el("div", { "class": "box", style: "margin-bottom:22px" });
   box.appendChild(el("h2", { style: "margin-bottom:4px" }, "Welcome to Sidequest"));
-  box.appendChild(el("p", { "class": "hint first" }, "The quests here are samples, so you can see how everything fits together. Look around, change things, and press / to search. When you are ready to start your own, open Settings and choose Start fresh."));
+  var welcomeHint = el("p", { "class": "hint first" });
+  welcomeHint.appendChild(el("strong", null, "Your new adventure begins here!"));
+  welcomeHint.appendChild(document.createTextNode(" These sample quests are here for you to explore. Look around, make changes, and press / to search. You can edit the existing quests or, when you’re ready to start your own, open Options and choose Start fresh."));
+  box.appendChild(welcomeHint);
   var acts = el("div", { "class": "actions" });
-  acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Go to Settings" }, "Go to Settings"), "click", function () { go("settings"); }));
+  acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Go to Options" }, "Go to Options"), "click", function () { go("settings"); }));
   acts.appendChild(on(el("button", { type: "button", id: "welcomeDismiss", title: "Hide this welcome message" }, "Dismiss"), "click", function () { state.settings.hideWelcome = true; save(); renderView(); }));
   box.appendChild(acts);
   return box;
@@ -243,7 +246,7 @@ export function renderSchedule(root) {
   }
   if (!ui.sel || !findTask(ui.sel)) { var nt = nextTask() || o[0] || bl[0]; ui.sel = nt.id; }
   if (hiddenNote) root.appendChild(hiddenNote);
-  root.appendChild(el("p", { "class": "hint" + (hiddenNote ? "" : " first") + (ui.detail ? " hide-on-mobile" : "") }, "Choose a task to view its steps and notes."));
+  root.appendChild(el("p", { "class": "hint" + (hiddenNote ? "" : " first") + (ui.detail ? " hide-on-mobile" : "") }, "Tasks gathered from all open quests."));
   var split = el("div", { "class": "split" + (ui.detail ? " detail-open" : "") });
   var lp = el("div", { "class": "listpane" });
   var ul = el("ul", { "class": "tlist" });
@@ -252,7 +255,7 @@ export function renderSchedule(root) {
   lp.appendChild(ul);
   if (bl.length) {
     lp.appendChild(el("h2", null, "Backlog (" + bl.length + ")"));
-    lp.appendChild(el("p", { "class": "hint" }, "Not scheduled yet. Open an item and set a due date to schedule it."));
+    lp.appendChild(el("p", { "class": "hint" }, "All tasks that haven’t been scheduled yet."));
     var bul = el("ul", { "class": "tlist", style: "margin-top:10px" });
     bl.forEach(function (t) { bul.appendChild(taskRow(t)); });
     lp.appendChild(bul);
@@ -468,29 +471,43 @@ function questPinButton(key, name) {
   var pinned = isPinned(key);
   return on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + name, title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
 }
+function questRow(r) {
+  var li = el("li"), row = el("div", { "class": "crow oneline" });
+  var nm = el("div", { style: "flex:1 1 200px" });
+  var link = el("button", { type: "button", "class": "textbtn qlink", style: "font-weight:600", title: "View this quest" }, r.name);
+  on(link, "click", function () { go(r.key); });
+  nm.appendChild(link);
+  if (r.complete) nm.appendChild(el("span", { "class": "chip questcomplete", style: "margin-left:8px" }, "Complete"));
+  nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, r.meta));
+  row.appendChild(nm);
+  var acts = el("div", { "class": "li-actions" });
+  acts.appendChild(questPinButton(r.key, r.name));
+  row.appendChild(acts);
+  li.appendChild(row);
+  return li;
+}
 export function pagesSection(excludeIds) {
   var sec = el("div");
   var rows = liveQuests().filter(function (p) { return p.status !== "candidate" && (!excludeIds || excludeIds.indexOf(p.id) < 0); }).map(function (p) { return { id: p.id, key: "quest:" + p.id, name: p.name, meta: questMeta(p), complete: p.status === "complete" }; });
-  var hasPending = rows.some(function (r) { return !r.complete; }), hasComplete = rows.some(function (r) { return r.complete; });
-  var heading = !rows.length ? "Pending & completed" : hasPending && hasComplete ? "Pending & completed" : hasComplete ? "Completed" : "Pending";
-  sec.appendChild(el("h2", { style: "margin-top:28px" }, heading));
-  var ul = el("ul", { "class": "list" });
-  if (!rows.length) sec.appendChild(el("p", { "class": "hint" }, "Nothing here right now."));
-  rows.forEach(function (r) {
-    var li = el("li"), row = el("div", { "class": "crow oneline" });
-    var nm = el("div", { style: "flex:1 1 200px" });
-    var link = el("button", { type: "button", "class": "textbtn qlink", style: "font-weight:600", title: "View this quest" }, r.name);
-    on(link, "click", function () { go(r.key); });
-    nm.appendChild(link);
-    if (r.complete) nm.appendChild(el("span", { "class": "chip questcomplete", style: "margin-left:8px" }, "Complete"));
-    nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, r.meta));
-    row.appendChild(nm);
-    var acts = el("div", { "class": "li-actions" });
-    acts.appendChild(questPinButton(r.key, r.name));
-    row.appendChild(acts);
-    li.appendChild(row); ul.appendChild(li);
-  });
-  sec.appendChild(ul); return sec;
+  var pending = rows.filter(function (r) { return !r.complete; }), complete = rows.filter(function (r) { return r.complete; });
+  if (!rows.length) {
+    sec.appendChild(el("h2", { style: "margin-top:28px" }, "Pending and completed"));
+    sec.appendChild(el("p", { "class": "hint" }, "Nothing here right now."));
+    return sec;
+  }
+  if (pending.length) {
+    sec.appendChild(el("h2", { style: "margin-top:28px" }, "Pending"));
+    var pul = el("ul", { "class": "list" });
+    pending.forEach(function (r) { pul.appendChild(questRow(r)); });
+    sec.appendChild(pul);
+  }
+  if (complete.length) {
+    sec.appendChild(el("h2", { style: "margin-top:28px" }, "Completed"));
+    var cul = el("ul", { "class": "list" });
+    complete.forEach(function (r) { cul.appendChild(questRow(r)); });
+    sec.appendChild(cul);
+  }
+  return sec;
 }
 // A quest's own lifecycle status decides how much of the page renders.
 // Promotion is in-place -- the same record and id carry through, never a second record.
@@ -519,7 +536,7 @@ export function renderQuestPage(root, id) {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
     root.appendChild(el("h2", null, "Quest Giver"));
-    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Coin: " + p.client.coin + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
+    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Bounty: " + p.client.coin + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
     root.appendChild(el("p", { "class": "hint notetext" }, cgLines.length ? cgLines.join("\n") : "Nothing filled in."));
     return;
   }
@@ -578,9 +595,9 @@ export function renderQuestPage(root, id) {
   }
 
   root.appendChild(el("h2", null, "Quest Giver"));
-  root.appendChild(el("p", { "class": "hint" }, "Optional. The client or contact for this quest."));
+  root.appendChild(el("p", { "class": "hint" }, "The client or contact for this quest. If filled, this information will appear on the Quest Giver Export."));
   if (readOnly) {
-    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website, gc.coin !== "" ? "Coin: " + gc.coin + " per " + gc.per.toLowerCase() : ""].filter(Boolean);
+    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website, gc.coin !== "" ? "Bounty: " + gc.coin + " per " + gc.per.toLowerCase() : ""].filter(Boolean);
     root.appendChild(el("p", { "class": "hint notetext" }, glines.length ? glines.join("\n") : "Nothing filled in."));
   } else {
     var giverBox = el("div", { "class": "box", style: "margin-top:10px" });
@@ -603,7 +620,7 @@ export function renderQuestPage(root, id) {
     on(gaddr, "input", function () { p.client.address = gaddr.value.slice(0, 500); save(); });
     gaw.appendChild(gaddr); giverBox.appendChild(gaw);
     var gg2 = el("div", { "class": "setgrid", style: "margin-top:10px" });
-    var gcw = el("div", { "class": "field" }); gcw.appendChild(el("label", { "for": "giver-coin-" + p.id }, "Coin"));
+    var gcw = el("div", { "class": "field" }); gcw.appendChild(el("label", { "for": "giver-coin-" + p.id }, "Bounty"));
     var gcoin = el("input", { type: "number", id: "giver-coin-" + p.id, min: "0", max: "999999", step: "1" });
     gcoin.value = p.client.coin === "" ? "" : String(p.client.coin);
     on(gcoin, "input", function () {
@@ -684,7 +701,7 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
   if (readOnly) {
     host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + (p.due ? ", due " + fmt(p.due) : "") + ", " + wl() + " length " + eff.days + " days" + "."));
   } else {
-    host.appendChild(el("p", { "class": "hint" }, "Set this quest’s own start date, due date, and " + wl() + " length."));
+    host.appendChild(el("p", { "class": "hint" }, "Set the quest’s start date, due date, and " + wl() + " length."));
     var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
     var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
@@ -764,7 +781,7 @@ export function demoteToCandidate(id) {
 export function standingBlock() {
   var wrap = el("div");
   wrap.appendChild(el("h2", { "class": "first" }, "In progress"));
-  wrap.appendChild(el("p", { "class": "hint" }, "Built from your open tasks, ordered by when each quest’s next task starts. Pin a quest to the sidebar for quick access."));
+  wrap.appendChild(el("p", { "class": "hint" }, "Quests are ordered by the start date of their next task. Pin a quest to the sidebar for quick access."));
   var box = el("div", { "class": "box", style: "margin-top:10px" });
   var groups = {}, order = [];
   ordered().forEach(function (t) {
@@ -796,8 +813,8 @@ export function standingBlock() {
 }
 export function candidatesSection() {
   var sec = el("div");
-  var hd = el("div", { "class": "sechead", style: "margin-top:28px" }); hd.appendChild(el("h2", null, "Candidates")); sec.appendChild(hd);
-  sec.appendChild(el("p", { "class": "hint" }, "Choose which quest gets the next slot. Use New quest in the menu, or make an idea in the Workshop a candidate. A candidate can be promoted or sent to the Vault, but not sent back to the Workshop."));
+  var hd = el("div", { "class": "sechead", style: "margin-top:28px" }); hd.appendChild(el("h2", null, "Candidate quests")); sec.appendChild(hd);
+  sec.appendChild(el("p", { "class": "hint" }, "Promoting a candidate quest moves it to In progress. Sending it to the Vault shelves it."));
   var list = el("ul", { "class": "list" });
   var cs = candidateQuests();
   if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a candidate."));
@@ -828,7 +845,7 @@ export function renderQuests(root) {
   root.appendChild(candidatesSection());
 }
 export function renderWorkshop(root) {
-  root.appendChild(el("p", { "class": "hint first" }, "Ideas and waiting items that are not competing for the next slot."));
+  root.appendChild(el("p", { "class": "hint first" }, "Your ideas live here until you make them a candidate quest. Sending them to the Vault shelves them."));
   var hd = el("div", { "class": "sechead" });
   hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add new idea" }, "Add idea"), "click", function () { ideaDialog(); })); root.appendChild(hd);
   var pl = el("ul", { "class": "list", style: "margin-top:12px" });
@@ -891,7 +908,7 @@ export function renderTimeline(root) {
   mbox.appendChild(ul); root.appendChild(mbox);
   root.appendChild(burnPanel({ wide: true, level: "h2" }));
   root.appendChild(el("h2", null, "Task counts"));
-  root.appendChild(el("p", { "class": "hint" }, "Recorded automatically from your tasks each time you make a change. A date with no record keeps the last count."));
+  root.appendChild(el("p", { "class": "hint" }, "Task counts are recorded automatically when you make changes. On days with no changes, the previous count carries forward."));
   var wrap = el("div", { "class": "tablewrap weekly" }); var table = el("table");
   var cps = checkpoints(), ga = globalActual(cps), stepMs = checkpointStep() * DAY;
   var thead = el("thead"); var hr = el("tr"); [stepMs === 7 * DAY ? "Week starting" : "Date", "Planned remaining", "Actual remaining", "Tasks in scope", "Scope change"].forEach(function (h) { hr.appendChild(el("th", null, h)); }); thead.appendChild(hr); table.appendChild(thead);
@@ -962,7 +979,7 @@ export function emptyVault() {
 }
 export function renderVault(root) {
   var all = vaultEntries(), filter = ui.vaultFilter || "all";
-  root.appendChild(el("p", { "class": "hint first" }, "Completed tasks and removed items live here. Restore puts an item back where it was. Deleting from the Vault is permanent."));
+  root.appendChild(el("p", { "class": "hint first" }, "Quests and ideas can be sent here to be shelved. When a Quest is completed, you can choose to send it to the Vault. Restore returns an item to where it was before. Deleting an item from the Vault is permanent. The Vault can be set to clear automatically at chosen intervals, or never."));
   var counts = { all: all.length }; all.forEach(function (e) { counts[e.kind] = (counts[e.kind] || 0) + 1; });
   var chips = el("div", { "class": "chips", role: "group", "aria-label": "Filter the Vault" });
   KIND_FILTERS.forEach(function (f) {
@@ -1016,7 +1033,7 @@ export function helpTopics() {
       "Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **X** where the magnifier was to cancel."]],
     ["From idea to quest: the whole path", [
       "An idea starts in the **Workshop**, with nothing more than a line of text and an optional note. This is the place for something you’re not ready to commit to. It costs nothing to put there, and nothing to leave sitting.",
-      "When an idea is worth doing, select **Make candidate**. Its note becomes the candidate’s Notes, and it moves to **Quests**, under **Candidates**. This move only goes one way: a candidate can’t be sent back to the Workshop. If you change your mind, vault it instead.",
+      "When an idea is worth doing, select **Make candidate**. Its note becomes the candidate’s Notes, and it moves to **Quests**, under **Candidate quests**. This move only goes one way: a candidate can’t be sent back to the Workshop. If you change your mind, vault it instead.",
       "A candidate has its own page, the same shape as an active quest’s: Tasks, Schedule, Notes, Quest Giver info. You can build the whole thing out, start date and all, before it’s running. The only pieces missing are Quest links and the usual finish-line buttons, since neither one means anything until the quest is real.",
       "**Promote** turns a candidate into an active quest. It’s the same record with the same id and the same tasks, only its status moves. From here it behaves like any other quest: it can be marked complete, sent to the Vault, or demoted back to a candidate if it turns out the timing was wrong.",
       "**Demote**, on an active quest’s page, is the reverse of Promote. Its Quest links come off on both sides first, since a candidate isn’t a link target, but Sidequest remembers them, and promoting the quest again puts them back.",
@@ -1042,8 +1059,8 @@ export function helpTopics() {
       "A quest is the same thing a project would be called anywhere else. Yours haven’t changed, only the word has.",
       "Every quest has its own page. Open **Quests** and select its name. The pencil beside the title renames it; the Notes field below is yours to use however you like. Further down: Tasks, the Before you launch checklist, Notes, and Quest links, in that order, with its Schedule, Timeline, and Burndown running alongside (below, on a phone). Change the schedule and the Timeline and Burndown redraw to match. On the Timeline, a pale band behind each task’s bar marks the " + w + " it falls in. **Expand**, on a wide screen, makes all three large.",
       "**In progress**, on the Quests page, lists each active quest with its next task. **Pin** keeps one in the sidebar for quick access. Unpinning only hides it there; it’s still listed on this page either way. A quest that’s Complete loses its pin automatically, since there’s nothing left to jump to, and Reopen brings the pin back along with everything else.",
-      "Below In progress, the Quests page lists anything complete or not yet started, under whichever heading fits what’s actually there: Pending, Completed, or Pending & completed.",
-      "**Quest Giver Export**, on an active or complete quest’s page, downloads one self-contained web page with that quest’s tasks, notes, and a working schedule and burndown, meant for sharing outside the app. A linked quest that’s also active or complete rides along with its own section. Fill in **Your contact info** in Settings and this quest’s own **Quest Giver** section, and both print at the top as Prepared by and Prepared for. **Add brandmark**, also in Settings, uploads a small image that prints above Prepared by. **Coin** and **Per**, at the bottom of a quest’s own Quest Giver section, track a contract pay rate for your own reference. They never print on the export."]],
+      "Below In progress, the Quests page lists anything not yet started under **Pending** and anything finished under **Completed**, each its own section, shown only when it actually has something in it.",
+      "**Quest Giver Export**, on an active or complete quest’s page, downloads one self-contained web page with that quest’s tasks, notes, and a working schedule and burndown, meant for sharing outside the app. A linked quest that’s also active or complete rides along with its own section. Fill in **Your contact info** in Settings and this quest’s own **Quest Giver** section, and both print at the top as Prepared by and Prepared for. **Add brandmark**, also in Settings, uploads a small image that prints above Prepared by. **Bounty** and **Per**, at the bottom of a quest’s own Quest Giver section, track a contract pay rate for your own reference. They never print on the export."]],
     ["Finish or vault a quest", [
       "**Mark complete** works even with tasks still open. A quest also completes on its own once every task actually is. Either way you’re offered the Vault right away, or you can leave it sitting in Quests.",
       "A completed quest wears a **Complete** badge and drops out of In progress. Its tasks leave Tasks, the main Timeline, Today, and the main burndown too, though they’re still right there on the quest’s own page. **Reopen** undoes all of it: back to active, tasks back everywhere, pin restored if it had one.",
@@ -1067,24 +1084,24 @@ export function helpTopics() {
     ["Slip a quest’s schedule", [
       "On a quest’s own page, above the Timeline, **Slip schedule** pushes its still-incomplete tasks later by however many days you choose. Completed tasks and anything in the Backlog don’t move.",
       "**Undo last slip**, in the same dialog, puts everything back where it was."]],
-    ["Settings, backup, and starting over", [
-      "**Settings** covers how Sidequest looks and schedules by default: the length of a " + w + " in days, what to call it (Block, Sprint, and so on), date format, theme, whether the splash plays on open, whether a burndown draws its lines in when it comes into view (**Animated burndown**), whether **Sound Effects** play at all, and whether finishing a quest sets off a **Completion FX** confetti burst.",
+    ["Options, backup, and starting over", [
+      "**Options** covers how Sidequest looks and schedules by default: the length of a " + w + " in days, what to call it (Block, Sprint, and so on), date format, theme, whether the splash plays on open, whether a burndown draws its lines in when it comes into view (**Animated burndown**), whether **Sound Effects** play at all, and whether finishing a quest sets off a **Completion FX** confetti burst.",
       "Everything lives in this browser only, so **Backup and restore** matters. **Save backup** writes a file wherever you choose. **Restore backup** reads one back in, after warning you it replaces everything currently here, with a few seconds to undo if you change your mind. Go two weeks without a backup and Today will say so, quietly.",
       "**Vault** items can delete themselves automatically, 7, 30, 60, or 90 days after being vaulted, or never, if you leave it there. Sidequest checks this once, each time it opens, with no second warning once the setting is on.",
       "**Start fresh** erases everything, after one warning. Back it up first if there’s anything worth keeping. You can start completely empty, or with the sample quests back in place."]],
     ["Import from Trello or Todoist", [
-      "Settings has an **Import** section with two buttons, one for each tool. Either one turns a board or a project into a new quest here and never touches your existing quests or tasks.",
+      "Options has an **Import** section with two buttons, one for each tool. Either one turns a board or a project into a new quest here and never touches your existing quests or tasks.",
       "**Import from Trello** needs the JSON file from Trello’s own board menu, Print, Export, and Share, then Export as JSON: a CSV export will not work. A card becomes a task, its description becomes the task note, and its checklist items become steps, already ticked if they were. Labels, members, comments, and attachments have no place in Sidequest, so they are left out rather than half-imported. A card with a due date is scheduled on it; a card with none goes to the Backlog, and a card you had archived in Trello is skipped.",
       "**Import from Todoist** needs the CSV file from a project’s own Export option, and the new quest takes its name from that file. Todoist leaves finished work out of this file entirely, so only what is still open comes across, and a project with Todoist’s own 300-task limit may be missing some tasks from the file itself. A Todoist subtask comes in as its own task here, not nested under its parent, since Sidequest has no such nesting. A due date written as a real date, “today,” “tomorrow,” or “in a number of days” is understood; a repeating due date is left for the Backlog rather than guessed at.",
       "Either import shows a dialog first, naming exactly what it found and what will be left out, before anything actually happens."]],
     ["Install Sidequest on this device", [
-      "Settings has an **Install Sidequest** section. On a computer running Chrome or Edge, or on Android, it shows a real **Install Sidequest** button. Selecting it puts Sidequest on this device with its own icon and its own window, separate from the browser, and it keeps working without a connection once you have opened it there at least once.",
-      "On an iPhone or iPad there is no such button anywhere, in Settings or in the browser itself. Tap the Share icon in Safari, then **Add to Home Screen**, and it installs the same way.",
+      "Options has an **Install Sidequest** section. On a computer running Chrome or Edge, or on Android, it shows a real **Install Sidequest** button. Selecting it puts Sidequest on this device with its own icon and its own window, separate from the browser, and it keeps working without a connection once you have opened it there at least once.",
+      "On an iPhone or iPad there is no such button anywhere, in Options or in the browser itself. Tap the Share icon in Safari, then **Add to Home Screen**, and it installs the same way.",
       "This only applies to the version of Sidequest running in its own browser tab. It has no meaning inside a published Claude artifact, so the section does not appear there at all."]]
   ];
 }
 export function renderHelp(root) {
-  root.appendChild(el("p", { "class": "hint first" }, "Everything you can do in Sidequest, in short. Tap a topic to open it."));
+  root.appendChild(el("p", { "class": "hint first" }, "Everything you need to know about Sidequest. Choose a topic to learn more."));
   var acts = el("div", { "class": "actions", style: "margin-top:10px" }), items = [];
   var openAll = el("button", { type: "button", "class": "small", id: "helpOpen" }, "Open all"), closeAll = el("button", { type: "button", "class": "small", id: "helpClose" }, "Close all");
   on(openAll, "click", function () { items.forEach(function (d) { d.open = true; }); });
@@ -1108,19 +1125,19 @@ export function blankState() {
 }
 export function startFreshDialog() {
   openModal("Start fresh", function (body) {
-    body.appendChild(el("p", { "class": "first" }, "Start fresh erases every task, quest, decision, note, milestone, and everything in the Vault stored in this browser. This cannot be undone."));
-    body.appendChild(el("p", { "class": "hint" }, "Save a backup first if you might want anything back."));
+    body.appendChild(el("p", { "class": "first" }, "Start fresh erases everything stored in this browser or in Claude. This cannot be undone."));
+    body.appendChild(el("p", { "class": "hint" }, "Save a backup first if you think you’ll want anything back."));
     var msg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
     backupControls(body, msg); body.appendChild(msg);
     body.appendChild(el("h3", null, "Start with"));
-    var choices = [["empty", "An empty planner"], ["original", "The sample quests"]], picked = "empty";
+    var choices = [["empty", "A blank slate"], ["original", "The sample quests"]], picked = "empty";
     choices.forEach(function (c) {
       var lab = el("label", { "class": "radiorow" }); var rb = el("input", { type: "radio", name: "fresh", value: c[0] }); rb.checked = c[0] === picked;
       on(rb, "change", function () { picked = c[0]; });
       lab.appendChild(rb); lab.appendChild(el("span", null, c[1])); body.appendChild(lab);
     });
     var ack = el("label", { "class": "radiorow" }); var cb = el("input", { type: "checkbox", id: "freshAck" });
-    ack.appendChild(cb); ack.appendChild(el("span", null, "I understand this will erase everything.")); body.appendChild(ack);
+    ack.appendChild(cb); ack.appendChild(el("span", null, "I understand that this will erase everything.")); body.appendChild(ack);
     var acts = el("div", { "class": "actions" });
     var go1 = el("button", { type: "button", "class": "dangerfill", id: "freshGo", title: "Erase everything and start over" }, "Erase everything"); go1.disabled = true;
     on(cb, "change", function () { go1.disabled = !cb.checked; });
@@ -1157,7 +1174,7 @@ function readBrandmarkFile(file, msg, onDone) {
 function brandmarkField() {
   var w = el("div", { "class": "field" });
   w.appendChild(el("label", null, "Brandmark"));
-  w.appendChild(el("p", { "class": "hint" }, BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."));
+  w.appendChild(el("p", { "class": "hint" }, "Must be " + BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, and up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."));
   var msg = el("p", { "class": "msg", role: "alert" });
   var preview = el("div", { "class": "brandmarkpreview" });
   function renderPreview() {
@@ -1200,7 +1217,7 @@ export function renderSettings(page) {
   var root = el("div", { "class": "setmain" });
   split.appendChild(side); split.appendChild(root); page.appendChild(split);
   side.appendChild(el("h2", { "class": "first" }, "Your contact info"));
-  side.appendChild(el("p", { "class": "hint" }, "Optional. Anything filled in here prints on a Quest Giver Export."));
+  side.appendChild(el("p", { "class": "hint" }, "Your contact info (global). If filled, this information will appear on the Quest Giver Export."));
   var contactBox = el("div", { "class": "box", style: "margin-top:10px" });
   var cg = el("div", { "class": "setgrid" });
   function cfield(key, id, label, type, full) {
@@ -1225,7 +1242,7 @@ export function renderSettings(page) {
 
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   root.appendChild(el("h2", { "class": "first" }, "Schedule defaults"));
-  root.appendChild(el("p", { "class": "hint" }, "Each quest sets its own start date on its page. This is the default " + wl() + " length for any quest that hasn’t set its own."));
+  root.appendChild(el("p", { "class": "hint" }, "Set the default " + wl() + " length for all quests. Individual quests can have their own " + wl() + " length. You can also choose what to call a " + wl() + " throughout the app."));
   var scheduleBox = el("div", { "class": "box", style: "margin-top:10px" });
   var grid = el("div", { "class": "setgrid" });
   function fieldOf(id, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); grid.appendChild(w); }
@@ -1257,7 +1274,6 @@ export function renderSettings(page) {
   on(th, "change", function () { state.settings.theme = th.value; applyTheme(); save(); });
   tw.appendChild(th); ag.appendChild(tw);
   appearanceBox.appendChild(ag);
-  appearanceBox.appendChild(el("p", { "class": "hint" }, "Date pickers follow your device’s own format."));
   var ag2 = el("div", { "class": "setgrid", style: "margin-top:10px" });
   var sw = el("div", { "class": "field" }); sw.appendChild(el("label", { "for": "set-splash" }, "Splash screen on open"));
   var ss = el("select", { id: "set-splash", "class": "plain" });
@@ -1283,10 +1299,9 @@ export function renderSettings(page) {
   root.appendChild(appearanceBox);
 
   root.appendChild(el("h2", null, "Vault"));
-  root.appendChild(el("p", { "class": "hint" }, "Removing a quest or an idea sends it to the Vault. A completed task just stays visible in its quest."));
   var vaultBox = el("div", { "class": "box", style: "margin-top:10px" });
   var pg = el("div", { "class": "setgrid" });
-  var pw = el("div", { "class": "field" }); pw.appendChild(el("label", { "for": "set-purge" }, "Auto-delete items after"));
+  var pw = el("div", { "class": "field" }); pw.appendChild(el("label", { "for": "set-purge" }, "Auto-delete Vaulted items after"));
   var ps = el("select", { id: "set-purge", "class": "plain" });
   [[0, "Never"], [7, "7 days"], [30, "30 days"], [60, "60 days"], [90, "90 days"]].forEach(function (o) { var op = el("option", { value: String(o[0]) }, o[1]); if (o[0] === state.settings.vaultPurgeDays) op.selected = true; ps.appendChild(op); });
   on(ps, "change", function () { state.settings.vaultPurgeDays = parseInt(ps.value, 10); changed(); });
@@ -1301,20 +1316,26 @@ export function renderSettings(page) {
     root.appendChild(el("h2", null, "Install Sidequest"));
     var installBox = el("div", { "class": "box", style: "margin-top:10px" });
     if (deferredInstallPrompt) {
-      installBox.appendChild(el("p", { "class": "hint first" }, "Install Sidequest so it opens like any other app on this device."));
+      installBox.appendChild(el("p", { "class": "hint first" }, "Install Sidequest as an app on your computer or mobile device. PWA installation is not supported by all browsers or devices."));
       installBox.appendChild(on(el("button", { type: "button", id: "installBtn" }, "Install Sidequest"), "click", triggerInstall));
     } else if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
       installBox.appendChild(el("p", { "class": "hint first" }, "On iPhone or iPad: tap Share, then Add to Home Screen."));
     } else {
-      installBox.appendChild(el("p", { "class": "hint first" }, "Already installed, or your browser does not offer it here."));
+      installBox.appendChild(el("p", { "class": "hint first" }, "Sidequest is already installed as an app, or your browser does not support PWA installation."));
+      var uninst = el("p", { "class": "hint" });
+      uninst.appendChild(document.createTextNode("To uninstall Sidequest, open your browser and go to "));
+      uninst.appendChild(el("code", null, "chrome://apps"));
+      uninst.appendChild(document.createTextNode(" or "));
+      uninst.appendChild(el("code", null, "edge://apps"));
+      uninst.appendChild(document.createTextNode(". Right-click the Sidequest icon and select "));
+      uninst.appendChild(el("strong", null, "Remove"));
+      uninst.appendChild(document.createTextNode(" or "));
+      uninst.appendChild(el("strong", null, "Uninstall"));
+      uninst.appendChild(document.createTextNode("."));
+      installBox.appendChild(uninst);
     }
     root.appendChild(installBox);
   }
-
-  root.appendChild(el("h2", null, "Backup and restore"));
-  var backupBox = el("div", { "class": "box", style: "margin-top:10px" });
-  backupPanel(backupBox, root);
-  root.appendChild(backupBox);
 
   root.appendChild(el("h2", null, "Import"));
   root.appendChild(el("p", { "class": "hint" }, "Bring in tasks from Trello (JSON) or Todoist (CSV) as a new quest."));
@@ -1322,9 +1343,14 @@ export function renderSettings(page) {
   importPanel(importBox);
   root.appendChild(importBox);
 
+  root.appendChild(el("h2", null, "Backup and restore"));
+  var backupBox = el("div", { "class": "box", style: "margin-top:10px" });
+  backupPanel(backupBox, root);
+  root.appendChild(backupBox);
+
   root.appendChild(el("h2", null, "Start fresh"));
   var box = el("div", { "class": "dangerbox" });
-  box.appendChild(el("p", { "class": "first" }, "Erase everything in this browser and begin again. You will see a warning and a chance to save a backup first."));
+  box.appendChild(el("p", { "class": "first" }, "Erase all Sidequest data stored in this browser or in Claude and start again. You’ll see a warning and have a chance to save a backup first."));
   box.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:12px", id: "startFresh", title: "Erase everything and start over" }, "Start fresh…"), "click", startFreshDialog));
   root.appendChild(box);
 
@@ -1332,6 +1358,11 @@ export function renderSettings(page) {
   var ab = el("div", { "class": "box about" });
   ab.appendChild(el("p", { style: "font-weight:600", "class": "first" }, APP_NAME));
   ab.appendChild(el("p", { "class": "hint" }, "Version " + APP_VERSION));
+  var sp = el("p", { "class": "hint" });
+  var supportLink = el("a", { href: "https://www.paypal.com/paypalme/timsamoff", target: "_blank", rel: "noopener", "class": "textbtn", style: "display:inline-flex;align-items:center;gap:6px" });
+  supportLink.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="2" x2="6" y2="4"></line><line x1="10" y1="2" x2="10" y2="4"></line><line x1="14" y1="2" x2="14" y2="4"></line></svg>';
+  supportLink.appendChild(document.createTextNode("Support Sidequest"));
+  sp.appendChild(supportLink); ab.appendChild(sp);
   var cp = el("p", { "class": "hint" }); cp.appendChild(document.createTextNode("© "));
   cp.appendChild(el("a", { href: "https://samoff.com", target: "_blank", rel: "noopener", "class": "textbtn" }, "Tim Samoff")); ab.appendChild(cp);
   root.appendChild(ab);
@@ -1629,7 +1660,7 @@ export function backupControls(host, msg, onDone) {
 // `hintHost`, if given, is where the leading description sentence goes instead
 // of `root`, so a caller can keep it outside the card wrapping the rest.
 export function backupPanel(root, hintHost) {
-  (hintHost || root).appendChild(el("p", { "class": "hint" }, "Everything is saved in this browser on this device only. Save a backup now and then, and keep the file somewhere safe."));
+  (hintHost || root).appendChild(el("p", { "class": "hint" }, "Your data is saved in this browser on this device, or in Claude when using Sidequest there. Create a backup from time to time and keep the file somewhere safe. You can restore your data from a backup at any time."));
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   var last = el("p", { "class": "hint" }, lastBackupText());
   var acts = backupControls(root, msg, function () { last.textContent = lastBackupText(); });

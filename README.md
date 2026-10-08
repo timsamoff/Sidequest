@@ -14,14 +14,14 @@ It is built for someone juggling several quests at once: a few tasks in each, a 
 - **Workshop:** a dedicated page for loose ideas and waiting items that are not competing for the next quest slot. Edit an idea’s text and multiline note any time, or turn it into a quest candidate. The note carries over as the quest’s Notes. Lists show the first two lines of a note.
 - **Vault:** quests and ideas you’ve sent there land here. A quest stays fully viewable, read only, until you restore it, and restoring it brings its tasks back too.
 - **Search:** press `/` anywhere to search tasks, steps, notes, quests, decisions, milestones, and the Vault.
-- **Help:** short instructions for everything, inside the app.
-- **Settings:** name each stretch of work Block, Sprint, Iteration, Phase, or Week, and set its default length in days. Pick a date format and a theme, turn the splash screen on or off, back up and restore, or start fresh.
+- **Field guide:** short instructions for everything, inside the app.
+- **Options:** name each stretch of work Block, Sprint, Iteration, Phase, or Week, and set its default length in days. Pick a date format and a theme, turn the splash screen on or off, back up and restore, or start fresh.
 
 It works on phones too, in a web browser. On a small screen the sidebar becomes a bottom tab bar, and the menu button lists every page.
 
 ## Try it
 
-Open `index.html` in a browser. The first time, you will see sample quests so you can look around. When you are ready, open **Settings** and choose **Start fresh**.
+Open `index.html` in a browser. The first time, you will see sample quests so you can look around. When you are ready, open **Options** and choose **Start fresh**.
 
 To host it, turn on GitHub Pages for this repository (Settings, then Pages, then deploy from the `main` branch and the root folder). The site is a single page plus a few icon files.
 
@@ -33,7 +33,7 @@ Everything is saved in your own browser with `localStorage`. Nothing is sent any
 
 - Data does not sync between devices or browsers.
 - Clearing your browser data clears your planner.
-- **Settings, Backup and restore:** **Save backup** writes your data to a file wherever you choose, and **Restore backup** loads one back after a warning that it replaces everything. After two weeks without a backup, Today reminds you.
+- **Options, Backup and restore:** **Save backup** writes your data to a file wherever you choose, and **Restore backup** loads one back after a warning that it replaces everything. After two weeks without a backup, Today reminds you.
 
 ## Tests
 

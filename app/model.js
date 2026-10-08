@@ -3,7 +3,7 @@ import { notify } from "./dom.js";
 import { DAY, iso, addDays, parseISO, TODAY, weekStart } from "./dates.js";
 
 export var CORE = [["today", "Today"], ["projects", "Quests"], ["schedule", "Tasks"], ["timeline", "Timeline"]];
-export var BOTTOM = [["workshop", "Workshop"], ["vault", "Vault"], ["help", "Help"], ["settings", "Settings"]];
+export var BOTTOM = [["workshop", "Workshop"], ["vault", "Vault"], ["help", "Field guide"], ["settings", "Options"]];
 export var WORDS = { Block: ["block", "blocks"], Sprint: ["sprint", "sprints"], Iteration: ["iteration", "iterations"], Phase: ["phase", "phases"], Week: ["week", "weeks"] };
 export function wd() { return state.settings.blockWord in WORDS ? state.settings.blockWord : "Block"; }
 export function wl() { return WORDS[wd()][0]; }
