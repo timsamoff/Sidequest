@@ -132,9 +132,7 @@ export function counted() { return state.tasks.filter(function (t) { return !t.v
 export function chosen() { var a = activeQuests(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.questId === a[i].id; })) return a[i]; return null; }
 export function dispQuest(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next quest"; } var p = findQuest(t.questId); return p ? p.name : ""; }
 export function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next quest. Add its first tasks with the + button."; return t.what; }
-export function weight(t) { return Math.max(1, t.steps.length); }
-export function doneUnits(t) { return t.status === "Completed" ? weight(t) : t.steps.filter(function (s) { return s.done; }).length; }
-// The burndown counts tasks, one each. weight()/doneUnits() above are step counts, used only by questMeta().
+// The burndown counts tasks, one each.
 function isOpen(t) { return t.status !== "Completed"; }
 export function totalUnits() { return burnTasks().length; }
 export function remainingUnits() { return burnTasks().filter(isOpen).length; }
@@ -214,8 +212,9 @@ export function questMeta(p) {
   var ts = counted().filter(function (t) { return !t.isNext && t.questId === p.id; });
   var parts = [];
   if (ts.length) {
-    var tot = 0, dn = 0, bk = ts.filter(function (t) { return t.block === 0; }).length; ts.forEach(function (t) { tot += weight(t); dn += doneUnits(t); });
-    parts.push(ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " (" + bk + " in the Backlog)" : "") + ". " + dn + " of " + tot + " steps complete.");
+    var bk = ts.filter(function (t) { return t.block === 0; }).length;
+    var dn = ts.filter(function (t) { return t.status === "Completed"; }).length;
+    parts.push(ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " (" + bk + " in the Backlog)" : "") + ". " + dn + " of " + ts.length + (ts.length === 1 ? " task" : " tasks") + " complete.");
   } else if (p.status === "candidate") {
     parts.push("Candidate for the next slot.");
   }

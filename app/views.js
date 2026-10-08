@@ -645,7 +645,7 @@ export function renderQuestPage(root, id) {
     linksSection(root, p);
   }
 
-  var ar = el("div", { "class": "actions", style: "margin-top:14px" });
+  var ar = el("div", { "class": "actions questactions", style: "margin-top:14px" });
   if (readOnly) {
     ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Bring back to Quests" }, "Restore"), "click", function () { restoreEntry({ kind: "quest", list: "quests", item: p }); }));
   } else if (p.status === "candidate") {
@@ -680,8 +680,11 @@ export function renderQuestPage(root, id) {
       exportQuestForClient(p);
     }));
   }
-  root.appendChild(ar);
-  if (split) split.appendChild(questChartsPanel(p));
+  // ar is a sibling of .questmain/.questcharts inside .questsplit, not nested
+  // in .questmain, so it naturally renders last (after Schedule/Timeline/
+  // Burndown) when stacked; CSS order puts it back at the end of the left
+  // column on a wide screen, where it visually sat before this change.
+  if (split) { split.appendChild(questChartsPanel(p)); split.appendChild(ar); } else { root.appendChild(ar); }
 }
 
 // On a quest's own page a task opens in place; the Tasks page is for the cross-quest list.

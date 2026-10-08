@@ -293,7 +293,14 @@ svg.chart.nofocusring { outline: none; }
 .bar.work { background: var(--chip-work); }
 .bar.done { background: var(--chip-done); }
 @media (min-width: 900px) {
-  .questsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); column-gap: var(--space-22); align-items: start; }
+  /* .questactions comes last in the markup (after .questcharts) so it renders
+     at the true bottom of the page when stacked; placed back under .questmain
+     here, where it visually sat before, since the grid would otherwise float
+     it to column 1 below .questcharts's own row. */
+  .questsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: "main charts" "actions charts"; column-gap: var(--space-22); align-items: start; }
+  .questmain { grid-area: main; }
+  .questcharts { grid-area: charts; }
+  .questactions { grid-area: actions; }
   .questexpand { display: inline-block; }
   /* .setside comes first in the markup so it stacks above .setmain on a
      phone; order swaps it to the right on a wide screen without touching

@@ -384,7 +384,14 @@ svg.chart.nofocusring { outline: none; }
 .bar.work { background: var(--chip-work); }
 .bar.done { background: var(--chip-done); }
 @media (min-width: 900px) {
-  .questsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); column-gap: var(--space-22); align-items: start; }
+  /* .questactions comes last in the markup (after .questcharts) so it renders
+     at the true bottom of the page when stacked; placed back under .questmain
+     here, where it visually sat before, since the grid would otherwise float
+     it to column 1 below .questcharts's own row. */
+  .questsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: "main charts" "actions charts"; column-gap: var(--space-22); align-items: start; }
+  .questmain { grid-area: main; }
+  .questcharts { grid-area: charts; }
+  .questactions { grid-area: actions; }
   .questexpand { display: inline-block; }
   /* .setside comes first in the markup so it stacks above .setmain on a
      phone; order swaps it to the right on a wide screen without touching
@@ -832,9 +839,7 @@ function counted() { return state.tasks.filter(function (t) { return !t.vault ||
 function chosen() { var a = activeQuests(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.questId === a[i].id; })) return a[i]; return null; }
 function dispQuest(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next quest"; } var p = findQuest(t.questId); return p ? p.name : ""; }
 function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next quest. Add its first tasks with the + button."; return t.what; }
-function weight(t) { return Math.max(1, t.steps.length); }
-function doneUnits(t) { return t.status === "Completed" ? weight(t) : t.steps.filter(function (s) { return s.done; }).length; }
-// The burndown counts tasks, one each. weight()/doneUnits() above are step counts, used only by questMeta().
+// The burndown counts tasks, one each.
 function isOpen(t) { return t.status !== "Completed"; }
 function totalUnits() { return burnTasks().length; }
 function remainingUnits() { return burnTasks().filter(isOpen).length; }
@@ -914,8 +919,9 @@ function questMeta(p) {
   var ts = counted().filter(function (t) { return !t.isNext && t.questId === p.id; });
   var parts = [];
   if (ts.length) {
-    var tot = 0, dn = 0, bk = ts.filter(function (t) { return t.block === 0; }).length; ts.forEach(function (t) { tot += weight(t); dn += doneUnits(t); });
-    parts.push(ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " (" + bk + " in the Backlog)" : "") + ". " + dn + " of " + tot + " steps complete.");
+    var bk = ts.filter(function (t) { return t.block === 0; }).length;
+    var dn = ts.filter(function (t) { return t.status === "Completed"; }).length;
+    parts.push(ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " (" + bk + " in the Backlog)" : "") + ". " + dn + " of " + ts.length + (ts.length === 1 ? " task" : " tasks") + " complete.");
   } else if (p.status === "candidate") {
     parts.push("Candidate for the next slot.");
   }
@@ -3369,7 +3375,7 @@ function renderQuestPage(root, id) {
     linksSection(root, p);
   }
 
-  var ar = el("div", { "class": "actions", style: "margin-top:14px" });
+  var ar = el("div", { "class": "actions questactions", style: "margin-top:14px" });
   if (readOnly) {
     ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Bring back to Quests" }, "Restore"), "click", function () { restoreEntry({ kind: "quest", list: "quests", item: p }); }));
   } else if (p.status === "candidate") {
@@ -3404,8 +3410,11 @@ function renderQuestPage(root, id) {
       exportQuestForClient(p);
     }));
   }
-  root.appendChild(ar);
-  if (split) split.appendChild(questChartsPanel(p));
+  // ar is a sibling of .questmain/.questcharts inside .questsplit, not nested
+  // in .questmain, so it naturally renders last (after Schedule/Timeline/
+  // Burndown) when stacked; CSS order puts it back at the end of the left
+  // column on a wide screen, where it visually sat before this change.
+  if (split) { split.appendChild(questChartsPanel(p)); split.appendChild(ar); } else { root.appendChild(ar); }
 }
 
 // On a quest's own page a task opens in place; the Tasks page is for the cross-quest list.
