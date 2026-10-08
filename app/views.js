@@ -72,7 +72,7 @@ export function overduePanel() {
   var late = lateTasks();
   var box = el("div", { "class": "box" });
   if (!late.length) { box.appendChild(el("p", { "class": "hint first" }, "Nothing is overdue.")); return box; }
-  box.appendChild(el("h2", null, late.length + (late.length === 1 ? " task is overdue" : " tasks are overdue")));
+  box.appendChild(el("h2", null, "Overdue tasks: " + late.length));
   var ul = el("ul", { "class": "tlist", style: "margin-top:8px" });
   late.forEach(function (t) {
     var li = el("li"); var b = el("button", { type: "button", "class": "item", title: "View this task" });
@@ -238,15 +238,14 @@ export function taskRow(t) {
 }
 export function renderSchedule(root) {
   var o = ordered(), bl = backlogTasks();
-  var hiddenNote = completeQuests().length ? el("p", { "class": "hint first" }, "Tasks from Complete quests are not listed here. Open a Complete quest’s own page to see them.") : null;
+  var desc = "These tasks are gathered from all open quests." + (completeQuests().length ? " Tasks from complete quests are not listed here. Open a complete quest’s page to see them." : "");
   if (!o.length && !bl.length) {
-    if (hiddenNote) root.appendChild(hiddenNote);
-    root.appendChild(el("p", { "class": "hint" + (hiddenNote ? "" : " first") }, counted().length ? "No open tasks. Completed tasks are in the Vault." : "No tasks yet. Use the + button to add one."));
+    root.appendChild(el("p", { "class": "hint first" }, desc));
+    root.appendChild(el("p", { "class": "hint" }, counted().length ? "No open tasks. Completed tasks are in the Vault." : "No tasks yet. Use the + button to add one."));
     return;
   }
   if (!ui.sel || !findTask(ui.sel)) { var nt = nextTask() || o[0] || bl[0]; ui.sel = nt.id; }
-  if (hiddenNote) root.appendChild(hiddenNote);
-  root.appendChild(el("p", { "class": "hint" + (hiddenNote ? "" : " first") + (ui.detail ? " hide-on-mobile" : "") }, "Tasks gathered from all open quests."));
+  root.appendChild(el("p", { "class": "hint first" + (ui.detail ? " hide-on-mobile" : "") }, desc));
   var split = el("div", { "class": "split" + (ui.detail ? " detail-open" : "") });
   var lp = el("div", { "class": "listpane" });
   var ul = el("ul", { "class": "tlist" });
@@ -696,8 +695,12 @@ function showTaskInQuest(p, t) {
 }
 // `first` zeroes the heading's top margin; `extraBtn` rides its heading row.
 function scheduleSection(host, p, readOnly, first, extraBtn) {
-  var hd = el("div", { "class": "sechead" + (first ? " first" : "") });
-  hd.appendChild(el("h2", first ? { "class": "first" } : null, "Schedule"));
+  // `first` can be a plain boolean (always zero the heading's own top margin,
+  // e.g. the Expand modal) or the string "questcharts-head" (zero it only at
+  // the wide breakpoint, via CSS, so a stacked page keeps its normal section gap).
+  var cls = first === true ? "first" : first === "questcharts-head" ? "questcharts-head" : "";
+  var hd = el("div", { "class": "sechead" + (cls ? " " + cls : "") });
+  hd.appendChild(el("h2", cls ? { "class": cls } : null, "Schedule"));
   if (extraBtn) hd.appendChild(extraBtn);
   host.appendChild(hd);
   var eff = pset(p.id);
@@ -729,13 +732,16 @@ function questChartsPanel(p) {
   var side = el("aside", { "class": "questcharts", "aria-label": "Schedule, timeline, and burndown" });
   var ex = el("button", { type: "button", "class": "small questexpand", title: "Expand the schedule, timeline, and burndown" }, "Expand");
   on(ex, "click", function () { openModal("Timeline and burndown for " + p.name, function (body) { body.appendChild(questCharts(p, true, null, true)); }, { full: true }); });
-  side.appendChild(questCharts(p, false, ex, true));
+  side.appendChild(questCharts(p, false, ex));
   return side;
 }
 function questCharts(p, wide, expandBtn, first) {
   var out = el("div");
   // Schedule keeps its own heading from scheduleSection(); Expand rides along on that same row.
-  scheduleSection(out, p, false, first, expandBtn);
+  // .questcharts-head's own CSS zeroes this heading's margin only at the wide
+  // breakpoint, where Schedule needs to sit level with Tasks -- when stacked,
+  // the normal section gap applies, since .questcharts follows real content above it.
+  scheduleSection(out, p, false, "questcharts-head", expandBtn);
   var tl = questRangeBlock(p);
   if (tl.empty) {
     // Nothing to chart -- one combined heading, no Slip button.
@@ -1088,7 +1094,7 @@ export function helpTopics() {
       "On a quest’s own page, above the Timeline, **Slip schedule** pushes its still-incomplete tasks later by however many days you choose. Completed tasks and anything in the Backlog don’t move.",
       "**Undo last slip**, in the same dialog, puts everything back where it was."]],
     ["Options, backup, and starting over", [
-      "**Options** covers how Sidequest looks and schedules by default: the length of a " + w + " in days, what to call it (Block, Sprint, and so on), date format, theme, whether the splash plays on open, whether a burndown draws its lines in when it comes into view (**Animated burndown**), whether **Sound Effects** play at all, and whether finishing a quest sets off a **Completion FX** confetti burst.",
+      "**Options** covers how Sidequest looks and schedules by default: the length of a " + w + " in days, what to call it (Block, Sprint, and so on), date format, theme, whether the splash plays on open, whether a burndown draws its lines in when it comes into view (**Animated burndown**), whether **Sound effects** play at all, and whether finishing a quest sets off a **Completion FX** confetti burst.",
       "Everything lives in this browser only, so **Backup and restore** matters. **Save backup** writes a file wherever you choose. **Restore backup** reads one back in, after warning you it replaces everything currently here, with a few seconds to undo if you change your mind. Go two weeks without a backup and Today will say so, quietly.",
       "**Vault** items can delete themselves automatically, 7, 30, 60, or 90 days after being vaulted, or never, if you leave it there. Sidequest checks this once, each time it opens, with no second warning once the setting is on.",
       "**Start fresh** erases everything, after one warning. Back it up first if there’s anything worth keeping. You can start completely empty, or with the sample quests back in place."]],
@@ -1293,7 +1299,7 @@ export function renderSettings(page) {
   [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.completionFx) op.selected = true; fxs.appendChild(op); });
   on(fxs, "change", function () { state.settings.completionFx = fxs.value === "on"; save(); });
   fxw.appendChild(fxs); ag2.appendChild(fxw);
-  var aw2 = el("div", { "class": "field" }); aw2.appendChild(el("label", { "for": "set-audio" }, "Sound Effects"));
+  var aw2 = el("div", { "class": "field" }); aw2.appendChild(el("label", { "for": "set-audio" }, "Sound effects"));
   var as = el("select", { id: "set-audio", "class": "plain" });
   [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.audio) op.selected = true; as.appendChild(op); });
   on(as, "change", function () { state.settings.audio = as.value === "on"; save(); });

@@ -143,7 +143,7 @@ export function taskDialog(prefillQuestId, backlog) {
     var t = task("c" + uid(), blk, v.quest, v.what.slice(0, 400), v.done.slice(0, 200) || "It’s finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
     state.tasks.push(t); ui.sel = t.id; changed();
     return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ")." };
-  }, "Assign a new task to any open quest. Adding start and due dates will automatically place the task within the quest’s " + wl() + ".");
+  }, (fixedQuest ? "Assign a new task to this quest." : "Assign a new task to any open quest.") + " Adding start and due dates will automatically place the task within the quest’s " + wl() + ".");
 }
 export function questDialog() {
   formDialog("New candidate quest", [

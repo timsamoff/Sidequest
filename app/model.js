@@ -214,7 +214,7 @@ export function questMeta(p) {
   if (ts.length) {
     var bk = ts.filter(function (t) { return t.block === 0; }).length;
     var dn = ts.filter(function (t) { return t.status === "Completed"; }).length;
-    parts.push(ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " (" + bk + " in the Backlog)" : "") + ". " + dn + " of " + ts.length + (ts.length === 1 ? " task" : " tasks") + " complete.");
+    parts.push("Complete: " + dn + " of " + ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " | Backlog: " + bk + " unscheduled " + (bk === 1 ? "task" : "tasks") : ""));
   } else if (p.status === "candidate") {
     parts.push("Candidate for the next slot.");
   }

@@ -129,7 +129,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .listbox > .progress { margin: 0; padding: var(--space-10) var(--space-14); border-bottom: 1px solid var(--line); }
 .listbox > .progress:empty { display: none; }
 @media (min-width: 900px) {
-  .pgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--space-22); row-gap: var(--space-12); }
+  .pgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--space-22); row-gap: var(--space-12); align-items: start; }
   .pgrid > .cl, .pgrid > .cr, .pgrid > .cr.r1 { margin-top: 0; }
   .pgrid > .cl { grid-column: 1; }
   .pgrid > .cr { grid-column: 2; }
@@ -302,6 +302,10 @@ svg.chart.nofocusring { outline: none; }
   .questcharts { grid-area: charts; }
   .questactions { grid-area: actions; }
   .questexpand { display: inline-block; }
+  /* Schedule sits level with Tasks only at this width -- zeroing its heading's
+     own margin here, not unconditionally, keeps the normal section gap on a
+     stacked page where .questcharts follows real content above it. */
+  .sechead.questcharts-head, .sechead .questcharts-head { margin-top: 0; }
   /* .setside comes first in the markup so it stacks above .setmain on a
      phone; order swaps it to the right on a wide screen without touching
      DOM order, which is what the phone layout depends on. */
