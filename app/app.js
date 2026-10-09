@@ -48,7 +48,14 @@ export function renderChrome() {
     host.appendChild(b);
   }
   CORE.forEach(function (c) { addTab(nav, c[0], c[1]); });
-  if (pinned.length) { nav.appendChild(el("div", { "class": "navlabel" }, "Pinned")); pinned.forEach(function (k) { addTab(nav, k, pageTitle(k), "pinnedtab"); }); }
+  // Pinned quests are the only part of the sidebar meant to scroll -- CORE
+  // above and navBottom below always keep their own full, fixed height.
+  if (pinned.length) {
+    var pinnedWrap = el("div", { "class": "pinnedwrap" });
+    pinnedWrap.appendChild(el("div", { "class": "navlabel" }, "Pinned"));
+    pinned.forEach(function (k) { addTab(pinnedWrap, k, pageTitle(k), "pinnedtab"); });
+    nav.appendChild(pinnedWrap);
+  }
   BOTTOM.forEach(function (c) { addTab(nb, c[0], c[1]); });
   var sbtn = $("searchBtn"), searching = ui.view === "search";
   sbtn.innerHTML = searching ? ICON_CANCEL : ICON_SEARCH;

@@ -121,15 +121,16 @@ button.pencil:hover { border: 0; background: var(--chip-idle); color: var(--plan
 button.pencil[hidden] { display: none; }
 .inlineedit { flex: 1 1 auto; min-width: 0; width: 100%; }
 .editrow { display: flex; align-items: flex-start; gap: var(--space-8); }
-/* Thin, theme-aware scrollbars everywhere. The -webkit rules only matter for
-   older browsers without the standard properties. */
-:root { scrollbar-color: var(--muted) transparent; }
+/* Thin, theme-aware scrollbars everywhere: subtle (--line) at rest, darker
+   (--muted) on hover. The standard scrollbar-color property has no hover
+   state of its own, so this is approximate outside Chromium/WebKit, which
+   use the ::-webkit-scrollbar-thumb:hover rule below for the real swap. */
+:root { scrollbar-color: var(--line) transparent; }
 * { scrollbar-width: thin; }
-@supports not (scrollbar-color: auto) {
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--muted); border-radius: var(--radius-pill); border: 2px solid transparent; background-clip: content-box; }
-}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: var(--radius-pill); border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 button { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control); padding: var(--space-8) var(--space-14); min-height: var(--control-height); cursor: pointer; }
 button:hover { border-color: var(--muted); }
@@ -152,7 +153,10 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .logo { width: 38px; height: 38px; flex: none; display: block; }
 .mlogo { display: none; width: 44px; height: 44px; }
 .brand { font-family: var(--font-serif); font-weight: 600; font-size: 1.25rem; line-height: 1.1; }
-.nav { display: flex; flex-direction: column; gap: var(--space-2); overflow-y: auto; min-height: 0; }
+.nav { display: flex; flex-direction: column; gap: var(--space-2); overflow-y: visible; min-height: 0; }
+/* Only the pinned-quest list scrolls -- CORE above it and navBottom below
+   always keep their own full, fixed height (see renderChrome() in app.js). */
+.pinnedwrap { display: flex; flex-direction: column; gap: var(--space-2); overflow-y: auto; min-height: 0; }
 .navlabel { padding: var(--space-14) var(--space-12) var(--space-4); font-size: var(--text-80); color: var(--muted); }
 .tab > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Shared card look; each selector still sets its own padding/margin/overflow. */
@@ -474,7 +478,7 @@ svg.chart.nofocusring { outline: none; }
 @media (max-width: 899px) {
   .app { display: block; }
   .side { position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: auto; z-index: 20; padding: var(--space-4) var(--space-4) calc(4px + env(safe-area-inset-bottom, 0px)); border-right: 0; border-top: 1px solid var(--line); flex-direction: row; }
-  .brandrow, .navbottom, .searchwrap { display: none; }
+  .brandrow, .navbottom, .searchwrap, .pinnedwrap { display: none; }
   .mlogo { display: block; }
   .nav { flex-direction: row; width: 100%; gap: 0; overflow: hidden; }
   .navlabel { display: none; }
@@ -4835,7 +4839,14 @@ function renderChrome() {
     host.appendChild(b);
   }
   CORE.forEach(function (c) { addTab(nav, c[0], c[1]); });
-  if (pinned.length) { nav.appendChild(el("div", { "class": "navlabel" }, "Pinned")); pinned.forEach(function (k) { addTab(nav, k, pageTitle(k), "pinnedtab"); }); }
+  // Pinned quests are the only part of the sidebar meant to scroll -- CORE
+  // above and navBottom below always keep their own full, fixed height.
+  if (pinned.length) {
+    var pinnedWrap = el("div", { "class": "pinnedwrap" });
+    pinnedWrap.appendChild(el("div", { "class": "navlabel" }, "Pinned"));
+    pinned.forEach(function (k) { addTab(pinnedWrap, k, pageTitle(k), "pinnedtab"); });
+    nav.appendChild(pinnedWrap);
+  }
   BOTTOM.forEach(function (c) { addTab(nb, c[0], c[1]); });
   var sbtn = $("searchBtn"), searching = ui.view === "search";
   sbtn.innerHTML = searching ? ICON_CANCEL : ICON_SEARCH;
