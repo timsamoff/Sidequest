@@ -1903,6 +1903,30 @@ async function exportClick(k, projectName) {
   k.w.Audio = RealAudio;
   ok(!played, "reopening a Complete quest plays no sound when Audio is off");
 }
+{
+  // Shuffled-bucket randomizer: nextAffirmationIndex draws every index exactly
+  // once before any repeat, then reshuffles a fresh bucket.
+  await mk();
+  const stateMod = await import("../app/state.js?run=" + (++counter));
+  const seen = [];
+  for (let i = 0; i < 5; i++) seen.push(stateMod.nextAffirmationIndex(5));
+  ok(new Set(seen).size === 5 && seen.every(n => n >= 0 && n < 5), "all 5 indices drawn exactly once before any repeat (" + seen.join(",") + ")");
+  const again = stateMod.nextAffirmationIndex(5);
+  ok(again >= 0 && again < 5, "drawing past an exhausted bucket reshuffles a fresh one rather than erroring");
+}
+{
+  // A stale bucket (indices out of range for a shrunk AFFIRMATIONS list, or
+  // left over from before this field existed) is dropped by normalize(), not
+  // trusted, so a removed-quote edit can't leave an invalid saved index behind.
+  const saved = { settings: { affirmationBucket: [2, 7, 2, 999] } };
+  const k = kit(await mk(saved));
+  ok(Array.isArray(k.saved().settings.affirmationBucket), "affirmationBucket defaults to a real array");
+  const stateMod2 = await import("../app/state.js?run=" + (++counter));
+  // Values >= 500 (out of any realistic AFFIRMATIONS.length) and the
+  // duplicate 2 are rejected; 7 is a plausible valid index and survives.
+  ok(!k.saved().settings.affirmationBucket.includes(999), "an out-of-range saved index is dropped on load");
+  ok(k.saved().settings.affirmationBucket.filter(n => n === 2).length <= 1, "a duplicate saved index is deduplicated on load");
+}
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

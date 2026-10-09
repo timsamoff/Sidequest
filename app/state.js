@@ -125,7 +125,7 @@ export function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop,
     milestones: d.milestones, pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [] }
   };
 }
 
@@ -263,6 +263,14 @@ export function normalize(s) {
     if (typeof s.settings.brandmark === "string" && /^data:image\//.test(s.settings.brandmark) && s.settings.brandmark.length <= 500000) d.settings.brandmark = s.settings.brandmark;
     if (typeof s.settings.audio === "boolean") d.settings.audio = s.settings.audio;
     if (typeof s.settings.completionFx === "boolean") d.settings.completionFx = s.settings.completionFx;
+    // Validated on load, not trusted blindly -- a stale saved bucket (from before an
+    // AFFIRMATIONS edit) could hold out-of-range or duplicate indices.
+    if (Array.isArray(s.settings.affirmationBucket)) {
+      var seen = {};
+      d.settings.affirmationBucket = s.settings.affirmationBucket.filter(function (n) {
+        return typeof n === "number" && n >= 0 && n < 500 && !seen[n] && (seen[n] = true);
+      });
+    }
   }
   // Pins used to route to a quest's page via "proj:" + id; migrate any saved
   // pin to "quest:" + id so an old sidebar pin keeps working after the rename.
@@ -380,6 +388,24 @@ export function purgeOldVault() {
   });
   state.quests = state.quests.filter(function (p) { return !old(p); });
   state.workshop = state.workshop.filter(function (p) { return !old(p); });
+}
+// Shuffled-bucket randomizer: draws from state.settings.affirmationBucket (a
+// shuffled list of remaining indices), refilling and reshuffling a fresh full
+// bucket once empty, so no quote repeats until every one has shown once.
+// `count` is the live AFFIRMATIONS.length, since the list itself can change.
+export function nextAffirmationIndex(count) {
+  var bucket = state.settings.affirmationBucket;
+  if (!bucket || bucket.length === 0 || bucket.some(function (n) { return n >= count; })) {
+    bucket = [];
+    for (var i = 0; i < count; i++) bucket.push(i);
+    for (var j = bucket.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var tmp = bucket[j]; bucket[j] = bucket[k]; bucket[k] = tmp;
+    }
+  }
+  var next = bucket.pop();
+  state.settings.affirmationBucket = bucket;
+  return next;
 }
 export function changed() {
   autoVault(); syncTaskBlocks(); sweepQuestCompletion(); recordHistory(); recordQuestHistory(); save(); renderAll();

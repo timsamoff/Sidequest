@@ -1102,7 +1102,7 @@ function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop,
     milestones: d.milestones, pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [] }
   };
 }
 
@@ -1240,6 +1240,14 @@ function normalize(s) {
     if (typeof s.settings.brandmark === "string" && /^data:image\//.test(s.settings.brandmark) && s.settings.brandmark.length <= 500000) d.settings.brandmark = s.settings.brandmark;
     if (typeof s.settings.audio === "boolean") d.settings.audio = s.settings.audio;
     if (typeof s.settings.completionFx === "boolean") d.settings.completionFx = s.settings.completionFx;
+    // Validated on load, not trusted blindly -- a stale saved bucket (from before an
+    // AFFIRMATIONS edit) could hold out-of-range or duplicate indices.
+    if (Array.isArray(s.settings.affirmationBucket)) {
+      var seen = {};
+      d.settings.affirmationBucket = s.settings.affirmationBucket.filter(function (n) {
+        return typeof n === "number" && n >= 0 && n < 500 && !seen[n] && (seen[n] = true);
+      });
+    }
   }
   // Pins used to route to a quest's page via "proj:" + id; migrate any saved
   // pin to "quest:" + id so an old sidebar pin keeps working after the rename.
@@ -1357,6 +1365,24 @@ function purgeOldVault() {
   });
   state.quests = state.quests.filter(function (p) { return !old(p); });
   state.workshop = state.workshop.filter(function (p) { return !old(p); });
+}
+// Shuffled-bucket randomizer: draws from state.settings.affirmationBucket (a
+// shuffled list of remaining indices), refilling and reshuffling a fresh full
+// bucket once empty, so no quote repeats until every one has shown once.
+// `count` is the live AFFIRMATIONS.length, since the list itself can change.
+function nextAffirmationIndex(count) {
+  var bucket = state.settings.affirmationBucket;
+  if (!bucket || bucket.length === 0 || bucket.some(function (n) { return n >= count; })) {
+    bucket = [];
+    for (var i = 0; i < count; i++) bucket.push(i);
+    for (var j = bucket.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var tmp = bucket[j]; bucket[j] = bucket[k]; bucket[k] = tmp;
+    }
+  }
+  var next = bucket.pop();
+  state.settings.affirmationBucket = bucket;
+  return next;
 }
 function changed() {
   autoVault(); syncTaskBlocks(); sweepQuestCompletion(); recordHistory(); recordQuestHistory(); save(); renderAll();
@@ -1852,8 +1878,8 @@ function renderTasks(node) {
     var steps = t.steps.length ? t.steps.filter(function (s) { return s.done; }).length + " of " + t.steps.length + " steps" : "";
     var cls = t.status === "Completed" ? " done" : "";
     var html = '<li class="etask' + cls + '">';
-    html += '<div class="el1">' + escHtml(t.block === 0 ? "Backlog" : t.start) + (t.late ? ' <span class="badge">Overdue</span>' : "") + "</div>";
-    html += '<div class="el2">' + escHtml(t.what) + "</div>";
+    html += '<div class="el1">' + (t.block === 0 ? "" : escHtml(t.start)) + (t.late ? ' <span class="badge">Overdue</span>' : "") + "</div>";
+    html += '<div class="el2">' + (t.block === 0 ? '<span class="chip backlog" style="margin-right:8px">Backlog</span>' : "") + escHtml(t.what) + "</div>";
     html += '<div class="el3"><span class="chip" data-v="' + escAttr(t.status) + '">' + escHtml(t.status) + "</span>";
     if (steps) html += "<span>" + escHtml(steps) + "</span>";
     if (t.est) html += "<span>Est " + escHtml(t.est) + "</span>";
@@ -1946,6 +1972,7 @@ h1, h2, h3, h4, h5 { font-weight: 700; margin-top: 0; }\
 .chip[data-v='In progress'] { background: var(--chip-work); }\
 .chip[data-v='Completed'] { background: var(--chip-done); }\
 .chip.questcomplete { background: var(--chip-done); }\
+.chip.backlog { background: var(--late-bg); color: var(--late); }\
 .chip.ereadonly { background: var(--muted); color: var(--surface); vertical-align: middle; font-size: .7rem; margin-left: 8px; }\
 .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--late-bg); color: var(--late); font-size: .8rem; font-weight: 600; }\
 .etasklist, .list { list-style: none; margin: 8px 0; padding: 0; }\
@@ -4623,7 +4650,10 @@ function schedule(pairs) {
 
 // Plays the splash sequence, then hides the overlay and calls done() once the
 // fade-out finishes. No-op if showSplash is off or the element isn't present.
-function playSplash(showSplash, done, audio) {
+// `pickIndex`, given AFFIRMATIONS.length, returns which quote to show -- callers
+// pass a shuffled-bucket picker (see state.js's nextAffirmationIndex) so quotes
+// don't repeat until the whole list has shown; defaults to plain random.
+function playSplash(showSplash, done, audio, pickIndex) {
   var root = $("splash");
   // Markup ships pre-blurred in plain HTML, before any JS runs -- avoids a
   // real flash-of-sharp-app bug. If the setting's off, hide it now instead.
@@ -4633,7 +4663,8 @@ function playSplash(showSplash, done, audio) {
   var pairs = renderTree(root, tree); // [{path, node}], in draw order -- each node is its own path's real terminus
 
   var textEl = $("splashText");
-  textEl.textContent = AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)];
+  var pick = typeof pickIndex === "function" ? pickIndex : function (n) { return Math.floor(Math.random() * n); };
+  textEl.textContent = AFFIRMATIONS[pick(AFFIRMATIONS.length)];
 
   // Forces a layout so the "undrawn" state paints before "drawn" is added.
   // eslint-disable-next-line no-unused-expressions
@@ -4804,7 +4835,11 @@ Promise.resolve().then(function () {
   renderAll();
 
   // Decorative only -- the app has already rendered above.
-  cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio) || cancelSplash;
+  // Mutates state.settings.affirmationBucket in memory only -- it rides along
+  // with the next real save() rather than forcing one of its own, so a reload
+  // with no other edits in between can't make two otherwise-identical devices
+  // disagree over db sync.
+  cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio, nextAffirmationIndex) || cancelSplash;
 
   // Checked after first paint -- no-op on the web app, real on a published artifact with db.
   loadFromDbIfAvailable().then(function (swapped) {

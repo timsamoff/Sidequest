@@ -1,4 +1,4 @@
-import { state, ui, save, saveUI, changed, autoVault, purgeOldVault, APP_NAME, loadFromDbIfAvailable } from "./state.js";
+import { state, ui, save, saveUI, changed, autoVault, purgeOldVault, APP_NAME, loadFromDbIfAvailable, nextAffirmationIndex } from "./state.js";
 import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest } from "./model.js";
 import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline } from "./dom.js";
 import { lateTasks } from "./model.js";
@@ -138,7 +138,11 @@ Promise.resolve().then(function () {
   renderAll();
 
   // Decorative only -- the app has already rendered above.
-  cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio) || cancelSplash;
+  // Mutates state.settings.affirmationBucket in memory only -- it rides along
+  // with the next real save() rather than forcing one of its own, so a reload
+  // with no other edits in between can't make two otherwise-identical devices
+  // disagree over db sync.
+  cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio, nextAffirmationIndex) || cancelSplash;
 
   // Checked after first paint -- no-op on the web app, real on a published artifact with db.
   loadFromDbIfAvailable().then(function (swapped) {

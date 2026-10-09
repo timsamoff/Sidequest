@@ -205,7 +205,10 @@ function schedule(pairs) {
 
 // Plays the splash sequence, then hides the overlay and calls done() once the
 // fade-out finishes. No-op if showSplash is off or the element isn't present.
-export function playSplash(showSplash, done, audio) {
+// `pickIndex`, given AFFIRMATIONS.length, returns which quote to show -- callers
+// pass a shuffled-bucket picker (see state.js's nextAffirmationIndex) so quotes
+// don't repeat until the whole list has shown; defaults to plain random.
+export function playSplash(showSplash, done, audio, pickIndex) {
   var root = $("splash");
   // Markup ships pre-blurred in plain HTML, before any JS runs -- avoids a
   // real flash-of-sharp-app bug. If the setting's off, hide it now instead.
@@ -215,7 +218,8 @@ export function playSplash(showSplash, done, audio) {
   var pairs = renderTree(root, tree); // [{path, node}], in draw order -- each node is its own path's real terminus
 
   var textEl = $("splashText");
-  textEl.textContent = AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)];
+  var pick = typeof pickIndex === "function" ? pickIndex : function (n) { return Math.floor(Math.random() * n); };
+  textEl.textContent = AFFIRMATIONS[pick(AFFIRMATIONS.length)];
 
   // Forces a layout so the "undrawn" state paints before "drawn" is added.
   // eslint-disable-next-line no-unused-expressions
