@@ -120,7 +120,8 @@ export function taskDialog(prefillQuestId) {
   fields.push({ key: "est", label: "Estimated time in hours (optional)", type: "number", min: "0", max: "9999", step: "0.25" });
   formDialog("New task", fields, "Add task", function (v) {
     if (fixedQuest) v.quest = startId;
-    if (!v.quest || !v.what) return "Choose a quest and enter what you do.";
+    if (!v.quest) return "Choose a quest.";
+    if (!v.what) return "Enter a title for the task.";
     var blk = 0, start = "", due = "";
     if (v.due) {
       if (!isISO(v.due)) return "Enter a valid due date, or leave it empty for the Backlog.";
@@ -182,7 +183,7 @@ export function ideaDialog(idea) {
     { key: "text", label: "Idea", value: idea ? idea.text : undefined },
     { key: "note", label: "Note (optional)", type: "textarea", rows: 5, value: idea ? idea.note : undefined }
   ], idea ? "Save idea" : "Workshop it", function (v) {
-    if (!v.text) return "Enter the idea.";
+    if (!v.text) return "Enter a title for the idea.";
     if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 5000); changed(); return { msg: "Idea saved." }; }
     state.workshop.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000) }); changed();
     return { msg: "Added to the Workshop." };
@@ -199,7 +200,7 @@ export function decisionDialog(prefill) {
     var opts = fixed ? [{ value: stepId, label: fixed.s.text }] : [];
     if (!opts.length) { notify("That step is gone."); return; }
     formDialog("New decision", [{ key: "q", label: "Decision" }], "Add decision", function (v) {
-      if (!v.q) return "Enter the decision.";
+      if (!v.q) return "Enter a title for the decision.";
       if (decisionFor(stepId)) return "That step already has a decision.";
       state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: stepId }); changed();
       return { msg: "Decision added." };
@@ -227,7 +228,7 @@ export function decisionDialog(prefill) {
     { key: "step", label: "Step", type: "select", options: startSteps, value: startSteps.length ? startSteps[0].value : "" },
     { key: "q", label: "Decision" }
   ], "Add decision", function (v) {
-    if (!v.q) return "Enter the decision.";
+    if (!v.q) return "Enter a title for the decision.";
     if (!v.step) return "Choose a step.";
     if (decisionFor(v.step)) return "That step already has a decision.";
     state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: v.step }); changed();
@@ -257,7 +258,7 @@ export function decisionEditDialog(dec, onRemove) {
     { key: "q", label: "Decision", value: dec.q },
     { key: "a", label: "Answer", type: "textarea", rows: 3, value: dec.a }
   ], "Save decision", function (v) {
-    if (!v.q) return "Enter the decision.";
+    if (!v.q) return "Enter a title for the decision.";
     var was = dec.a;
     dec.q = v.q.slice(0, 300); dec.a = v.a.slice(0, 1000);
     if (dec.a !== was && ls) { ls.s.done = dec.a !== ""; syncFromSteps(ls.t); }
@@ -280,7 +281,7 @@ export function stepDialog(prefillQuestId) {
     { key: "text", label: "Step" }
   ], "Add step", function (v) {
     var t = findTask(v.task);
-    if (!v.text) return "Enter the step.";
+    if (!v.text) return "Enter a title for the step.";
     if (!t) return "Choose a task.";
     t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false }); syncFromSteps(t); changed();
     return { msg: "Step added to " + dispQuest(t) + "." };
@@ -306,7 +307,8 @@ export function milestoneDialog(m, onRemove) {
     { key: "text", label: "Milestone", value: m ? m.text : undefined },
     { key: "date", label: "Date", type: "date", value: m ? m.date : undefined }
   ], m ? "Save milestone" : "Add milestone", function (v) {
-    if (!v.quest || !v.text || !isISO(v.date)) return "Choose a quest, and enter a milestone and a date.";
+    if (!v.quest) return "Choose a quest.";
+    if (!v.text || !isISO(v.date)) return "Enter a title and date for the milestone.";
     if (m) { m.questId = v.quest; m.text = v.text.slice(0, 200); m.date = v.date; changed(); return { msg: "Milestone saved." }; }
     state.milestones.push({ id: uid(), text: v.text.slice(0, 200), date: v.date, questId: v.quest }); changed();
     return { msg: "Milestone added to the Timeline." };
