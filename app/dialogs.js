@@ -3,7 +3,7 @@ import { iso, addDays, parseISO, fmt, fmtY, TODAY } from "./dates.js";
 import {
   wd, wl, wpC, activeQuests, liveQuests, findQuest, dispQuest, nextTask, findTask,
   orderedAll, taskOptions, stepOptions, stepOptionsForTask, syncFromSteps, findStep, decisionFor,
-  pset, blockStartFor, blockEndFor, blockForDate, taskStart, taskEnd, linkQuests
+  pset, blockForDate, taskStart, taskEnd, linkQuests
 } from "./model.js";
 import { $, el, on, uid, notify } from "./dom.js";
 import { closeMenus } from "./app.js";
@@ -109,7 +109,6 @@ export function taskDialog(prefillQuestId) {
   if (!questOpts.length) { notify("Add an active quest first (Quests > Choose as next quest)."); return; }
   var fixedQuest = typeof prefillQuestId === "string";
   var startId = fixedQuest ? prefillQuestId : (nt && !nt.isNext ? nt.questId : questOpts[0].value);
-  var defaultDue = iso(blockEndFor(startId, nt ? nt.block : 4));
   var startQuest = findQuest(startId);
   var fields = fixedQuest && startQuest
     ? [{ key: "quest", label: "Quest", type: "static", value: startQuest.name }]
@@ -117,7 +116,7 @@ export function taskDialog(prefillQuestId) {
   fields.push({ key: "what", label: "Task" });
   fields.push({ key: "done", label: "How you’ll know it’s done (optional)" });
   fields.push({ key: "start", label: "Start date (optional)", type: "date" });
-  fields.push({ key: "due", label: "Due date (leave empty to add to the quest’s backlog)", type: "date", value: defaultDue });
+  fields.push({ key: "due", label: "Due date (leave empty to add to the quest’s backlog)", type: "date" });
   fields.push({ key: "est", label: "Estimated time in hours (optional)", type: "number", min: "0", max: "9999", step: "0.25" });
   formDialog("New task", fields, "Add task", function (v) {
     if (fixedQuest) v.quest = startId;

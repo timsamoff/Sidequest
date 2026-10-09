@@ -223,7 +223,9 @@ export function taskRow(t) {
   var b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
   if (t.id === ui.sel) b.setAttribute("aria-current", "true");
   var l1 = el("div", { "class": "l1 split" }), l1t = el("span"); l1t.appendChild(el("b", null, dispQuest(t)));
-  l1t.appendChild(document.createTextNode(" · " + (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)))));
+  l1t.appendChild(document.createTextNode(" · "));
+  if (t.block === 0) l1t.appendChild(el("span", { "class": "chip backlog" }, "Backlog"));
+  else l1t.appendChild(document.createTextNode(fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
   l1.appendChild(l1t);
   var tag1 = addedChip(t); if (tag1) l1.appendChild(tag1);
   b.appendChild(l1);
@@ -273,7 +275,9 @@ export function buildDetail(t, inline) {
   var top = el("div", { style: "display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap" });
   var lh = el("div");
   if (!inline) lh.appendChild(el("h2", { style: "margin:0" }, dispQuest(t)));
-  var dm = el("p", { "class": "dmeta" }, (t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))) + " ");
+  var dm = el("p", { "class": "dmeta" });
+  if (t.block === 0) dm.appendChild(el("span", { "class": "chip backlog", style: "margin-right:6px" }, "Backlog"));
+  else dm.appendChild(document.createTextNode(fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + " "));
   if (isLate(t)) dm.appendChild(el("span", { "class": "badge" }, "Overdue"));
   var tag2 = addedChip(t); if (tag2) { tag2.style.marginLeft = "6px"; dm.appendChild(tag2); }
   lh.appendChild(dm); top.appendChild(lh);
@@ -459,8 +463,8 @@ export function launchSection(root, p) {
     var b = el("button", { type: "button", "class": "item" + (done ? " done" : ""), title: "View this task" });
     if (!readOnly && !t.vault) b.setAttribute("aria-expanded", open ? "true" : "false");
     var l1 = el("div", { "class": "l1 split" });
-    l1.appendChild(el("span", null, t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
-    var tag1 = addedChip(t); if (tag1) l1.appendChild(tag1);
+    l1.appendChild(t.block === 0 ? el("span", { "class": "chip backlog" }, "Backlog") : el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
+    var tag1 = addedChip(t); if (tag1) { tag1.style.marginLeft = "6px"; l1.appendChild(tag1); }
     b.appendChild(l1);
     b.appendChild(el("div", { "class": "l2" }, short(dispWhat(t), 60) + (t.vault ? " (in the Vault)" : "")));
     var l3 = el("div", { "class": "l3" });
@@ -575,8 +579,8 @@ export function renderQuestPage(root, id) {
       var li = el("li", { id: "ptask-" + t.id }), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
       if (!readOnly) b.setAttribute("aria-expanded", open ? "true" : "false");
       var l1 = el("div", { "class": "l1 split" });
-      l1.appendChild(el("span", null, t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
-      var tag1 = addedChip(t); if (tag1) l1.appendChild(tag1);
+      l1.appendChild(t.block === 0 ? el("span", { "class": "chip backlog" }, "Backlog") : el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
+      var tag1 = addedChip(t); if (tag1) { tag1.style.marginLeft = "6px"; l1.appendChild(tag1); }
       b.appendChild(l1);
       b.appendChild(el("div", { "class": "l2" }, t.what));
       var l3 = el("div", { "class": "l3" });

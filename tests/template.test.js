@@ -326,7 +326,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // add own quest from scratch: a task needs an active quest to attach to
   k.menuAct("newBtn", "newQuest"); k.setField("name", "My App"); k.click(k.btn(k.$("modalBody"), "Add quest"));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Promote"));
-  k.menuAct("newBtn", "newTask"); k.setField("what", "First task"); k.click(k.btn(k.$("modalBody"), "Add task"));
+  k.menuAct("newBtn", "newTask"); k.setField("what", "First task"); k.setField("due", new Date().toISOString().slice(0, 10)); k.click(k.btn(k.$("modalBody"), "Add task"));
   k.tab("today"); ok(k.$("view").textContent.includes("First task"), "can start working right away, once a quest exists");
   // reload samples
   k.tab("settings"); k.click(k.$("startFresh")); const r = [...k.d.querySelectorAll('#modalBody input[name=fresh]')]; r[1].checked = true; k.fire(r[1]);
