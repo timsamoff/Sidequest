@@ -90,7 +90,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "1.0.0"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.1.0"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -1310,7 +1310,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   }
   {
     // a stamp that is not actually newer (or malformed) never shows the banner
-    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "1.0.0" } });
+    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "0.1.0" } });
     const k = kit(await mk(null, f.claude)); await wait();
     ok(!k.$("view").textContent.includes("Sidequest has leveled up!"), "a stamp equal to the current version shows no banner");
   }
