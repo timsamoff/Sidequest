@@ -993,7 +993,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.1.0";
+var APP_VERSION = "0.1.1";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -1777,11 +1777,15 @@ function questBurnTasksOrdered(p) {
 function fmtRange(t) { return t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)); }
 
 // Precomputed chart data for one quest: the burndown's points (with tooltip
-// text baked in) and the timeline's lanes.
+// text baked in) and the timeline's lanes. Milestones appear in two different
+// coordinate systems: burndownMilestones (plain date labels, for the
+// burndown's own date axis) and lanes.milestones (percent-of-range, for the
+// Timeline's Gantt) -- snapshotLanes() computes the latter since it already
+// has the lane range math the percentage needs.
 function snapshotCharts(p) {
   var bd = questBurn(p);
   if (!bd) return null;
-  var milestones = live(state.milestones).filter(function (m) { return m.questId === p.id; });
+  var burndownMilestones = live(state.milestones).filter(function (m) { return m.questId === p.id; });
   var points = bd.cps.map(function (ms, i) {
     return { date: fmtY(ms), planned: bd.planned[i], actual: bd.actual[i], scope: bd.scope[i], tip: chartTip(bd, i, ms) };
   });
@@ -1789,8 +1793,8 @@ function snapshotCharts(p) {
   return {
     total: bd.total,
     points: points,
-    milestones: milestones.map(function (m) { return { text: m.text, date: m.date }; }),
-    lanes: lanes.lanes, rangeStart: lanes.rangeStart, rangeEnd: lanes.rangeEnd, today: fmtY(TODAY)
+    milestones: burndownMilestones.map(function (m) { return { text: m.text, date: m.date }; }),
+    lanes: lanes.lanes, laneMilestones: lanes.milestones, rangeStart: lanes.rangeStart, rangeEnd: lanes.rangeEnd, today: fmtY(TODAY)
   };
 }
 function nameList(ts) {
@@ -1813,20 +1817,39 @@ function chartTip(bd, i, ms) {
 }
 // One lane per scheduled task, as percentages of the lane's own date range --
 // the exported file draws these numbers directly, no month-grid math at export time.
+// Each lane also carries a pale "blk" band (the block(s) the task sits in),
+// matching the live app's own two-bars-per-lane Gantt (questRangeBlock() in
+// app/chart.js) -- the export used to draw only the task's own status bar.
 function snapshotLanes(p, bd) {
   var ts = questBurnTasks(p).slice().sort(function (a, b) { return taskStart(a) - taskStart(b); });
-  if (!ts.length) return { lanes: [], rangeStart: null, rangeEnd: null };
+  var mss = live(state.milestones).filter(function (m) { return m.questId === p.id; }).map(function (m) { return { text: m.text, ms: parseISO(m.date) }; });
+  if (!ts.length) return { lanes: [], milestones: [], rangeStart: null, rangeEnd: null };
   var first = Infinity, last = -Infinity;
-  ts.forEach(function (t) { var a = taskStart(t), b = taskEnd(t); if (a < first) first = a; if (b > last) last = b; });
-  live(state.milestones).forEach(function (m) { if (m.questId === p.id) { var d = parseISO(m.date); if (d < first) first = d; if (d > last) last = d; } });
+  ts.forEach(function (t) {
+    var a = taskStart(t), b = taskEnd(t);
+    var sb = t.start ? blockForDate(p.id, a) : null;
+    var bandA = blockStartFor(p.id, Math.min(sb === null ? t.block : sb, t.block)), bandB = blockEndFor(p.id, t.block);
+    if (bandA < first) first = bandA;
+    if (a < first) first = a;
+    if (bandB > last) last = bandB;
+    if (b > last) last = b;
+  });
+  mss.forEach(function (m) { if (m.ms < first) first = m.ms; if (m.ms > last) last = m.ms; });
   if (TODAY > last) last = TODAY;
   var span = Math.max(1, last - first);
   function pct(ms) { return Math.max(0, Math.min(100, 100 * (ms - first) / span)); }
   var lanes = ts.map(function (t) {
     var a = taskStart(t), b = taskEnd(t);
-    return { name: t.what, dates: fmt(a) + " to " + fmt(b), left: pct(a), width: Math.max(0.6, pct(b) - pct(a)), status: t.status === "Completed" ? "done" : t.status === "In progress" ? "work" : "new" };
+    var sb = t.start ? blockForDate(p.id, a) : null;
+    var bandA = blockStartFor(p.id, Math.min(sb === null ? t.block : sb, t.block)), bandB = blockEndFor(p.id, t.block);
+    return {
+      name: t.what, dates: fmt(a) + " to " + fmt(b),
+      blkLeft: pct(bandA), blkWidth: Math.max(0.6, pct(bandB) - pct(bandA)),
+      left: pct(a), width: Math.max(0.6, pct(b) - pct(a)), status: t.status === "Completed" ? "done" : t.status === "In progress" ? "work" : "new"
+    };
   });
-  return { lanes: lanes, rangeStart: first, rangeEnd: last };
+  var milestones = mss.map(function (m) { return { text: m.text, date: fmtY(m.ms), left: pct(m.ms) }; });
+  return { lanes: lanes, milestones: milestones, rangeStart: first, rangeEnd: last };
 }
 
 // Walks a quest and its Active/Complete linked quests, recursively, with a
@@ -2042,11 +2065,14 @@ svg.echart { display: block; width: 100%; height: auto; }\
 .etimeline .elname { font-size: .85rem; font-weight: 600; }\
 .etimeline .elname span { font-weight: 400; color: var(--muted); margin-left: 6px; }\
 .etimeline .etrack { position: relative; height: 20px; margin-top: 4px; background: var(--chip-idle); border-radius: 4px; }\
+.etimeline .eblk { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: color-mix(in srgb, var(--muted) 24%, transparent); }\
 .etimeline .ebar { position: absolute; top: 2px; bottom: 2px; min-width: 6px; border-radius: 4px; background: var(--planned); }\
 .etimeline .ebar.new { background: var(--chip-new); }\
 .etimeline .ebar.work { background: var(--chip-work); }\
 .etimeline .ebar.done { background: var(--chip-done); }\
+.etimeline .emsrow { position: relative; height: 18px; margin-top: 10px; }\
 .etimeline .ems { position: absolute; top: 2px; width: 12px; height: 12px; background: var(--burn); transform: translateX(-6px) rotate(45deg); border-radius: 2px; }\
+.etimeline .ems::after { content: attr(data-label); position: absolute; top: 16px; left: 50%; transform: translateX(-50%) rotate(-45deg); transform-origin: top left; font-size: .68rem; color: var(--muted); white-space: nowrap; }\
 .efoot { margin-top: 30px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }\
 ";
 
@@ -2114,9 +2140,17 @@ var lane=document.createElement('div');lane.className='elane';\
 var nm=document.createElement('div');nm.className='elname';nm.textContent=ln.name;\
 var sp=document.createElement('span');sp.textContent=ln.dates;nm.appendChild(sp);lane.appendChild(nm);\
 var tr=document.createElement('div');tr.className='etrack';\
+var blk=document.createElement('div');blk.className='eblk';blk.style.left=ln.blkLeft+'%';blk.style.width=ln.blkWidth+'%';tr.appendChild(blk);\
 var bar=document.createElement('div');bar.className='ebar '+ln.status;bar.style.left=ln.left+'%';bar.style.width=ln.width+'%';tr.appendChild(bar);\
 lane.appendChild(tr);wrap.appendChild(lane);\
 });\
+if(charts.laneMilestones&&charts.laneMilestones.length){\
+var msr=document.createElement('div');msr.className='emsrow';\
+charts.laneMilestones.forEach(function(m){\
+var d=document.createElement('span');d.className='ems';d.style.left=m.left+'%';d.title=m.text+', '+m.date;d.setAttribute('data-label',m.text);msr.appendChild(d);\
+});\
+wrap.appendChild(msr);\
+}\
 host.appendChild(wrap);\
 }\
 document.querySelectorAll('[data-chart]').forEach(function(host){\

@@ -90,7 +90,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.1.0"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.1.1"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -1310,7 +1310,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   }
   {
     // a stamp that is not actually newer (or malformed) never shows the banner
-    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "0.1.0" } });
+    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "0.1.1" } });
     const k = kit(await mk(null, f.claude)); await wait();
     ok(!k.$("view").textContent.includes("Sidequest has leveled up!"), "a stamp equal to the current version shows no banner");
   }
@@ -1554,6 +1554,16 @@ async function exportClick(k, projectName) {
   ok(html.includes("echarttip") && html.includes("svg.echart"), "embeds the chart renderer and tooltip markup");
   ok(!html.includes("Sample Finished Quest") && !html.includes("Sample Next Quest"), "quests not linked from the exported one are left out entirely");
   ok(html.includes("window.__sqExport"), "chart data is embedded as plain JSON, not live state");
+  // Real bug fixed 2026-10-09: the export's own Timeline drew only each task's
+  // status bar, never the pale block-band behind it, and computed a laneMilestones
+  // array that nothing ever drew -- both are real data for Sample App (a real
+  // milestone, real multi-day tasks), checked against the actual embedded JSON here.
+  const exportData = JSON.parse(html.match(/window\.__sqExport\s*=\s*(\{.*?\});/s)[1]);
+  const appCharts = exportData.charts["proj-pApp"];
+  ok(Array.isArray(appCharts.laneMilestones) && appCharts.laneMilestones.length === 1 && appCharts.laneMilestones[0].text === "Sample App beta opens", "the exported Timeline's own chart data includes Sample App's real milestone, with its own percent-of-range position");
+  ok(appCharts.lanes.length > 0 && appCharts.lanes.every((ln) => typeof ln.blkLeft === "number" && typeof ln.blkWidth === "number"), "every exported lane carries its own block-band position, not just its status bar");
+  ok(html.includes("'eblk'") || html.includes('"eblk"') || html.includes("eblk"), "the export's own runtime script actually draws the block band (eblk), not just computes its data");
+  ok(html.includes("'ems'") || html.includes('"ems"') || html.includes("data-label"), "the export's own runtime script actually draws milestone markers (ems), not just computes their data");
 }
 {
   // Cycle guard: A -> B -> A is not expanded a second time, and the repeat
