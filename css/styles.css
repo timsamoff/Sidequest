@@ -174,6 +174,10 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
    selection, no .detail sibling) is deliberately excluded. */
 .tlist li:has(> .item[aria-expanded="true"]) { background: var(--sel); }
 .tlist li:has(> .item[aria-expanded="true"]) > .item { box-shadow: none; }
+/* .detail's own opaque --surface background (from the shared card-style rule
+   above) would otherwise paint over the blue li background for its own area,
+   leaving only the title row visibly tinted. */
+.tlist li:has(> .item[aria-expanded="true"]) > .detail { background: transparent; }
 .metarow { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--space-4) var(--space-12); }
 .estleft { margin-left: auto; white-space: nowrap; }
 .item .l1 { color: var(--muted); font-size: var(--text-sm); }
@@ -187,6 +191,9 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .split { display: grid; grid-template-columns: minmax(280px, .95fr) minmax(0, 1.25fr); gap: var(--space-22); align-items: start; margin-top: var(--space-12); }
 .split .tlist { margin-top: 0; }
 .detailpane { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); }
+/* The Tasks page's own detail pane, border/corners kept, filled with the same
+   highlight blue a quest page's own expanded task gets -- the user's own call. */
+.detailpane .detail { background: var(--sel); }
 .detail { padding: var(--space-18) var(--space-20); }
 .detail .what { font-family: var(--font-serif); font-size: 1.25rem; font-weight: 600; line-height: 1.3; margin-top: var(--space-8); }
 .detail .dmeta { color: var(--muted); margin-top: var(--space-4); }
