@@ -13,7 +13,7 @@ import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInlin
 import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
 import { playConfetti } from "./confetti.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme } from "./app.js";
-import { stepDialog, stepEditDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
+import { stepDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
 import { buildExportSnapshot, renderExportDocument, exportFileName } from "./export.js";
 
 /* views */
@@ -27,7 +27,7 @@ function stepsAndEst(l3, t) {
 }
 function addedChip(t) {
   if (!t.added || t.isNext || !t.questId || t.added <= pset(t.questId).start) return null;
-  return el("span", { "class": "chip", title: "Added to the plan after this quest started" }, "Added " + fmt(parseISO(t.added)));
+  return el("span", { "class": "chip added", title: "Added to the plan after this quest started" }, "Added " + fmt(parseISO(t.added)));
 }
 export function nextUpPanel() {
   var box = el("div", { "class": "panel" });
@@ -227,7 +227,10 @@ export function taskRow(t) {
   l1.appendChild(l1t);
   var tag1 = addedChip(t); if (tag1) l1.appendChild(tag1);
   b.appendChild(l1);
-  b.appendChild(el("div", { "class": "l2" }, dispWhat(t)));
+  var l2 = el("div", { "class": "l2" });
+  if (t.launch) l2.appendChild(el("span", { "class": "chip launchcrit", style: "margin-right:8px" }, "Launch critical"));
+  l2.appendChild(document.createTextNode(dispWhat(t)));
+  b.appendChild(l2);
   var l3 = el("div", { "class": "l3" });
   l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
   stepsAndEst(l3, t);
@@ -274,11 +277,13 @@ export function buildDetail(t, inline) {
   if (isLate(t)) dm.appendChild(el("span", { "class": "badge" }, "Overdue"));
   var tag2 = addedChip(t); if (tag2) { tag2.style.marginLeft = "6px"; dm.appendChild(tag2); }
   lh.appendChild(dm); top.appendChild(lh);
+  var right = el("div", { style: "display:flex;gap:10px;align-items:center" });
+  if (t.launch) right.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
   var sel = el("select", { "class": "status", "aria-label": "Status" });
   STATUSES.forEach(function (s) { var o = el("option", { value: s }, s); if (s === t.status) o.selected = true; sel.appendChild(o); });
   sel.setAttribute("data-v", t.status);
   on(sel, "change", function () { setStatus(t, sel.value); changed(); });
-  top.appendChild(sel); box.appendChild(top);
+  right.appendChild(sel); top.appendChild(right); box.appendChild(top);
   var whatRow = el("div", { "class": "editrow" });
   var whatP = el("p", { "class": "what", style: "flex:0 1 auto;min-width:0" }, dispWhat(t)); whatRow.appendChild(whatP);
   if (!t.isNext) {
@@ -345,19 +350,34 @@ export function buildDetail(t, inline) {
   var nDone = t.steps.filter(function (s) { return s.done; }).length;
   box.appendChild(el("h3", null, t.steps.length ? "Steps (" + nDone + " of " + t.steps.length + " done)" : "Steps"));
   if (!t.steps.length) box.appendChild(el("p", { "class": "hint" }, "No steps yet. This task counts as one item in the burndown. Add steps to break it up."));
-  if (t.steps.length) box.appendChild(el("p", { "class": "hint" }, "Use a step’s pencil to rename it, put it on the Launch checklist (it stays one step, so nothing is counted twice), or remove it."));
+  if (t.steps.length) box.appendChild(el("p", { "class": "hint" }, "Use a step’s pencil to rename it in place, or Remove to delete it."));
   var ul = el("ul", { "class": "steps" });
   t.steps.forEach(function (s) {
     var sli = el("li", { "class": s.done ? "done" : "" });
     var lab = el("label"); var cb = el("input", { type: "checkbox" }); cb.checked = s.done;
     on(cb, "change", function () { s.done = cb.checked; syncFromSteps(t); changed(); });
-    lab.appendChild(cb); lab.appendChild(el("span", null, s.text)); sli.appendChild(lab);
+    var textSpan = el("span", null, s.text);
+    lab.appendChild(cb); lab.appendChild(textSpan); sli.appendChild(lab);
     var ac = el("div", { "class": "li-actions" });
-    if (s.launch) ac.appendChild(el("span", { "class": "chip", title: "On the launch checklist" }, "Launch"));
     var dc = decisionFor(s.id);
     if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the decision for this step", title: "Open this decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { decisionEditDialog(dc, function () { removeNow(dc, "decisions", "Decision"); }); }));
     else ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Add a decision to this step: " + s.text, title: "Add a decision to this step" }, "Add decision"), "click", function () { decisionDialog({ step: s.id }); }));
-    ac.appendChild(pencilButton("Edit step: " + s.text, "Edit this step", function () { stepEditDialog(t, s); }));
+    var stepPen = pencilButton("Rename this step", "Rename this step");
+    on(stepPen, "click", function () {
+      stepPen.hidden = true;
+      editInline(textSpan, {
+        label: "Step", max: 300, value: function () { return s.text; },
+        onSave: function (v) { s.text = v.slice(0, 300); changed(); },
+        onEmpty: function () { notify("A step needs text."); },
+        onDone: function () { stepPen.hidden = false; }
+      });
+    });
+    ac.appendChild(stepPen);
+    ac.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Remove this step" }, "Remove"), "click", function () {
+      t.steps = t.steps.filter(function (x) { return x.id !== s.id; });
+      state.decisions = state.decisions.filter(function (x) { return x.step !== s.id; });
+      syncFromSteps(t); changed();
+    }));
     sli.appendChild(ac); ul.appendChild(sli);
   });
   box.appendChild(ul);
@@ -378,8 +398,10 @@ export function buildDetail(t, inline) {
   box.appendChild(ta);
   if (!t.isNext) {
     var ar = el("div", { "class": "actions", style: "margin-top:14px" });
-    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this task (can be undone)" }, "Delete"), "click", function () { ui.detail = false; removeNow(t, "tasks", "Task"); }));
     if (inline) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Open this task on the Tasks page" }, "Open in Tasks"), "click", function () { openTask(t.id); }));
+    if (t.launch) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Unmark this task as launch critical" }, "Skip Launch"), "click", function () { t.launch = false; changed(); }));
+    else ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Mark this task as launch critical" }, "Launch critical"), "click", function () { t.launch = true; changed(); }));
+    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this task (can be undone)" }, "Delete"), "click", function () { ui.detail = false; removeNow(t, "tasks", "Task"); }));
     box.appendChild(ar);
   }
   return box;
@@ -400,7 +422,7 @@ export function linksSection(root, p) {
     if (!readOnly) {
       var acts = el("div", { "class": "li-actions" });
       // Toggles lp's own record -- visible from either side of the link.
-      var lc = el("button", { type: "button", "class": "small" + (lp.launchCritical ? " on" : ""), "aria-pressed": lp.launchCritical ? "true" : "false", title: (lp.launchCritical ? "Unmark as" : "Mark as") + " launch critical" }, lp.launchCritical ? "Unmark launch critical" : "Mark launch critical");
+      var lc = el("button", { type: "button", "class": "small" + (lp.launchCritical ? " on" : ""), "aria-pressed": lp.launchCritical ? "true" : "false", title: lp.launchCritical ? "Unmark this quest as launch critical" : "Mark this quest as launch critical" }, lp.launchCritical ? "Skip Launch" : "Launch critical");
       on(lc, "click", function () { lp.launchCritical = !lp.launchCritical; changed(); });
       acts.appendChild(lc);
       var rm = el("button", { type: "button", "class": "small danger", title: "Remove this link" }, "Unlink");
@@ -424,45 +446,37 @@ export function linksSection(root, p) {
 export function launchSection(root, p) {
   var readOnly = !!p.vault;
   var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h2", { "class": "sechead-h", id: "h-checks" }, "Before you launch"));
-  if (!readOnly) ha.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a launch checklist item" }, "Add item"), "click", function () { stepDialog(true, p.id); }));
   root.appendChild(ha);
-  root.appendChild(el("p", { "class": "hint" }, "These are steps from this quest’s tasks. Tick one here or in Tasks and it stays in sync."));
-  var prog = el("p", { "class": "progress", role: "status", "aria-live": "polite" });
   var items = launchItems(p.id);
-  var lcLinks = linkedQuests(p).filter(function (lp) { return lp.launchCritical; });
-  function progress() {
-    var n = items.filter(function (x) { return x.s.done; }).length + lcLinks.filter(function (lp) { return lp.status === "complete" || lp.status === "archived"; }).length;
-    var total = items.length + lcLinks.length;
-    prog.textContent = total ? n + " of " + total + " done" : "";
-  }
-  var ul = el("ul", { "class": "list check", "aria-labelledby": "h-checks" });
-  if (!items.length && !lcLinks.length) ul.appendChild(el("li", { "class": "hint" }, "No steps are on the launch checklist. Edit a step in Tasks to put it here, or add an item."));
-  items.forEach(function (x) {
-    var li = el("li", { "class": x.s.done ? "done" : "" });
-    var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = x.s.done; box.disabled = readOnly;
-    on(box, "change", function () { x.s.done = box.checked; syncFromSteps(x.t); autoVault(); sweepQuestCompletion(); recordHistory(); recordQuestHistory(); save(); li.className = box.checked ? "done" : ""; progress(); renderChrome(); });
-    label.appendChild(box); label.appendChild(el("span", null, x.s.text)); li.appendChild(label);
-    var meta = el("div", { "class": "cnote" });
-    if (x.t.vault) meta.appendChild(document.createTextNode(short(dispWhat(x.t), 48) + " (in the Vault)"));
-    else meta.appendChild(on(el("button", { type: "button", "class": "textbtn", title: "View this task" }, short(dispWhat(x.t), 48)), "click", function () { showTaskInQuest(p, x.t); }));
-    var dc = decisionFor(x.s.id);
-    if (dc) meta.appendChild(document.createTextNode(" · Decision " + (dc.a ? "decided" : "open")));
-    li.appendChild(meta);
+  var n = items.filter(function (t) { return t.status === "Completed"; }).length;
+  var total = items.length;
+  root.appendChild(el("p", { "class": "hint" }, total ? "Complete: " + n + " of " + total + " launch critical " + (total === 1 ? "task" : "tasks") : "No tasks have been marked as launch critical yet."));
+  var ul = el("ul", { "class": "tlist check", "aria-labelledby": "h-checks" });
+  items.forEach(function (t) {
+    var done = t.status === "Completed";
+    var open = !readOnly && !t.vault && ui.questOpen[p.id] === t.id;
+    var li = el("li", { id: "ltask-" + t.id });
+    var b = el("button", { type: "button", "class": "item" + (done ? " done" : ""), title: "View this task" });
+    if (!readOnly && !t.vault) b.setAttribute("aria-expanded", open ? "true" : "false");
+    var l1 = el("div", { "class": "l1 split" });
+    l1.appendChild(el("span", null, t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
+    var tag1 = addedChip(t); if (tag1) l1.appendChild(tag1);
+    b.appendChild(l1);
+    b.appendChild(el("div", { "class": "l2" }, short(dispWhat(t), 60) + (t.vault ? " (in the Vault)" : "")));
+    var l3 = el("div", { "class": "l3" });
+    l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+    stepsAndEst(l3, t);
+    if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
+    b.appendChild(l3);
+    on(b, "click", function () {
+      if (readOnly || t.vault) { openTask(t.id); return; }
+      ui.questOpen[p.id] = open ? null : t.id; renderView();
+    });
+    li.appendChild(b);
+    if (open) li.appendChild(buildDetail(t, true));
     ul.appendChild(li);
   });
-  // Read-only: done-state derives from lp's own status, never a manual checkbox.
-  lcLinks.forEach(function (lp) {
-    var done = lp.status === "complete" || lp.status === "archived";
-    var li = el("li", { "class": done ? "done" : "" });
-    var label = el("label"); var box = el("input", { type: "checkbox" }); box.checked = done; box.disabled = true;
-    label.appendChild(box); label.appendChild(el("span", null, lp.name + " (linked quest)")); li.appendChild(label);
-    var meta = el("div", { "class": "cnote" });
-    meta.appendChild(on(el("button", { type: "button", "class": "textbtn", title: "View this quest" }, "Launch critical · " + lp.status), "click", function () { go("quest:" + lp.id); }));
-    li.appendChild(meta); ul.appendChild(li);
-  });
-  progress();
-  var lb = el("div", { "class": "listbox" }); lb.appendChild(prog); lb.appendChild(ul); root.appendChild(lb);
-
+  if (total) root.appendChild(ul);
 }
 
 // Pin/Unpin for a quest, shared by In progress and the Quests list.
@@ -490,18 +504,18 @@ export function pagesSection(excludeIds) {
   var rows = liveQuests().filter(function (p) { return p.status !== "candidate" && (!excludeIds || excludeIds.indexOf(p.id) < 0); }).map(function (p) { return { id: p.id, key: "quest:" + p.id, name: p.name, meta: questMeta(p), complete: p.status === "complete" }; });
   var pending = rows.filter(function (r) { return !r.complete; }), complete = rows.filter(function (r) { return r.complete; });
   if (!rows.length) {
-    sec.appendChild(el("h2", { style: "margin-top:28px" }, "Pending and completed"));
+    sec.appendChild(el("h2", null, "Pending and completed"));
     sec.appendChild(el("p", { "class": "hint" }, "Nothing here right now."));
     return sec;
   }
   if (pending.length) {
-    sec.appendChild(el("h2", { style: "margin-top:28px" }, "Pending"));
+    sec.appendChild(el("h2", null, "Pending"));
     var pul = el("ul", { "class": "list" });
     pending.forEach(function (r) { pul.appendChild(questRow(r)); });
     sec.appendChild(pul);
   }
   if (complete.length) {
-    sec.appendChild(el("h2", { style: "margin-top:28px" }, "Completed"));
+    sec.appendChild(el("h2", null, "Completed"));
     var cul = el("ul", { "class": "list" });
     complete.forEach(function (r) { cul.appendChild(questRow(r)); });
     sec.appendChild(cul);
@@ -552,7 +566,7 @@ export function renderQuestPage(root, id) {
   else if (p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this quest is Complete. Reopen it to bring them back."));
   // orderedAll(), not ordered()/backlogTasks() -- a quest's own page keeps
   // showing its tasks even while Complete, when cross-quest lists exclude them.
-  var ts = sortTasks(live(state.tasks).filter(function (t) { return !t.isNext && t.questId === p.id; }));
+  var ts = sortTasks(live(state.tasks).filter(function (t) { return !t.isNext && t.questId === p.id && !t.launch; }));
   if (ts.length) {
     var ul = el("ul", { "class": "tlist" });
     ts.forEach(function (t) {
@@ -580,6 +594,12 @@ export function renderQuestPage(root, id) {
   if (!split) scheduleSection(root, p, readOnly);
 
   launchSection(root, p);
+
+  // A candidate isn't a real destination for other quests to link to yet.
+  if (p.status !== "candidate") {
+    root.appendChild(el("h2", null, "Quest links"));
+    linksSection(root, p);
+  }
 
   root.appendChild(el("h2", null, "Notes"));
   if (readOnly) {
@@ -638,12 +658,6 @@ export function renderQuestPage(root, id) {
     root.appendChild(giverBox);
   }
 
-  // A candidate isn't a real destination for other quests to link to yet.
-  if (p.status !== "candidate") {
-    root.appendChild(el("h2", null, "Quest links"));
-    linksSection(root, p);
-  }
-
   var ar = el("div", { "class": "actions questactions", style: "margin-top:14px" });
   if (readOnly) {
     ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Bring back to Quests" }, "Restore"), "click", function () { restoreEntry({ kind: "quest", list: "quests", item: p }); }));
@@ -686,13 +700,6 @@ export function renderQuestPage(root, id) {
   if (split) { split.appendChild(questChartsPanel(p)); split.appendChild(ar); } else { root.appendChild(ar); }
 }
 
-// On a quest's own page a task opens in place; the Tasks page is for the cross-quest list.
-function showTaskInQuest(p, t) {
-  if (p.vault) { openTask(t.id); return; }
-  ui.questOpen[p.id] = t.id; renderView();
-  var row = document.getElementById("ptask-" + t.id);
-  if (row && row.scrollIntoView) row.scrollIntoView({ block: "nearest" });
-}
 // `first` zeroes the heading's top margin; `extraBtn` rides its heading row.
 function scheduleSection(host, p, readOnly, first, extraBtn) {
   // `first` can be a plain boolean (always zero the heading's own top margin,
@@ -822,7 +829,7 @@ export function standingBlock() {
 }
 export function candidatesSection() {
   var sec = el("div");
-  var hd = el("div", { "class": "sechead", style: "margin-top:28px" }); hd.appendChild(el("h2", null, "Candidate quests")); sec.appendChild(hd);
+  var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h2", null, "Candidate quests")); sec.appendChild(hd);
   sec.appendChild(el("p", { "class": "hint" }, "Promoting a candidate quest moves it to In progress. Sending it to the Vault shelves it."));
   var list = el("ul", { "class": "list" });
   var cs = candidateQuests();
@@ -1076,16 +1083,16 @@ export function helpTopics() {
       "**Vault** sends a quest and its open tasks to the Vault together. **Restore** brings all of it back, exactly as it was."]],
     ["Link quests", [
       "**Quest links**, on a quest’s page, tie it to related quests. **Link quest** creates one, and it runs both directions, so it shows up on the other quest’s page too.",
-      "**Mark launch critical** flags a linked quest as something that has to finish first. It shows up on the other quest’s Launch checklist, counted done once the linked one is complete or vaulted. Completing or vaulting a quest with an unfinished launch-critical link only warns you, it doesn’t block you."]],
+      "**Launch critical**, beside a linked quest, flags it as something that has to finish first. **Skip Launch** undoes it. Completing or vaulting a quest with an unfinished launch-critical link only warns you, it doesn’t block you."]],
     ["Read the Timeline", [
       "Every quest gets a lane. The light bar is an estimate you set yourself on the quest’s page, not a promise.",
       "**Add milestone** places a diamond on the date you choose, also listed below the timeline. Select a diamond, or its text in that list, to change its quest, text, or date, or to remove it.",
       "A quest’s own page has its own Timeline, one lane per scheduled task, and its own Burndown beneath it. Point at a week, tap it, or focus the chart and use the arrow keys, to see the count and which tasks finish or were completed that week. The counts come straight from your tasks and can’t be edited by hand.",
       "On a quest’s own Timeline, a task’s bar takes its status color: blue for Not started, yellow for In progress, green for Completed."]],
     ["Launch checklist and decisions", [
-      "The pencil beside any step lets you rename it, put it on that quest’s **Launch** checklist, or remove it. A step on the checklist carries a **Launch** tag, and ticking it there or in Tasks keeps both in sync.",
-      "A decision always belongs to exactly one step. **Add decision** beside a step writes down what needs settling; the decision tag opens it again to answer, change, or remove it. Answering it ticks the step, and clearing the answer unticks it again.",
-      "**Add item**, on a quest’s Launch section, creates a new step for the list without going through a task first."]],
+      "A task joins its quest’s **Before you launch** checklist from its own detail: open the task and select **Launch critical**. It still lives wherever it was scheduled; the checklist just also shows it, and it’s done once the task itself is Completed. **Skip Launch**, in that same spot, takes it back off.",
+      "A launch task carries a **Launch critical** badge next to its name, both in the Tasks list and in its own detail, so you can spot it at a glance.",
+      "A decision always belongs to exactly one step. The pencil beside any step lets you rename it or remove it; **Add decision** beside a step writes down what needs settling, and the decision tag opens it again to answer, change, or remove it. Answering it ticks the step, and clearing the answer unticks it again."]],
     ["The Vault and undo", [
       "Only **Quests** and **Ideas** go to the Vault, each with its own **Vault** button. A completed task just stays in its quest, marked done.",
       "**Delete** on a task, or **Remove** on a decision or milestone, is immediate, with a short **Undo** right after in case that wasn’t what you meant.",
@@ -1470,7 +1477,7 @@ function buildQuestFromTrello(summary) {
   var tasks = summary.cards.map(function (c) {
     var blk = 0, due = "";
     if (c.due) { var b = blockForDate(p.id, parseISO(c.due)); if (b !== null) { blk = b; due = c.due; } }
-    var t = task(uid(), blk, p.id, S(c.name, 300), false, c.steps.map(function (s) { return st(uid(), s.text, false, s.done); }));
+    var t = task(uid(), blk, p.id, S(c.name, 300), false, c.steps.map(function (s) { return st(uid(), s.text, s.done); }));
     t.notes = c.desc; t.due = due; t.added = due ? iso(TODAY) : "";
     return t;
   });

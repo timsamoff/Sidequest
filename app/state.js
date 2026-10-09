@@ -11,9 +11,9 @@ export var APP_VERSION = "1.0.0";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
-export function st(id, text, launch, done) { return { id: id, text: text, done: done === true, launch: launch === true }; }
+export function st(id, text, done) { return { id: id, text: text, done: done === true }; }
 export function task(id, block, questId, what, done, steps, extra) {
-  var t = { id: id, block: block, questId: questId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0, added: "" };
+  var t = { id: id, block: block, questId: questId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0, added: "", launch: false };
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
   return t;
 }
@@ -51,26 +51,26 @@ export function sampleData() {
     quest("pNext", "Sample Next Quest", "active", { notes: "Chosen, but nothing scheduled yet." })
   ];
   var tasks = [
-    task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", false, true), st("a1b", "Sketch the sign-in screen", false, true), st("a1c", "Sketch the settings screen", false, true)], { status: "Completed", doneAt: lastWeek }),
-    task("a2", 2, "pApp", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", false, true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "In progress" }),
-    task("a3", 3, "pApp", "Build the home screen", "The list loads quickly and scrolls smoothly", [st("a3a", "Show the list of items", false, true), st("a3b", "Add pull to refresh"), st("a3c", "Handle an empty list")], { status: "In progress", notes: "Ask a friend to try this on an older phone before moving on." }),
-    task("a4", 4, "pApp", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link", true), st("a4c", "Collect and sort the feedback")]),
-    task("a5", 5, "pApp", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true, true), st("a5a", "Write the store description", true), st("a5b", "Prepare screenshots", true), st("a5c", "Submit for review", true)]),
+    task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", true), st("a1b", "Sketch the sign-in screen", true), st("a1c", "Sketch the settings screen", true)], { status: "Completed", doneAt: lastWeek }),
+    task("a2", 2, "pApp", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "In progress" }),
+    task("a3", 3, "pApp", "Build the home screen", "The list loads quickly and scrolls smoothly", [st("a3a", "Show the list of items", true), st("a3b", "Add pull to refresh"), st("a3c", "Handle an empty list")], { status: "In progress", notes: "Ask a friend to try this on an older phone before moving on." }),
+    task("a4", 4, "pApp", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link"), st("a4c", "Collect and sort the feedback")]),
+    task("a5", 5, "pApp", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true), st("a5a", "Write the store description"), st("a5b", "Prepare screenshots"), st("a5c", "Submit for review")], { launch: true }),
     task("a6", 0, "pApp", "Add a dark mode", "Every screen passes a contrast check in dark mode", []),
-    task("w1", 1, "pSite", "Write the page copy", "Every page has final text", [st("w1a", "Write the home page", false, true), st("w1b", "Write the about page"), st("w1c", "Write the contact page")], { status: "In progress" }),
+    task("w1", 1, "pSite", "Write the page copy", "Every page has final text", [st("w1a", "Write the home page", true), st("w1b", "Write the about page"), st("w1c", "Write the contact page")], { status: "In progress" }),
     task("w2", 2, "pSite", "Build the layout", "Pages look right on a phone and a laptop", [st("w2a", "Build the header and footer"), st("w2b", "Make the layout work on phones"), st("w2c", "Compress the images")]),
-    task("w3", 3, "pSite", "Launch the site", "The site is live and checked", [st("w3a", "Point the domain at the site", true), st("w3b", "Check every page on a phone", true), st("w3c", "Announce it", true)]),
+    task("w3", 3, "pSite", "Launch the site", "The site is live and checked", [st("w3a", "Point the domain at the site"), st("w3b", "Check every page on a phone"), st("w3c", "Announce it")]),
     task("g1", 1, "pGame", "Prototype the core mechanic", "Someone can play for one minute", [st("g1a", "Make the player move"), st("g1b", "Add one obstacle"), st("g1c", "Add a win and a lose state")]),
     task("g2", 2, "pGame", "Make the first ten levels", "Ten levels load and can be finished start to end"),
-    task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid", true), st("g3c", "Record a trailer", true)]),
+    task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid"), st("g3c", "Record a trailer")]),
     task("g4", 0, "pGame", "Add a level editor", "Players can build, save, and share a level"),
     task("n1", 6, null, "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true }),
     // pDone's own tasks, all finished. Four weekly tasks at weight 2 each give
     // an even planned line, which doneHistory above then zig-zags around.
-    task("d1", 1, "pDone", "Design the feature", "The design is agreed", [st("d1a", "Sketch the approach", false, true), st("d1b", "Get sign-off", false, true)], { status: "Completed", doneAt: day(-22) }),
-    task("d2", 2, "pDone", "Build the core feature", "It works end to end", [st("d2a", "Build the happy path", false, true), st("d2b", "Handle errors", false, true)], { status: "Completed", doneAt: day(-15) }),
-    task("d3", 3, "pDone", "Test it", "The top bugs are fixed", [st("d3a", "Run through every screen", false, true), st("d3b", "Fix what’s broken", false, true)], { status: "Completed", doneAt: day(-8) }),
-    task("d4", 4, "pDone", "Ship it", "It’s live", [st("d4a", "Write the release notes", false, true), st("d4b", "Announce it", false, true)], { status: "Completed", doneAt: day(-1) })
+    task("d1", 1, "pDone", "Design the feature", "The design is agreed", [st("d1a", "Sketch the approach", true), st("d1b", "Get sign-off", true)], { status: "Completed", doneAt: day(-22) }),
+    task("d2", 2, "pDone", "Build the core feature", "It works end to end", [st("d2a", "Build the happy path", true), st("d2b", "Handle errors", true)], { status: "Completed", doneAt: day(-15) }),
+    task("d3", 3, "pDone", "Test it", "The top bugs are fixed", [st("d3a", "Run through every screen", true), st("d3b", "Fix what’s broken", true)], { status: "Completed", doneAt: day(-8) }),
+    task("d4", 4, "pDone", "Ship it", "It’s live", [st("d4a", "Write the release notes", true), st("d4b", "Announce it", true)], { status: "Completed", doneAt: day(-1) })
   ];
   var EST = { a1: 3, a2: 6, a3: 8, a4: 4, a5: 5, a6: 4, w1: 3, w2: 10, w3: 2, g1: 12, g2: 20, g3: 8, g4: 16, d1: 6, d2: 12, d3: 8, d4: 3 };
   tasks.forEach(function (t) { if (EST[t.id]) t.est = EST[t.id]; });
@@ -208,10 +208,14 @@ export function normalize(s) {
       var tdue = b > 0 && isISO(t.due) ? t.due : "", tstart = b > 0 && isISO(t.start) ? t.start : "";
       if (tstart && tdue && tstart > tdue) tstart = "";
       var test = typeof t.est === "number" && t.est > 0 && t.est <= 9999 ? Math.round(t.est * 100) / 100 : 0;
+      // The launch checklist now holds whole tasks, not steps -- a task with
+      // any step that used to be flagged launch becomes a launch task itself,
+      // so an old saved checklist isn't silently emptied.
+      var wasStepLaunch = Array.isArray(t.steps) && t.steps.some(function (x) { return x && x.launch === true; });
       ts.push({
         id: S(t.id, 40), block: b, questId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
-        custom: t.custom === true, isNext: t.isNext === true,
+        custom: t.custom === true, isNext: t.isNext === true, launch: t.launch === true || wasStepLaunch,
         vault: validVault(t.vault || t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : ""
       });
     });

@@ -159,19 +159,25 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk()); k.tab("today"); k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   ok(k.$("viewTitle").textContent === "Sample App" && k.$("view").textContent.includes("Before you launch") && k.$("view").textContent.includes("Launch"), "project page has a Launch section, scoped to this project");
-  const lb = k.d.querySelector("#view .listbox");
-  ok(/^\d+ of \d+ done$/.test(lb.querySelector(".progress").textContent) && lb.querySelectorAll("ul.list.check li").length === 6, "Sample App's checklist is its own 5 launch-flagged steps plus 1 launch-critical linked project (" + lb.querySelectorAll("ul.list.check li").length + ")");
-  ok(lb.textContent.includes("Sample Website (linked quest)") && lb.textContent.includes("Launch critical"), "the launch-critical linked quest appears as a read-only checklist line");
+  ok(!k.btn(k.$("view"), "Launch task"), "there is no separate Launch task button; a task joins the checklist from its own detail");
+  const checkList = () => [...k.d.querySelectorAll("#view .tlist.check li")];
+  ok(/^Complete: \d+ of \d+ launch critical tasks?$/.test(k.d.querySelector("#view h2#h-checks").closest(".sechead").nextElementSibling.textContent) && checkList().length === 1, "Sample App's checklist is its own 1 launch task, with linked quests excluded (" + checkList().length + ")");
+  ok(checkList().some(li => li.textContent.includes("Submit to the app store")), "the launch task itself appears in the checklist");
+  ok(!checkList().some(li => li.textContent.includes("Sample Website")), "a linked quest no longer appears in the Before you launch checklist");
   ok(!k.d.querySelector("#view .decision") && ![...k.d.querySelectorAll("#view h3")].some(h => h.textContent === "Decisions") && !k.btn(k.$("view"), "Add decision"), "the project page no longer has a Decisions section (decisions live on steps in Tasks)");
-  ok(k.d.querySelector("#view .list.check li.done") && k.d.querySelector("#view .list.check").textContent.includes("Choose the first app store"), "answered decision's step is already ticked");
-  // sync
-  const before = k.d.querySelector("#view .progress").textContent;
-  const box = [...k.d.querySelectorAll("#view .list.check li")].find(li => li.textContent.includes("Prepare screenshots")).querySelector("input"); box.checked = true; k.fire(box);
-  ok(k.d.querySelector("#view .progress").textContent !== before, "ticking updates progress");
-  // step toggle wording
-  k.tab("schedule"); k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Submit to the app store")));
-  ok(!k.btn(k.d.querySelector(".detailpane"), "Cut from Launch") && !k.btn(k.d.querySelector(".detailpane"), "Add to Launch") && [...k.d.querySelectorAll(".detailpane .steps .chip")].some(c => c.textContent === "Launch"), "a step's Launch state is now a chip on its row, and the toggle lives in the step dialog");
-  k.click(k.btn(k.d.querySelector("#nav"), "Sample App")); k.click(k.btn(k.$("view"), "Add item")); ok(k.$("modalTitle").textContent === "New launch item", "Add item dialog uses launch wording"); k.click(k.$("modalClose"));
+  ok(![...k.d.querySelectorAll("#view .tlist:not(.check) .item")].some(b => b.textContent.includes("Submit to the app store")), "a launch task does not also show up in the regular Tasks list on the quest page");
+  ok([...k.d.querySelectorAll("#view .tlist:not(.check) .l2 .chip")].some(c => c.textContent === "Launch critical") === false, "a launch task's own badge only shows inside the checklist, not duplicated elsewhere on this page since it's excluded from the regular list");
+  // opening the launch row expands the task inline, same as a regular Tasks row
+  const launchBtn = checkList().map(li => li.querySelector(".item")).find(b => b && b.textContent.includes("Submit to the app store"));
+  k.click(launchBtn);
+  const detail = () => k.d.querySelector("#view .tlist.check .detail");
+  ok(!!detail().querySelector(".chip") && detail().textContent.includes("Launch critical"), "the expanded launch task shows a Launch critical badge");
+  ok(!!k.btn(detail(), "Open in Tasks") && !!k.btn(detail(), "Skip Launch") && !!k.btn(detail(), "Delete") && !k.btn(detail(), "Launch critical"), "a launch task's detail offers Open in Tasks, Skip Launch, and Delete");
+  ok(detail().querySelector(".steps li.done") && detail().querySelector(".steps").textContent.includes("Choose the first app store"), "answered decision's step is already ticked");
+  // Skip Launch takes the task off the checklist without deleting it
+  k.click(k.btn(detail(), "Skip Launch"));
+  ok(!checkList().some(li => li.textContent.includes("Submit to the app store")), "Skip Launch removes the task from the checklist");
+  ok([...k.d.querySelectorAll("#view .tlist:not(.check) .item")].some(b => b.textContent.includes("Submit to the app store")), "the task itself is still a real task, now back in the regular list");
 }
 
 /* ---- decisions live on steps, in Tasks ---- */
@@ -183,7 +189,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const row = (text) => [...pane().querySelectorAll(".steps li")].find(li => li.textContent.includes(text));
   ok(!!k.btn(row("Choose the first app store"), "Decision: decided") && !k.btn(row("Choose the first app store"), "Add decision"), "a step with a decision shows it as a chip, not an Add button");
   ok(!!k.btn(row("Write the store description"), "Add decision"), "a step without a decision offers Add decision");
-  ok(!k.btn(row("Choose the first app store"), "Remove") && !!row("Choose the first app store").querySelector("button.pencil"), "a step row has just the decision control and one edit pencil");
+  ok(!!row("Choose the first app store").querySelector("button.pencil") && !!k.btn(row("Choose the first app store"), "Remove"), "a step row has a decision control, an edit pencil, and a Remove button");
   k.click(k.btn(row("Write the store description"), "Add decision"));
   ok(k.$("modalTitle").textContent === "New decision" && !k.$("f-step") && k.$("modalBody").textContent.includes("For the step: Write the store description"), "Add decision opens with that step already chosen");
   k.setField("q", "Which tone should the store text use?");
@@ -223,25 +229,23 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!viaCascade && !!k.saved().tasks.find(t => t.id === viaCascade.step || t.steps.some(s => s.id === viaCascade.step) && t.questId === "pSite"), "a decision added through the cascade links to a real step on the chosen quest");
 }
 {
-  // editing a step: text, Launch flag, and Remove (which takes its decision with it)
+  // editing a step: the name is inline-editable, Remove is a plain row button
   const k = kit(await mk());
   k.tab("schedule");
   k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Submit to the app store")));
   const row = (text) => [...k.d.querySelectorAll(".detailpane .steps li")].find(li => li.textContent.includes(text));
   const st = (id) => k.saved().tasks.find(t => t.id === "a5").steps.find(s => s.id === id);
-  ok(!!row("Prepare screenshots").querySelector(".chip"), "a launch step shows a Launch chip");
   k.click(row("Prepare screenshots").querySelector("button.pencil"));
-  ok(k.$("modalTitle").textContent === "Edit step" && k.$("f-text").value === "Prepare screenshots" && k.$("f-launch").checked === true, "the pencil opens the step dialog, pre-filled with its text and Launch flag");
-  k.setField("text", "Prepare four screenshots"); k.$("f-launch").checked = false;
-  k.click(k.btn(k.$("modalBody"), "Save step"));
-  ok(st("a5b").text === "Prepare four screenshots" && st("a5b").launch === false, "Save updates the same step's text and Launch flag");
-  ok(!row("Prepare four screenshots").querySelector(".chip"), "the Launch chip goes away");
-  k.click(row("Prepare four screenshots").querySelector("button.pencil")); k.setField("text", ""); k.click(k.btn(k.$("modalBody"), "Save step"));
-  ok(!k.$("overlay").hidden && st("a5b").text === "Prepare four screenshots", "an empty step is rejected");
-  k.click(k.btn(k.$("modalBody"), "Cancel"));
-  k.click(row("Choose the first app store").querySelector("button.pencil"));
-  ok(k.$("modalBody").textContent.includes("Removing this step also removes its decision"), "the dialog warns that Remove takes the step's decision");
-  k.click(k.btn(k.$("modalBody"), "Remove"));
+  const i = row("Prepare screenshots").querySelector(".inlineedit");
+  i.value = "Prepare four screenshots";
+  i.dispatchEvent(new k.w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  ok(st("a5b").text === "Prepare four screenshots", "the pencil edits a step's text in place");
+  k.click(row("Prepare four screenshots").querySelector("button.pencil"));
+  const i2 = row("Prepare four screenshots").querySelector(".inlineedit");
+  i2.value = "";
+  i2.dispatchEvent(new k.w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  ok(st("a5b").text === "Prepare four screenshots", "an empty step name is rejected");
+  k.click(k.btn(row("Choose the first app store"), "Remove"));
   ok(!st("a5z") && !k.saved().decisions.find(d => d.step === "a5z"), "Remove deletes the step and its decision");
 }
 {
@@ -498,7 +502,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   ok([...k.d.querySelectorAll("#view .list li")].some(li => li.textContent.includes("Sample Website") && li.textContent.includes("Launch critical")), "Linked Quests shows a Launch critical badge for Sample Website");
-  ok(!!k.btn(k.$("view"), "Unmark launch critical"), "the toggle button reflects Sample Website's launch-critical state from Sample App's own page");
+  ok(!!k.btn(k.$("view"), "Skip Launch"), "the toggle button reflects Sample Website's launch-critical state from Sample App's own page");
   // sending Sample App to the Vault warns (soft gate) since Sample Website (launch-critical) is not complete/vaulted, but does not block
   k.click(k.btn(k.$("view"), "Vault"));
   ok(k.saved().quests.find(p => p.id === "pApp").vault, "sending to the Vault proceeds even with an incomplete launch-critical link (soft gate only, never a hard block)");
@@ -742,7 +746,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   const split = k.d.querySelector("#view .questsplit");
   ok(!!split && !!split.querySelector(".questmain") && !split.querySelector(".questtop") && !split.querySelector(".questrest") && !!split.querySelector(".questcharts"), "an active quest's page has one content column and a Schedule/Timeline/Burndown column");
-  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Notes,Quest Giver,Quest links", "the left column runs Tasks, Before you launch, Notes, Quest Giver, then Quest links (" + [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() + ")");
+  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Quest links,Notes,Quest Giver", "the left column runs Tasks, Before you launch, Quest links, Notes, then Quest Giver (" + [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() + ")");
   ok(!split.querySelector(".pintoggle") && !split.querySelector(".pinbar"), "there is no Pin button on a quest's own page");
   ok(split.querySelector(".questmain").textContent.includes("Complete: 1 of 6 tasks | Backlog: 1 unscheduled task"), "the task-count line sits under the Tasks heading");
   const side = split.querySelector(".questcharts");
@@ -823,11 +827,11 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(before === "Est. 27 hours remaining" && after === "Est. 23 hours remaining", "completing a 4 h task lowers the open estimate (" + before + " -> " + after + ")");
   k.click(k.d.querySelector("#view .questmain .tlist button.item[aria-expanded='true']"));
   ok(!k.d.querySelector("#view .questmain .tlist .detail"), "clicking the open task again closes it");
-  // the launch checklist's task link opens the task in place too
-  const launchLink = [...k.d.querySelectorAll("#view .questmain .textbtn")].find(b => b.title === "View this task");
-  k.click(launchLink);
-  ok(k.$("viewTitle").textContent === "Sample App" && !!k.d.querySelector("#view .questmain .tlist .detail"), "a task link in Before you launch opens that task in place");
-  k.click(k.btn(k.d.querySelector("#view .questmain .detail"), "Open in Tasks"));
+  // the launch checklist's own task row also opens the task in place, same as a regular Tasks row
+  const launchRow = [...k.d.querySelectorAll("#view .questmain .tlist.check button.item")].find(b => b.textContent.includes("Submit to the app store"));
+  k.click(launchRow);
+  ok(k.$("viewTitle").textContent === "Sample App" && !!k.d.querySelector("#view .questmain .tlist.check .detail"), "a task row in Before you launch opens that task in place");
+  k.click(k.btn(k.d.querySelector("#view .questmain .tlist.check .detail"), "Open in Tasks"));
   ok(k.$("viewTitle").textContent === "Tasks", "Open in Tasks goes to the Tasks page");
 }
 {
@@ -876,18 +880,20 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(hits >= 5 && hits <= 7, "the quest's own chart is daily too (" + hits + " points for a 4-day schedule)");
 }
 {
-  // ticking a step from the launch checklist counts like any other change: history is recorded and the quest can complete
+  // completing a launch task's last step counts like any other change: history is recorded and the quest can complete
   const d = new Date(), n = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()), iso = k => new Date(n + k * 86400000).toISOString().slice(0, 10);
   const saved = {
-    projects: [{ id: "pL", name: "Launchy", status: "active", start: iso(-1), days: 7 }],
-    tasks: [{ id: "l1", block: 1, projectId: "pL", what: "Ship it", done: "d", status: "Not started", steps: [{ id: "l1a", text: "Press the button", done: false, launch: true }] }]
+    quests: [{ id: "pL", name: "Launchy", status: "active", start: iso(-1), days: 7 }],
+    tasks: [{ id: "l1", block: 1, questId: "pL", what: "Ship it", status: "Not started", launch: true, steps: [{ id: "l1a", text: "Press the button", done: false }] }]
   };
   const k = kit(await mk(saved));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Launchy"));
-  const box = [...k.d.querySelectorAll("#view .list.check input[type=checkbox]")][0];
+  const launchRow = [...k.d.querySelectorAll("#view .tlist.check button.item")].find(b => b.textContent.includes("Ship it"));
+  k.click(launchRow);
+  const box = [...k.d.querySelectorAll("#view .steps input[type=checkbox]")][0];
   box.checked = true; k.fire(box);
   const sv = k.saved();
-  ok(sv.tasks[0].status === "Completed" && JSON.stringify(sv.quests[0].hist[iso(0)]) === "[1,0]", "ticking the last step in Before you launch completes the task and records the quest's counts");
+  ok(sv.tasks[0].status === "Completed" && JSON.stringify(sv.quests[0].hist[iso(0)]) === "[1,0]", "ticking the last step on a launch task completes the task and records the quest's counts");
   ok(sv.quests[0].status === "complete" && k.$("modalTitle").textContent === "Quest complete", "and the quest completes from there too");
 }
 {
@@ -1403,7 +1409,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const chips = [...k.d.querySelectorAll("#view .questmain .l3 span")].map(s => s.textContent);
   ok(chips.includes("Est 3 h") && chips.includes("Est 6 h"), "task rows on the quest page show their estimate as Est N h");
   const heads = [...k.d.querySelectorAll("#view .questmain h2")].map(h => h.textContent);
-  ok(heads.join() === "Tasks,Before you launch,Notes,Quest Giver,Quest links", "the quest page order is Tasks, Before you launch, Notes, Quest Giver, Quest links (" + heads.join() + ")");
+  ok(heads.join() === "Tasks,Before you launch,Quest links,Notes,Quest Giver", "the quest page order is Tasks, Before you launch, Quest links, Notes, Quest Giver (" + heads.join() + ")");
   const g1 = sv.find(t => t.id === "g1");
   ok(g1.block === 1 && g1.start && g1.due && g1.start < g1.due, "Sample Game's first task keeps block 1 with its own start and due");
   const gp = k.saved().quests.find(p => p.id === "pGame");

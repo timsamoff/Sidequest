@@ -1,7 +1,7 @@
 import { state, ui, changed, isISO, task, quest as makeQuest } from "./state.js";
 import { iso, addDays, parseISO, fmt, fmtY, TODAY } from "./dates.js";
 import {
-  wd, wl, wpC, counted, activeQuests, liveQuests, findQuest, dispQuest, nextTask, findTask,
+  wd, wl, wpC, activeQuests, liveQuests, findQuest, dispQuest, nextTask, findTask,
   orderedAll, taskOptions, stepOptions, stepOptionsForTask, syncFromSteps, findStep, decisionFor,
   pset, blockStartFor, blockEndFor, blockForDate, taskStart, taskEnd, linkQuests
 } from "./model.js";
@@ -271,39 +271,23 @@ export function decisionEditDialog(dec, onRemove) {
 }
 // Edits one step in place: its text and whether it is on the Launch checklist. Remove
 // also removes its decision, since a decision must belong to a step.
-export function stepEditDialog(t, s) {
-  var hasDecision = !!decisionFor(s.id);
-  formDialog("Edit step", [
-    { key: "text", label: "Step", value: s.text },
-    { key: "launch", label: "On the launch checklist", type: "checkbox", value: s.launch }
-  ], "Save step", function (v) {
-    if (!v.text) return "Enter the step.";
-    s.text = v.text.slice(0, 300); s.launch = v.launch === "1"; changed();
-    return { msg: "Step saved." };
-  }, hasDecision ? "Removing this step also removes its decision." : undefined,
-  { label: "Remove", title: "Remove this step", onClick: function () {
-    t.steps = t.steps.filter(function (x) { return x.id !== s.id; });
-    state.decisions = state.decisions.filter(function (x) { return x.step !== s.id; });
-    syncFromSteps(t); changed();
-  } });
-}
-export function stepDialog(launchItem, prefillQuestId) {
+export function stepDialog(prefillQuestId) {
   if (!orderedAll().length) { notify("Add a task first."); return; }
   var selTask = ui.sel && findTask(ui.sel);
   var startId = prefillQuestId || (selTask ? selTask.questId : "");
   var questOpts = [{ value: "", label: "All quests" }].concat(liveQuests().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; }));
   var pick = selTask ? selTask.id : ((nextTask() || orderedAll()[0]).id);
-  formDialog(launchItem ? "New launch item" : "New step", [
+  formDialog("New step", [
     { key: "quest", label: "Quest", type: "select", options: questOpts, value: startId },
     { key: "task", label: "Task", type: "select", options: taskOptions(startId), value: pick },
-    { key: "text", label: launchItem ? "What needs doing before you launch?" : "Step" }
+    { key: "text", label: "Step" }
   ], "Add step", function (v) {
     var t = findTask(v.task);
     if (!v.text) return "Enter the step.";
     if (!t) return "Choose a task.";
-    t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false, launch: !!launchItem }); syncFromSteps(t); changed();
-    return { msg: "Step added to " + dispQuest(t) + (launchItem ? " and the launch checklist." : ".") };
-  }, launchItem ? "The step lives in a task and also shows on this quest’s launch checklist." : "Steps can be added on all tasks within a quest.");
+    t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false }); syncFromSteps(t); changed();
+    return { msg: "Step added to " + dispQuest(t) + "." };
+  }, "Steps can be added on all tasks within a quest.");
   var questSel = $("f-quest"), taskSel = $("f-task");
   if (questSel && taskSel) {
     on(questSel, "change", function () {

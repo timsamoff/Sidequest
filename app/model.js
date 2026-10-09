@@ -228,12 +228,10 @@ export function findStep(id) {
 }
 export function decisionFor(stepId) { var ds = live(state.decisions); for (var i = 0; i < ds.length; i++) if (ds[i].step === stepId) return ds[i]; return null; }
 export function short(str, n) { return str.length > n ? str.slice(0, n - 1) + "…" : str; }
-// Launch-critical steps, scoped to one quest -- renders as a section on
+// Tasks flagged for a quest's own launch checklist -- renders as a section on
 // that quest's own page (no separate global Launch page anymore).
 export function launchItems(questId) {
-  var out = [];
-  orderedCounted().forEach(function (t) { if (t.questId !== questId) return; t.steps.forEach(function (s) { if (s.launch) out.push({ t: t, s: s }); }); });
-  return out;
+  return orderedCounted().filter(function (t) { return t.questId === questId && t.launch; });
 }
 // A decision must link to a real step -- no "None" option. If questId is
 // given, only that quest's steps are offered.

@@ -151,6 +151,8 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .chip[data-v="Not started"] { background: var(--chip-new); }
 .chip[data-v="In progress"] { background: var(--chip-work); }
 .chip[data-v="Completed"], .chip.questcomplete { background: var(--chip-done); }
+.chip.added { background: var(--chip-new); }
+.chip.launchcrit { background: var(--chip-work); }
 .tlist { list-style: none; margin: var(--space-10) 0 0; padding: 0; overflow: hidden; }
 .tlist li { border-bottom: 1px solid var(--line); }
 .tlist li:last-child { border-bottom: 0; }
