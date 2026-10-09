@@ -2149,10 +2149,10 @@ function renderExportDocument(snapshot) {
   html += "<h1>" + escHtml(p.name) + " <span class=\"chip ereadonly\">Read only</span></h1>\n<p class=\"ehint\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ".</p>\n";
   html += toc + sections;
   html += "<p class=\"efoot\">Exported from Sidequest on " + escHtml(snapshot.exportedAt) + ".</p>\n";
-  // Escaping "</" stops a task name or note containing a literal "</script>"
+  // Escaping "</" stops a task name or note containing a literal "<\/script>"
   // from closing the tag early and corrupting the rest of the file.
   var chartsJson = JSON.stringify({ charts: chartsById }).replace(/<\//g, "<\\/");
-  html += "</div>\n<script>window.__sqExport=" + chartsJson + ";</script>\n<script>" + RUNTIME_JS + "</script>\n</body>\n</html>\n";
+  html += "</div>\n<script>window.__sqExport=" + chartsJson + ";<\/script>\n<script>" + RUNTIME_JS + "<\/script>\n</body>\n</html>\n";
   return html;
 }
 

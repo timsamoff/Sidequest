@@ -143,6 +143,15 @@ function build() {
   }).join("\n");
   var bundledScript = "(function () {\n\"use strict\";\n" + sfxVarDecls + "\n" + scriptParts.join("\n\n") + "\n})();\n";
 
+  // A literal "</script" anywhere in the bundled text (e.g. export.js's own
+  // runtime-embedding string) closes the outer <script> tag early once this
+  // is dropped into HTML, truncating the rest of the bundle -- the artifact
+  // then fails to parse at all ("Unexpected end of input"), frozen on the
+  // splash since nothing after that point ever runs. Breaking up the sequence
+  // is safe wherever it occurs inside a JS string (the only place it should
+  // ever appear in source); it has no other valid meaning in this bundle.
+  bundledScript = bundledScript.replace(/<\/script/gi, "<\\/script");
+
   Object.keys(SFX_FILES).forEach(function (relPath) {
     var literal = '"' + relPath + '"';
     if (bundledScript.indexOf(literal) === -1) throw new Error("build-artifact: expected to find " + literal + " in the bundled script to inline as a sound effect, but it wasn't there -- check the reference hasn't changed.");
@@ -180,6 +189,7 @@ function build() {
   if (/(href|src)="assets\//.test(out)) throw new Error("build-artifact: a relative assets/ reference survived into the bundle -- these don't resolve on a published artifact with no adjacent asset folder.");
   if (/"assets\/sfx\//.test(out)) throw new Error("build-artifact: a relative assets/sfx/ string literal survived into the bundle -- the sound-effect inlining above didn't replace it.");
   if (/rel="manifest"/.test(out)) throw new Error("build-artifact: a manifest <link> survived into the bundle -- a published artifact has no manifest.json alongside it.");
+  if (bundledScript.search(/<\/script/i) !== -1) throw new Error("build-artifact: an unescaped </script> sequence survived in the bundled script -- it would close the tag early and truncate the rest of the file.");
   if (out.indexOf(faviconDataUri) === -1) throw new Error("build-artifact: favicon <link> tags not found/replaced -- check index.html's <head> hasn't changed shape.");
   if (out.indexOf("<style>") === -1) throw new Error("build-artifact: css <link> tags not found/replaced -- check index.html's <head> hasn't changed shape.");
   if (out.indexOf(bundledScript) === -1) throw new Error("build-artifact: script tag not found/replaced -- check index.html's closing <body> hasn't changed shape.");
