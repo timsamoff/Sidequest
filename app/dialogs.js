@@ -157,7 +157,7 @@ export function questDialog() {
     { key: "giverCoin", label: "Bounty", type: "number", min: "0", max: "999999", step: "1" },
     { key: "giverPer", label: "Per", type: "select", options: [{ value: "Hour", label: "Hour" }, { value: "Quest", label: "Quest" }] }
   ], "Add quest", function (v) {
-    if (!v.name) return "Enter a quest name.";
+    if (!v.name) return "Enter a title for the candidate quest.";
     var coinN = v.giverCoin === "" ? "" : parseInt(v.giverCoin, 10);
     var coin = (coinN === "" || isNaN(coinN) || coinN < 0) ? "" : Math.min(999999, coinN);
     var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200), coin: coin, per: v.giverPer === "Quest" ? "Quest" : "Hour" };
