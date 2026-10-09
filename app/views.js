@@ -223,13 +223,12 @@ export function taskRow(t) {
   var b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
   if (t.id === ui.sel) b.setAttribute("aria-current", "true");
   var l1 = el("div", { "class": "l1 split" }), l1t = el("span"); l1t.appendChild(el("b", null, dispQuest(t)));
-  l1t.appendChild(document.createTextNode(" · "));
-  if (t.block === 0) l1t.appendChild(el("span", { "class": "chip backlog" }, "Backlog"));
-  else l1t.appendChild(document.createTextNode(fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
+  if (t.block !== 0) l1t.appendChild(document.createTextNode(" · " + fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
   l1.appendChild(l1t);
   var tag1 = addedChip(t); if (tag1) l1.appendChild(tag1);
   b.appendChild(l1);
   var l2 = el("div", { "class": "l2" });
+  if (t.block === 0) l2.appendChild(el("span", { "class": "chip backlog", style: "margin-right:8px" }, "Backlog"));
   if (t.launch) l2.appendChild(el("span", { "class": "chip launchcrit", style: "margin-right:8px" }, "Launch critical"));
   l2.appendChild(document.createTextNode(dispWhat(t)));
   b.appendChild(l2);
@@ -422,7 +421,7 @@ export function linksSection(root, p) {
     var nm = el("button", { type: "button", "class": "textbtn qlink", title: "View this quest" }, lp.name);
     on(nm, "click", function () { go("quest:" + lp.id); });
     row.appendChild(nm);
-    if (lp.launchCritical) row.appendChild(el("span", { "class": "chip" }, "Launch critical"));
+    if (lp.launchCritical) row.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
     if (!readOnly) {
       var acts = el("div", { "class": "li-actions" });
       // Toggles lp's own record -- visible from either side of the link.

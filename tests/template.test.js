@@ -151,8 +151,9 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // dates: three different starts
   k.tab("schedule");
   const l1 = [...k.d.querySelectorAll(".listpane .item .l1")].map(x => x.textContent);
-  const starts = new Set(l1.filter(t => /Sample (App|Website|Game)/.test(t)).map(t => t.split("·")[0].trim() + "|" + (t.split("·")[1] || "").trim().split(" to ")[0]));
-  ok(new Set(l1.map(t => t.split("·")[1].trim().split(" to ")[0])).size >= 5, "projects start at different times (own start dates and pace)");
+  const scheduled = l1.filter(t => t.includes("·"));
+  const starts = new Set(scheduled.filter(t => /Sample (App|Website|Game)/.test(t)).map(t => t.split("·")[0].trim() + "|" + (t.split("·")[1] || "").trim().split(" to ")[0]));
+  ok(new Set(scheduled.map(t => t.split("·")[1].trim().split(" to ")[0])).size >= 5, "projects start at different times (own start dates and pace)");
 }
 
 /* ---- Launch section on a project page ---- */
