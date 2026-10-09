@@ -90,7 +90,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.2.1"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.2.2"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -1294,7 +1294,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   }
   {
     // a stamp that is not actually newer (or malformed) never shows the banner
-    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "0.2.1" } });
+    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "0.2.2" } });
     const k = kit(await mk(null, f.claude)); await wait();
     ok(!k.$("view").textContent.includes("Sidequest has leveled up!"), "a stamp equal to the current version shows no banner");
   }
@@ -1413,6 +1413,26 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(gh.length === 7 && g.getAttribute("tabindex") === "0", "the global burndown has a hover column per week and is a keyboard stop");
   const gnamed = gh.map(h => { fire(h, "mouseenter"); const s = k.d.querySelector("#view .charttip").textContent; fire(h, "mouseleave"); return s; });
   ok(gnamed.some(s => /Finishing: Sample [A-Za-z]+: /.test(s)), "and its tooltip names the project with each finishing task (" + gnamed.filter(s => /Finishing/.test(s))[0].replace(/\n/g, " | ") + ")");
+}
+
+{
+  // the Gantt's own red today line is a real, labeled control with its own
+  // tap-to-pin tooltip, same hover/tap/keyboard pattern as the burndown's points
+  const k = kit(await mk());
+  k.tab("timeline");
+  const todayLine = k.d.querySelector("#view .range .today");
+  ok(todayLine.getAttribute("role") === "button" && todayLine.getAttribute("tabindex") === "0" && /^Today, /.test(todayLine.getAttribute("aria-label")), "the today line is a keyboard-reachable control with a real date label");
+  const tip = () => k.d.querySelector("#view .todaytip");
+  ok(tip().hidden, "the tooltip starts hidden");
+  k.fire(todayLine, "mouseenter");
+  ok(!tip().hidden && /^Today, /.test(tip().textContent), "hovering the line shows its date");
+  k.fire(todayLine, "mouseleave");
+  ok(tip().hidden, "and hides again once the pointer leaves, unpinned");
+  k.click(todayLine);
+  k.fire(todayLine, "mouseleave");
+  ok(!tip().hidden, "a tap/click pins the tooltip open even after the pointer leaves");
+  k.d.body.dispatchEvent(new k.w.Event("pointerdown", { bubbles: true }));
+  ok(tip().hidden, "tapping elsewhere dismisses the pinned tooltip");
 }
 
 {

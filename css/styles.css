@@ -168,6 +168,12 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .item[aria-current="true"], .item[aria-expanded="true"] { background: var(--sel); box-shadow: inset 4px 0 0 var(--planned); }
 /* A task opened in place on a quest's page: part of the list, not a separate card. */
 .tlist li > .detail { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
+/* The whole row, not just the title button, goes light blue while a task is
+   expanded for editing in place -- :has() is fine here since this project
+   targets modern Chromium only. aria-current (the Tasks page's own split-pane
+   selection, no .detail sibling) is deliberately excluded. */
+.tlist li:has(> .item[aria-expanded="true"]) { background: var(--sel); }
+.tlist li:has(> .item[aria-expanded="true"]) > .item { box-shadow: none; }
 .metarow { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--space-4) var(--space-12); }
 .estleft { margin-left: auto; white-space: nowrap; }
 .item .l1 { color: var(--muted); font-size: var(--text-sm); }
@@ -293,8 +299,8 @@ tbody tr:last-child td { border-bottom: 0; }
 .chart .hit { fill: transparent; }
 svg.chart.nofocusring { outline: none; }
 .chart .guide { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
-.charttip { position: absolute; z-index: 3; max-width: 300px; padding: var(--space-8) var(--space-10); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-control); box-shadow: 0 4px 14px rgba(0, 0, 0, .18); font-size: var(--text-sm); line-height: 1.35; white-space: pre-line; pointer-events: none; }
-.charttip[hidden] { display: none; }
+.charttip, .todaytip { position: absolute; z-index: 3; max-width: 300px; padding: var(--space-8) var(--space-10); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-control); box-shadow: 0 4px 14px rgba(0, 0, 0, .18); font-size: var(--text-sm); line-height: 1.35; white-space: pre-line; pointer-events: none; }
+.charttip[hidden], .todaytip[hidden] { display: none; }
 /* A task's bar takes its status color, with a faint edge so a pale bar still reads on the gray track. */
 .bar.new, .bar.work, .bar.done { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-ink) 28%, transparent); }
 .bar.new { background: var(--chip-new); }
@@ -329,7 +335,11 @@ svg.chart.nofocusring { outline: none; }
 /* The diamond is only 14px, so an invisible larger area makes it easy to hit. */
 .ms::after { content: ""; position: absolute; inset: -6px; }
 .ms:hover, .ms:focus-visible { box-shadow: 0 0 0 3px var(--planned); }
-.today { position: absolute; top: 22px; bottom: 0; width: 0; border-left: 2px solid var(--burn); opacity: .7; pointer-events: none; }
+.today { position: absolute; top: 22px; bottom: 0; width: 0; border-left: 2px solid var(--burn); opacity: .7; cursor: pointer; }
+/* The line itself is 2px wide, too narrow to reliably hover/tap -- an invisible
+   wider hit area makes it easy to hit, same pattern as .ms::after. */
+.today::after { content: ""; position: absolute; top: 0; bottom: 0; left: -8px; right: -8px; }
+.today:hover, .today:focus-visible { opacity: 1; box-shadow: 0 0 0 3px color-mix(in srgb, var(--burn) 35%, transparent); }
 .mslist { list-style: none; margin: var(--space-12) 0 0; padding: 0; }
 .box > .mslist { margin: calc(var(--space-14) * -1) calc(var(--space-16) * -1) calc(var(--space-14) * -1); }
 .mslist li { display: flex; gap: var(--space-10); align-items: center; padding: var(--space-8) var(--space-16); flex-wrap: wrap; border-bottom: 1px solid var(--line); }

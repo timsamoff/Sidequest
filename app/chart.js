@@ -9,10 +9,12 @@ export function svgEl(tag, attrs, text) {
   if (text !== undefined) e.textContent = text; return e;
 }
 // Dismisses a tap-opened tooltip when the user taps anywhere that is not a chart
-// (a tap elsewhere does not blur the chart on every phone browser).
+// (a tap elsewhere does not blur the chart on every phone browser). Shared by
+// the SVG burndown chart and the plain-HTML Gantt's own today-line tooltip,
+// since only one tooltip is ever pinned at a time.
 var dismissTip = null;
 if (typeof document !== "undefined") document.addEventListener("pointerdown", function (e) {
-  if (dismissTip && !(e.target && e.target.closest && e.target.closest("svg.chart"))) dismissTip();
+  if (dismissTip && !(e.target && e.target.closest && (e.target.closest("svg.chart") || e.target.closest(".today")))) dismissTip();
 });
 
 // Draws a burndown. cfg: { cps, planned[], actual[], total, label, marks[], tip(i) }.
@@ -257,7 +259,28 @@ function timelineNode(lanes, mss, rs, maxEnd, hint) {
   // edit handler by data-ms-id, so this module needs no dialog import.
   mss.forEach(function (m) { mt.appendChild(el("span", { "class": "ms", "data-ms-id": m.id, role: "button", tabindex: "0", "aria-label": "Milestone: " + m.text + ", " + fmtY(m.date), style: "left:" + pct(m.date) + "%", title: m.text + ", " + fmtY(m.date) })); });
   ml.appendChild(mt); area.appendChild(ml);
-  if (TODAY >= rs && TODAY <= re) area.appendChild(el("div", { "class": "today", style: "left:" + pct(TODAY) + "%", title: "Today" }));
+  if (TODAY >= rs && TODAY <= re) {
+    var todayLine = el("div", { "class": "today", role: "button", tabindex: "0", "aria-label": "Today, " + fmtY(TODAY), style: "left:" + pct(TODAY) + "%" });
+    area.appendChild(todayLine);
+    var tip = el("div", { "class": "todaytip", role: "status", "aria-live": "polite" }); tip.hidden = true;
+    area.appendChild(tip);
+    var pinned = false;
+    function hide() { tip.hidden = true; }
+    function show() {
+      tip.textContent = "Today, " + fmtY(TODAY); tip.hidden = false;
+      var lr = todayLine.getBoundingClientRect(), ar = area.getBoundingClientRect();
+      var px = lr.left - ar.left, py = lr.top - ar.top, w = tip.offsetWidth, h = tip.offsetHeight;
+      tip.style.left = Math.max(0, Math.min(px - w / 2, ar.width - w)) + "px";
+      tip.style.top = Math.max(0, py - h - 10) + "px";
+    }
+    function clear() { pinned = false; hide(); }
+    on(todayLine, "mouseenter", show);
+    on(todayLine, "mouseleave", function () { if (!pinned) hide(); });
+    on(todayLine, "click", function () { pinned = true; dismissTip = clear; show(); });
+    on(todayLine, "focus", function () { pinned = true; dismissTip = clear; show(); });
+    on(todayLine, "blur", clear);
+    on(todayLine, "keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); clear(); } });
+  }
   wrap.appendChild(area);
   wrap.appendChild(el("p", { "class": "hint", style: "margin-top:10px" }, hint));
   return wrap;
