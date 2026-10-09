@@ -295,25 +295,6 @@ export function stepDialog(prefillQuestId) {
     });
   }
 }
-// With a milestone passed in, edits it in place and offers Remove (onRemove is
-// supplied by the caller, since removal lives in views.js); with none, adds one.
-export function milestoneDialog(m, onRemove) {
-  var questOpts = activeQuests().map(function (p) { return { value: p.id, label: p.name }; });
-  // A milestone can belong to a quest that is no longer Active (Complete, say).
-  if (m) { var cur = findQuest(m.questId); if (cur && !questOpts.some(function (o) { return o.value === cur.id; })) questOpts.unshift({ value: cur.id, label: cur.name }); }
-  if (!questOpts.length) { notify("Add an active quest first."); return; }
-  formDialog(m ? "Edit milestone" : "New milestone", [
-    { key: "quest", label: "Quest", type: "select", options: questOpts, value: m ? m.questId : questOpts[0].value },
-    { key: "text", label: "Milestone", value: m ? m.text : undefined },
-    { key: "date", label: "Date", type: "date", value: m ? m.date : undefined }
-  ], m ? "Save milestone" : "Add milestone", function (v) {
-    if (!v.quest) return "Choose a quest.";
-    if (!v.text || !isISO(v.date)) return "Enter a title and date for the milestone.";
-    if (m) { m.questId = v.quest; m.text = v.text.slice(0, 200); m.date = v.date; changed(); return { msg: "Milestone saved." }; }
-    state.milestones.push({ id: uid(), text: v.text.slice(0, 200), date: v.date, questId: v.quest }); changed();
-    return { msg: "Milestone added to the Timeline." };
-  }, m ? undefined : "Milestones can be added to a quest and will appear in the schedule and burndown.", m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
-}
 // Slips only incomplete, scheduled tasks later by N days -- Completed tasks,
 // the Backlog, and the quest's own start date are never touched.
 export function slipDialog(p) {

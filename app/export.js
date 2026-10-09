@@ -3,7 +3,7 @@ import { fmt, fmtY, iso, parseISO, TODAY } from "./dates.js";
 import {
   wl, pset, linkedQuests, questBurn, questBurnTasks, isLate,
   taskStart, taskEnd, questEstimate, fmtHours, fmtHoursLong, live,
-  blockForDate, blockStartFor, blockEndFor
+  blockForDate, blockStartFor, blockEndFor, milestoneTasks
 } from "./model.js";
 
 /* Client export: a single, self-contained, read-only HTML file for sharing one
@@ -39,7 +39,7 @@ function fmtRange(t) { return t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " 
 function snapshotCharts(p) {
   var bd = questBurn(p);
   if (!bd) return null;
-  var burndownMilestones = live(state.milestones).filter(function (m) { return m.questId === p.id; });
+  var burndownMilestones = milestoneTasks(p.id).map(function (t) { return { text: t.what, date: t.due }; });
   var points = bd.cps.map(function (ms, i) {
     return { date: fmtY(ms), planned: bd.planned[i], actual: bd.actual[i], scope: bd.scope[i], tip: chartTip(bd, i, ms) };
   });
@@ -47,7 +47,7 @@ function snapshotCharts(p) {
   return {
     total: bd.total,
     points: points,
-    milestones: burndownMilestones.map(function (m) { return { text: m.text, date: m.date }; }),
+    milestones: burndownMilestones,
     lanes: lanes.lanes, laneMilestones: lanes.milestones, rangeStart: lanes.rangeStart, rangeEnd: lanes.rangeEnd, today: fmtY(TODAY)
   };
 }
@@ -76,7 +76,7 @@ function chartTip(bd, i, ms) {
 // app/chart.js) -- the export used to draw only the task's own status bar.
 function snapshotLanes(p, bd) {
   var ts = questBurnTasks(p).slice().sort(function (a, b) { return taskStart(a) - taskStart(b); });
-  var mss = live(state.milestones).filter(function (m) { return m.questId === p.id; }).map(function (m) { return { text: m.text, ms: parseISO(m.date) }; });
+  var mss = milestoneTasks(p.id).map(function (t) { return { text: t.what, ms: taskEnd(t) }; });
   if (!ts.length) return { lanes: [], milestones: [], rangeStart: null, rangeEnd: null };
   var first = Infinity, last = -Infinity;
   ts.forEach(function (t) {

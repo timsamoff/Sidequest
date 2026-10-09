@@ -238,6 +238,16 @@ export function short(str, n) { return str.length > n ? str.slice(0, n - 1) + "â
 export function launchItems(questId) {
   return sortTasks(questTasks(questId).filter(function (t) { return t.launch; }));
 }
+// A milestone is just a task flagged t.milestone -- always scheduled (block > 0
+// is enforced in normalize()), so taskEnd() always gives it a real date.
+export function milestoneTasks(questId) {
+  return sortTasks(questTasks(questId).filter(function (t) { return t.milestone; }));
+}
+// Every milestone task across every live quest, labeled by quest name since
+// the global Timeline shows every quest's milestones together.
+export function allMilestoneTasks() {
+  return live(state.tasks).filter(function (t) { return !t.isNext && t.milestone; });
+}
 // A decision must link to a real step -- no "None" option. If questId is
 // given, only that quest's steps are offered.
 export function stepOptions(questId) {

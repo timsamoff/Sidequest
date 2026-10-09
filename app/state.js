@@ -7,13 +7,13 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.1.1";
+export var APP_VERSION = "0.2.0";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
 export function st(id, text, done) { return { id: id, text: text, done: done === true }; }
 export function task(id, block, questId, what, done, steps, extra) {
-  var t = { id: id, block: block, questId: questId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0, added: "", launch: false };
+  var t = { id: id, block: block, questId: questId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0, added: "", launch: false, milestone: false };
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
   return t;
 }
@@ -54,7 +54,7 @@ export function sampleData() {
     task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", true), st("a1b", "Sketch the sign-in screen", true), st("a1c", "Sketch the settings screen", true)], { status: "Completed", doneAt: lastWeek }),
     task("a2", 2, "pApp", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "In progress" }),
     task("a3", 3, "pApp", "Build the home screen", "The list loads quickly and scrolls smoothly", [st("a3a", "Show the list of items", true), st("a3b", "Add pull to refresh"), st("a3c", "Handle an empty list")], { status: "In progress", notes: "Ask a friend to try this on an older phone before moving on." }),
-    task("a4", 4, "pApp", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link"), st("a4c", "Collect and sort the feedback")]),
+    task("a4", 4, "pApp", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link"), st("a4c", "Collect and sort the feedback")], { milestone: true }),
     task("a5", 5, "pApp", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true), st("a5a", "Write the store description"), st("a5b", "Prepare screenshots"), st("a5c", "Submit for review")], { launch: true }),
     task("a6", 0, "pApp", "Add a dark mode", "Every screen passes a contrast check in dark mode", []),
     task("w1", 1, "pSite", "Write the page copy", "Every page has final text", [st("w1a", "Write the home page", true), st("w1b", "Write the about page"), st("w1c", "Write the contact page")], { status: "In progress" }),
@@ -62,7 +62,7 @@ export function sampleData() {
     task("w3", 3, "pSite", "Launch the site", "The site is live and checked", [st("w3a", "Point the domain at the site"), st("w3b", "Check every page on a phone"), st("w3c", "Announce it")]),
     task("g1", 1, "pGame", "Prototype the core mechanic", "Someone can play for one minute", [st("g1a", "Make the player move"), st("g1b", "Add one obstacle"), st("g1c", "Add a win and a lose state")]),
     task("g2", 2, "pGame", "Make the first ten levels", "Ten levels load and can be finished start to end"),
-    task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid"), st("g3c", "Record a trailer")]),
+    task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid"), st("g3c", "Record a trailer")], { milestone: true }),
     task("g4", 0, "pGame", "Add a level editor", "Players can build, save, and share a level"),
     task("n1", 6, null, "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true }),
     // pDone's own tasks, all finished. Four weekly tasks at weight 2 each give
@@ -109,11 +109,6 @@ export function sampleData() {
       { id: "d2", q: "Will the game be free, paid, or free with a paid upgrade?", a: "", step: "g3d" },
       { id: "d3", q: "Should the site use a page builder?", a: "No, plain pages are enough.", step: "w3a" }
     ],
-    // Milestones now require a direct quest link (no step/task chain to derive it from).
-    milestones: [
-      { id: "m1", text: "Sample App beta opens", date: day(21), questId: "pApp" },
-      { id: "m2", text: "Sample Game demo day", date: day(63), questId: "pGame" }
-    ],
     hist: allHistory,
     start: day(0)
   };
@@ -124,7 +119,7 @@ export function defaults() {
     v: 5, start: d.start, days: 7,
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop,
-    milestones: d.milestones, pins: ["quest:pApp"],
+    pins: ["quest:pApp"],
     settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "" }
   };
 }
@@ -216,6 +211,9 @@ export function normalize(s) {
         id: S(t.id, 40), block: b, questId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
         custom: t.custom === true, isNext: t.isNext === true, launch: t.launch === true || wasStepLaunch,
+        // A milestone needs a real due date to plot on the chart -- a Backlog
+        // task (block 0) can never be one, even if saved data says otherwise.
+        milestone: t.milestone === true && b > 0,
         vault: validVault(t.vault || t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : ""
       });
     });
@@ -236,13 +234,6 @@ export function normalize(s) {
   // The Workshop array used to be called `parked`; read whichever is present.
   var rawWorkshop = Array.isArray(s.workshop) ? s.workshop : s.parked;
   if (Array.isArray(rawWorkshop)) d.workshop = rawWorkshop.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 5000), vault: validVault(x.vault || x.arch) }; });
-  // Milestones require a direct quest link; one pointing at a quest that no longer exists is dropped.
-  if (Array.isArray(s.milestones)) {
-    d.milestones = s.milestones.filter(function (x) {
-      var mid = typeof x.questId === "string" ? x.questId : x.projectId;
-      return x && typeof x.id === "string" && isISO(x.date) && typeof mid === "string" && questIds[mid];
-    }).map(function (x) { var mid = typeof x.questId === "string" ? x.questId : x.projectId; return { id: S(x.id, 40), text: S(x.text, 200), date: x.date, questId: mid }; });
-  }
   if (s.settings && typeof s.settings === "object") {
     if (["auto", "light", "dark"].indexOf(s.settings.theme) >= 0) d.settings.theme = s.settings.theme;
     if (["us", "intl", "mdy", "dmy", "iso"].indexOf(s.settings.dateFormat) >= 0) d.settings.dateFormat = s.settings.dateFormat;

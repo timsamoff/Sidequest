@@ -90,7 +90,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.1.1"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.2.0"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -147,7 +147,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const game = [...k.d.querySelectorAll("#view .lane")].find(l => l.querySelector(".lname").textContent.startsWith("Sample Game"));
   ok(game.querySelectorAll(".bar").length === 2 && game.querySelector(".ldates").textContent.includes("due "), "Sample Game shows an estimate bar");
   const mil = k.d.querySelector("#view .mslist").textContent;
-  ok(mil.includes("Sample App beta opens") && mil.includes("Sample Game demo day"), "two sample milestones");
+  ok(mil.includes("Run a beta with five friends") && mil.includes("Playtest and polish"), "two sample milestone tasks, labeled by their own task name");
   // dates: three different starts
   k.tab("schedule");
   const l1 = [...k.d.querySelectorAll(".listpane .item .l1")].map(x => x.textContent);
@@ -173,11 +173,11 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(launchBtn);
   const detail = () => k.d.querySelector("#view .tlist.check .detail");
   ok(!!detail().querySelector(".chip") && detail().textContent.includes("Launch critical"), "the expanded launch task shows a Launch critical badge");
-  ok(!!k.btn(detail(), "Open in Tasks") && !!k.btn(detail(), "Skip Launch") && !!k.btn(detail(), "Delete") && !k.btn(detail(), "Launch critical"), "a launch task's detail offers Open in Tasks, Skip Launch, and Delete");
+  ok(!!k.btn(detail(), "Open in Tasks") && !!k.btn(detail(), "Skip launch") && !!k.btn(detail(), "Delete") && !k.btn(detail(), "Launch critical"), "a launch task's detail offers Open in Tasks, Skip launch, and Delete");
   ok(detail().querySelector(".steps li.done") && detail().querySelector(".steps").textContent.includes("Choose the first app store"), "answered decision's step is already ticked");
-  // Skip Launch takes the task off the checklist without deleting it
-  k.click(k.btn(detail(), "Skip Launch"));
-  ok(!checkList().some(li => li.textContent.includes("Submit to the app store")), "Skip Launch removes the task from the checklist");
+  // Skip launch takes the task off the checklist without deleting it
+  k.click(k.btn(detail(), "Skip launch"));
+  ok(!checkList().some(li => li.textContent.includes("Submit to the app store")), "Skip launch removes the task from the checklist");
   ok([...k.d.querySelectorAll("#view .tlist:not(.check) .item")].some(b => b.textContent.includes("Submit to the app store")), "the task itself is still a real task, now back in the regular list");
 }
 
@@ -722,36 +722,19 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 }
 
 {
-  // milestones are editable from the Timeline diamonds and from the list
+  // a milestone is just a task flagged t.milestone -- the Timeline diamond and
+  // the Milestones list both open the real task, there is no separate entity/dialog
   const k = kit(await mk());
   k.tab("timeline");
   const diamonds = () => [...k.d.querySelectorAll("#view .ms")];
-  ok(diamonds().length === 2 && diamonds().every(d => d.getAttribute("role") === "button" && d.getAttribute("tabindex") === "0" && /^Edit milestone: /.test(d.getAttribute("aria-label"))), "each milestone diamond is a keyboard-reachable control with a label");
+  ok(diamonds().length === 2 && diamonds().every(d => d.getAttribute("role") === "button" && d.getAttribute("tabindex") === "0"), "each milestone diamond is a keyboard-reachable control");
   k.click(diamonds()[0]);
-  ok(k.$("modalTitle").textContent === "Edit milestone", "clicking a diamond opens the edit dialog");
-  const first = k.saved().milestones.find(m => m.id === "m1");
-  ok(k.$("f-text").value === first.text && k.$("f-date").value === first.date && k.$("f-quest").value === first.questId, "the dialog is pre-filled with the milestone");
-  k.setField("text", "Beta opens (moved)"); k.setField("date", "2026-11-20");
-  k.click(k.btn(k.$("modalBody"), "Save milestone"));
-  const after = k.saved().milestones.find(m => m.id === "m1");
-  ok(after.text === "Beta opens (moved)" && after.date === "2026-11-20" && k.saved().milestones.length === 2, "Save updates the same milestone in place");
-  ok(k.$("view").textContent.includes("Beta opens (moved)"), "the Timeline shows the edited milestone");
-  k.click(diamonds()[0]); k.setField("date", ""); k.click(k.btn(k.$("modalBody"), "Save milestone"));
-  ok(!k.$("overlay").hidden && k.saved().milestones.find(m => m.id === "m1").date === "2026-11-20", "an empty date is rejected and nothing changes");
-  k.click(k.btn(k.$("modalBody"), "Cancel"));
-  diamonds()[0].dispatchEvent(new k.w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-  ok(k.$("modalTitle").textContent === "Edit milestone", "Enter on a focused diamond opens the dialog");
-  k.click(k.$("modalClose"));
-  const row = () => [...k.d.querySelectorAll("#view .mslist li")].find(li => li.textContent.includes("Sample Game demo day"));
-  k.click(k.btn(row(), "Sample Game: Sample Game demo day"));
-  ok(k.$("modalTitle").textContent === "Edit milestone", "a milestone's text in the list opens the dialog");
-  k.click(k.btn(k.$("modalBody"), "Remove"));
-  ok(k.$("overlay").hidden && !k.saved().milestones.find(m => m.id === "m2"), "Remove in the dialog deletes the milestone");
-  ok(!!k.btn(k.d.body, "Undo"), "and offers Undo");
-  k.click(k.btn(k.d.body, "Undo"));
-  ok(!!k.saved().milestones.find(m => m.id === "m2"), "Undo brings the milestone back");
-  k.menuAct("newBtn", "newMilestone");
-  ok(k.$("modalTitle").textContent === "New milestone" && !k.btn(k.$("modalBody"), "Remove"), "a new-milestone dialog has no Remove button");
+  ok(k.$("viewTitle").textContent === "Tasks" && k.d.querySelector(".detailpane .what").textContent.includes("Run a beta with five friends"), "clicking a diamond opens the task itself on the Tasks page");
+  k.tab("timeline");
+  const row = () => [...k.d.querySelectorAll("#view .mslist li")].find(li => li.textContent.includes("Playtest and polish"));
+  k.click(k.btn(row(), "Sample Game: Playtest and polish"));
+  ok(k.$("viewTitle").textContent === "Tasks" && k.d.querySelector(".detailpane .what").textContent.includes("Playtest and polish"), "a milestone's text in the list opens its own task too");
+  ok(!k.btn(k.d.querySelector("#newMenu"), "New milestone"), "the + menu has no separate New milestone item -- a milestone only comes from flagging an existing task");
 }
 
 {
@@ -770,7 +753,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!k.btn(side, "Expand"), "the right column has an Expand button");
   ok(side.querySelectorAll(".lane").length === 6, "one timeline lane per scheduled task, plus the milestones lane (" + side.querySelectorAll(".lane").length + ")");
   ok(side.textContent.includes("1 backlog task is not shown until scheduled"), "an unscheduled Backlog task is counted, not drawn");
-  ok(side.querySelectorAll(".ms").length === 1 && /Sample App beta opens/.test(side.querySelector(".ms").getAttribute("aria-label")), "the timeline shows only this quest's milestone");
+  ok(side.querySelectorAll(".ms").length === 1 && /Run a beta with five friends/.test(side.querySelector(".ms").getAttribute("aria-label")), "the timeline shows only this quest's milestone");
   const svg = side.querySelector("svg.chart");
   ok(/^Burndown chart for Sample App\./.test(svg.getAttribute("aria-label")), "the burndown is this quest's own");
   ok(svg.querySelectorAll(".dot").length === 3, "the actual line has its recorded weeks plus this week (" + svg.querySelectorAll(".dot").length + ")");
@@ -1310,7 +1293,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   }
   {
     // a stamp that is not actually newer (or malformed) never shows the banner
-    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "0.1.1" } });
+    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "0.2.0" } });
     const k = kit(await mk(null, f.claude)); await wait();
     ok(!k.$("view").textContent.includes("Sidequest has leveled up!"), "a stamp equal to the current version shows no banner");
   }
@@ -1412,7 +1395,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   key("Home"); const first = tip().textContent; key("End");
   ok(tip().textContent !== first, "Home and End jump to the two ends");
   key("Home"); let found = false;
-  for (let i = 0; i < 30 && !found; i++) { if (/Sample App beta opens/.test(tip().textContent)) found = true; else key("ArrowRight"); }
+  for (let i = 0; i < 30 && !found; i++) { if (/Run a beta with five friends/.test(tip().textContent)) found = true; else key("ArrowRight"); }
   ok(found, "the arrow keys also reach the milestone");
   key("Escape");
   ok(tip().hidden, "Esc closes the tooltip");
@@ -1560,7 +1543,7 @@ async function exportClick(k, projectName) {
   // milestone, real multi-day tasks), checked against the actual embedded JSON here.
   const exportData = JSON.parse(html.match(/window\.__sqExport\s*=\s*(\{.*?\});/s)[1]);
   const appCharts = exportData.charts["proj-pApp"];
-  ok(Array.isArray(appCharts.laneMilestones) && appCharts.laneMilestones.length === 1 && appCharts.laneMilestones[0].text === "Sample App beta opens", "the exported Timeline's own chart data includes Sample App's real milestone, with its own percent-of-range position");
+  ok(Array.isArray(appCharts.laneMilestones) && appCharts.laneMilestones.length === 1 && appCharts.laneMilestones[0].text === "Run a beta with five friends", "the exported Timeline's own chart data includes Sample App's real milestone task, with its own percent-of-range position");
   ok(appCharts.lanes.length > 0 && appCharts.lanes.every((ln) => typeof ln.blkLeft === "number" && typeof ln.blkWidth === "number"), "every exported lane carries its own block-band position, not just its status bar");
   ok(html.includes("'eblk'") || html.includes('"eblk"') || html.includes("eblk"), "the export's own runtime script actually draws the block band (eblk), not just computes its data");
   ok(html.includes("'ems'") || html.includes('"ems"') || html.includes("data-label"), "the export's own runtime script actually draws milestone markers (ems), not just computes their data");

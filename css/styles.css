@@ -158,6 +158,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .chip.added { background: var(--chip-new); }
 .chip.launchcrit { background: var(--chip-work); }
 .chip.backlog { background: var(--late-bg); color: var(--late); }
+.chip.milestonechip { background: var(--milestone-bg); color: var(--milestone); }
 .tlist { list-style: none; margin: var(--space-10) 0 0; padding: 0; overflow: hidden; }
 .tlist li { border-bottom: 1px solid var(--line); }
 .tlist li:last-child { border-bottom: 0; }

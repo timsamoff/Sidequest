@@ -1,9 +1,11 @@
 // Round-trip test for the Project -> Quest data-shape rename. Constructs an
 // OLD-shaped saved object by hand (state.projects, task.projectId,
-// p.linkedProjectIds, milestone.projectId, "proj:" pins) exactly as a real
-// user's save would look before this rename, loads it through the real
-// normalize() via a full boot, and asserts every quest/link/pin survived
-// under its new field name with no data loss.
+// p.linkedProjectIds, "proj:" pins) exactly as a real user's save would look
+// before this rename, loads it through the real normalize() via a full boot,
+// and asserts every quest/link/pin survived under its new field name with no
+// data loss. The fixture's own old-shaped milestones[] array (from before
+// milestones became a task flag) is left in place as real historical save
+// data but asserts nothing -- that entity is gone, not migrated.
 const { JSDOM } = require("jsdom");
 const fs = require("fs");
 const path = require("path");
@@ -80,9 +82,6 @@ async function main() {
   ok(!!t1 && t1.questId === "p1", "task t1's projectId migrated to questId (" + (t1 && t1.questId) + ")");
   ok(!!t2 && t2.questId === "p2", "task t2's projectId migrated to questId");
   ok(s.tasks.length === 2, "no tasks were lost in migration");
-
-  const m1 = s.milestones.find(m => m.id === "m1");
-  ok(!!m1 && m1.questId === "p1", "milestone's projectId migrated to questId (" + (m1 && m1.questId) + ")");
 
   ok(Array.isArray(s.pins) && s.pins.indexOf("quest:p1") >= 0, "pin 'proj:p1' migrated to 'quest:p1' (" + JSON.stringify(s.pins) + ")");
   ok(Array.isArray(s.pins) && s.pins.indexOf("quest:p2") >= 0, "pin 'proj:p2' migrated to 'quest:p2'");

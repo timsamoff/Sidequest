@@ -8,7 +8,7 @@ import {
 } from "./views.js";
 import { renderSearch, openSearch, closeSearch, wireSearchInput, focusSearch } from "./search.js";
 import {
-  taskDialog, questDialog, ideaDialog, decisionDialog, milestoneDialog, stepDialog
+  taskDialog, questDialog, ideaDialog, decisionDialog, stepDialog
 } from "./dialogs.js";
 import { playSplash } from "./splash.js";
 
@@ -125,7 +125,7 @@ export function wireMenu(btnId, menuId) {
     closeMenus(false);
     if (t.getAttribute("data-view")) { go(t.getAttribute("data-view")); return; }
     var act = t.getAttribute("data-act");
-    ({ newTask: taskDialog, newStep: function () { stepDialog(); }, newQuest: questDialog, newIdea: ideaDialog, newDecision: decisionDialog, newMilestone: milestoneDialog, vault: function () { go("vault"); }, settings: function () { go("settings"); } })[act]();
+    ({ newTask: taskDialog, newStep: function () { stepDialog(); }, newQuest: questDialog, newIdea: ideaDialog, newDecision: decisionDialog, vault: function () { go("vault"); }, settings: function () { go("settings"); } })[act]();
   });
   on(m, "keydown", function (e) {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;

@@ -13,7 +13,7 @@ import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInlin
 import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
 import { playConfetti } from "./confetti.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme } from "./app.js";
-import { stepDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, milestoneDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
+import { stepDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
 import { buildExportSnapshot, renderExportDocument, exportFileName } from "./export.js";
 
 /* views */
@@ -259,6 +259,7 @@ export function taskRow(t) {
   var l2 = el("div", { "class": "l2" });
   if (t.block === 0) l2.appendChild(el("span", { "class": "chip backlog", style: "margin-right:8px" }, "Backlog"));
   if (t.launch) l2.appendChild(el("span", { "class": "chip launchcrit", style: "margin-right:8px" }, "Launch critical"));
+  if (t.milestone) l2.appendChild(el("span", { "class": "chip milestonechip", style: "margin-right:8px" }, "Milestone"));
   l2.appendChild(document.createTextNode(dispWhat(t)));
   b.appendChild(l2);
   var l3 = el("div", { "class": "l3" });
@@ -311,6 +312,7 @@ export function buildDetail(t, inline, readOnly) {
   lh.appendChild(dm); top.appendChild(lh);
   var right = el("div", { style: "display:flex;gap:10px;align-items:center" });
   if (t.launch) right.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
+  if (t.milestone) right.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
   if (readOnly) {
     right.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
   } else {
@@ -455,7 +457,14 @@ export function buildDetail(t, inline, readOnly) {
       // Nothing to offer here -- the quest page's own Restore button is the one way back to editing.
     } else {
       if (inline) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Open this task on the Tasks page" }, "Open in Tasks"), "click", function () { openTask(t.id); }));
-      if (t.launch) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Unmark this task as launch critical" }, "Skip Launch"), "click", function () { t.launch = false; changed(); }));
+      if (t.block === 0) {
+        ar.appendChild(el("button", { type: "button", "class": "small", disabled: true, title: "This is a backlogged task. Add a due date to make it a milestone." }, "Make milestone"));
+      } else if (t.milestone) {
+        ar.appendChild(on(el("button", { type: "button", "class": "small on", "aria-pressed": "true", title: "Unmark this task as a milestone" }, "Remove milestone"), "click", function () { t.milestone = false; changed(); }));
+      } else {
+        ar.appendChild(on(el("button", { type: "button", "class": "small", "aria-pressed": "false", title: "Mark this task as a milestone" }, "Make milestone"), "click", function () { t.milestone = true; changed(); }));
+      }
+      if (t.launch) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Unmark this task as launch critical" }, "Skip launch"), "click", function () { t.launch = false; changed(); }));
       else ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Mark this task as launch critical" }, "Launch critical"), "click", function () { t.launch = true; changed(); }));
       ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this task (can be undone)" }, "Delete"), "click", function () { ui.detail = false; removeNow(t, "tasks", "Task"); }));
     }
@@ -524,6 +533,7 @@ export function launchSection(root, p) {
     b.appendChild(el("div", { "class": "l2" }, short(dispWhat(t), 60) + (t.vault ? " (in the Vault)" : "")));
     var l3 = el("div", { "class": "l3" });
     l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+    if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
     stepsAndEst(l3, t);
     if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
     b.appendChild(l3);
@@ -636,6 +646,7 @@ export function renderQuestPage(root, id) {
       b.appendChild(el("div", { "class": "l2" }, t.what));
       var l3 = el("div", { "class": "l3" });
       l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+      if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
       stepsAndEst(l3, t);
       if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
       b.appendChild(l3);
@@ -943,38 +954,26 @@ export function renderWorkshop(root) {
   root.appendChild(pl);
 }
 
-// Opens the edit dialog for a real milestone (state.milestones entry) by id.
-function editMilestone(id) {
-  var orig = state.milestones.filter(function (x) { return x.id === id; })[0];
-  if (orig) milestoneDialog(orig, function () { removeNow(orig, "milestones", "Milestone"); });
-}
-// Makes each milestone diamond inside a chart open its edit dialog (click, Enter, Space).
+// A milestone diamond opens the task it's flagged on, same as any other task.
 function wireMilestoneDiamonds(node) {
   Array.prototype.forEach.call(node.querySelectorAll(".ms[data-ms-id]"), function (d) {
     var id = d.getAttribute("data-ms-id");
-    on(d, "click", function () { editMilestone(id); });
-    on(d, "keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editMilestone(id); } });
+    on(d, "click", function () { openTask(id); });
+    on(d, "keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openTask(id); } });
   });
 }
 export function renderTimeline(root) {
   var r = rangeBlock(); root.appendChild(r.node);
   wireMilestoneDiamonds(r.node);
-  var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h2", null, "Milestones"));
-  hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a milestone to the timeline" }, "Add milestone"), "click", function () { milestoneDialog(); })); root.appendChild(hd);
+  root.appendChild(el("h2", null, "Milestones"));
   var mbox = el("div", { "class": "box", style: "margin-top:10px" });
   var ul = el("ul", { "class": "mslist" });
-  if (!r.milestones.length) ul.appendChild(el("li", { "class": "hint" }, "No milestones yet. Add one to see it on the timeline."));
+  if (!r.milestones.length) ul.appendChild(el("li", { "class": "hint" }, "No milestones yet. Mark a task as one from its own row to see it here."));
   r.milestones.slice().sort(function (a, b) { return a.date - b.date; }).forEach(function (m) {
     var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date)));
     var mtext = el("span", { style: "flex:1 1 auto" });
-    if (m.auto) mtext.appendChild(document.createTextNode(m.text));
-    else { var ml = el("button", { type: "button", "class": "textbtn qlink", title: "Open this milestone" }, m.text); on(ml, "click", function () { editMilestone(m.id); }); mtext.appendChild(ml); }
+    var ml = el("button", { type: "button", "class": "textbtn qlink", title: "Open this task" }, m.text); on(ml, "click", function () { openTask(m.id); }); mtext.appendChild(ml);
     li.appendChild(mtext);
-    if (!m.auto) {
-      var rm = el("button", { type: "button", "class": "small danger", title: "Remove this milestone (can be undone)" }, "Remove");
-      on(rm, "click", function () { var orig = state.milestones.filter(function (x) { return x.id === m.id; })[0]; if (orig) removeNow(orig, "milestones", "Milestone"); });
-      li.appendChild(rm);
-    }
     ul.appendChild(li);
   });
   mbox.appendChild(ul); root.appendChild(mbox);
@@ -1101,7 +1100,7 @@ export function helpTopics() {
     ["Find your way around", [
       "On a computer, use the sidebar on the left. On a phone, use the tabs along the bottom.",
       "The **Main menu** (three lines, top right) lists every page, including the ones that don’t fit in the sidebar or the tab bar.",
-      "Use the **+** button to add a quest, task, step, decision, milestone, backlog item, or idea. It opens a menu in that order, since quests and tasks are what you’ll reach for most.",
+      "Use the **+** button to add a quest, task, step, decision, or idea. It opens a menu in that order, since quests and tasks are what you’ll reach for most.",
       "Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **X** where the magnifier was to cancel."]],
     ["From idea to quest: the whole path", [
       "An idea starts in the **Workshop**, with nothing more than a line of text and an optional note. This is the place for something you’re not ready to commit to. It costs nothing to put there, and nothing to leave sitting.",
@@ -1142,16 +1141,16 @@ export function helpTopics() {
       "**Launch critical**, beside a linked quest, flags it as something that has to finish first. **Skip Launch** undoes it. Completing or vaulting a quest with an unfinished launch-critical link only warns you, it doesn’t block you."]],
     ["Read the Timeline", [
       "Every quest gets a lane. The light bar is an estimate you set yourself on the quest’s page, not a promise.",
-      "**Add milestone** places a diamond on the date you choose, also listed below the timeline. Select a diamond, or its text in that list, to change its quest, text, or date, or to remove it.",
+      "A milestone is just a task flagged that way. **Make milestone**, from a scheduled task’s own detail, places a diamond on its due date and lists it below the timeline; **Remove milestone** takes it off. Select a diamond, or its text in that list, to open the task itself.",
       "A quest’s own page has its own Timeline, one lane per scheduled task, and its own Burndown beneath it. Point at a week, tap it, or focus the chart and use the arrow keys, to see the count and which tasks finish or were completed that week. The counts come straight from your tasks and can’t be edited by hand.",
       "On a quest’s own Timeline, a task’s bar takes its status color: blue for Not started, yellow for In progress, green for Completed."]],
     ["Launch checklist and decisions", [
-      "A task joins its quest’s **Before you launch** checklist from its own detail: open the task and select **Launch critical**. It still lives wherever it was scheduled; the checklist just also shows it, and it’s done once the task itself is Completed. **Skip Launch**, in that same spot, takes it back off.",
+      "A task joins its quest’s **Before you launch** checklist from its own detail: open the task and select **Launch critical**. It still lives wherever it was scheduled; the checklist just also shows it, and it’s done once the task itself is Completed. **Skip launch**, in that same spot, takes it back off.",
       "A launch task carries a **Launch critical** badge next to its name, both in the Tasks list and in its own detail, so you can spot it at a glance.",
       "A decision always belongs to exactly one step. The pencil beside any step lets you rename it or remove it; **Add decision** beside a step writes down what needs settling, and the decision tag opens it again to answer, change, or remove it. Answering it ticks the step, and clearing the answer unticks it again."]],
     ["The Vault and undo", [
       "Only **Quests** and **Ideas** go to the Vault, each with its own **Vault** button. A completed task just stays in its quest, marked done.",
-      "**Delete** on a task, or **Remove** on a decision or milestone, is immediate, with a short **Undo** right after in case that wasn’t what you meant.",
+      "**Delete** on a task, or **Remove** on a decision, is immediate, with a short **Undo** right after in case that wasn’t what you meant.",
       "In the Vault, select a quest’s name to see it read-only. **Restore** brings a quest or idea back, tasks included. **Delete forever** always asks first, and there’s no undo once you confirm it."]],
     ["Slip a quest’s schedule", [
       "On a quest’s own page, above the Timeline, **Slip schedule** pushes its still-incomplete tasks later by however many days you choose. Completed tasks and anything in the Backlog don’t move.",
@@ -1191,7 +1190,7 @@ export function renderHelp(root) {
 /* settings */
 export function blankState() {
   var d = defaults();
-  d.tasks = []; d.decisions = []; d.quests = []; d.workshop = []; d.milestones = []; d.pins = []; d.lastSlip = null;
+  d.tasks = []; d.decisions = []; d.quests = []; d.workshop = []; d.pins = []; d.lastSlip = null;
   d.start = iso(TODAY); d.days = state.days; d.settings = state.settings;
   return d;
 }

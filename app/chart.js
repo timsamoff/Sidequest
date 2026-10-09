@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { fmt, fmtY, addDays, addMonths, parseISO, TODAY } from "./dates.js";
-import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, live, dispQuest, findQuest, questBurn, questBurnTasks, burnTasks, short, isHiddenComplete, blockStartFor, blockEndFor, blockForDate, checkpointStep, globalActual, histAt } from "./model.js";
+import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, dispQuest, findQuest, questBurn, questBurnTasks, burnTasks, short, isHiddenComplete, blockStartFor, blockEndFor, blockForDate, checkpointStep, globalActual, histAt, milestoneTasks, allMilestoneTasks } from "./model.js";
 import { el, on } from "./dom.js";
 
 export function svgEl(tag, attrs, text) {
@@ -212,7 +212,7 @@ export function drawQuestChart(host, p, wide) {
   var bd = questBurn(p);
   if (!bd) { host.innerHTML = ""; return false; }
   var cps = bd.cps, n = cps.length, pl = bd.planned, span = bd.stepDays * 86400000;
-  var marks = live(state.milestones).filter(function (m) { return m.questId === p.id; }).map(function (m) { return { ms: parseISO(m.date), text: m.text }; });
+  var marks = milestoneTasks(p.id).map(function (t) { return { ms: taskEnd(t), text: t.what }; });
   var sc = scopeSteps(cps, p.hist, bd.total);
   renderBurn(host, wide, {
     cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks, scopeSteps: sc.steps, scopeEnd: sc.end,
@@ -255,7 +255,7 @@ function timelineNode(lanes, mss, rs, maxEnd, hint) {
   var mt = el("div", { "class": "track" });
   // Each diamond is a real control. renderTimeline() (views.js) attaches the
   // edit handler by data-ms-id, so this module needs no dialog import.
-  mss.forEach(function (m) { mt.appendChild(el("span", { "class": "ms", "data-ms-id": m.id, role: "button", tabindex: "0", "aria-label": "Edit milestone: " + m.text + ", " + fmtY(m.date), style: "left:" + pct(m.date) + "%", title: m.text + ", " + fmtY(m.date) })); });
+  mss.forEach(function (m) { mt.appendChild(el("span", { "class": "ms", "data-ms-id": m.id, role: "button", tabindex: "0", "aria-label": "Milestone: " + m.text + ", " + fmtY(m.date), style: "left:" + pct(m.date) + "%", title: m.text + ", " + fmtY(m.date) })); });
   ml.appendChild(mt); area.appendChild(ml);
   if (TODAY >= rs && TODAY <= re) area.appendChild(el("div", { "class": "today", style: "left:" + pct(TODAY) + "%", title: "Today" }));
   wrap.appendChild(area);
@@ -287,8 +287,7 @@ export function rangeBlock() {
     else { openEnded = true; lanes.push({ name: c.name, bars: [{ a: ca, b: null, cls: "open" }], dates: "from " + fmtY(ca) }); }
   }
   // Labeled by quest name since the Timeline shows every quest's milestones together.
-  var mss = [];
-  live(state.milestones).forEach(function (m) { var p = findQuest(m.questId); mss.push({ id: m.id, text: (p ? p.name + ": " : "") + m.text, date: parseISO(m.date) }); });
+  var mss = allMilestoneTasks().map(function (t) { var p = findQuest(t.questId); return { id: t.id, text: (p ? p.name + ": " : "") + t.what, date: taskEnd(t) }; });
   var wrap = timelineNode(lanes, mss, rs, maxEnd, "The red line marks today." + (openEnded ? " The chosen quest has no length set, so its bar runs open-ended." : ""));
   return { node: wrap, milestones: mss };
 }
@@ -297,8 +296,7 @@ export function rangeBlock() {
 // milestones. Backlog tasks have no dates, so they are counted, not drawn.
 export function questRangeBlock(p) {
   var ts = questBurnTasks(p).slice().sort(function (x, y) { return taskStart(x) - taskStart(y); });
-  var mss = [];
-  live(state.milestones).forEach(function (m) { if (m.questId === p.id) mss.push({ id: m.id, text: m.text, date: parseISO(m.date) }); });
+  var mss = milestoneTasks(p.id).map(function (t) { return { id: t.id, text: t.what, date: taskEnd(t) }; });
   var nb = counted().filter(function (t) { return t.questId === p.id && !t.isNext && t.block === 0; }).length;
   var backlog = nb ? " " + nb + (nb === 1 ? " backlog task is" : " backlog tasks are") + " not shown until scheduled." : "";
   if (!ts.length) return { node: el("p", { "class": "hint" }, "Nothing is scheduled yet. Create a task with a due date to see them here." + backlog), milestones: mss, empty: true };

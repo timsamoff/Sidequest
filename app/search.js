@@ -1,12 +1,12 @@
 import { state, ui } from "./state.js";
-import { parseISO, fmt, fmtY } from "./dates.js";
+import { fmt } from "./dates.js";
 import { taskStart, taskEnd, dispQuest, liveQuests, questMeta, short, validPage, findStep } from "./model.js";
 import { $, el, on, scrollTop } from "./dom.js";
 import { go, openTask, renderAll } from "./app.js";
 
 /* search */
-export var SEARCH_LABELS = { task: "Tasks", step: "Steps", quest: "Quests", idea: "Ideas", decision: "Decisions", milestone: "Milestones" };
-export var SEARCH_ORDER = ["task", "step", "quest", "idea", "decision", "milestone"];
+export var SEARCH_LABELS = { task: "Tasks", step: "Steps", quest: "Quests", idea: "Ideas", decision: "Decisions" };
+export var SEARCH_ORDER = ["task", "step", "quest", "idea", "decision"];
 export var searchFlat = [];
 export function escRe(t) { return t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 export function searchTerms(q) { return q.toLowerCase().split(/\s+/).filter(Boolean); }
@@ -57,7 +57,6 @@ export function searchAll(q, includeVault) {
     var ls = findStep(d.step);
     consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { if (d.vault) go("vault"); else if (ls) openTask(ls.t.id); else go("projects"); }, !!d.vault, ["Answer"]);
   });
-  state.milestones.forEach(function (m) { consider("milestone", m.text, [fmtY(parseISO(m.date)), m.date], fmtY(parseISO(m.date)), function () { go(m.vault ? "vault" : ("quest:" + m.questId)); }, !!m.vault); });
   SEARCH_ORDER.forEach(function (k) { groups[k].sort(function (a, b) { return b.score - a.score || a.idx - b.idx; }); });
   return { terms: terms, groups: groups };
 }

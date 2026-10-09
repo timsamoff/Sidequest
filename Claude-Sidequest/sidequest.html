@@ -64,6 +64,8 @@
   --focus: #2F5D8A;
   --late: #A8261C;
   --late-bg: #F8DDD9;
+  --milestone: #A1241F;
+  --milestone-bg: #F7DCDC;
   --chip-idle: #E7ECE8;
   --chip-work: #F6E3C4;
   --chip-done: #CFE6D5;
@@ -79,13 +81,13 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #131A20; --surface: #1B252D; --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
-    --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
+    --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723; --milestone: #F0A29C; --milestone-bg: #4A2321;
     --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
   }
 }
 :root[data-theme="dark"] {
   --bg: #131A20; --surface: #1B252D; --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
-  --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
+  --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723; --milestone: #F0A29C; --milestone-bg: #4A2321;
   --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
 }
 
@@ -249,6 +251,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .chip.added { background: var(--chip-new); }
 .chip.launchcrit { background: var(--chip-work); }
 .chip.backlog { background: var(--late-bg); color: var(--late); }
+.chip.milestonechip { background: var(--milestone-bg); color: var(--milestone); }
 .tlist { list-style: none; margin: var(--space-10) 0 0; padding: 0; overflow: hidden; }
 .tlist li { border-bottom: 1px solid var(--line); }
 .tlist li:last-child { border-bottom: 0; }
@@ -553,7 +556,6 @@ svg.chart.nofocusring { outline: none; }
             <button type="button" role="menuitem" data-act="newTask" title="Add a new task">New task</button>
             <button type="button" role="menuitem" data-act="newStep" title="Add a new step">New step</button>
             <button type="button" role="menuitem" data-act="newDecision" title="Add a new decision">New decision</button>
-            <button type="button" role="menuitem" data-act="newMilestone" title="Add a new milestone">New milestone</button>
             <button type="button" role="menuitem" data-act="newIdea" title="Add a new idea to the Workshop">New idea</button>
           </div>
         </div>
@@ -959,6 +961,16 @@ function short(str, n) { return str.length > n ? str.slice(0, n - 1) + "…" : s
 function launchItems(questId) {
   return sortTasks(questTasks(questId).filter(function (t) { return t.launch; }));
 }
+// A milestone is just a task flagged t.milestone -- always scheduled (block > 0
+// is enforced in normalize()), so taskEnd() always gives it a real date.
+function milestoneTasks(questId) {
+  return sortTasks(questTasks(questId).filter(function (t) { return t.milestone; }));
+}
+// Every milestone task across every live quest, labeled by quest name since
+// the global Timeline shows every quest's milestones together.
+function allMilestoneTasks() {
+  return live(state.tasks).filter(function (t) { return !t.isNext && t.milestone; });
+}
 // A decision must link to a real step -- no "None" option. If questId is
 // given, only that quest's steps are offered.
 function stepOptions(questId) {
@@ -993,13 +1005,13 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.1.1";
+var APP_VERSION = "0.2.0";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
 function st(id, text, done) { return { id: id, text: text, done: done === true }; }
 function task(id, block, questId, what, done, steps, extra) {
-  var t = { id: id, block: block, questId: questId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0, added: "", launch: false };
+  var t = { id: id, block: block, questId: questId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0, added: "", launch: false, milestone: false };
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
   return t;
 }
@@ -1040,7 +1052,7 @@ function sampleData() {
     task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", true), st("a1b", "Sketch the sign-in screen", true), st("a1c", "Sketch the settings screen", true)], { status: "Completed", doneAt: lastWeek }),
     task("a2", 2, "pApp", "Build the sign-in flow", "People can sign up and log in", [st("a2a", "Build the sign-up form", true), st("a2b", "Connect to a login service"), st("a2c", "Handle wrong passwords")], { status: "In progress" }),
     task("a3", 3, "pApp", "Build the home screen", "The list loads quickly and scrolls smoothly", [st("a3a", "Show the list of items", true), st("a3b", "Add pull to refresh"), st("a3c", "Handle an empty list")], { status: "In progress", notes: "Ask a friend to try this on an older phone before moving on." }),
-    task("a4", 4, "pApp", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link"), st("a4c", "Collect and sort the feedback")]),
+    task("a4", 4, "pApp", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link"), st("a4c", "Collect and sort the feedback")], { milestone: true }),
     task("a5", 5, "pApp", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true), st("a5a", "Write the store description"), st("a5b", "Prepare screenshots"), st("a5c", "Submit for review")], { launch: true }),
     task("a6", 0, "pApp", "Add a dark mode", "Every screen passes a contrast check in dark mode", []),
     task("w1", 1, "pSite", "Write the page copy", "Every page has final text", [st("w1a", "Write the home page", true), st("w1b", "Write the about page"), st("w1c", "Write the contact page")], { status: "In progress" }),
@@ -1048,7 +1060,7 @@ function sampleData() {
     task("w3", 3, "pSite", "Launch the site", "The site is live and checked", [st("w3a", "Point the domain at the site"), st("w3b", "Check every page on a phone"), st("w3c", "Announce it")]),
     task("g1", 1, "pGame", "Prototype the core mechanic", "Someone can play for one minute", [st("g1a", "Make the player move"), st("g1b", "Add one obstacle"), st("g1c", "Add a win and a lose state")]),
     task("g2", 2, "pGame", "Make the first ten levels", "Ten levels load and can be finished start to end"),
-    task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid"), st("g3c", "Record a trailer")]),
+    task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid"), st("g3c", "Record a trailer")], { milestone: true }),
     task("g4", 0, "pGame", "Add a level editor", "Players can build, save, and share a level"),
     task("n1", 6, null, "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true }),
     // pDone's own tasks, all finished. Four weekly tasks at weight 2 each give
@@ -1095,11 +1107,6 @@ function sampleData() {
       { id: "d2", q: "Will the game be free, paid, or free with a paid upgrade?", a: "", step: "g3d" },
       { id: "d3", q: "Should the site use a page builder?", a: "No, plain pages are enough.", step: "w3a" }
     ],
-    // Milestones now require a direct quest link (no step/task chain to derive it from).
-    milestones: [
-      { id: "m1", text: "Sample App beta opens", date: day(21), questId: "pApp" },
-      { id: "m2", text: "Sample Game demo day", date: day(63), questId: "pGame" }
-    ],
     hist: allHistory,
     start: day(0)
   };
@@ -1110,7 +1117,7 @@ function defaults() {
     v: 5, start: d.start, days: 7,
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop,
-    milestones: d.milestones, pins: ["quest:pApp"],
+    pins: ["quest:pApp"],
     settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "" }
   };
 }
@@ -1202,6 +1209,9 @@ function normalize(s) {
         id: S(t.id, 40), block: b, questId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
         custom: t.custom === true, isNext: t.isNext === true, launch: t.launch === true || wasStepLaunch,
+        // A milestone needs a real due date to plot on the chart -- a Backlog
+        // task (block 0) can never be one, even if saved data says otherwise.
+        milestone: t.milestone === true && b > 0,
         vault: validVault(t.vault || t.arch), doneAt: isISO(t.doneAt) ? t.doneAt : ""
       });
     });
@@ -1222,13 +1232,6 @@ function normalize(s) {
   // The Workshop array used to be called `parked`; read whichever is present.
   var rawWorkshop = Array.isArray(s.workshop) ? s.workshop : s.parked;
   if (Array.isArray(rawWorkshop)) d.workshop = rawWorkshop.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 5000), vault: validVault(x.vault || x.arch) }; });
-  // Milestones require a direct quest link; one pointing at a quest that no longer exists is dropped.
-  if (Array.isArray(s.milestones)) {
-    d.milestones = s.milestones.filter(function (x) {
-      var mid = typeof x.questId === "string" ? x.questId : x.projectId;
-      return x && typeof x.id === "string" && isISO(x.date) && typeof mid === "string" && questIds[mid];
-    }).map(function (x) { var mid = typeof x.questId === "string" ? x.questId : x.projectId; return { id: S(x.id, 40), text: S(x.text, 200), date: x.date, questId: mid }; });
-  }
   if (s.settings && typeof s.settings === "object") {
     if (["auto", "light", "dark"].indexOf(s.settings.theme) >= 0) d.settings.theme = s.settings.theme;
     if (["us", "intl", "mdy", "dmy", "iso"].indexOf(s.settings.dateFormat) >= 0) d.settings.dateFormat = s.settings.dateFormat;
@@ -1639,7 +1642,7 @@ function drawQuestChart(host, p, wide) {
   var bd = questBurn(p);
   if (!bd) { host.innerHTML = ""; return false; }
   var cps = bd.cps, n = cps.length, pl = bd.planned, span = bd.stepDays * 86400000;
-  var marks = live(state.milestones).filter(function (m) { return m.questId === p.id; }).map(function (m) { return { ms: parseISO(m.date), text: m.text }; });
+  var marks = milestoneTasks(p.id).map(function (t) { return { ms: taskEnd(t), text: t.what }; });
   var sc = scopeSteps(cps, p.hist, bd.total);
   renderBurn(host, wide, {
     cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks, scopeSteps: sc.steps, scopeEnd: sc.end,
@@ -1682,7 +1685,7 @@ function timelineNode(lanes, mss, rs, maxEnd, hint) {
   var mt = el("div", { "class": "track" });
   // Each diamond is a real control. renderTimeline() (views.js) attaches the
   // edit handler by data-ms-id, so this module needs no dialog import.
-  mss.forEach(function (m) { mt.appendChild(el("span", { "class": "ms", "data-ms-id": m.id, role: "button", tabindex: "0", "aria-label": "Edit milestone: " + m.text + ", " + fmtY(m.date), style: "left:" + pct(m.date) + "%", title: m.text + ", " + fmtY(m.date) })); });
+  mss.forEach(function (m) { mt.appendChild(el("span", { "class": "ms", "data-ms-id": m.id, role: "button", tabindex: "0", "aria-label": "Milestone: " + m.text + ", " + fmtY(m.date), style: "left:" + pct(m.date) + "%", title: m.text + ", " + fmtY(m.date) })); });
   ml.appendChild(mt); area.appendChild(ml);
   if (TODAY >= rs && TODAY <= re) area.appendChild(el("div", { "class": "today", style: "left:" + pct(TODAY) + "%", title: "Today" }));
   wrap.appendChild(area);
@@ -1714,8 +1717,7 @@ function rangeBlock() {
     else { openEnded = true; lanes.push({ name: c.name, bars: [{ a: ca, b: null, cls: "open" }], dates: "from " + fmtY(ca) }); }
   }
   // Labeled by quest name since the Timeline shows every quest's milestones together.
-  var mss = [];
-  live(state.milestones).forEach(function (m) { var p = findQuest(m.questId); mss.push({ id: m.id, text: (p ? p.name + ": " : "") + m.text, date: parseISO(m.date) }); });
+  var mss = allMilestoneTasks().map(function (t) { var p = findQuest(t.questId); return { id: t.id, text: (p ? p.name + ": " : "") + t.what, date: taskEnd(t) }; });
   var wrap = timelineNode(lanes, mss, rs, maxEnd, "The red line marks today." + (openEnded ? " The chosen quest has no length set, so its bar runs open-ended." : ""));
   return { node: wrap, milestones: mss };
 }
@@ -1724,8 +1726,7 @@ function rangeBlock() {
 // milestones. Backlog tasks have no dates, so they are counted, not drawn.
 function questRangeBlock(p) {
   var ts = questBurnTasks(p).slice().sort(function (x, y) { return taskStart(x) - taskStart(y); });
-  var mss = [];
-  live(state.milestones).forEach(function (m) { if (m.questId === p.id) mss.push({ id: m.id, text: m.text, date: parseISO(m.date) }); });
+  var mss = milestoneTasks(p.id).map(function (t) { return { id: t.id, text: t.what, date: taskEnd(t) }; });
   var nb = counted().filter(function (t) { return t.questId === p.id && !t.isNext && t.block === 0; }).length;
   var backlog = nb ? " " + nb + (nb === 1 ? " backlog task is" : " backlog tasks are") + " not shown until scheduled." : "";
   if (!ts.length) return { node: el("p", { "class": "hint" }, "Nothing is scheduled yet. Create a task with a due date to see them here." + backlog), milestones: mss, empty: true };
@@ -1785,7 +1786,7 @@ function fmtRange(t) { return t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " 
 function snapshotCharts(p) {
   var bd = questBurn(p);
   if (!bd) return null;
-  var burndownMilestones = live(state.milestones).filter(function (m) { return m.questId === p.id; });
+  var burndownMilestones = milestoneTasks(p.id).map(function (t) { return { text: t.what, date: t.due }; });
   var points = bd.cps.map(function (ms, i) {
     return { date: fmtY(ms), planned: bd.planned[i], actual: bd.actual[i], scope: bd.scope[i], tip: chartTip(bd, i, ms) };
   });
@@ -1793,7 +1794,7 @@ function snapshotCharts(p) {
   return {
     total: bd.total,
     points: points,
-    milestones: burndownMilestones.map(function (m) { return { text: m.text, date: m.date }; }),
+    milestones: burndownMilestones,
     lanes: lanes.lanes, laneMilestones: lanes.milestones, rangeStart: lanes.rangeStart, rangeEnd: lanes.rangeEnd, today: fmtY(TODAY)
   };
 }
@@ -1822,7 +1823,7 @@ function chartTip(bd, i, ms) {
 // app/chart.js) -- the export used to draw only the task's own status bar.
 function snapshotLanes(p, bd) {
   var ts = questBurnTasks(p).slice().sort(function (a, b) { return taskStart(a) - taskStart(b); });
-  var mss = live(state.milestones).filter(function (m) { return m.questId === p.id; }).map(function (m) { return { text: m.text, ms: parseISO(m.date) }; });
+  var mss = milestoneTasks(p.id).map(function (t) { return { text: t.what, ms: taskEnd(t) }; });
   if (!ts.length) return { lanes: [], milestones: [], rangeStart: null, rangeEnd: null };
   var first = Infinity, last = -Infinity;
   ts.forEach(function (t) {
@@ -2235,8 +2236,8 @@ function exportFileName(p) {
 
 
 /* search */
-var SEARCH_LABELS = { task: "Tasks", step: "Steps", quest: "Quests", idea: "Ideas", decision: "Decisions", milestone: "Milestones" };
-var SEARCH_ORDER = ["task", "step", "quest", "idea", "decision", "milestone"];
+var SEARCH_LABELS = { task: "Tasks", step: "Steps", quest: "Quests", idea: "Ideas", decision: "Decisions" };
+var SEARCH_ORDER = ["task", "step", "quest", "idea", "decision"];
 var searchFlat = [];
 function escRe(t) { return t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function searchTerms(q) { return q.toLowerCase().split(/\s+/).filter(Boolean); }
@@ -2287,7 +2288,6 @@ function searchAll(q, includeVault) {
     var ls = findStep(d.step);
     consider("decision", d.q, [d.a], d.a ? "Decided" : "Open", function () { if (d.vault) go("vault"); else if (ls) openTask(ls.t.id); else go("projects"); }, !!d.vault, ["Answer"]);
   });
-  state.milestones.forEach(function (m) { consider("milestone", m.text, [fmtY(parseISO(m.date)), m.date], fmtY(parseISO(m.date)), function () { go(m.vault ? "vault" : ("quest:" + m.questId)); }, !!m.vault); });
   SEARCH_ORDER.forEach(function (k) { groups[k].sort(function (a, b) { return b.score - a.score || a.idx - b.idx; }); });
   return { terms: terms, groups: groups };
 }
@@ -2658,25 +2658,6 @@ function stepDialog(prefillQuestId) {
       opts.forEach(function (o) { taskSel.appendChild(el("option", { value: o.value }, o.label)); });
     });
   }
-}
-// With a milestone passed in, edits it in place and offers Remove (onRemove is
-// supplied by the caller, since removal lives in views.js); with none, adds one.
-function milestoneDialog(m, onRemove) {
-  var questOpts = activeQuests().map(function (p) { return { value: p.id, label: p.name }; });
-  // A milestone can belong to a quest that is no longer Active (Complete, say).
-  if (m) { var cur = findQuest(m.questId); if (cur && !questOpts.some(function (o) { return o.value === cur.id; })) questOpts.unshift({ value: cur.id, label: cur.name }); }
-  if (!questOpts.length) { notify("Add an active quest first."); return; }
-  formDialog(m ? "Edit milestone" : "New milestone", [
-    { key: "quest", label: "Quest", type: "select", options: questOpts, value: m ? m.questId : questOpts[0].value },
-    { key: "text", label: "Milestone", value: m ? m.text : undefined },
-    { key: "date", label: "Date", type: "date", value: m ? m.date : undefined }
-  ], m ? "Save milestone" : "Add milestone", function (v) {
-    if (!v.quest) return "Choose a quest.";
-    if (!v.text || !isISO(v.date)) return "Enter a title and date for the milestone.";
-    if (m) { m.questId = v.quest; m.text = v.text.slice(0, 200); m.date = v.date; changed(); return { msg: "Milestone saved." }; }
-    state.milestones.push({ id: uid(), text: v.text.slice(0, 200), date: v.date, questId: v.quest }); changed();
-    return { msg: "Milestone added to the Timeline." };
-  }, m ? undefined : "Milestones can be added to a quest and will appear in the schedule and burndown.", m && onRemove ? { label: "Remove", title: "Remove this milestone (can be undone)", onClick: onRemove } : undefined);
 }
 // Slips only incomplete, scheduled tasks later by N days -- Completed tasks,
 // the Backlog, and the quest's own start date are never touched.
@@ -3080,6 +3061,7 @@ function taskRow(t) {
   var l2 = el("div", { "class": "l2" });
   if (t.block === 0) l2.appendChild(el("span", { "class": "chip backlog", style: "margin-right:8px" }, "Backlog"));
   if (t.launch) l2.appendChild(el("span", { "class": "chip launchcrit", style: "margin-right:8px" }, "Launch critical"));
+  if (t.milestone) l2.appendChild(el("span", { "class": "chip milestonechip", style: "margin-right:8px" }, "Milestone"));
   l2.appendChild(document.createTextNode(dispWhat(t)));
   b.appendChild(l2);
   var l3 = el("div", { "class": "l3" });
@@ -3132,6 +3114,7 @@ function buildDetail(t, inline, readOnly) {
   lh.appendChild(dm); top.appendChild(lh);
   var right = el("div", { style: "display:flex;gap:10px;align-items:center" });
   if (t.launch) right.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
+  if (t.milestone) right.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
   if (readOnly) {
     right.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
   } else {
@@ -3276,7 +3259,14 @@ function buildDetail(t, inline, readOnly) {
       // Nothing to offer here -- the quest page's own Restore button is the one way back to editing.
     } else {
       if (inline) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Open this task on the Tasks page" }, "Open in Tasks"), "click", function () { openTask(t.id); }));
-      if (t.launch) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Unmark this task as launch critical" }, "Skip Launch"), "click", function () { t.launch = false; changed(); }));
+      if (t.block === 0) {
+        ar.appendChild(el("button", { type: "button", "class": "small", disabled: true, title: "This is a backlogged task. Add a due date to make it a milestone." }, "Make milestone"));
+      } else if (t.milestone) {
+        ar.appendChild(on(el("button", { type: "button", "class": "small on", "aria-pressed": "true", title: "Unmark this task as a milestone" }, "Remove milestone"), "click", function () { t.milestone = false; changed(); }));
+      } else {
+        ar.appendChild(on(el("button", { type: "button", "class": "small", "aria-pressed": "false", title: "Mark this task as a milestone" }, "Make milestone"), "click", function () { t.milestone = true; changed(); }));
+      }
+      if (t.launch) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Unmark this task as launch critical" }, "Skip launch"), "click", function () { t.launch = false; changed(); }));
       else ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Mark this task as launch critical" }, "Launch critical"), "click", function () { t.launch = true; changed(); }));
       ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this task (can be undone)" }, "Delete"), "click", function () { ui.detail = false; removeNow(t, "tasks", "Task"); }));
     }
@@ -3345,6 +3335,7 @@ function launchSection(root, p) {
     b.appendChild(el("div", { "class": "l2" }, short(dispWhat(t), 60) + (t.vault ? " (in the Vault)" : "")));
     var l3 = el("div", { "class": "l3" });
     l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+    if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
     stepsAndEst(l3, t);
     if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
     b.appendChild(l3);
@@ -3457,6 +3448,7 @@ function renderQuestPage(root, id) {
       b.appendChild(el("div", { "class": "l2" }, t.what));
       var l3 = el("div", { "class": "l3" });
       l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+      if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
       stepsAndEst(l3, t);
       if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
       b.appendChild(l3);
@@ -3764,38 +3756,26 @@ function renderWorkshop(root) {
   root.appendChild(pl);
 }
 
-// Opens the edit dialog for a real milestone (state.milestones entry) by id.
-function editMilestone(id) {
-  var orig = state.milestones.filter(function (x) { return x.id === id; })[0];
-  if (orig) milestoneDialog(orig, function () { removeNow(orig, "milestones", "Milestone"); });
-}
-// Makes each milestone diamond inside a chart open its edit dialog (click, Enter, Space).
+// A milestone diamond opens the task it's flagged on, same as any other task.
 function wireMilestoneDiamonds(node) {
   Array.prototype.forEach.call(node.querySelectorAll(".ms[data-ms-id]"), function (d) {
     var id = d.getAttribute("data-ms-id");
-    on(d, "click", function () { editMilestone(id); });
-    on(d, "keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editMilestone(id); } });
+    on(d, "click", function () { openTask(id); });
+    on(d, "keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openTask(id); } });
   });
 }
 function renderTimeline(root) {
   var r = rangeBlock(); root.appendChild(r.node);
   wireMilestoneDiamonds(r.node);
-  var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h2", null, "Milestones"));
-  hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a milestone to the timeline" }, "Add milestone"), "click", function () { milestoneDialog(); })); root.appendChild(hd);
+  root.appendChild(el("h2", null, "Milestones"));
   var mbox = el("div", { "class": "box", style: "margin-top:10px" });
   var ul = el("ul", { "class": "mslist" });
-  if (!r.milestones.length) ul.appendChild(el("li", { "class": "hint" }, "No milestones yet. Add one to see it on the timeline."));
+  if (!r.milestones.length) ul.appendChild(el("li", { "class": "hint" }, "No milestones yet. Mark a task as one from its own row to see it here."));
   r.milestones.slice().sort(function (a, b) { return a.date - b.date; }).forEach(function (m) {
     var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date)));
     var mtext = el("span", { style: "flex:1 1 auto" });
-    if (m.auto) mtext.appendChild(document.createTextNode(m.text));
-    else { var ml = el("button", { type: "button", "class": "textbtn qlink", title: "Open this milestone" }, m.text); on(ml, "click", function () { editMilestone(m.id); }); mtext.appendChild(ml); }
+    var ml = el("button", { type: "button", "class": "textbtn qlink", title: "Open this task" }, m.text); on(ml, "click", function () { openTask(m.id); }); mtext.appendChild(ml);
     li.appendChild(mtext);
-    if (!m.auto) {
-      var rm = el("button", { type: "button", "class": "small danger", title: "Remove this milestone (can be undone)" }, "Remove");
-      on(rm, "click", function () { var orig = state.milestones.filter(function (x) { return x.id === m.id; })[0]; if (orig) removeNow(orig, "milestones", "Milestone"); });
-      li.appendChild(rm);
-    }
     ul.appendChild(li);
   });
   mbox.appendChild(ul); root.appendChild(mbox);
@@ -3922,7 +3902,7 @@ function helpTopics() {
     ["Find your way around", [
       "On a computer, use the sidebar on the left. On a phone, use the tabs along the bottom.",
       "The **Main menu** (three lines, top right) lists every page, including the ones that don’t fit in the sidebar or the tab bar.",
-      "Use the **+** button to add a quest, task, step, decision, milestone, backlog item, or idea. It opens a menu in that order, since quests and tasks are what you’ll reach for most.",
+      "Use the **+** button to add a quest, task, step, decision, or idea. It opens a menu in that order, since quests and tasks are what you’ll reach for most.",
       "Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **X** where the magnifier was to cancel."]],
     ["From idea to quest: the whole path", [
       "An idea starts in the **Workshop**, with nothing more than a line of text and an optional note. This is the place for something you’re not ready to commit to. It costs nothing to put there, and nothing to leave sitting.",
@@ -3963,16 +3943,16 @@ function helpTopics() {
       "**Launch critical**, beside a linked quest, flags it as something that has to finish first. **Skip Launch** undoes it. Completing or vaulting a quest with an unfinished launch-critical link only warns you, it doesn’t block you."]],
     ["Read the Timeline", [
       "Every quest gets a lane. The light bar is an estimate you set yourself on the quest’s page, not a promise.",
-      "**Add milestone** places a diamond on the date you choose, also listed below the timeline. Select a diamond, or its text in that list, to change its quest, text, or date, or to remove it.",
+      "A milestone is just a task flagged that way. **Make milestone**, from a scheduled task’s own detail, places a diamond on its due date and lists it below the timeline; **Remove milestone** takes it off. Select a diamond, or its text in that list, to open the task itself.",
       "A quest’s own page has its own Timeline, one lane per scheduled task, and its own Burndown beneath it. Point at a week, tap it, or focus the chart and use the arrow keys, to see the count and which tasks finish or were completed that week. The counts come straight from your tasks and can’t be edited by hand.",
       "On a quest’s own Timeline, a task’s bar takes its status color: blue for Not started, yellow for In progress, green for Completed."]],
     ["Launch checklist and decisions", [
-      "A task joins its quest’s **Before you launch** checklist from its own detail: open the task and select **Launch critical**. It still lives wherever it was scheduled; the checklist just also shows it, and it’s done once the task itself is Completed. **Skip Launch**, in that same spot, takes it back off.",
+      "A task joins its quest’s **Before you launch** checklist from its own detail: open the task and select **Launch critical**. It still lives wherever it was scheduled; the checklist just also shows it, and it’s done once the task itself is Completed. **Skip launch**, in that same spot, takes it back off.",
       "A launch task carries a **Launch critical** badge next to its name, both in the Tasks list and in its own detail, so you can spot it at a glance.",
       "A decision always belongs to exactly one step. The pencil beside any step lets you rename it or remove it; **Add decision** beside a step writes down what needs settling, and the decision tag opens it again to answer, change, or remove it. Answering it ticks the step, and clearing the answer unticks it again."]],
     ["The Vault and undo", [
       "Only **Quests** and **Ideas** go to the Vault, each with its own **Vault** button. A completed task just stays in its quest, marked done.",
-      "**Delete** on a task, or **Remove** on a decision or milestone, is immediate, with a short **Undo** right after in case that wasn’t what you meant.",
+      "**Delete** on a task, or **Remove** on a decision, is immediate, with a short **Undo** right after in case that wasn’t what you meant.",
       "In the Vault, select a quest’s name to see it read-only. **Restore** brings a quest or idea back, tasks included. **Delete forever** always asks first, and there’s no undo once you confirm it."]],
     ["Slip a quest’s schedule", [
       "On a quest’s own page, above the Timeline, **Slip schedule** pushes its still-incomplete tasks later by however many days you choose. Completed tasks and anything in the Backlog don’t move.",
@@ -4012,7 +3992,7 @@ function renderHelp(root) {
 /* settings */
 function blankState() {
   var d = defaults();
-  d.tasks = []; d.decisions = []; d.quests = []; d.workshop = []; d.milestones = []; d.pins = []; d.lastSlip = null;
+  d.tasks = []; d.decisions = []; d.quests = []; d.workshop = []; d.pins = []; d.lastSlip = null;
   d.start = iso(TODAY); d.days = state.days; d.settings = state.settings;
   return d;
 }
@@ -4950,7 +4930,7 @@ function wireMenu(btnId, menuId) {
     closeMenus(false);
     if (t.getAttribute("data-view")) { go(t.getAttribute("data-view")); return; }
     var act = t.getAttribute("data-act");
-    ({ newTask: taskDialog, newStep: function () { stepDialog(); }, newQuest: questDialog, newIdea: ideaDialog, newDecision: decisionDialog, newMilestone: milestoneDialog, vault: function () { go("vault"); }, settings: function () { go("settings"); } })[act]();
+    ({ newTask: taskDialog, newStep: function () { stepDialog(); }, newQuest: questDialog, newIdea: ideaDialog, newDecision: decisionDialog, vault: function () { go("vault"); }, settings: function () { go("settings"); } })[act]();
   });
   on(m, "keydown", function (e) {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
