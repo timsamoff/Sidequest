@@ -103,25 +103,23 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
   });
 }
 
-export function taskDialog(prefillQuestId, backlog) {
+export function taskDialog(prefillQuestId) {
   var nt = nextTask();
   var questOpts = activeQuests().map(function (p) { return { value: p.id, label: p.name }; });
   if (!questOpts.length) { notify("Add an active quest first (Quests > Choose as next quest)."); return; }
   var fixedQuest = typeof prefillQuestId === "string";
   var startId = fixedQuest ? prefillQuestId : (nt && !nt.isNext ? nt.questId : questOpts[0].value);
-  var defaultDue = backlog ? "" : iso(blockEndFor(startId, nt ? nt.block : 4));
+  var defaultDue = iso(blockEndFor(startId, nt ? nt.block : 4));
   var startQuest = findQuest(startId);
   var fields = fixedQuest && startQuest
     ? [{ key: "quest", label: "Quest", type: "static", value: startQuest.name }]
     : [{ key: "quest", label: "Quest", type: "select", options: questOpts, value: startId }];
   fields.push({ key: "what", label: "Task" });
   fields.push({ key: "done", label: "How you’ll know it’s done (optional)" });
-  if (!backlog) {
-    fields.push({ key: "start", label: "Start date (optional)", type: "date" });
-    fields.push({ key: "due", label: "Due date (leave empty to add to the quest’s backlog)", type: "date", value: defaultDue });
-  }
+  fields.push({ key: "start", label: "Start date (optional)", type: "date" });
+  fields.push({ key: "due", label: "Due date (leave empty to add to the quest’s backlog)", type: "date", value: defaultDue });
   fields.push({ key: "est", label: "Estimated time in hours (optional)", type: "number", min: "0", max: "9999", step: "0.25" });
-  formDialog(backlog ? "New backlog item" : "New task", fields, backlog ? "Add to Backlog" : "Add task", function (v) {
+  formDialog("New task", fields, "Add task", function (v) {
     if (fixedQuest) v.quest = startId;
     if (!v.quest || !v.what) return "Choose a quest and enter what you do.";
     var blk = 0, start = "", due = "";
@@ -210,12 +208,12 @@ export function decisionDialog(prefill) {
     return;
   }
   // No fixed step: cascade Quest -> Task -> Step, same pattern as stepDialog().
-  var startQuest = typeof prefill === "string" ? prefill : "";
-  if (!stepOptions(startQuest || undefined).some(function (o) { return !decisionFor(o.value); })) {
+  if (!stepOptions().some(function (o) { return !decisionFor(o.value); })) {
     notify("Every step already has a decision. Add a step first (open a task and add one), then add the decision.");
     return;
   }
-  var questOpts = [{ value: "", label: "All quests" }].concat(liveQuests().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; }));
+  var questOpts = liveQuests().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; });
+  var startQuest = (typeof prefill === "string" && prefill) || (questOpts.length ? questOpts[0].value : "");
   var startTasks = taskOptions(startQuest);
   var startTask = startTasks.length ? startTasks[0].value : "";
   var startSteps = openStepOptions(startTask);
@@ -274,8 +272,8 @@ export function decisionEditDialog(dec, onRemove) {
 export function stepDialog(prefillQuestId) {
   if (!orderedAll().length) { notify("Add a task first."); return; }
   var selTask = ui.sel && findTask(ui.sel);
-  var startId = prefillQuestId || (selTask ? selTask.questId : "");
-  var questOpts = [{ value: "", label: "All quests" }].concat(liveQuests().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; }));
+  var questOpts = liveQuests().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; });
+  var startId = prefillQuestId || (selTask ? selTask.questId : (questOpts.length ? questOpts[0].value : ""));
   var pick = selTask ? selTask.id : ((nextTask() || orderedAll()[0]).id);
   formDialog("New step", [
     { key: "quest", label: "Quest", type: "select", options: questOpts, value: startId },

@@ -1066,7 +1066,7 @@ export function helpTopics() {
       "A task is Not started, In progress, or Completed, shown as blue, yellow, and green everywhere it appears: the status menu, the task’s row, and its bar on a quest’s Timeline.",
       "Finishing every step on a task marks it done. Add a new step to a finished task and it reopens, since there’s now something left to do."]],
     ["Use the Backlog", [
-      "The Backlog holds work with no dates yet. Add something directly with **+**, then **New backlog item**, or clear a task’s due date to send it there.",
+      "The Backlog holds work with no dates yet. Add a task from its quest’s own page and leave the due date empty, or clear an existing task’s due date to send it there.",
       "To schedule a Backlog item, open it and set a due date. Nothing in the Backlog counts toward the burndown until it has one. Going the other way, clearing a due date, also clears the start date, but keeps whatever estimate you set."]],
     ["Use the Workshop", [
       "The Workshop is where an idea lives before it’s worth a full quest record. **Add idea** needs nothing but a line of text and, if you want, a note.",
@@ -1257,7 +1257,7 @@ export function renderSettings(page) {
   side.appendChild(contactBox);
 
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
-  root.appendChild(el("h2", { "class": "first" }, "Schedule defaults"));
+  root.appendChild(el("h2", { "class": "setmain-head" }, "Schedule defaults"));
   root.appendChild(el("p", { "class": "hint" }, "Set the default " + wl() + " length for all quests. Individual quests can have their own " + wl() + " length. You can also choose what to call a " + wl() + " throughout the app."));
   var scheduleBox = el("div", { "class": "box", style: "margin-top:10px" });
   var grid = el("div", { "class": "setgrid" });
