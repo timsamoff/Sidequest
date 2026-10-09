@@ -2415,7 +2415,8 @@ function taskDialog(prefillQuestId) {
   fields.push({ key: "est", label: "Estimated time in hours (optional)", type: "number", min: "0", max: "9999", step: "0.25" });
   formDialog("New task", fields, "Add task", function (v) {
     if (fixedQuest) v.quest = startId;
-    if (!v.quest || !v.what) return "Choose a quest and enter what you do.";
+    if (!v.quest) return "Choose a quest.";
+    if (!v.what) return "Enter a title for the task.";
     var blk = 0, start = "", due = "";
     if (v.due) {
       if (!isISO(v.due)) return "Enter a valid due date, or leave it empty for the Backlog.";
@@ -2451,7 +2452,7 @@ function questDialog() {
     { key: "giverCoin", label: "Bounty", type: "number", min: "0", max: "999999", step: "1" },
     { key: "giverPer", label: "Per", type: "select", options: [{ value: "Hour", label: "Hour" }, { value: "Quest", label: "Quest" }] }
   ], "Add quest", function (v) {
-    if (!v.name) return "Enter a quest name.";
+    if (!v.name) return "Enter a title for the candidate quest.";
     var coinN = v.giverCoin === "" ? "" : parseInt(v.giverCoin, 10);
     var coin = (coinN === "" || isNaN(coinN) || coinN < 0) ? "" : Math.min(999999, coinN);
     var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200), coin: coin, per: v.giverPer === "Quest" ? "Quest" : "Hour" };
@@ -2477,7 +2478,7 @@ function ideaDialog(idea) {
     { key: "text", label: "Idea", value: idea ? idea.text : undefined },
     { key: "note", label: "Note (optional)", type: "textarea", rows: 5, value: idea ? idea.note : undefined }
   ], idea ? "Save idea" : "Workshop it", function (v) {
-    if (!v.text) return "Enter the idea.";
+    if (!v.text) return "Enter a title for the idea.";
     if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 5000); changed(); return { msg: "Idea saved." }; }
     state.workshop.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000) }); changed();
     return { msg: "Added to the Workshop." };
@@ -2494,7 +2495,7 @@ function decisionDialog(prefill) {
     var opts = fixed ? [{ value: stepId, label: fixed.s.text }] : [];
     if (!opts.length) { notify("That step is gone."); return; }
     formDialog("New decision", [{ key: "q", label: "Decision" }], "Add decision", function (v) {
-      if (!v.q) return "Enter the decision.";
+      if (!v.q) return "Enter a title for the decision.";
       if (decisionFor(stepId)) return "That step already has a decision.";
       state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: stepId }); changed();
       return { msg: "Decision added." };
@@ -2522,7 +2523,7 @@ function decisionDialog(prefill) {
     { key: "step", label: "Step", type: "select", options: startSteps, value: startSteps.length ? startSteps[0].value : "" },
     { key: "q", label: "Decision" }
   ], "Add decision", function (v) {
-    if (!v.q) return "Enter the decision.";
+    if (!v.q) return "Enter a title for the decision.";
     if (!v.step) return "Choose a step.";
     if (decisionFor(v.step)) return "That step already has a decision.";
     state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: v.step }); changed();
@@ -2552,7 +2553,7 @@ function decisionEditDialog(dec, onRemove) {
     { key: "q", label: "Decision", value: dec.q },
     { key: "a", label: "Answer", type: "textarea", rows: 3, value: dec.a }
   ], "Save decision", function (v) {
-    if (!v.q) return "Enter the decision.";
+    if (!v.q) return "Enter a title for the decision.";
     var was = dec.a;
     dec.q = v.q.slice(0, 300); dec.a = v.a.slice(0, 1000);
     if (dec.a !== was && ls) { ls.s.done = dec.a !== ""; syncFromSteps(ls.t); }
@@ -2575,7 +2576,7 @@ function stepDialog(prefillQuestId) {
     { key: "text", label: "Step" }
   ], "Add step", function (v) {
     var t = findTask(v.task);
-    if (!v.text) return "Enter the step.";
+    if (!v.text) return "Enter a title for the step.";
     if (!t) return "Choose a task.";
     t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false }); syncFromSteps(t); changed();
     return { msg: "Step added to " + dispQuest(t) + "." };
@@ -2601,7 +2602,8 @@ function milestoneDialog(m, onRemove) {
     { key: "text", label: "Milestone", value: m ? m.text : undefined },
     { key: "date", label: "Date", type: "date", value: m ? m.date : undefined }
   ], m ? "Save milestone" : "Add milestone", function (v) {
-    if (!v.quest || !v.text || !isISO(v.date)) return "Choose a quest, and enter a milestone and a date.";
+    if (!v.quest) return "Choose a quest.";
+    if (!v.text || !isISO(v.date)) return "Enter a title and date for the milestone.";
     if (m) { m.questId = v.quest; m.text = v.text.slice(0, 200); m.date = v.date; changed(); return { msg: "Milestone saved." }; }
     state.milestones.push({ id: uid(), text: v.text.slice(0, 200), date: v.date, questId: v.quest }); changed();
     return { msg: "Milestone added to the Timeline." };
@@ -4521,7 +4523,7 @@ var AFFIRMATIONS = [
   "Stay the course, though the road be long.",
   "Seek the deed that mattereth.",
   "Keep thy mind clear.",
-  "Keep thy purpose fixed",
+  "Keep thy purpose fixed.",
   "May thy course be ready to change.",
   "Thou shalt learn to love the problem.",
   "Make peace with uncertainty.",

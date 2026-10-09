@@ -76,7 +76,7 @@ export var AFFIRMATIONS = [
   "Stay the course, though the road be long.",
   "Seek the deed that mattereth.",
   "Keep thy mind clear.",
-  "Keep thy purpose fixed",
+  "Keep thy purpose fixed.",
   "May thy course be ready to change.",
   "Thou shalt learn to love the problem.",
   "Make peace with uncertainty.",
