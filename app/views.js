@@ -7,7 +7,7 @@ import {
   totalUnits, remainingUnits, planned, ordered, backlogTasks, sortTasks,
   isLate, lateTasks, setStatus, syncFromSteps, nextTask, questTasksAllDone, questTotalUnits, questRemainingUnits,
   validPage, isPinned, pinPage, unpinPage, questMeta, fmtHours, fmtHoursLong, questEstimate, recordHist, checkpointStep, globalActual,
-  findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask
+  findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask, questTasks
 } from "./model.js";
 import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx } from "./dom.js";
 import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
@@ -268,7 +268,7 @@ export function renderSchedule(root) {
 }
 
 // `inline` is the quest page's in-place version: no heading or back button, plus an Open in Tasks link.
-export function buildDetail(t, inline) {
+export function buildDetail(t, inline, readOnly) {
   var box = el("div", { "class": "detail" });
   if (!inline) box.appendChild(on(el("button", { type: "button", "class": "small only-mobile", style: "margin-bottom:10px", title: "Back to the task list" }, "All tasks"), "click", function () { ui.detail = false; renderView(); scrollTop(); }));
   var top = el("div", { style: "display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap" });
@@ -282,14 +282,19 @@ export function buildDetail(t, inline) {
   lh.appendChild(dm); top.appendChild(lh);
   var right = el("div", { style: "display:flex;gap:10px;align-items:center" });
   if (t.launch) right.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
-  var sel = el("select", { "class": "status", "aria-label": "Status" });
-  STATUSES.forEach(function (s) { var o = el("option", { value: s }, s); if (s === t.status) o.selected = true; sel.appendChild(o); });
-  sel.setAttribute("data-v", t.status);
-  on(sel, "change", function () { setStatus(t, sel.value); changed(); });
-  right.appendChild(sel); top.appendChild(right); box.appendChild(top);
+  if (readOnly) {
+    right.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+  } else {
+    var sel = el("select", { "class": "status", "aria-label": "Status" });
+    STATUSES.forEach(function (s) { var o = el("option", { value: s }, s); if (s === t.status) o.selected = true; sel.appendChild(o); });
+    sel.setAttribute("data-v", t.status);
+    on(sel, "change", function () { setStatus(t, sel.value); changed(); });
+    right.appendChild(sel);
+  }
+  top.appendChild(right); box.appendChild(top);
   var whatRow = el("div", { "class": "editrow" });
   var whatP = el("p", { "class": "what", style: "flex:0 1 auto;min-width:0" }, dispWhat(t)); whatRow.appendChild(whatP);
-  if (!t.isNext) {
+  if (!t.isNext && !readOnly) {
     var whatPen = pencilButton("Rename this task", "Rename this task");
     on(whatPen, "click", function () {
       whatPen.hidden = true;
@@ -304,7 +309,10 @@ export function buildDetail(t, inline) {
   }
   box.appendChild(whatRow);
   if (!(t.isNext && chosen())) box.appendChild(el("p", { "class": "dmeta" }, "Done when: " + t.done));
-  if (!t.isNext) {
+  if (!t.isNext && readOnly) {
+    box.appendChild(el("p", { "class": "dmeta" }, t.est > 0 ? "Estimated time: " + t.est + " h" : ""));
+  }
+  if (!t.isNext && !readOnly) {
     var dg = el("div", { "class": "setgrid" });
     var dmsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function dfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); dg.appendChild(w); }
@@ -353,59 +361,76 @@ export function buildDetail(t, inline) {
   var nDone = t.steps.filter(function (s) { return s.done; }).length;
   box.appendChild(el("h3", null, t.steps.length ? "Steps (" + nDone + " of " + t.steps.length + " done)" : "Steps"));
   if (!t.steps.length) box.appendChild(el("p", { "class": "hint" }, "No steps yet. This task counts as one item in the burndown. Add steps to break it up."));
-  if (t.steps.length) box.appendChild(el("p", { "class": "hint" }, "Use a step’s pencil to rename it in place, or Remove to delete it."));
+  if (t.steps.length && !readOnly) box.appendChild(el("p", { "class": "hint" }, "Use a step’s pencil to rename it in place, or Remove to delete it."));
   var ul = el("ul", { "class": "steps" });
   t.steps.forEach(function (s) {
     var sli = el("li", { "class": s.done ? "done" : "" });
     var lab = el("label"); var cb = el("input", { type: "checkbox" }); cb.checked = s.done;
-    on(cb, "change", function () { s.done = cb.checked; syncFromSteps(t); changed(); });
-    var textSpan = el("span", null, s.text);
-    lab.appendChild(cb); lab.appendChild(textSpan); sli.appendChild(lab);
-    var ac = el("div", { "class": "li-actions" });
     var dc = decisionFor(s.id);
-    if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the decision for this step", title: "Open this decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { decisionEditDialog(dc, function () { removeNow(dc, "decisions", "Decision"); }); }));
-    else ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Add a decision to this step: " + s.text, title: "Add a decision to this step" }, "Add decision"), "click", function () { decisionDialog({ step: s.id }); }));
-    var stepPen = pencilButton("Rename this step", "Rename this step");
-    on(stepPen, "click", function () {
-      stepPen.hidden = true;
-      editInline(textSpan, {
-        label: "Step", max: 300, value: function () { return s.text; },
-        onSave: function (v) { s.text = v.slice(0, 300); changed(); },
-        onEmpty: function () { notify("A step needs text."); },
-        onDone: function () { stepPen.hidden = false; }
+    if (readOnly) {
+      cb.disabled = true;
+      lab.appendChild(cb); lab.appendChild(el("span", null, s.text)); sli.appendChild(lab);
+      if (dc) sli.appendChild(el("p", { "class": "hint", style: "margin:4px 0 0" }, (dc.a ? "Decision: " : "Decision (open): ") + dc.q + (dc.a ? " — " + dc.a : "")));
+    } else {
+      on(cb, "change", function () { s.done = cb.checked; syncFromSteps(t); changed(); });
+      var textSpan = el("span", null, s.text);
+      lab.appendChild(cb); lab.appendChild(textSpan); sli.appendChild(lab);
+      var ac = el("div", { "class": "li-actions" });
+      if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the decision for this step", title: "Open this decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { decisionEditDialog(dc, function () { removeNow(dc, "decisions", "Decision"); }); }));
+      else ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Add a decision to this step: " + s.text, title: "Add a decision to this step" }, "Add decision"), "click", function () { decisionDialog({ step: s.id }); }));
+      var stepPen = pencilButton("Rename this step", "Rename this step");
+      on(stepPen, "click", function () {
+        stepPen.hidden = true;
+        editInline(textSpan, {
+          label: "Step", max: 300, value: function () { return s.text; },
+          onSave: function (v) { s.text = v.slice(0, 300); changed(); },
+          onEmpty: function () { notify("A step needs text."); },
+          onDone: function () { stepPen.hidden = false; }
+        });
       });
-    });
-    ac.appendChild(stepPen);
-    ac.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Remove this step" }, "Remove"), "click", function () {
-      t.steps = t.steps.filter(function (x) { return x.id !== s.id; });
-      state.decisions = state.decisions.filter(function (x) { return x.step !== s.id; });
-      syncFromSteps(t); changed();
-    }));
-    sli.appendChild(ac); ul.appendChild(sli);
+      ac.appendChild(stepPen);
+      ac.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Remove this step" }, "Remove"), "click", function () {
+        t.steps = t.steps.filter(function (x) { return x.id !== s.id; });
+        state.decisions = state.decisions.filter(function (x) { return x.step !== s.id; });
+        syncFromSteps(t); changed();
+      }));
+      sli.appendChild(ac);
+    }
+    ul.appendChild(sli);
   });
   box.appendChild(ul);
-  var add = el("div", { "class": "inline" });
-  var inp = el("input", { type: "text", placeholder: "Add a step", "aria-label": "New step", "data-focus": "step-" + t.id, autocomplete: "off" });
-  var addBtn = el("button", { type: "button", "class": "small", title: "Add a step to this task" }, "Add step");
-  function addStep() {
-    var v = inp.value.trim(); if (!v) return;
-    t.steps.push({ id: uid(), text: v.slice(0, 300), done: false });
-    syncFromSteps(t); setFocusKey("step-" + t.id); changed();
+  if (!readOnly) {
+    var add = el("div", { "class": "inline" });
+    var inp = el("input", { type: "text", placeholder: "Add a step", "aria-label": "New step", "data-focus": "step-" + t.id, autocomplete: "off" });
+    var addBtn = el("button", { type: "button", "class": "small", title: "Add a step to this task" }, "Add step");
+    function addStep() {
+      var v = inp.value.trim(); if (!v) return;
+      t.steps.push({ id: uid(), text: v.slice(0, 300), done: false });
+      syncFromSteps(t); setFocusKey("step-" + t.id); changed();
+    }
+    on(addBtn, "click", addStep);
+    on(inp, "keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addStep(); } });
+    add.appendChild(inp); add.appendChild(addBtn); box.appendChild(add);
   }
-  on(addBtn, "click", addStep);
-  on(inp, "keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addStep(); } });
-  add.appendChild(inp); add.appendChild(addBtn); box.appendChild(add);
   box.appendChild(el("h3", null, "Notes"));
-  var ta = el("textarea", { "aria-label": "Notes", style: "margin-top:8px" }); ta.value = t.notes;
-  on(ta, "input", function () { t.notes = ta.value.slice(0, 5000); save(); });
-  box.appendChild(ta);
-  if (!t.isNext) {
+  if (readOnly) {
+    box.appendChild(el("p", { "class": "hint notetext" }, t.notes || "No notes."));
+  } else {
+    var ta = el("textarea", { "aria-label": "Notes", style: "margin-top:8px" }); ta.value = t.notes;
+    on(ta, "input", function () { t.notes = ta.value.slice(0, 5000); save(); });
+    box.appendChild(ta);
+  }
+  if (!t.isNext && (inline || !readOnly)) {
     var ar = el("div", { "class": "actions", style: "margin-top:14px" });
-    if (inline) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Open this task on the Tasks page" }, "Open in Tasks"), "click", function () { openTask(t.id); }));
-    if (t.launch) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Unmark this task as launch critical" }, "Skip Launch"), "click", function () { t.launch = false; changed(); }));
-    else ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Mark this task as launch critical" }, "Launch critical"), "click", function () { t.launch = true; changed(); }));
-    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this task (can be undone)" }, "Delete"), "click", function () { ui.detail = false; removeNow(t, "tasks", "Task"); }));
-    box.appendChild(ar);
+    if (readOnly) {
+      // Nothing to offer here -- the quest page's own Restore button is the one way back to editing.
+    } else {
+      if (inline) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Open this task on the Tasks page" }, "Open in Tasks"), "click", function () { openTask(t.id); }));
+      if (t.launch) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Unmark this task as launch critical" }, "Skip Launch"), "click", function () { t.launch = false; changed(); }));
+      else ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Mark this task as launch critical" }, "Launch critical"), "click", function () { t.launch = true; changed(); }));
+      ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this task (can be undone)" }, "Delete"), "click", function () { ui.detail = false; removeNow(t, "tasks", "Task"); }));
+    }
+    if (ar.childNodes.length) box.appendChild(ar);
   }
   return box;
 }
@@ -457,10 +482,12 @@ export function launchSection(root, p) {
   var ul = el("ul", { "class": "tlist check", "aria-labelledby": "h-checks" });
   items.forEach(function (t) {
     var done = t.status === "Completed";
-    var open = !readOnly && !t.vault && ui.questOpen[p.id] === t.id;
+    // A vaulted quest, or an individually vaulted task, still opens in place -- read-only, not redirected away.
+    var taskReadOnly = readOnly || !!t.vault;
+    var open = ui.questOpen[p.id] === t.id;
     var li = el("li", { id: "ltask-" + t.id });
     var b = el("button", { type: "button", "class": "item" + (done ? " done" : ""), title: "View this task" });
-    if (!readOnly && !t.vault) b.setAttribute("aria-expanded", open ? "true" : "false");
+    b.setAttribute("aria-expanded", open ? "true" : "false");
     var l1 = el("div", { "class": "l1 split" });
     l1.appendChild(t.block === 0 ? el("span", { "class": "chip backlog" }, "Backlog") : el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
     var tag1 = addedChip(t); if (tag1) { tag1.style.marginLeft = "6px"; l1.appendChild(tag1); }
@@ -471,12 +498,9 @@ export function launchSection(root, p) {
     stepsAndEst(l3, t);
     if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
     b.appendChild(l3);
-    on(b, "click", function () {
-      if (readOnly || t.vault) { openTask(t.id); return; }
-      ui.questOpen[p.id] = open ? null : t.id; renderView();
-    });
+    on(b, "click", function () { ui.questOpen[p.id] = open ? null : t.id; renderView(); });
     li.appendChild(b);
-    if (open) li.appendChild(buildDetail(t, true));
+    if (open) li.appendChild(buildDetail(t, true, taskReadOnly));
     ul.appendChild(li);
   });
   if (total) root.appendChild(ul);
@@ -553,7 +577,7 @@ export function renderQuestPage(root, id) {
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
     root.appendChild(el("h2", null, "Quest Giver"));
     var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Bounty: " + p.client.coin + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
-    root.appendChild(el("p", { "class": "hint notetext" }, cgLines.length ? cgLines.join("\n") : "Nothing filled in."));
+    root.appendChild(el("p", { "class": "hint notetext" }, cgLines.length ? cgLines.join("\n") : "No Quest Giver."));
     return;
   }
 
@@ -565,18 +589,17 @@ export function renderQuestPage(root, id) {
   metaRow.appendChild(metaLine);
   if (est.total > 0) metaRow.appendChild(el("span", { "class": "hint estleft" }, "Est. " + fmtHoursLong(est.left) + " remaining"));
   root.appendChild(metaRow);
-  if (readOnly) root.appendChild(el("p", { "class": "hint" }, "In the Vault. Restore it to make changes."));
-  else if (p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this quest is Complete. Reopen it to bring them back."));
-  // orderedAll(), not ordered()/backlogTasks() -- a quest's own page keeps
-  // showing its tasks even while Complete, when cross-quest lists exclude them.
-  var ts = sortTasks(live(state.tasks).filter(function (t) { return !t.isNext && t.questId === p.id && !t.launch; }));
+  if (!readOnly && p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this quest is Complete. Reopen it to bring them back."));
+  // questTasks(), not ordered()/backlogTasks()/live() -- a quest's own page keeps
+  // showing its tasks even while Complete or vaulted, when cross-quest lists exclude them.
+  var ts = sortTasks(questTasks(p.id).filter(function (t) { return !t.isNext && !t.launch; }));
   if (ts.length) {
     var ul = el("ul", { "class": "tlist" });
     ts.forEach(function (t) {
-      // A live quest's task opens in place under its row; a vaulted quest's goes to the Tasks page.
-      var open = !readOnly && ui.questOpen[p.id] === t.id;
+      // A vaulted quest's task opens in place too, read-only, so its steps and decisions stay visible for historical purposes.
+      var open = ui.questOpen[p.id] === t.id;
       var li = el("li", { id: "ptask-" + t.id }), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
-      if (!readOnly) b.setAttribute("aria-expanded", open ? "true" : "false");
+      b.setAttribute("aria-expanded", open ? "true" : "false");
       var l1 = el("div", { "class": "l1 split" });
       l1.appendChild(t.block === 0 ? el("span", { "class": "chip backlog" }, "Backlog") : el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
       var tag1 = addedChip(t); if (tag1) { tag1.style.marginLeft = "6px"; l1.appendChild(tag1); }
@@ -587,9 +610,9 @@ export function renderQuestPage(root, id) {
       stepsAndEst(l3, t);
       if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
       b.appendChild(l3);
-      on(b, "click", function () { if (readOnly) { openTask(t.id); return; } ui.questOpen[p.id] = open ? null : t.id; renderView(); });
+      on(b, "click", function () { ui.questOpen[p.id] = open ? null : t.id; renderView(); });
       li.appendChild(b);
-      if (open) li.appendChild(buildDetail(t, true));
+      if (open) li.appendChild(buildDetail(t, true, readOnly));
       ul.appendChild(li);
     });
     root.appendChild(ul);
@@ -616,12 +639,13 @@ export function renderQuestPage(root, id) {
     if (typeof ResizeObserver !== "undefined") new ResizeObserver(function () { if (ta.offsetHeight > 0) ui.notesH[p.id] = ta.offsetHeight; }).observe(ta);
   }
 
-  root.appendChild(el("h2", null, "Quest Giver"));
-  root.appendChild(el("p", { "class": "hint" }, "The client or contact for this quest. If filled, this information will appear on the Quest Giver Export."));
   if (readOnly) {
+    root.appendChild(el("h2", null, "Quest Giver"));
     var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website, gc.coin !== "" ? "Bounty: " + gc.coin + " per " + gc.per.toLowerCase() : ""].filter(Boolean);
-    root.appendChild(el("p", { "class": "hint notetext" }, glines.length ? glines.join("\n") : "Nothing filled in."));
+    root.appendChild(el("p", { "class": "hint notetext" }, glines.length ? glines.join("\n") : "No Quest Giver."));
   } else {
+    root.appendChild(el("h2", null, "Quest Giver"));
+    root.appendChild(el("p", { "class": "hint" }, "The client or contact for this quest. If filled, this information will appear on the Quest Giver Export."));
     var giverBox = el("div", { "class": "box", style: "margin-top:10px" });
     var gg = el("div", { "class": "setgrid" });
     function gfield(key, id, label, type, full) {
@@ -715,7 +739,7 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
   host.appendChild(hd);
   var eff = pset(p.id);
   if (readOnly) {
-    host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start || "unset") + (p.due ? ", due " + fmt(p.due) : "") + ", " + wl() + " length " + eff.days + " days" + "."));
+    host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start ? fmtY(parseISO(eff.start)) : "unset") + (p.due ? ", due " + fmtY(parseISO(p.due)) : "") + ", " + wl() + " length " + eff.days + " days" + "."));
   } else {
     host.appendChild(el("p", { "class": "hint" }, "Set the quest’s start date, due date, and " + wl() + " length."));
     var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });

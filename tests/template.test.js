@@ -524,8 +524,21 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(gameVaultRow, "Sample Game"));
   ok(k.$("viewTitle").textContent === "Sample Game", "a vaulted quest's own page is now reachable (previously invisible)");
   ok(k.$("view").textContent.includes("In the Vault. Restore it to make changes."), "vaulted quest page states it's read-only");
+  ok(k.d.querySelectorAll("#view .tlist li").length === tasksBefore && k.$("view").textContent.includes("Add a level editor") && k.$("view").textContent.includes("Backlog"), "a vaulted quest's own page still lists its own tasks, including its Backlog task (previously showed none at all)");
   ok(!k.btn(k.$("view"), "Add task") && !k.d.querySelector("#proj-start") && !k.d.querySelector("#view textarea"), "no mutating controls (Add task, schedule inputs, notes textarea) on a vaulted quest page");
   ok(!!k.btn(k.$("view"), "Restore"), "vaulted quest page offers Restore instead of Vault/Mark complete");
+  k.click(k.$("view").querySelector("#ptask-g1 button"));
+  const protoDetail = k.$("view").querySelector("#ptask-g1 .detail");
+  ok(!!protoDetail && protoDetail.textContent.includes("Make the player move") && protoDetail.textContent.includes("Add one obstacle"), "a vaulted quest's own task still expands in place and shows its steps, for historical purposes");
+  ok(!protoDetail.querySelector("select.status") && !protoDetail.querySelector("textarea") && ![...protoDetail.querySelectorAll("button")].some(b => ["Delete", "Launch critical", "Add step", "Add decision"].includes(b.textContent)), "the expanded task on a vaulted quest page has no mutating controls of its own (status select, notes textarea, Delete, Launch critical, Add step/decision)");
+  ok([...protoDetail.querySelectorAll('input[type="checkbox"]')].every(cb => cb.disabled), "step checkboxes are disabled when the quest is vaulted");
+  ok(k.$("view").textContent.includes("No Quest Giver.") && !k.$("view").textContent.includes("If filled, this information will appear on the Quest Giver Export."), "a vaulted quest page shows a plain Quest Giver empty state with no editable-page description");
+  ok(!/\d{4}-\d{2}-\d{2}/.test(k.$("view").textContent), "a vaulted quest's Schedule line formats its start date like its due date, not as a raw ISO string");
+  {
+    const sched = [...k.$("view").querySelectorAll(".hint")].find(p => p.textContent.startsWith("Started "));
+    const thisYear = String(new Date().getFullYear());
+    ok(!!sched && sched.textContent.includes(thisYear), "the Schedule line includes the year, not just month and day");
+  }
   k.click(k.btn(k.$("view"), "Restore"));
   ok(!k.saved().quests.find(p => p.id === "pGame").vault, "Restore brings the quest back out of the Vault");
   ok(k.saved().tasks.filter(t => t.questId === "pGame" && !t.vault).length === tasksBefore, "restoring the quest also brings its tasks back out of the Vault");
@@ -549,7 +562,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk(saved));
   k.tab("vault");
   k.click(k.btn(k.$("view"), "Empty Giver"));
-  ok(k.$("view").textContent.includes("Nothing filled in."), "a vaulted candidate with no Quest Giver info says so plainly");
+  ok(k.$("view").textContent.includes("No Quest Giver."), "a vaulted candidate with no Quest Giver info says so plainly");
 }
 
 {

@@ -76,8 +76,8 @@ export function fmtHoursLong(h) { var r = Math.round(h * 100) / 100; return r + 
 // Backlog included.
 export function questEstimate(p) {
   var total = 0, left = 0;
-  counted().forEach(function (t) {
-    if (t.isNext || t.questId !== p.id || !(t.est > 0)) return;
+  questTasks(p.id).forEach(function (t) {
+    if (t.isNext || !(t.est > 0)) return;
     total += t.est; if (t.status !== "Completed") left += t.est;
   });
   return { total: total, left: left };
@@ -127,6 +127,11 @@ export function globalActual(cps) {
 
 /* task helpers */
 export function counted() { return state.tasks.filter(function (t) { return !t.vault || t.vault.why === "done"; }); }
+// A vaulted quest's own page shows every one of its tasks regardless of
+// their own vault state (the quest-vault cascade vaults them too), since the
+// page's own readOnly gate already governs editability -- counted()/live()
+// are for cross-quest lists and would wrongly hide them here.
+export function questTasks(questId) { return state.tasks.filter(function (t) { return t.questId === questId; }); }
 // The "chosen" quest is the first active one with no tasks yet. If two are
 // both task-less, whichever was promoted first wins.
 export function chosen() { var a = activeQuests(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.questId === a[i].id; })) return a[i]; return null; }
@@ -209,7 +214,7 @@ export function isPinned(key) { return state.pins.indexOf(key) >= 0; }
 export function pinPage(key) { if (!isPinned(key)) state.pins.push(key); changed(); notify(pageTitle(key) + " pinned to the sidebar."); }
 export function unpinPage(key) { state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); notify(pageTitle(key) + " removed from the sidebar. It is still listed under Quests."); }
 export function questMeta(p) {
-  var ts = counted().filter(function (t) { return !t.isNext && t.questId === p.id; });
+  var ts = questTasks(p.id).filter(function (t) { return !t.isNext; });
   var parts = [];
   if (ts.length) {
     var bk = ts.filter(function (t) { return t.block === 0; }).length;
@@ -231,7 +236,7 @@ export function short(str, n) { return str.length > n ? str.slice(0, n - 1) + "â
 // Tasks flagged for a quest's own launch checklist -- renders as a section on
 // that quest's own page (no separate global Launch page anymore).
 export function launchItems(questId) {
-  return orderedCounted().filter(function (t) { return t.questId === questId && t.launch; });
+  return sortTasks(questTasks(questId).filter(function (t) { return t.launch; }));
 }
 // A decision must link to a real step -- no "None" option. If questId is
 // given, only that quest's steps are offered.
