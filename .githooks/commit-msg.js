@@ -7,7 +7,7 @@
 "use strict";
 const fs = require("fs");
 const common = require("./lib/sentinel-common");
-const { checkCommitMessage } = require("./lib/check-commit-msg");
+const { checkCommitMessage, checkVersionBump } = require("./lib/check-commit-msg");
 
 function main() {
   const msgFile = process.argv[2];
@@ -19,7 +19,8 @@ function main() {
     common.failLoud("could not read commit message file " + msgFile + ": " + e.message);
   }
 
-  const { violations } = checkCommitMessage(message);
+  let violations = checkCommitMessage(message).violations;
+  violations = violations.concat(checkVersionBump(message));
   if (violations.length) {
     common.printViolations(violations, "Sentinel: commit message rejected");
     process.exitCode = 1;

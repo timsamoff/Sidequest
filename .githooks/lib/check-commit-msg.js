@@ -13,6 +13,8 @@
 //   BULLET_WRAP_MAX     = 160  (combined cap across a bullet's 2 allowed physical lines)
 
 "use strict";
+const common = require("./sentinel-common");
+const pre = require("./check-pre-commit");
 
 const SUBJECT_MAX = 72;
 const BULLET_MAX_COUNT = 5;
@@ -96,7 +98,7 @@ function checkCommitMessage(rawMessage) {
   // structural element, not narrative body prose or a bullet -- exclude them from
   // the bullet-structure scan before checking it, or a trailer with no "- " marker
   // would otherwise misreport as a narrative-body violation.
-  const TRAILER_RE = /^(Sentinel-Override|Claude-Session|Co-Authored-By|Co-authored-by):/;
+  const TRAILER_RE = /^(Sentinel-Override|Sentinel-Version-Skip|Claude-Session|Co-Authored-By|Co-authored-by):/;
   const contentLines = bodyContent.filter((l) => l.trim() !== "" && !TRAILER_RE.test(l.trim()));
   if (!contentLines.length) {
     return { violations }; // subject-only commit (plus maybe only trailers): the common, clean case.
@@ -189,4 +191,50 @@ function checkCommitMessage(rawMessage) {
   return { violations, overrideReason: overrideMatch ? overrideMatch[1].trim() : null };
 }
 
-module.exports = { checkCommitMessage, SUBJECT_MAX, BULLET_MAX_COUNT, BULLET_LINE_MAX, BULLET_WRAP_MAX, ATTRIBUTION_PATTERNS };
+// ---------------------------------------------------------------------------
+// Version-bump reminder
+// ---------------------------------------------------------------------------
+// APP_VERSION (app/state.js) sat at "1.0.0" through dozens of real feature
+// commits -- raised directly by the user 2026-10-09, who asked why nothing
+// catches this. The gate cannot decide major vs. minor vs. patch itself; that
+// stays a human (or Claude, asking the user) judgment call made before this
+// commit is written, by editing APP_VERSION. This check is the backstop for
+// the rare case that step is skipped -- it blocks a commit that touches real
+// app source (app/*.js or css/*.css) without APP_VERSION also changing in the
+// same commit, unless a "Sentinel-Version-Skip: <reason>" trailer explains
+// why this particular change shouldn't bump the version at all (a test-only
+// edit, a comment cleanup, a gate-script change that happens to touch a
+// source file for no user-visible reason).
+const VERSION_LINE_RE = /^\+\s*export var APP_VERSION\s*=/m;
+
+function touchesRealSource() {
+  const sourceFiles = pre.appModules().concat(["css/tokens.css", "css/styles.css"]);
+  return sourceFiles.some((f) => common.isStaged(f));
+}
+
+function checkVersionBump(rawMessage) {
+  const violations = [];
+  if (!touchesRealSource()) return violations;
+  if (!common.isStaged("app/state.js")) {
+    // app/state.js itself isn't part of this commit at all, so APP_VERSION
+    // cannot have changed here -- same violation, just a clearer reason why.
+  } else {
+    const diff = common.stagedDiff("app/state.js");
+    if (VERSION_LINE_RE.test(diff)) return violations; // APP_VERSION changed in this commit: satisfied
+  }
+
+  const skipMatch = rawMessage.match(/^Sentinel-Version-Skip:\s*(.+)$/im);
+  if (skipMatch) return violations;
+
+  violations.push({
+    rule: "version-bump-missing",
+    message:
+      "This commit changes real app source (app/*.js or css/*.css) but app/state.js's APP_VERSION wasn't " +
+      "bumped. Decide major/minor/patch, edit APP_VERSION in app/state.js, and recommit -- or, if this change " +
+      "genuinely shouldn't bump the version (a test-only edit, a comment cleanup, a gate-script change with no " +
+      "user-visible effect), add a trailer \"Sentinel-Version-Skip: <reason>\" explaining why.",
+  });
+  return violations;
+}
+
+module.exports = { checkCommitMessage, checkVersionBump, SUBJECT_MAX, BULLET_MAX_COUNT, BULLET_LINE_MAX, BULLET_WRAP_MAX, ATTRIBUTION_PATTERNS };
