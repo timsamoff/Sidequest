@@ -125,7 +125,7 @@ export function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop,
     milestones: d.milestones, pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [] }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "" }
   };
 }
 
@@ -263,6 +263,7 @@ export function normalize(s) {
     if (typeof s.settings.brandmark === "string" && /^data:image\//.test(s.settings.brandmark) && s.settings.brandmark.length <= 500000) d.settings.brandmark = s.settings.brandmark;
     if (typeof s.settings.audio === "boolean") d.settings.audio = s.settings.audio;
     if (typeof s.settings.completionFx === "boolean") d.settings.completionFx = s.settings.completionFx;
+    if (typeof s.settings.dismissedUpdateVersion === "string") d.settings.dismissedUpdateVersion = S(s.settings.dismissedUpdateVersion, 20);
     // Validated on load, not trusted blindly -- a stale saved bucket (from before an
     // AFFIRMATIONS edit) could hold out-of-range or duplicate indices.
     if (Array.isArray(s.settings.affirmationBucket)) {
@@ -361,6 +362,31 @@ export function loadFromDbIfAvailable() {
       if (dbLoadTries++ < 3) setTimeout(function () { loadFromDbIfAvailable().then(function (swapped) { if (swapped) { autoVault(); save(); renderAll(); } }); }, 2500 * dbLoadTries);
       return false;
     });
+  });
+}
+
+// Plain "x.y.z" compare, each part numeric. Returns true only when b is
+// strictly newer than a; a malformed string on either side is treated as not-newer.
+function isNewerVersion(a, b) {
+  var pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
+  if (pa.length !== 3 || pb.length !== 3 || pa.some(isNaN) || pb.some(isNaN)) return false;
+  for (var i = 0; i < 3; i++) { if (pb[i] > pa[i]) return true; if (pb[i] < pa[i]) return false; }
+  return false;
+}
+// A separate db document from state/main -- deliberately outside the state
+// object itself, so an ordinary save() (which only ever writes state/main)
+// can never overwrite a version stamp set here from outside the app.
+// No-op (resolves null) on the web build or with no db. The stamp itself is
+// written by hand when a new sidequest.html is published; nothing in this
+// app's own code ever writes meta/version.
+export function checkForAppUpdate() {
+  return getDb().then(function (db) {
+    if (!db) return null;
+    return db.doc("meta/version").get().then(function (snap) {
+      var data = snap.exists ? snap.data() : null;
+      var latest = data && typeof data.latest === "string" ? data.latest : null;
+      return latest && isNewerVersion(APP_VERSION, latest) ? latest : null;
+    }).catch(function () { return null; });
   });
 }
 

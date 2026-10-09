@@ -1,10 +1,10 @@
-import { state, ui, save, saveUI, changed, autoVault, purgeOldVault, APP_NAME, loadFromDbIfAvailable, nextAffirmationIndex } from "./state.js";
+import { state, ui, save, saveUI, changed, autoVault, purgeOldVault, APP_NAME, loadFromDbIfAvailable, checkForAppUpdate, nextAffirmationIndex } from "./state.js";
 import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest } from "./model.js";
 import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline } from "./dom.js";
 import { lateTasks } from "./model.js";
 import {
   renderToday, renderSchedule, renderQuests, renderWorkshop,
-  renderVault, renderSettings, renderHelp, renderQuestPage, renderTimeline, setDeferredInstallPrompt
+  renderVault, renderSettings, renderHelp, renderQuestPage, renderTimeline, setDeferredInstallPrompt, setAvailableUpdateVersion
 } from "./views.js";
 import { renderSearch, openSearch, closeSearch, wireSearchInput, focusSearch } from "./search.js";
 import {
@@ -148,6 +148,15 @@ Promise.resolve().then(function () {
   loadFromDbIfAvailable().then(function (swapped) {
     if (!swapped) return;
     autoVault(); purgeOldVault(); save();
+    renderAll();
+  });
+
+  // No-op on the web app, since checkForAppUpdate() resolves null with no db.
+  // The stamp read here is set by hand when a new sidequest.html is published,
+  // never written by this app's own code.
+  checkForAppUpdate().then(function (latest) {
+    if (!latest) return;
+    setAvailableUpdateVersion(latest);
     renderAll();
   });
 

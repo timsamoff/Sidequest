@@ -1217,8 +1217,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     const store = Object.assign({}, initial), log = [], saves = [];
     const wait = (v) => new Promise(r => setTimeout(() => r(v), 4));
     const db = { doc: (p) => ({
-      get: () => { log.push("get"); return o.failGet ? Promise.reject({ code: "unavailable", message: "down" }) : wait({ exists: p in store, data: () => store[p], id: "main", metadata: {} }); },
-      set: (d) => { log.push("set"); return wait().then(() => { store[p] = JSON.parse(JSON.stringify(d)); }); } }) };
+      get: () => { log.push("get:" + p); return (o.failGet && p === "state/main") ? Promise.reject({ code: "unavailable", message: "down" }) : wait({ exists: p in store, data: () => store[p], id: "main", metadata: {} }); },
+      set: (d) => { log.push("set:" + p); return wait().then(() => { store[p] = JSON.parse(JSON.stringify(d)); }); } }) };
     const downloads = o.noDownloads ? null : { save: (req) => { saves.push(req); return o.decline ? Promise.reject({ code: "declined", message: "no" }) : wait({ status: "saved" }); } };
     return { claude: { use: (n) => Promise.resolve(n === "db" ? db : n === "downloads" ? downloads : null) }, store, log, saves };
   };
@@ -1231,24 +1231,24 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     // a fresh device (nothing in local storage) must read the db before it writes to it
     const f = fake({ "state/main": { json: realJson } });
     const k = kit(await mk(null, f.claude)); await wait();
-    ok(f.log[0] === "get", "nothing is written to the db before it has been read (" + f.log.join(",") + ")");
+    ok(f.log.filter(x => x.endsWith(":state/main"))[0] === "get:state/main", "nothing is written to the db before it has been read (" + f.log.join(",") + ")");
     ok(named(f.store) === "REAL DB DATA" && [...k.d.querySelectorAll("#nav .tab")].some(t => t.textContent === "REAL DB DATA"), "a fresh device shows the db's data and leaves it intact in the db");
-    const n = f.log.filter(x => x === "set").length;
+    const n = f.log.filter(x => x === "set:state/main").length;
     k.tab("settings"); k.click(k.$("saveFile")); await wait();
-    ok(f.log.filter(x => x === "set").length > n && JSON.parse(f.store["state/main"].json).settings.lastBackup, "after loading, a change is written to the db");
+    ok(f.log.filter(x => x === "set:state/main").length > n && JSON.parse(f.store["state/main"].json).settings.lastBackup, "after loading, a change is written to the db");
     ok(f.saves.length === 1 && /^sidequest-backup-\d{4}-\d{2}-\d{2}\.json$/.test(f.saves[0].filename) && JSON.parse(f.saves[0].data).tasks.length === 18, "Save backup hands the viewer a dated .json file through the downloads capability");
     ok(k.$("view").textContent.includes("Backup saved.") && k.$("view").textContent.includes("(today)"), "and says it saved");
   }
   {
     const f = fake({});
     const k = kit(await mk(null, f.claude)); await wait();
-    ok(f.log.join(",") === "get,set" && named(f.store) === "Sample App", "an empty db is seeded with this device's data, after reading it");
+    ok(f.log.filter(x => x.endsWith(":state/main")).join(",") === "get:state/main,set:state/main" && named(f.store) === "Sample App", "an empty db is seeded with this device's data, after reading it");
   }
   {
     const f = fake({ "state/main": { json: realJson } }, { failGet: true });
     const k = kit(await mk(null, f.claude)); await wait();
     k.click(k.$("welcomeDismiss") || k.$("view")); k.tab("settings"); k.click(k.$("saveFile")); await wait();
-    ok(!f.log.includes("set") && named(f.store) === "REAL DB DATA", "if the db cannot be read, nothing is written to it (" + f.log.join(",") + ")");
+    ok(!f.log.includes("set:state/main") && named(f.store) === "REAL DB DATA", "if the db cannot be read, nothing is written to it (" + f.log.join(",") + ")");
   }
   {
     const f = fake({ "state/main": { json: realJson } }, { decline: true });
@@ -1276,7 +1276,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     // the very same save on both sides: nothing to read back and nothing to write
     const f = fake({ "state/main": { json: JSON.stringify(withName("SAME")), savedAt: T2 } });
     const k = kit(await mk(withName("SAME"), f.claude, T2)); await wait();
-    ok(f.log.join(",") === "get" && shown(k, "SAME"), "the same save on both sides causes no swap and no write (" + f.log.join(",") + ")");
+    ok(f.log.filter(x => x.endsWith(":state/main")).join(",") === "get:state/main" && shown(k, "SAME"), "the same save on both sides causes no swap and no write (" + f.log.join(",") + ")");
   }
   {
     // an ordinary edit after loading moves the db's stamp forward
@@ -1290,6 +1290,29 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     const f = fake({ "state/main": { json: JSON.stringify(withName("UNSTAMPED DB")) } });
     const k = kit(await mk(withName("LOCAL"), f.claude, T2)); await wait();
     ok(shown(k, "UNSTAMPED DB"), "a db document from before stamps existed is trusted, as it always was");
+  }
+  {
+    // meta/version is a real, separate doc from state/main (checkForAppUpdate() in state.js) --
+    // a newer stamp there shows the update banner on Today
+    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "9.9.9" } });
+    const k = kit(await mk(null, f.claude)); await wait();
+    ok(k.$("view").textContent.includes("Sidequest has leveled up!"), "a newer version's stamp in meta/version shows the update banner on Today");
+    ok(k.$("view").textContent.includes("https://raw.githubusercontent.com/timsamoff/Sidequest/main/Claude-Sidequest/sidequest.html"), "the banner names the real raw GitHub URL to republish from");
+    ok(k.$("view").textContent.includes("None of your data will be touched."), "the banner reassures about data safety");
+    k.click(k.btn(k.$("view"), "Dismiss"));
+    ok(!k.$("view").textContent.includes("Sidequest has leveled up!") && k.saved().settings.dismissedUpdateVersion === "9.9.9", "Dismiss hides the banner and records the dismissed version");
+  }
+  {
+    // no meta/version doc at all (the common case: nobody has ever written one) -- no banner, no error
+    const f = fake({ "state/main": { json: realJson } });
+    const k = kit(await mk(null, f.claude)); await wait();
+    ok(!k.$("view").textContent.includes("Sidequest has leveled up!"), "with no version stamp at all, the banner never shows");
+  }
+  {
+    // a stamp that is not actually newer (or malformed) never shows the banner
+    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "1.0.0" } });
+    const k = kit(await mk(null, f.claude)); await wait();
+    ok(!k.$("view").textContent.includes("Sidequest has leveled up!"), "a stamp equal to the current version shows no banner");
   }
 }
 {

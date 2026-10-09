@@ -201,11 +201,40 @@ export function welcomeBox() {
 }
 export function renderToday(root) {
   if (!state.settings.hideWelcome) root.appendChild(welcomeBox());
+  if (availableUpdateVersion && state.settings.dismissedUpdateVersion !== availableUpdateVersion) root.appendChild(updateBanner());
   var g = pgrid(), b = burnParts({});
   g.put(el("h2", null, "Next up"), 1, 1); g.put(nextUpPanel(), 1, 2); g.put(overduePanel(), 1, 3);
   g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(b.count, 2, 3);
   root.appendChild(g);
   if (backupReminderDue()) root.appendChild(backupReminder());
+}
+// A newer version's db stamp was found (checkForAppUpdate() in state.js, set
+// by hand when a new sidequest.html is published) -- tells the user how to
+// update this artifact themselves, since nothing in its own runtime can do
+// it. Dismissing records the version, not a plain flag, so a later update
+// still shows its own notice even if an earlier one was dismissed.
+var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/Sidequest/main/Claude-Sidequest/sidequest.html";
+function updateBanner() {
+  var box = el("div", { "class": "box", style: "margin-top:22px" });
+  var top = el("div", { style: "display:flex;gap:12px;align-items:flex-start" });
+  var icon = el("div");
+  icon.innerHTML = '<svg class="logo" aria-hidden="true" focusable="false"><use href="#sqLogo"></use></svg>';
+  top.appendChild(icon);
+  var body = el("div", { style: "flex:1 1 auto;min-width:0" });
+  body.appendChild(el("p", { style: "font-weight:600", "class": "first" }, "Sidequest has leveled up!"));
+  var p = el("p", { "class": "hint" });
+  p.appendChild(document.createTextNode("To update Sidequest, ask Claude to update this artifact with the new version: "));
+  p.appendChild(el("a", { href: SIDEQUEST_RAW_URL, target: "_blank", rel: "noopener", "class": "textbtn" }, SIDEQUEST_RAW_URL));
+  body.appendChild(p);
+  body.appendChild(el("p", { "class": "hint" }, "None of your data will be touched."));
+  top.appendChild(body);
+  box.appendChild(top);
+  var ar = el("div", { "class": "actions", style: "margin-top:12px" });
+  ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Hide this notice for this version" }, "Dismiss"), "click", function () {
+    state.settings.dismissedUpdateVersion = availableUpdateVersion; save(); box.remove();
+  }));
+  box.appendChild(ar);
+  return box;
 }
 // A quiet note once it has been two weeks without a backup, with the button right there.
 function backupReminder() {
@@ -1244,6 +1273,10 @@ function brandmarkField() {
 // Set by app.js's beforeinstallprompt listener; null once installed or triggered.
 var deferredInstallPrompt = null;
 export function setDeferredInstallPrompt(e) { deferredInstallPrompt = e; }
+// Set by app.js after checkForAppUpdate() resolves; null unless a newer
+// version's stamp was found in meta/version (Claude artifact build only).
+var availableUpdateVersion = null;
+export function setAvailableUpdateVersion(v) { availableUpdateVersion = v; }
 function triggerInstall() {
   if (!deferredInstallPrompt) return;
   var p = deferredInstallPrompt;

@@ -1107,7 +1107,7 @@ function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop,
     milestones: d.milestones, pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [] }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "" }
   };
 }
 
@@ -1245,6 +1245,7 @@ function normalize(s) {
     if (typeof s.settings.brandmark === "string" && /^data:image\//.test(s.settings.brandmark) && s.settings.brandmark.length <= 500000) d.settings.brandmark = s.settings.brandmark;
     if (typeof s.settings.audio === "boolean") d.settings.audio = s.settings.audio;
     if (typeof s.settings.completionFx === "boolean") d.settings.completionFx = s.settings.completionFx;
+    if (typeof s.settings.dismissedUpdateVersion === "string") d.settings.dismissedUpdateVersion = S(s.settings.dismissedUpdateVersion, 20);
     // Validated on load, not trusted blindly -- a stale saved bucket (from before an
     // AFFIRMATIONS edit) could hold out-of-range or duplicate indices.
     if (Array.isArray(s.settings.affirmationBucket)) {
@@ -1343,6 +1344,31 @@ function loadFromDbIfAvailable() {
       if (dbLoadTries++ < 3) setTimeout(function () { loadFromDbIfAvailable().then(function (swapped) { if (swapped) { autoVault(); save(); renderAll(); } }); }, 2500 * dbLoadTries);
       return false;
     });
+  });
+}
+
+// Plain "x.y.z" compare, each part numeric. Returns true only when b is
+// strictly newer than a; a malformed string on either side is treated as not-newer.
+function isNewerVersion(a, b) {
+  var pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
+  if (pa.length !== 3 || pb.length !== 3 || pa.some(isNaN) || pb.some(isNaN)) return false;
+  for (var i = 0; i < 3; i++) { if (pb[i] > pa[i]) return true; if (pb[i] < pa[i]) return false; }
+  return false;
+}
+// A separate db document from state/main -- deliberately outside the state
+// object itself, so an ordinary save() (which only ever writes state/main)
+// can never overwrite a version stamp set here from outside the app.
+// No-op (resolves null) on the web build or with no db. The stamp itself is
+// written by hand when a new sidequest.html is published; nothing in this
+// app's own code ever writes meta/version.
+function checkForAppUpdate() {
+  return getDb().then(function (db) {
+    if (!db) return null;
+    return db.doc("meta/version").get().then(function (snap) {
+      var data = snap.exists ? snap.data() : null;
+      var latest = data && typeof data.latest === "string" ? data.latest : null;
+      return latest && isNewerVersion(APP_VERSION, latest) ? latest : null;
+    }).catch(function () { return null; });
   });
 }
 
@@ -2958,11 +2984,40 @@ function welcomeBox() {
 }
 function renderToday(root) {
   if (!state.settings.hideWelcome) root.appendChild(welcomeBox());
+  if (availableUpdateVersion && state.settings.dismissedUpdateVersion !== availableUpdateVersion) root.appendChild(updateBanner());
   var g = pgrid(), b = burnParts({});
   g.put(el("h2", null, "Next up"), 1, 1); g.put(nextUpPanel(), 1, 2); g.put(overduePanel(), 1, 3);
   g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(b.count, 2, 3);
   root.appendChild(g);
   if (backupReminderDue()) root.appendChild(backupReminder());
+}
+// A newer version's db stamp was found (checkForAppUpdate() in state.js, set
+// by hand when a new sidequest.html is published) -- tells the user how to
+// update this artifact themselves, since nothing in its own runtime can do
+// it. Dismissing records the version, not a plain flag, so a later update
+// still shows its own notice even if an earlier one was dismissed.
+var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/Sidequest/main/Claude-Sidequest/sidequest.html";
+function updateBanner() {
+  var box = el("div", { "class": "box", style: "margin-top:22px" });
+  var top = el("div", { style: "display:flex;gap:12px;align-items:flex-start" });
+  var icon = el("div");
+  icon.innerHTML = '<svg class="logo" aria-hidden="true" focusable="false"><use href="#sqLogo"></use></svg>';
+  top.appendChild(icon);
+  var body = el("div", { style: "flex:1 1 auto;min-width:0" });
+  body.appendChild(el("p", { style: "font-weight:600", "class": "first" }, "Sidequest has leveled up!"));
+  var p = el("p", { "class": "hint" });
+  p.appendChild(document.createTextNode("To update Sidequest, ask Claude to update this artifact with the new version: "));
+  p.appendChild(el("a", { href: SIDEQUEST_RAW_URL, target: "_blank", rel: "noopener", "class": "textbtn" }, SIDEQUEST_RAW_URL));
+  body.appendChild(p);
+  body.appendChild(el("p", { "class": "hint" }, "None of your data will be touched."));
+  top.appendChild(body);
+  box.appendChild(top);
+  var ar = el("div", { "class": "actions", style: "margin-top:12px" });
+  ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Hide this notice for this version" }, "Dismiss"), "click", function () {
+    state.settings.dismissedUpdateVersion = availableUpdateVersion; save(); box.remove();
+  }));
+  box.appendChild(ar);
+  return box;
 }
 // A quiet note once it has been two weeks without a backup, with the button right there.
 function backupReminder() {
@@ -4001,6 +4056,10 @@ function brandmarkField() {
 // Set by app.js's beforeinstallprompt listener; null once installed or triggered.
 var deferredInstallPrompt = null;
 function setDeferredInstallPrompt(e) { deferredInstallPrompt = e; }
+// Set by app.js after checkForAppUpdate() resolves; null unless a newer
+// version's stamp was found in meta/version (Claude artifact build only).
+var availableUpdateVersion = null;
+function setAvailableUpdateVersion(v) { availableUpdateVersion = v; }
 function triggerInstall() {
   if (!deferredInstallPrompt) return;
   var p = deferredInstallPrompt;
@@ -4876,6 +4935,15 @@ Promise.resolve().then(function () {
   loadFromDbIfAvailable().then(function (swapped) {
     if (!swapped) return;
     autoVault(); purgeOldVault(); save();
+    renderAll();
+  });
+
+  // No-op on the web app, since checkForAppUpdate() resolves null with no db.
+  // The stamp read here is set by hand when a new sidequest.html is published,
+  // never written by this app's own code.
+  checkForAppUpdate().then(function (latest) {
+    if (!latest) return;
+    setAvailableUpdateVersion(latest);
     renderAll();
   });
 
