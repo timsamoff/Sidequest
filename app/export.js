@@ -166,8 +166,8 @@ function renderTasks(node) {
     var steps = t.steps.length ? t.steps.filter(function (s) { return s.done; }).length + " of " + t.steps.length + " steps" : "";
     var cls = t.status === "Completed" ? " done" : "";
     var html = '<li class="etask' + cls + '">';
-    html += '<div class="el1">' + escHtml(t.block === 0 ? "Backlog" : t.start) + (t.late ? ' <span class="badge">Overdue</span>' : "") + "</div>";
-    html += '<div class="el2">' + escHtml(t.what) + "</div>";
+    html += '<div class="el1">' + (t.block === 0 ? "" : escHtml(t.start)) + (t.late ? ' <span class="badge">Overdue</span>' : "") + "</div>";
+    html += '<div class="el2">' + (t.block === 0 ? '<span class="chip backlog" style="margin-right:8px">Backlog</span>' : "") + escHtml(t.what) + "</div>";
     html += '<div class="el3"><span class="chip" data-v="' + escAttr(t.status) + '">' + escHtml(t.status) + "</span>";
     if (steps) html += "<span>" + escHtml(steps) + "</span>";
     if (t.est) html += "<span>Est " + escHtml(t.est) + "</span>";
@@ -260,6 +260,7 @@ h1, h2, h3, h4, h5 { font-weight: 700; margin-top: 0; }\
 .chip[data-v='In progress'] { background: var(--chip-work); }\
 .chip[data-v='Completed'] { background: var(--chip-done); }\
 .chip.questcomplete { background: var(--chip-done); }\
+.chip.backlog { background: var(--late-bg); color: var(--late); }\
 .chip.ereadonly { background: var(--muted); color: var(--surface); vertical-align: middle; font-size: .7rem; margin-left: 8px; }\
 .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--late-bg); color: var(--late); font-size: .8rem; font-weight: 600; }\
 .etasklist, .list { list-style: none; margin: 8px 0; padding: 0; }\
