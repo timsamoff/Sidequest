@@ -90,7 +90,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.2.0"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.2.1"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -174,6 +174,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const detail = () => k.d.querySelector("#view .tlist.check .detail");
   ok(!!detail().querySelector(".chip") && detail().textContent.includes("Launch critical"), "the expanded launch task shows a Launch critical badge");
   ok(!!k.btn(detail(), "Open in Tasks") && !!k.btn(detail(), "Skip launch") && !!k.btn(detail(), "Delete") && !k.btn(detail(), "Launch critical"), "a launch task's detail offers Open in Tasks, Skip launch, and Delete");
+  ok(k.btn(detail(), "Skip launch").classList.contains("on") && k.btn(detail(), "Skip launch").getAttribute("aria-pressed") === "true", "Skip launch shows as an active/pressed toggle (blue), matching Remove milestone's own on-state");
   ok(detail().querySelector(".steps li.done") && detail().querySelector(".steps").textContent.includes("Choose the first app store"), "answered decision's step is already ticked");
   // Skip launch takes the task off the checklist without deleting it
   k.click(k.btn(detail(), "Skip launch"));
@@ -1293,7 +1294,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   }
   {
     // a stamp that is not actually newer (or malformed) never shows the banner
-    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "0.2.0" } });
+    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "0.2.1" } });
     const k = kit(await mk(null, f.claude)); await wait();
     ok(!k.$("view").textContent.includes("Sidequest has leveled up!"), "a stamp equal to the current version shows no banner");
   }

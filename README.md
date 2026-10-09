@@ -61,4 +61,4 @@ npm run test:a11y
 
 ## Credit
 
-Version 0.2.0. © [Tim Samoff](https://samoff.com). Licensed under [GPLv3](LICENSE).
+Version 0.2.1. © [Tim Samoff](https://samoff.com). Licensed under [GPLv3](LICENSE).
