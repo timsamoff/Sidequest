@@ -32,7 +32,7 @@ let counter = 0;
 // well after that test has moved on to a different global.window) can be
 // cancelled before the next one boots.
 let lastAppModule = null;
-async function mk(saved, claude, stamp, audioStub) {
+async function mk(saved, claude, stamp, audioStub, matchMediaStub) {
   if (lastAppModule) lastAppModule.cancelSplash();
   const dom = new JSDOM(html, { url: "https://example.test/", pretendToBeVisual: true });
   dom.window.scrollTo = () => {};
@@ -40,6 +40,9 @@ async function mk(saved, claude, stamp, audioStub) {
   if (stamp) dom.window.localStorage.setItem("sidequest-template-v1-saved-at", stamp);
   if (saved) dom.window.localStorage.setItem("sidequest-template-v1", JSON.stringify(saved));
   if (audioStub) dom.window.Audio = audioStub;
+  // app.js reads matchMedia at module-eval time (isStandaloneApp), so this
+  // must be stubbed before the import below, not after mk() returns.
+  if (matchMediaStub) dom.window.matchMedia = matchMediaStub;
   // jsdom has no real canvas 2D context (confirmed: getContext("2d") returns
   // null without the optional native "canvas" package) -- a minimal no-op
   // stub lets confetti.js's real append/animate/cleanup code run in tests.
@@ -90,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.2.3"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.2.4"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -1294,7 +1297,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   }
   {
     // a stamp that is not actually newer (or malformed) never shows the banner
-    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "0.2.3" } });
+    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "0.2.4" } });
     const k = kit(await mk(null, f.claude)); await wait();
     ok(!k.$("view").textContent.includes("Sidequest has leveled up!"), "a stamp equal to the current version shows no banner");
   }
@@ -1976,6 +1979,29 @@ async function exportClick(k, projectName) {
   // duplicate 2 are rejected; 7 is a plausible valid index and survives.
   ok(!k.saved().settings.affirmationBucket.includes(999), "an out-of-range saved index is dropped on load");
   ok(k.saved().settings.affirmationBucket.filter(n => n === 2).length <= 1, "a duplicate saved index is deduplicated on load");
+}
+{
+  // Running as the installed PWA (matchMedia display-mode: standalone) shows
+  // uninstall-only copy in Options, and a Refresh icon button in the top bar.
+  // Stubbed before boot (not after mk() returns), since app.js's own
+  // isStandaloneApp check reads matchMedia at module-eval time.
+  const standaloneMM = (q) => ({ matches: q === "(display-mode: standalone)", media: q, addListener() {}, removeListener() {} });
+  const k = kit(await mk(null, null, null, null, standaloneMM));
+  ok(!k.$("refreshBtn").hidden, "the top-bar Refresh button is shown while running standalone");
+  k.tab("settings");
+  const box = k.$("view");
+  ok(box.textContent.includes("To uninstall Sidequest") && box.textContent.includes("chrome://apps") && box.textContent.includes("edge://apps"), "running standalone shows the short uninstall-only copy");
+  ok(!box.textContent.includes("Install Sidequest as an app") && !box.textContent.includes("already installed as an app, or your browser does not support"), "the normal install-prompt and unsupported-browser copy are not shown while standalone");
+  ok(!box.textContent.includes("Refresh"), "Options itself no longer offers a Refresh button -- it moved to the top bar");
+}
+{
+  // Not standalone (a normal browser tab): the existing fallback copy still shows, no top-bar Refresh
+  const notStandaloneMM = (q) => ({ matches: false, media: q, addListener() {}, removeListener() {} });
+  const k = kit(await mk(null, null, null, null, notStandaloneMM));
+  ok(k.$("refreshBtn").hidden, "the top-bar Refresh button stays hidden outside standalone mode");
+  k.tab("settings");
+  const box = k.$("view");
+  ok(box.textContent.includes("already installed as an app, or your browser does not support"), "a normal (non-standalone) browser tab still shows the existing fallback copy");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

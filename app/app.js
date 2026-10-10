@@ -83,6 +83,37 @@ function renameCurrentQuest() {
 }
 on($("renameBtn"), "click", renameCurrentQuest);
 
+// Shown only for the installed PWA, since a normal browser tab already
+// refreshes itself (F5/pull-to-refresh) -- fixed for the whole session, so
+// computed once rather than per-render. navigator.standalone is Safari-only
+// (not in the spec, no matchMedia support on older iOS).
+var isStandaloneApp = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+if (isStandaloneApp) {
+  $("refreshBtn").hidden = false;
+  on($("refreshBtn"), "click", function () {
+    var btn = $("refreshBtn");
+    btn.classList.add("spinning"); btn.disabled = true;
+    function doRefresh() {
+      // A plain reload alone picks up new data (state.js re-reads localStorage
+      // fresh every load), but NOT a new app shell -- sw.js caches cache-first,
+      // so a stale service worker keeps serving the old index.html/app/*.js
+      // forever otherwise. Force a real update check and clear its cache first.
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          return Promise.all(regs.map(function (r) { return r.update(); }));
+        }).then(function () {
+          return "caches" in window ? caches.keys().then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k); })); }) : null;
+        }).then(function () { window.location.reload(); }).catch(function () { window.location.reload(); });
+      } else {
+        window.location.reload();
+      }
+    }
+    // Matches the CSS spin's own .6s duration; with reduced motion the
+    // animation never runs, so this just becomes a near-instant head start.
+    setTimeout(doRefresh, 600);
+  });
+}
+
 export function renderView() {
   var root = $("view"); root.innerHTML = "";
   if (ui.view.indexOf("quest:") === 0 && !validPage(ui.view)) ui.view = "projects";

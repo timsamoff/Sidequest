@@ -212,6 +212,10 @@ input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin:
 .iconbtn { width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-card); flex: none; }
 .iconbtn svg { width: 20px; height: 20px; display: block; }
 .iconbtn.only-mobile { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+/* prefers-reduced-motion's blanket `animation: none !important` rule already
+   covers this -- the icon just jumps straight to reloading instead of spinning. */
+#refreshBtn.spinning svg { animation: spin .6s linear; }
 .toast .toastbtn { margin-left: var(--space-12); background: transparent; border: 1px solid currentColor; color: inherit; min-height: 32px; padding: var(--space-2) var(--space-12); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-12); }
 .chipbtn { border-radius: var(--radius-pill); min-height: 36px; padding: var(--space-4) var(--space-14); }

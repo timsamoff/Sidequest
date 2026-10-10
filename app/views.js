@@ -1389,25 +1389,35 @@ export function renderSettings(page) {
   try { inClaudeNow = !!(window.claude && typeof window.claude.use === "function"); } catch (e) { inClaudeNow = false; }
   if (!inClaudeNow) {
     root.appendChild(el("h2", null, "Install Sidequest"));
+    // navigator.standalone is Safari-specific (not in the spec, no matchMedia
+    // support on older iOS) -- both checks together cover Chrome/Edge/Android
+    // and iOS home-screen installs.
+    var isStandalone = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+    function uninstallLine() {
+      var p = el("p", { "class": "hint" });
+      p.appendChild(document.createTextNode("To uninstall Sidequest, open your browser and go to "));
+      p.appendChild(el("code", null, "chrome://apps"));
+      p.appendChild(document.createTextNode(" or "));
+      p.appendChild(el("code", null, "edge://apps"));
+      p.appendChild(document.createTextNode(". Right-click the Sidequest icon and select "));
+      p.appendChild(el("strong", null, "Remove"));
+      p.appendChild(document.createTextNode(" or "));
+      p.appendChild(el("strong", null, "Uninstall"));
+      p.appendChild(document.createTextNode("."));
+      return p;
+    }
     var installBox = el("div", { "class": "box", style: "margin-top:10px" });
-    if (deferredInstallPrompt) {
-      installBox.appendChild(el("p", { "class": "hint first" }, "Install Sidequest as an app on your computer or mobile device. PWA installation is not supported by all browsers or devices."));
+    if (isStandalone) {
+      installBox.appendChild(uninstallLine());
+    } else if (deferredInstallPrompt) {
+      root.appendChild(el("p", { "class": "hint" }, "Install Sidequest as an app on your computer or mobile device. PWA installation is not supported by all browsers or devices."));
       installBox.appendChild(on(el("button", { type: "button", id: "installBtn" }, "Install Sidequest"), "click", triggerInstall));
     } else if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-      installBox.appendChild(el("p", { "class": "hint first" }, "On iPhone or iPad: tap Share, then Add to Home Screen."));
+      root.appendChild(el("p", { "class": "hint" }, "On iPhone or iPad: tap Share, then Add to Home Screen."));
+      installBox.hidden = true;
     } else {
-      installBox.appendChild(el("p", { "class": "hint first" }, "Sidequest is already installed as an app, or your browser does not support PWA installation."));
-      var uninst = el("p", { "class": "hint" });
-      uninst.appendChild(document.createTextNode("To uninstall Sidequest, open your browser and go to "));
-      uninst.appendChild(el("code", null, "chrome://apps"));
-      uninst.appendChild(document.createTextNode(" or "));
-      uninst.appendChild(el("code", null, "edge://apps"));
-      uninst.appendChild(document.createTextNode(". Right-click the Sidequest icon and select "));
-      uninst.appendChild(el("strong", null, "Remove"));
-      uninst.appendChild(document.createTextNode(" or "));
-      uninst.appendChild(el("strong", null, "Uninstall"));
-      uninst.appendChild(document.createTextNode("."));
-      installBox.appendChild(uninst);
+      root.appendChild(el("p", { "class": "hint" }, "Sidequest is already installed as an app, or your browser does not support PWA installation."));
+      installBox.appendChild(uninstallLine());
     }
     root.appendChild(installBox);
   }

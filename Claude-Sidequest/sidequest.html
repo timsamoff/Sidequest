@@ -305,6 +305,10 @@ input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin:
 .iconbtn { width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-card); flex: none; }
 .iconbtn svg { width: 20px; height: 20px; display: block; }
 .iconbtn.only-mobile { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+/* prefers-reduced-motion's blanket `animation: none !important` rule already
+   covers this -- the icon just jumps straight to reloading instead of spinning. */
+#refreshBtn.spinning svg { animation: spin .6s linear; }
 .toast .toastbtn { margin-left: var(--space-12); background: transparent; border: 1px solid currentColor; color: inherit; min-height: 32px; padding: var(--space-2) var(--space-12); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-12); }
 .chipbtn { border-radius: var(--radius-pill); min-height: 36px; padding: var(--space-4) var(--space-14); }
@@ -566,6 +570,7 @@ svg.chart.nofocusring { outline: none; }
       </div>
       <div class="topact">
         <button id="searchBtn" type="button" class="iconbtn only-mobile" aria-label="Search" title="Search"></button>
+        <button id="refreshBtn" type="button" class="iconbtn" hidden aria-label="Refresh to pull data from the web" title="Refresh to pull data from the web"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 3v6h-6"></path></svg></button>
         <div class="menuwrap">
           <button class="iconbtn primary" id="newBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="newMenu" aria-label="Add item" title="Add item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg></button>
           <div class="menu" id="newMenu" role="menu" hidden>
@@ -1022,7 +1027,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.2.3";
+var APP_VERSION = "0.2.4";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -4231,25 +4236,35 @@ function renderSettings(page) {
   try { inClaudeNow = !!(window.claude && typeof window.claude.use === "function"); } catch (e) { inClaudeNow = false; }
   if (!inClaudeNow) {
     root.appendChild(el("h2", null, "Install Sidequest"));
+    // navigator.standalone is Safari-specific (not in the spec, no matchMedia
+    // support on older iOS) -- both checks together cover Chrome/Edge/Android
+    // and iOS home-screen installs.
+    var isStandalone = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+    function uninstallLine() {
+      var p = el("p", { "class": "hint" });
+      p.appendChild(document.createTextNode("To uninstall Sidequest, open your browser and go to "));
+      p.appendChild(el("code", null, "chrome://apps"));
+      p.appendChild(document.createTextNode(" or "));
+      p.appendChild(el("code", null, "edge://apps"));
+      p.appendChild(document.createTextNode(". Right-click the Sidequest icon and select "));
+      p.appendChild(el("strong", null, "Remove"));
+      p.appendChild(document.createTextNode(" or "));
+      p.appendChild(el("strong", null, "Uninstall"));
+      p.appendChild(document.createTextNode("."));
+      return p;
+    }
     var installBox = el("div", { "class": "box", style: "margin-top:10px" });
-    if (deferredInstallPrompt) {
-      installBox.appendChild(el("p", { "class": "hint first" }, "Install Sidequest as an app on your computer or mobile device. PWA installation is not supported by all browsers or devices."));
+    if (isStandalone) {
+      installBox.appendChild(uninstallLine());
+    } else if (deferredInstallPrompt) {
+      root.appendChild(el("p", { "class": "hint" }, "Install Sidequest as an app on your computer or mobile device. PWA installation is not supported by all browsers or devices."));
       installBox.appendChild(on(el("button", { type: "button", id: "installBtn" }, "Install Sidequest"), "click", triggerInstall));
     } else if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-      installBox.appendChild(el("p", { "class": "hint first" }, "On iPhone or iPad: tap Share, then Add to Home Screen."));
+      root.appendChild(el("p", { "class": "hint" }, "On iPhone or iPad: tap Share, then Add to Home Screen."));
+      installBox.hidden = true;
     } else {
-      installBox.appendChild(el("p", { "class": "hint first" }, "Sidequest is already installed as an app, or your browser does not support PWA installation."));
-      var uninst = el("p", { "class": "hint" });
-      uninst.appendChild(document.createTextNode("To uninstall Sidequest, open your browser and go to "));
-      uninst.appendChild(el("code", null, "chrome://apps"));
-      uninst.appendChild(document.createTextNode(" or "));
-      uninst.appendChild(el("code", null, "edge://apps"));
-      uninst.appendChild(document.createTextNode(". Right-click the Sidequest icon and select "));
-      uninst.appendChild(el("strong", null, "Remove"));
-      uninst.appendChild(document.createTextNode(" or "));
-      uninst.appendChild(el("strong", null, "Uninstall"));
-      uninst.appendChild(document.createTextNode("."));
-      installBox.appendChild(uninst);
+      root.appendChild(el("p", { "class": "hint" }, "Sidequest is already installed as an app, or your browser does not support PWA installation."));
+      installBox.appendChild(uninstallLine());
     }
     root.appendChild(installBox);
   }
@@ -4927,6 +4942,37 @@ function renameCurrentQuest() {
   });
 }
 on($("renameBtn"), "click", renameCurrentQuest);
+
+// Shown only for the installed PWA, since a normal browser tab already
+// refreshes itself (F5/pull-to-refresh) -- fixed for the whole session, so
+// computed once rather than per-render. navigator.standalone is Safari-only
+// (not in the spec, no matchMedia support on older iOS).
+var isStandaloneApp = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+if (isStandaloneApp) {
+  $("refreshBtn").hidden = false;
+  on($("refreshBtn"), "click", function () {
+    var btn = $("refreshBtn");
+    btn.classList.add("spinning"); btn.disabled = true;
+    function doRefresh() {
+      // A plain reload alone picks up new data (state.js re-reads localStorage
+      // fresh every load), but NOT a new app shell -- sw.js caches cache-first,
+      // so a stale service worker keeps serving the old index.html/app/*.js
+      // forever otherwise. Force a real update check and clear its cache first.
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          return Promise.all(regs.map(function (r) { return r.update(); }));
+        }).then(function () {
+          return "caches" in window ? caches.keys().then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k); })); }) : null;
+        }).then(function () { window.location.reload(); }).catch(function () { window.location.reload(); });
+      } else {
+        window.location.reload();
+      }
+    }
+    // Matches the CSS spin's own .6s duration; with reduced motion the
+    // animation never runs, so this just becomes a near-instant head start.
+    setTimeout(doRefresh, 600);
+  });
+}
 
 function renderView() {
   var root = $("view"); root.innerHTML = "";

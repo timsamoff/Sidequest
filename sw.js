@@ -1,5 +1,7 @@
 // Minimal offline cache for the installed PWA shell -- app/*.js files are cached as fetched, not listed here, so new files need no update to this list.
-var CACHE = "sidequest-shell-v1";
+// Bump the version suffix whenever shipped files change, so activate's own
+// cleanup (below) evicts the old cache instead of serving it forever.
+var CACHE = "sidequest-shell-v2";
 var SHELL = ["./", "index.html", "css/tokens.css", "css/styles.css", "manifest.json"];
 
 self.addEventListener("install", function (e) {
