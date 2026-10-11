@@ -295,6 +295,8 @@ export function renderSchedule(root) {
   }
   var dp = el("div", { "class": "detailpane" }); dp.appendChild(buildDetail(findTask(ui.sel)));
   split.appendChild(lp); split.appendChild(dp); root.appendChild(split);
+  // A pane taller than the window scrolls with the page until its bottom shows, then pins.
+  dp.style.top = Math.min(84, window.innerHeight - dp.offsetHeight - 16) + "px";
 }
 
 // `inline` is the quest page's in-place version: no heading or back button, plus an Open in Tasks link.

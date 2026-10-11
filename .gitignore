@@ -2,6 +2,7 @@ node_modules/
 .DS_Store
 CLAUDE.md
 sentinel-notes/
+HANDOFF.md
 scratch/
 Sentinel-Prompts/
 /*.png

@@ -190,7 +190,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 
 .split { display: grid; grid-template-columns: minmax(280px, .95fr) minmax(0, 1.25fr); gap: var(--space-22); align-items: start; margin-top: var(--space-12); }
 .split .tlist { margin-top: 0; }
-.detailpane { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); }
+.detailpane { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); margin-bottom: -72px; }
 /* The Tasks page's own detail pane, border/corners kept, filled with the same
    highlight blue a quest page's own expanded task gets -- the user's own call. */
 .detailpane .detail { background: var(--sel); }
@@ -420,7 +420,7 @@ svg.chart.nofocusring { outline: none; }
   .content { padding: var(--space-16) var(--space-16) 120px; }
   .twocol, .cols2 { grid-template-columns: minmax(0, 1fr); gap: var(--space-20); }
   .split { display: block; }
-  .split .detailpane { display: none; position: static; }
+  .split .detailpane { display: none; position: static; margin-bottom: 0; }
   .split.detail-open .listpane { display: none; }
   .split.detail-open .detailpane { display: block; }
   .only-mobile { display: inline-flex; align-items: center; }
