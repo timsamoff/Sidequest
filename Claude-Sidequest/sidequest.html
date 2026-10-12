@@ -223,17 +223,19 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .pgrid > .cl.r1 { margin-top: 0; }
 .pgrid > .cr.r1 { margin-top: var(--space-26); }
 .pgrid > button { justify-self: start; }
+/* Stacked, Progress follows the burndown and gets the same gap above it Burndown has. */
+.pgrid .progresshead { margin-top: var(--space-14); }
 .listbox { overflow: hidden; margin-top: var(--space-12); }
 .listbox > .list { border: 0; border-radius: 0; margin: 0; background: transparent; }
 .listbox > .progress { margin: 0; padding: var(--space-10) var(--space-14); border-bottom: 1px solid var(--line); }
 .listbox > .progress:empty { display: none; }
 @media (min-width: 900px) {
   .pgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--space-22); row-gap: var(--space-12); align-items: start; }
-  .pgrid > .cl, .pgrid > .cr, .pgrid > .cr.r1 { margin-top: 0; }
+  .pgrid > .cl, .pgrid > .cr, .pgrid > .cr.r1, .pgrid .progresshead { margin-top: 0; }
   .pgrid > .cl { grid-column: 1; }
   .pgrid > .cr { grid-column: 2; }
   .pgrid > .r1 { grid-row: 1; }
-  .pgrid > .r2 { grid-row: 2; }
+  .pgrid > .r2 { grid-row: 2; align-self: stretch; }
   .pgrid > .r3 { grid-row: 3; }
   .pgrid > .r4 { grid-row: 4; }
 }
@@ -1034,7 +1036,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.3.2";
+var APP_VERSION = "0.3.3";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -2927,9 +2929,9 @@ function pgrid() {
 }
 function overduePanel() {
   var late = lateTasks();
-  var box = el("div", { "class": "box" });
-  if (!late.length) { box.appendChild(el("p", { "class": "hint first" }, "Nothing is overdue.")); return box; }
-  box.appendChild(el("h2", null, "Overdue tasks: " + late.length));
+  var box = el("div");
+  if (!late.length) { box.className = "box"; box.appendChild(el("p", { "class": "hint first" }, "Nothing is overdue.")); return box; }
+  box.appendChild(el("h2", { "class": "first" }, "Overdue tasks: " + late.length));
   var ul = el("ul", { "class": "tlist", style: "margin-top:8px" });
   late.forEach(function (t) {
     var li = el("li"); var b = el("button", { type: "button", "class": "item", title: "View this task" });
@@ -3039,8 +3041,8 @@ function burnParts(o) {
 }
 function burnPanel(o) {
   var box = el("div"), b = burnParts(o);
-  b.count.style.marginTop = "12px";
-  box.appendChild(b.h); box.appendChild(b.chart); box.appendChild(b.count);
+  b.count.style.marginTop = "0";
+  box.appendChild(b.h); box.appendChild(b.chart); box.appendChild(el("h2", null, "Progress")); box.appendChild(b.count);
   return box;
 }
 function welcomeBox() {
@@ -3061,7 +3063,9 @@ function renderToday(root) {
   if (availableUpdateVersion && state.settings.dismissedUpdateVersion !== availableUpdateVersion) root.appendChild(updateBanner());
   var g = pgrid(), b = burnParts({});
   g.put(el("h2", null, "Next up"), 1, 1); g.put(nextUpPanel(), 1, 2); g.put(overduePanel(), 1, 3);
-  g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(b.count, 2, 3);
+  var progress = el("div"); b.count.style.marginTop = "0";
+  progress.appendChild(el("h2", { "class": "progresshead" }, "Progress")); progress.appendChild(b.count);
+  g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(progress, 2, 3);
   root.appendChild(g);
   if (backupReminderDue()) root.appendChild(backupReminder());
 }
@@ -3159,7 +3163,6 @@ function renderSchedule(root) {
 // `inline` is the quest page's in-place version: no heading or back button, plus an Open in Tasks link.
 function buildDetail(t, inline, readOnly) {
   var box = el("div", { "class": "detail" });
-  if (!inline) box.appendChild(on(el("button", { type: "button", "class": "small only-mobile", style: "margin-bottom:10px", title: "Back to the task list" }, "All tasks"), "click", function () { ui.detail = false; renderView(); scrollTop(); }));
   var top = el("div", { style: "display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap" });
   var lh = el("div");
   if (!inline) lh.appendChild(el("h2", { style: "margin:0" }, dispQuest(t)));
@@ -3688,8 +3691,8 @@ function questCharts(p, wide, expandBtn, first) {
     out.appendChild(hd1);
     out.appendChild(tl.node); wireMilestoneDiamonds(tl.node);
     var b = burnParts({ quest: p, wide: wide, level: "h2" });
-    b.count.style.marginTop = "12px";
-    out.appendChild(b.h); out.appendChild(b.chart); out.appendChild(b.count);
+    b.count.style.marginTop = "0";
+    out.appendChild(b.h); out.appendChild(b.chart); out.appendChild(el("h2", null, "Progress")); out.appendChild(b.count);
   }
   return out;
 }

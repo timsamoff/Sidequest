@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.3.2"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.3.3"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -751,7 +751,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!split.querySelector(".pintoggle") && !split.querySelector(".pinbar"), "there is no Pin button on a quest's own page");
   ok(split.querySelector(".questmain").textContent.includes("Complete: 1 of 6 tasks | Backlog: 1 unscheduled task"), "the task-count line sits under the Tasks heading");
   const side = split.querySelector(".questcharts");
-  ok([...side.querySelectorAll("h2")].map(h => h.textContent).join() === "Schedule,Timeline,Burndown", "the right column flows Schedule, then Timeline, then Burndown, as one column");
+  ok([...side.querySelectorAll("h2")].map(h => h.textContent).join() === "Schedule,Timeline,Burndown,Progress", "the right column flows Schedule, Timeline, Burndown, then Progress, as one column");
   ok([...split.children].map(c => c.className).join() === "questmain,questcharts,actions questactions", "the page is ordered content, then the Schedule/Timeline/Burndown column, then the action buttons last, which is also the reading and phone order");
   ok(!!side.querySelector("#proj-start") && !!side.querySelector("#proj-days") && !split.querySelector(".questmain #proj-start") && ![...split.querySelectorAll(".questmain h2")].some(h => h.textContent === "Schedule"), "the Schedule heading and fields are in the right column, not the left");
   ok(!!k.btn(side, "Expand"), "the right column has an Expand button");
@@ -769,7 +769,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const modal = k.d.querySelector("#overlay .modal");
   ok(!k.$("overlay").hidden && modal.classList.contains("full") && k.$("modalTitle").textContent === "Timeline and burndown for Sample App", "Expand opens the charts in a full-size dialog");
   ok(!!k.$("modalBody").querySelector(".range") && !!k.$("modalBody").querySelector("svg.chart"), "the dialog holds both charts");
-  ok(!!k.$("modalBody").querySelector("#proj-start") && [...k.$("modalBody").querySelectorAll("h2")].map(h => h.textContent).join() === "Schedule,Timeline,Burndown", "the expanded dialog also holds Schedule, with no extra heading on top of it");
+  ok(!!k.$("modalBody").querySelector("#proj-start") && [...k.$("modalBody").querySelectorAll("h2")].map(h => h.textContent).join() === "Schedule,Timeline,Burndown,Progress", "the expanded dialog also holds Schedule, with no extra heading on top of it");
   k.click(k.$("modalClose"));
   ok(k.$("overlay").hidden && !modal.classList.contains("full"), "closing it drops the full size");
   k.menuAct("newBtn", "newIdea");

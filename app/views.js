@@ -70,9 +70,9 @@ export function pgrid() {
 }
 export function overduePanel() {
   var late = lateTasks();
-  var box = el("div", { "class": "box" });
-  if (!late.length) { box.appendChild(el("p", { "class": "hint first" }, "Nothing is overdue.")); return box; }
-  box.appendChild(el("h2", null, "Overdue tasks: " + late.length));
+  var box = el("div");
+  if (!late.length) { box.className = "box"; box.appendChild(el("p", { "class": "hint first" }, "Nothing is overdue.")); return box; }
+  box.appendChild(el("h2", { "class": "first" }, "Overdue tasks: " + late.length));
   var ul = el("ul", { "class": "tlist", style: "margin-top:8px" });
   late.forEach(function (t) {
     var li = el("li"); var b = el("button", { type: "button", "class": "item", title: "View this task" });
@@ -182,8 +182,8 @@ export function burnParts(o) {
 }
 export function burnPanel(o) {
   var box = el("div"), b = burnParts(o);
-  b.count.style.marginTop = "12px";
-  box.appendChild(b.h); box.appendChild(b.chart); box.appendChild(b.count);
+  b.count.style.marginTop = "0";
+  box.appendChild(b.h); box.appendChild(b.chart); box.appendChild(el("h2", null, "Progress")); box.appendChild(b.count);
   return box;
 }
 export function welcomeBox() {
@@ -204,7 +204,9 @@ export function renderToday(root) {
   if (availableUpdateVersion && state.settings.dismissedUpdateVersion !== availableUpdateVersion) root.appendChild(updateBanner());
   var g = pgrid(), b = burnParts({});
   g.put(el("h2", null, "Next up"), 1, 1); g.put(nextUpPanel(), 1, 2); g.put(overduePanel(), 1, 3);
-  g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(b.count, 2, 3);
+  var progress = el("div"); b.count.style.marginTop = "0";
+  progress.appendChild(el("h2", { "class": "progresshead" }, "Progress")); progress.appendChild(b.count);
+  g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(progress, 2, 3);
   root.appendChild(g);
   if (backupReminderDue()) root.appendChild(backupReminder());
 }
@@ -302,7 +304,6 @@ export function renderSchedule(root) {
 // `inline` is the quest page's in-place version: no heading or back button, plus an Open in Tasks link.
 export function buildDetail(t, inline, readOnly) {
   var box = el("div", { "class": "detail" });
-  if (!inline) box.appendChild(on(el("button", { type: "button", "class": "small only-mobile", style: "margin-bottom:10px", title: "Back to the task list" }, "All tasks"), "click", function () { ui.detail = false; renderView(); scrollTop(); }));
   var top = el("div", { style: "display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap" });
   var lh = el("div");
   if (!inline) lh.appendChild(el("h2", { style: "margin:0" }, dispQuest(t)));
@@ -831,8 +832,8 @@ function questCharts(p, wide, expandBtn, first) {
     out.appendChild(hd1);
     out.appendChild(tl.node); wireMilestoneDiamonds(tl.node);
     var b = burnParts({ quest: p, wide: wide, level: "h2" });
-    b.count.style.marginTop = "12px";
-    out.appendChild(b.h); out.appendChild(b.chart); out.appendChild(b.count);
+    b.count.style.marginTop = "0";
+    out.appendChild(b.h); out.appendChild(b.chart); out.appendChild(el("h2", null, "Progress")); out.appendChild(b.count);
   }
   return out;
 }
