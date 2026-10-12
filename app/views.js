@@ -217,22 +217,26 @@ export function renderToday(root) {
 // still shows its own notice even if an earlier one was dismissed.
 var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/Sidequest/main/Claude-Sidequest/sidequest.html";
 function updateBanner() {
-  var box = el("div", { "class": "box", style: "margin-top:22px" });
-  var top = el("div", { style: "display:flex;gap:12px;align-items:flex-start" });
-  var icon = el("div");
-  icon.innerHTML = '<svg class="logo" aria-hidden="true" focusable="false"><use href="#sqLogo"></use></svg>';
-  top.appendChild(icon);
-  var body = el("div", { style: "flex:1 1 auto;min-width:0" });
-  body.appendChild(el("p", { style: "font-weight:600", "class": "first" }, "Sidequest has leveled up!"));
-  var p = el("p", { "class": "hint" });
-  p.appendChild(document.createTextNode("To update Sidequest, ask Claude to update this artifact with the new version: "));
-  p.appendChild(el("a", { href: SIDEQUEST_RAW_URL, target: "_blank", rel: "noopener", "class": "textbtn" }, SIDEQUEST_RAW_URL));
-  body.appendChild(p);
-  body.appendChild(el("p", { "class": "hint" }, "None of your data will be touched."));
-  top.appendChild(body);
-  box.appendChild(top);
-  var ar = el("div", { "class": "actions", style: "margin-top:12px" });
-  ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Hide this notice for this version" }, "Dismiss"), "click", function () {
+  var box = el("div", { "class": "box updatebanner", style: "margin-top:22px" });
+  box.appendChild(el("h2", { style: "margin-bottom:4px" }, "Sidequest has leveled up!"));
+  box.appendChild(el("p", { "class": "hint first" }, "To update Sidequest, copy the prompt below:"));
+  var promptText = "Please update my Sidequest artifact with the latest version.\n" + SIDEQUEST_RAW_URL;
+  var field = el("textarea", { "class": "updateprompt", readonly: "readonly", rows: "3", "aria-label": "Update prompt to paste into Claude" });
+  field.value = promptText;
+  on(field, "focus", function () { field.select(); });
+  box.appendChild(field);
+  // Sized to its text (the long URL wraps on a phone), once it is in the page.
+  function fit() { if (!field.isConnected) return; field.style.height = "auto"; field.style.height = field.scrollHeight + 2 + "px"; }
+  setTimeout(fit, 0); window.addEventListener("resize", fit);
+  box.appendChild(el("p", { "class": "hint" }, "None of your data will be touched."));
+  var ar = el("div", { "class": "actions" });
+  function copyPrompt() {
+    function fallback() { field.focus(); field.select(); try { document.execCommand("copy"); notify("Prompt copied."); } catch (e) { notify("Select the prompt and copy it."); } }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(promptText).then(function () { notify("Prompt copied."); }, fallback);
+    else fallback();
+  }
+  ar.appendChild(on(el("button", { type: "button", "class": "primary", title: "Copy the prompt" }, "Copy prompt"), "click", copyPrompt));
+  ar.appendChild(on(el("button", { type: "button", title: "Hide this notice for this version" }, "Dismiss"), "click", function () {
     state.settings.dismissedUpdateVersion = availableUpdateVersion; save(); box.remove();
   }));
   box.appendChild(ar);
