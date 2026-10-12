@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.3.3"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.3.4"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -2075,6 +2075,33 @@ async function exportClick(k, projectName) {
   const k = kit(await mk({ settings: { showSplash: true, affirmationBucket: [1, 2, 3] }, quests: [], tasks: [] }));
   const b = k.saved().settings.affirmationBucket;
   ok(b.length === 2 && b[0] === 1 && b[1] === 2, "drawing a quote saves the shortened bucket (" + JSON.stringify(b) + ")");
+}
+
+{
+  // The export's task rows keep only the Milestone and Launch critical badges (plus
+  // Est time), and Notes / Quest links are left out entirely when empty.
+  const { html } = await exportClick(kit(await mk()), "Sample App");
+  const body = html.split("<style>")[0] + html.split("</style>").slice(1).join("");
+  const rows = body.split('class="etask').slice(1).join("");
+  ok(rows.includes("Launch critical") && rows.includes("Milestone"), "the export still badges launch critical and milestone tasks");
+  ok(!/data-v=/.test(rows) && !rows.includes(">Backlog<") && !rows.includes(">Overdue<") && !rows.includes(">Completed<"), "no status, Backlog, Overdue, or Done chips on exported tasks");
+  ok(!/\d of \d steps/.test(rows) && /Est \d/.test(rows), "no step counts, but Est time stays");
+  const siteSection = html.slice(html.indexOf('id="proj-pSite"'));
+  ok(!siteSection.slice(0, siteSection.indexOf("</section>")).includes("<h3>Notes</h3>") && !html.includes("No notes."), "an empty Notes section is not printed");
+  ok(html.includes("<h3>Quest links</h3>"), "Quest links still print when there are links");
+}
+
+{
+  // Export charts: milestones get their own Gantt lane with no text label, and the burndown
+  // carries the live chart's Scope line, milestone marks, and legend.
+  const { html } = await exportClick(kit(await mk()), "Sample App");
+  ok(html.includes("mnm.textContent='Milestones'"), "the Gantt draws milestones in their own Milestones lane");
+  ok(!html.includes("data-label"), "milestone diamonds carry no text label (the tooltip stays as a title)");
+  ok(html.includes("d.title=m.text+', '+m.date"), "milestone diamonds keep their tooltip");
+  ok(html.includes('class="elegend"') && html.includes("<i class=\"s\"></i>Scope"), "the export's burndown has the Ideal / Actual / Scope legend");
+  ok(html.includes('"scopeSteps":[') && html.includes('"cps":['), "the burndown data carries scope steps and checkpoint dates");
+  ok(html.includes("svgEl('polygon',{'class':'mark'"), "the burndown draws milestone marks");
+  ok(html.includes(".etimeline .ebar.new, .etimeline .ebar.work, .etimeline .ebar.done { box-shadow: inset 0 0 0 1px"), "Gantt status bars get the live app's outline, so block bands never show a sliver around them");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

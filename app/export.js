@@ -5,6 +5,7 @@ import {
   taskStart, taskEnd, questEstimate, fmtHours, fmtHoursLong, live,
   blockForDate, blockStartFor, blockEndFor, milestoneTasks
 } from "./model.js";
+import { scopeSteps } from "./chart.js";
 
 /* Client export: a single, self-contained, read-only HTML file for sharing one
    quest, with chart data precomputed here so the exported file only draws numbers, never recomputes scheduling math. */
@@ -15,7 +16,7 @@ function snapshotTasks(p) {
   return questBurnTasksOrdered(p).map(function (t) {
     return {
       id: t.id, what: t.what, done: t.done, status: t.status, notes: t.notes || "",
-      block: t.block, start: fmtRange(t), late: isLate(t),
+      block: t.block, start: fmtRange(t), late: isLate(t), launch: !!t.launch, milestone: !!t.milestone,
       est: t.est > 0 ? fmtHours(t.est) : "",
       steps: (t.steps || []).map(function (s) { return { text: s.text, done: !!s.done }; })
     };
@@ -39,13 +40,15 @@ function fmtRange(t) { return t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " 
 function snapshotCharts(p) {
   var bd = questBurn(p);
   if (!bd) return null;
-  var burndownMilestones = milestoneTasks(p.id).map(function (t) { return { text: t.what, date: t.due }; });
+  var burndownMilestones = milestoneTasks(p.id).map(function (t) { return { text: t.what, date: fmtY(taskEnd(t)), ms: taskEnd(t) }; });
+  var sc = scopeSteps(bd.cps, p.hist, bd.total);
   var points = bd.cps.map(function (ms, i) {
     return { date: fmtY(ms), planned: bd.planned[i], actual: bd.actual[i], scope: bd.scope[i], tip: chartTip(bd, i, ms) };
   });
   var lanes = snapshotLanes(p, bd);
   return {
     total: bd.total,
+    cps: bd.cps, scopeSteps: sc.steps, scopeEnd: sc.end,
     points: points,
     milestones: burndownMilestones,
     lanes: lanes.lanes, laneMilestones: lanes.milestones, rangeStart: lanes.rangeStart, rangeEnd: lanes.rangeEnd, today: fmtY(TODAY)
@@ -187,15 +190,11 @@ function renderTocEntry(node) {
 function renderTasks(node) {
   if (!node.tasks.length) return '<p class="hint">No tasks.</p>';
   var rows = node.tasks.map(function (t) {
-    var steps = t.steps.length ? t.steps.filter(function (s) { return s.done; }).length + " of " + t.steps.length + " steps" : "";
     var cls = t.status === "Completed" ? " done" : "";
     var html = '<li class="etask' + cls + '">';
-    html += '<div class="el1">' + (t.block === 0 ? "" : escHtml(t.start)) + (t.late ? ' <span class="badge">Overdue</span>' : "") + "</div>";
-    html += '<div class="el2">' + (t.block === 0 ? '<span class="chip backlog" style="margin-right:8px">Backlog</span>' : "") + escHtml(t.what) + "</div>";
-    html += '<div class="el3"><span class="chip" data-v="' + escAttr(t.status) + '">' + escHtml(t.status) + "</span>";
-    if (steps) html += "<span>" + escHtml(steps) + "</span>";
-    if (t.est) html += "<span>Est " + escHtml(t.est) + "</span>";
-    html += "</div>";
+    if (t.block !== 0) html += '<div class="el1">' + escHtml(t.start) + "</div>";
+    html += '<div class="el2">' + (t.launch ? '<span class="chip launchcrit" style="margin-right:8px">Launch critical</span>' : "") + (t.milestone ? '<span class="chip milestonechip" style="margin-right:8px">Milestone</span>' : "") + escHtml(t.what) + "</div>";
+    if (t.est) html += '<div class="el3"><span>Est ' + escHtml(t.est) + "</span></div>";
     if (t.done) html += '<p class="edone">Done when: ' + escHtml(t.done) + "</p>";
     if (t.steps.length) {
       html += '<ul class="esteps">' + t.steps.map(function (s) { return '<li class="' + (s.done ? "done" : "") + '">' + escHtml(s.text) + "</li>"; }).join("") + "</ul>";
@@ -210,7 +209,6 @@ function renderTasks(node) {
 function renderLinks(node) {
   var real = node.links.filter(function (l) { return !l.cycle; });
   var cycles = node.links.filter(function (l) { return l.cycle; });
-  if (!real.length && !cycles.length) return '<p class="hint">No quest links.</p>';
   var items = real.map(function (l) { return '<li><a href="#' + sectionId(l.id) + '">' + escHtml(l.name) + "</a></li>"; })
     .concat(cycles.map(function (l) { return '<li><a href="#' + sectionId(l.id) + '">' + escHtml(l.name) + "</a> (already shown above)</li>"; }));
   return '<ul class="list">' + items.join("") + "</ul>";
@@ -226,7 +224,7 @@ function renderCharts(node) {
     html += '<h3 class="efirst">Timeline</h3><div class="echartbox"><div class="etimeline" id="' + id + '-tl"></div></div>';
   }
   html += '<h3' + (node.charts.lanes.length ? "" : ' class="efirst"') + '>Burndown</h3>';
-  html += '<div class="echartbox"><div id="' + id + '-burn"></div></div>';
+  html += '<div class="echartbox"><div id="' + id + '-burn"></div><div class="elegend"><span><i class="p"></i>Ideal</span><span><i></i>Actual</span><span><i class="s"></i>Scope</span></div></div>';
   html += '<p class="hint">' + node.charts.total + " tasks total.</p>";
   html += "</div>";
   return html;
@@ -242,10 +240,8 @@ function renderSection(node) {
   html += '<div class="emain">';
   html += '<h3 class="efirst">Tasks</h3>';
   html += renderTasks(node);
-  html += "<h3>Notes</h3>";
-  html += '<p class="enotes">' + (node.notes ? escHtml(node.notes).replace(/\n/g, "<br>") : "No notes.") + "</p>";
-  html += "<h3>Quest links</h3>";
-  html += renderLinks(node);
+  if (node.notes) html += "<h3>Notes</h3>" + '<p class="enotes">' + escHtml(node.notes).replace(/\n/g, "<br>") + "</p>";
+  if (node.links.length) html += "<h3>Quest links</h3>" + renderLinks(node);
   html += "</div>";
   html += '<div class="easide">' + renderCharts(node) + "</div>";
   html += "</div></section>";
@@ -253,8 +249,8 @@ function renderSection(node) {
 }
 
 var EXPORT_CSS = "\
-:root { --bg:#F2F4F1; --surface:#FFFFFF; --ink:#1A2733; --muted:#566772; --line:#D3DAD5; --planned:#2F5D8A; --burn:#C62F2F; --scope:#FFAC1C; --est:#B9CCE0; --chip-idle:#E7ECE8; --chip-work:#F6E3C4; --chip-done:#CFE6D5; --chip-new:#D3E3F6; --chip-ink:#1A2733; --late:#A8261C; --late-bg:#F8DDD9; }\
-@media (prefers-color-scheme: dark) { :root { --bg:#131A20; --surface:#1B252D; --ink:#E6ECEF; --muted:#9AABB5; --line:#2C3843; --planned:#86B4E0; --burn:#E5534B; --scope:#FFAC1C; --est:#34506B; --chip-idle:#26323B; --chip-work:#4A3B22; --chip-done:#21402C; --chip-new:#2A4560; --chip-ink:#E6ECEF; --late:#F2A29B; --late-bg:#4A2723; } }\
+:root { --bg:#F2F4F1; --surface:#FFFFFF; --ink:#1A2733; --muted:#566772; --line:#D3DAD5; --planned:#2F5D8A; --burn:#C62F2F; --scope:#FFAC1C; --est:#B9CCE0; --chip-idle:#E7ECE8; --chip-work:#F6E3C4; --chip-done:#CFE6D5; --chip-new:#D3E3F6; --chip-ink:#1A2733; --late:#A8261C; --late-bg:#F8DDD9; --milestone:#A1241F; --milestone-bg:#F7DCDC; }\
+@media (prefers-color-scheme: dark) { :root { --bg:#131A20; --surface:#1B252D; --ink:#E6ECEF; --muted:#9AABB5; --line:#2C3843; --planned:#86B4E0; --burn:#E5534B; --scope:#FFAC1C; --est:#34506B; --chip-idle:#26323B; --chip-work:#4A3B22; --chip-done:#21402C; --chip-new:#2A4560; --chip-ink:#E6ECEF; --late:#F2A29B; --late-bg:#4A2723; --milestone:#F0A29C; --milestone-bg:#4A2321; } }\
 * { box-sizing: border-box; }\
 body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; line-height: 1.4; }\
 .ewrap { max-width: 1100px; margin: 0 auto; }\
@@ -284,7 +280,8 @@ h1, h2, h3, h4, h5 { font-weight: 700; margin-top: 0; }\
 .chip[data-v='In progress'] { background: var(--chip-work); }\
 .chip[data-v='Completed'] { background: var(--chip-done); }\
 .chip.questcomplete { background: var(--chip-done); }\
-.chip.backlog { background: var(--late-bg); color: var(--late); }\
+.chip.launchcrit { background: var(--chip-work); }\
+.chip.milestonechip { background: var(--milestone-bg); color: var(--milestone); }\
 .chip.ereadonly { background: var(--muted); color: var(--surface); vertical-align: middle; font-size: .7rem; margin-left: 8px; }\
 .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--late-bg); color: var(--late); font-size: .8rem; font-weight: 600; }\
 .etasklist, .list { list-style: none; margin: 8px 0; padding: 0; }\
@@ -324,9 +321,14 @@ svg.echart { display: block; width: 100%; height: auto; }\
 .etimeline .ebar.new { background: var(--chip-new); }\
 .etimeline .ebar.work { background: var(--chip-work); }\
 .etimeline .ebar.done { background: var(--chip-done); }\
-.etimeline .emsrow { position: relative; height: 18px; margin-top: 10px; }\
-.etimeline .ems { position: absolute; top: 2px; width: 12px; height: 12px; background: var(--burn); transform: translateX(-6px) rotate(45deg); border-radius: 2px; }\
-.etimeline .ems::after { content: attr(data-label); position: absolute; top: 16px; left: 50%; transform: translateX(-50%) rotate(-45deg); transform-origin: top left; font-size: .68rem; color: var(--muted); white-space: nowrap; }\
+.etimeline .ebar.new, .etimeline .ebar.work, .etimeline .ebar.done { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-ink) 28%, transparent); }\
+.etimeline .ems { position: absolute; top: 4px; width: 12px; height: 12px; background: var(--burn); transform: translateX(-6px) rotate(45deg); border-radius: 2px; }\
+.etimeline .ems::after { content: ''; position: absolute; inset: -6px; }\
+.elegend { display: flex; flex-wrap: wrap; gap: 16px; padding: 6px 4px 10px; font-size: .88rem; color: var(--muted); }\
+.elegend span { display: inline-flex; align-items: center; gap: 8px; }\
+.elegend i { display: inline-block; width: 24px; height: 0; border-top: 3px solid var(--burn); }\
+.elegend i.p { border-top: 3px dashed var(--planned); }\
+.elegend i.s { border-top: 2px solid var(--scope); }\
 .efoot { margin-top: 30px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }\
 ";
 
@@ -337,7 +339,7 @@ var RUNTIME_JS = "\
 function svgEl(t,a){var e=document.createElementNS('http://www.w3.org/2000/svg',t);for(var k in a)e.setAttribute(k,a[k]);return e;}\
 function drawBurn(host,cfg){\
 var cps=cfg.points,n=cps.length,pl=cps.map(function(p){return p.planned;}),acts=cps.map(function(p){return p.actual;});\
-var ymax=Math.max(cfg.total,1);acts.forEach(function(a){if(a!==null&&a>ymax)ymax=a;});\
+var ymax=Math.max(cfg.total,1);acts.forEach(function(a){if(a!==null&&a>ymax)ymax=a;});(cfg.scopeSteps||[]).forEach(function(s){if(s.v>ymax)ymax=s.v;});\
 var tick=Math.max(1,Math.ceil(ymax/8));\
 var W=960,H=320,L=40,R=18,T=16,B=44;\
 var svg=svgEl('svg',{'class':'echart',viewBox:'0 0 '+W+' '+H,role:'group',tabindex:'0','aria-label':'Burndown chart. Use the left and right arrow keys to move between points.'});\
@@ -345,19 +347,28 @@ function x(i){return L+(W-L-R)*i/(n-1);}\
 function y(v){return T+(H-T-B)*(1-v/ymax);}\
 for(var v=0;v<=ymax;v+=tick){svg.appendChild(svgEl('line',{'class':'grid',x1:L,x2:W-R,y1:y(v),y2:y(v)}));var tx=svgEl('text',{'class':'axis',x:L-10,y:y(v)+4,'text-anchor':'end'});tx.textContent=String(v);svg.appendChild(tx);}\
 var every=Math.max(1,Math.ceil(n/Math.max(2,Math.floor((W-L-R)/70))));\
-cps.forEach(function(p,i){if(i%every===0||i===n-1){var tx=svgEl('text',{'class':'axis',x:x(i),y:H-16,'text-anchor':'middle'});tx.textContent=p.date;svg.appendChild(tx);}});\
+cps.forEach(function(p,i){if(i%every===0||i===n-1){var tx=svgEl('text',{'class':'axis',x:x(i),y:H-16,'text-anchor':i===n-1?'end':'middle'});tx.textContent=p.date;svg.appendChild(tx);}});\
 svg.appendChild(svgEl('polyline',{'class':'planned',points:pl.map(function(p,i){return x(i)+','+y(p);}).join(' ')}));\
 var seg=[];function flush(){if(seg.length>1)svg.appendChild(svgEl('polyline',{'class':'actual',points:seg.join(' ')}));seg=[];}\
 acts.forEach(function(a,i){if(a===null){flush();return;}seg.push(x(i)+','+y(a));});flush();\
 acts.forEach(function(a,i){if(a!==null)svg.appendChild(svgEl('circle',{'class':'dot',cx:x(i),cy:y(a),r:5.5}));});\
+var ss=cfg.scopeSteps,c0=cfg.cps[0],cN=cfg.cps[n-1];\
+function px(ms){return L+(W-L-R)*Math.max(0,Math.min(1,(ms-c0)/(cN-c0)));}\
+if(ss&&(ss.length>1||(ss.length===1&&cfg.scopeEnd>ss[0].ms))){var sp=[],pv=null,pms=null,ramp=(cN-c0)/(n-1);\
+ss.forEach(function(st){if(pv!==null)sp.push(px(Math.max(pms,st.ms-ramp))+','+y(pv));sp.push(px(st.ms)+','+y(st.v));pv=st.v;pms=st.ms;});\
+sp.push(px(cfg.scopeEnd)+','+y(pv));svg.appendChild(svgEl('polyline',{'class':'scope',points:sp.join(' ')}));}\
 var guide=svgEl('line',{'class':'guide',x1:0,x2:0,y1:T,y2:H-B});guide.style.display='none';svg.appendChild(guide);\
 var stops=[];\
 cps.forEach(function(p,i){\
 var x0=i===0?L:(x(i-1)+x(i))/2,x1=i===n-1?W-R:(x(i)+x(i+1))/2;\
 var hit=svgEl('rect',{'class':'hit',x:x0,y:T,width:Math.max(1,x1-x0),height:H-B-T});svg.appendChild(hit);\
 var ys=[y(p.planned)];if(p.actual!==null)ys.push(y(p.actual));\
-stops.push({x:x(i),y:Math.min.apply(null,ys),text:p.tip,el:hit,i:i});\
+stops.push({x:x(i),y:Math.min.apply(null,ys),text:p.tip,el:hit,i:i,order:0});\
 });\
+(cfg.milestones||[]).forEach(function(m){if(m.ms<c0||m.ms>cN)return;\
+var cx=px(m.ms),cy=y(0),r=6;svg.appendChild(svgEl('polygon',{'class':'mark',points:cx+','+(cy-r)+' '+(cx+r)+','+cy+' '+cx+','+(cy+r)+' '+(cx-r)+','+cy}));\
+var mh=svgEl('circle',{'class':'hit',cx:cx,cy:cy,r:11});svg.appendChild(mh);stops.push({x:cx,y:cy,text:m.text+', '+m.date,el:mh,i:-1,order:1});});\
+stops.sort(function(p,q){return p.x-q.x||p.order-q.order;});\
 var tip=document.createElement('div');tip.className='echarttip';tip.setAttribute('role','status');tip.setAttribute('aria-live','polite');tip.hidden=true;\
 host.appendChild(svg);host.appendChild(tip);\
 var cur=-1,pinned=false;\
@@ -366,7 +377,7 @@ function show(k){cur=k;var s=stops[k];tip.textContent=s.text;tip.hidden=false;gu
 var r=svg.getBoundingClientRect(),hr=host.getBoundingClientRect(),sc=r.width/W;\
 var px=(r.left-hr.left)+s.x*sc,py=(r.top-hr.top)+s.y*sc,w=tip.offsetWidth,h=tip.offsetHeight;\
 tip.style.left=Math.max(0,Math.min(px-w/2,hr.width-w))+'px';tip.style.top=(py-h-12<0?py+14:py-h-12)+'px';}\
-function startStop(){var best=0;stops.forEach(function(s,k){if(acts[s.i]!==null)best=k;});return best;}\
+function startStop(){var best=0;stops.forEach(function(s,k){if(s.i>=0&&acts[s.i]!==null)best=k;});return best;}\
 stops.forEach(function(s,k){\
 s.el.addEventListener('mouseenter',function(){show(k);});\
 s.el.addEventListener('mouseleave',function(){if(!pinned)hide();});\
@@ -399,11 +410,11 @@ var bar=document.createElement('div');bar.className='ebar '+ln.status;bar.style.
 lane.appendChild(tr);wrap.appendChild(lane);\
 });\
 if(charts.laneMilestones&&charts.laneMilestones.length){\
-var msr=document.createElement('div');msr.className='emsrow';\
+var msl=document.createElement('div');msl.className='elane';var mnm=document.createElement('div');mnm.className='elname';mnm.textContent='Milestones';msl.appendChild(mnm);var msr=document.createElement('div');msr.className='etrack';\
 charts.laneMilestones.forEach(function(m){\
-var d=document.createElement('span');d.className='ems';d.style.left=m.left+'%';d.title=m.text+', '+m.date;d.setAttribute('data-label',m.text);msr.appendChild(d);\
+var d=document.createElement('span');d.className='ems';d.style.left=m.left+'%';d.title=m.text+', '+m.date;d.setAttribute('aria-label',m.text+', '+m.date);msr.appendChild(d);\
 });\
-wrap.appendChild(msr);\
+msl.appendChild(msr);wrap.appendChild(msl);\
 }\
 host.appendChild(wrap);\
 }\

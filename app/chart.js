@@ -189,7 +189,7 @@ function weekTip(cps, i, pl, act, scopes, tasks, span, withQuest) {
 }
 
 // Total scope over the chart's range from a recorded history, plus today's live count.
-function scopeSteps(cps, hist, liveCount) {
+export function scopeSteps(cps, hist, liveCount) {
   var start = cps[0], last = cps[cps.length - 1], end = Math.min(TODAY, last), out = [];
   function add(ms, v) { if (!out.length || out[out.length - 1].v !== v) out.push({ ms: ms, v: v }); }
   var first = histAt(hist, start);
