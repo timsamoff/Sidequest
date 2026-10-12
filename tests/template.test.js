@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.3.0"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.3.1"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -2067,6 +2067,14 @@ async function exportClick(k, projectName) {
   await new Promise(r => setTimeout(r, 400));
   const t = k.$("view").textContent;
   ok(t.includes("Sidequest is installed. Open it from your apps or desktop.") && t.includes("To uninstall Sidequest, open the app, open the title bar menu, and select Uninstall Sidequest..."), "a finished install in the browser tab redraws Options as installed, with the web app uninstall steps");
+}
+
+{
+  // The quote bucket is saved as soon as a quote is drawn, so reloading with no
+  // edits in between moves on to the next quote instead of repeating this one.
+  const k = kit(await mk({ settings: { showSplash: true, affirmationBucket: [1, 2, 3] }, quests: [], tasks: [] }));
+  const b = k.saved().settings.affirmationBucket;
+  ok(b.length === 2 && b[0] === 1 && b[1] === 2, "drawing a quote saves the shortened bucket (" + JSON.stringify(b) + ")");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

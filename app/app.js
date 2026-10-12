@@ -194,10 +194,7 @@ Promise.resolve().then(function () {
   renderAll();
 
   // Decorative only -- the app has already rendered above.
-  // Mutates state.settings.affirmationBucket in memory only -- it rides along
-  // with the next real save() rather than forcing one of its own, so a reload
-  // with no other edits in between can't make two otherwise-identical devices
-  // disagree over db sync.
+  // The quote bucket is saved to local storage only, never the db or sync stamp.
   cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio, nextAffirmationIndex) || cancelSplash;
 
   // Checked after first paint -- no-op on the web app, real on a published artifact with db.

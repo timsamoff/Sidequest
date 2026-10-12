@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.3.0";
+export var APP_VERSION = "0.3.1";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -422,6 +422,9 @@ export function nextAffirmationIndex(count) {
   }
   var next = bucket.pop();
   state.settings.affirmationBucket = bucket;
+  // Persisted at once, but without moving the sync stamp or touching the db: otherwise a
+  // reload with no edits re-reads the old bucket and pops the same quote again.
+  try { window.localStorage.setItem(KEY2, JSON.stringify(state)); } catch (e) { /* ignore */ }
   return next;
 }
 export function changed() {
