@@ -17,6 +17,8 @@ input, select, button, textarea { font: inherit; color: var(--ink); margin: 0; }
 input[type="text"], input[type="date"], input[type="number"], input[type="tel"], input[type="email"], input[type="url"], textarea {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%;
 }
+/* iOS WebKit sizes a date input to its content and can overflow its container. */
+@supports (-webkit-touch-callout: none) { input[type="date"] { -webkit-appearance: none; appearance: none; display: block; box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; } }
 input[type="file"] { max-width: 100%; }
 input[type="file"]::file-selector-button {
   font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
