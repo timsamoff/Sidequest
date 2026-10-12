@@ -141,7 +141,7 @@ export function taskDialog(prefillQuestId) {
     var t = task("c" + uid(), blk, v.quest, v.what.slice(0, 400), v.done.slice(0, 200) || "It’s finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
     state.tasks.push(t); ui.sel = t.id; changed();
     return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ")." };
-  }, (fixedQuest ? "Assign a new task to this quest." : "Assign a new task to any open quest.") + " Adding start and due dates will automatically place the task within the quest’s " + wl() + ".");
+  }, (fixedQuest ? "Assign a new task to this quest." : "Assign a new task to any open quest.") + " Adding start and due dates will automatically place the task within the quest’s corresponding " + wl() + ".");
 }
 export function questDialog() {
   formDialog("New candidate quest", [
@@ -187,7 +187,7 @@ export function ideaDialog(idea) {
     if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 5000); changed(); return { msg: "Idea saved." }; }
     state.workshop.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000) }); changed();
     return { msg: "Added to the Workshop." };
-  }, idea ? undefined : "New ideas go to the Workshop first. When ready, ideas can be made into candidate quests.");
+  }, idea ? undefined : "New ideas live in the Workshop. When ready, ideas can be made into candidate quests.");
 }
 // Steps with no decision yet, for one task -- shared by the cascade below.
 function openStepOptions(taskId) {
@@ -233,7 +233,7 @@ export function decisionDialog(prefill) {
     if (decisionFor(v.step)) return "That step already has a decision.";
     state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: v.step }); changed();
     return { msg: "Decision added." };
-  }, "A decision is something that needs to be figured out before completing a step. Answering a decision will automatically check the step off.");
+  }, "Decisions can be added to any step within a task.");
   var questSel = $("f-quest"), taskSel = $("f-task"), stepSel = $("f-step");
   if (questSel && taskSel && stepSel) {
     function fillSteps(taskId) {
@@ -285,7 +285,7 @@ export function stepDialog(prefillQuestId) {
     if (!t) return "Choose a task.";
     t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false }); syncFromSteps(t); changed();
     return { msg: "Step added to " + dispQuest(t) + "." };
-  }, "Steps can be added on all tasks within a quest.");
+  }, "Steps can be added to any tasks within a quest.");
   var questSel = $("f-quest"), taskSel = $("f-task");
   if (questSel && taskSel) {
     on(questSel, "change", function () {
