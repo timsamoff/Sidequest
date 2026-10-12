@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.2.5"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.3.0"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -1990,7 +1990,7 @@ async function exportClick(k, projectName) {
   ok(!k.$("refreshBtn").hidden, "the top-bar Refresh button is shown while running standalone");
   k.tab("settings");
   const box = k.$("view");
-  ok(box.textContent.includes("To uninstall Sidequest") && box.textContent.includes("chrome://apps") && box.textContent.includes("edge://apps"), "running standalone shows the short uninstall-only copy");
+  ok(box.textContent.includes("To uninstall Sidequest, open the title bar menu and select Uninstall Sidequest...") && !box.textContent.includes("chrome://apps"), "running standalone points to the app window's own menu for uninstalling");
   ok(!box.textContent.includes("Install Sidequest as an app") && !box.textContent.includes("already installed as an app, or your browser does not support"), "the normal install-prompt and unsupported-browser copy are not shown while standalone");
   ok(!box.textContent.includes("Refresh"), "Options itself no longer offers a Refresh button -- it moved to the top bar");
 }
@@ -2002,6 +2002,71 @@ async function exportClick(k, projectName) {
   k.tab("settings");
   const box = k.$("view");
   ok(box.textContent.includes("already installed as an app, or your browser does not support"), "a normal (non-standalone) browser tab still shows the existing fallback copy");
+}
+
+{
+  // Choosing a backup file (the file picker's Open) plays the restore sound
+  // when Sound effects is on, and stays silent when it is off.
+  for (const audio of [true, false]) {
+    const k = kit(await mk({ settings: { audio }, quests: [], tasks: [] }));
+    let played = null;
+    const RealAudio = k.w.Audio;
+    k.w.Audio = function (src) { played = src; return { play: function () { return Promise.resolve(); } }; };
+    k.tab("settings");
+    const input = k.$("restoreFile");
+    Object.defineProperty(input, "files", { value: [new k.w.File([JSON.stringify({ tasks: [] })], "b.json")], configurable: true });
+    k.fire(input, "change"); await new Promise(r => setTimeout(r, 40));
+    ok(played === null, "choosing the file alone plays no sound (the confirm button does)");
+    k.click(k.btn(k.$("modalBody"), "Restore backup"));
+    k.w.Audio = RealAudio;
+    ok(audio ? played === "assets/sfx/restoreBackup.mp3" : played === null, "confirming a restore " + (audio ? "plays the restore sound" : "is silent") + " when Sound effects is " + (audio ? "on" : "off") + " (" + played + ")");
+  }
+}
+{
+  // The installed app's Refresh button plays the refresh sound when Sound effects is on.
+  const standaloneMM = (q) => ({ matches: q === "(display-mode: standalone)", media: q, addListener() {}, removeListener() {} });
+  for (const audio of [true, false]) {
+    const k = kit(await mk({ settings: { audio }, quests: [], tasks: [] }, null, null, null, standaloneMM));
+    let played = null;
+    const RealAudio = k.w.Audio;
+    let vol = null;
+    k.w.Audio = function (src) { played = src; const o = { play: function () { return Promise.resolve(); } }; Object.defineProperty(o, "volume", { set(v) { vol = v; } }); return o; };
+    k.click(k.$("refreshBtn"));
+    k.w.Audio = RealAudio;
+    if (audio) ok(vol === 0.25, "the refresh sound plays at quarter volume (" + vol + ")");
+    ok(audio ? played === "assets/sfx/refresh.mp3" : played === null, "Refresh " + (audio ? "plays the refresh sound" : "is silent") + " when Sound effects is " + (audio ? "on" : "off") + " (" + played + ")");
+  }
+}
+
+{
+  // Confirming a restore replays the launch sequence (splash) over the restored app.
+  const k = kit(await mk({ settings: { showSplash: true }, quests: [], tasks: [] }));
+  k.$("splash").hidden = true;
+  k.tab("settings");
+  const input = k.$("restoreFile");
+  Object.defineProperty(input, "files", { value: [new k.w.File([JSON.stringify({ tasks: [], settings: { showSplash: true } })], "b.json")], configurable: true });
+  k.fire(input, "change"); await new Promise(r => setTimeout(r, 40));
+  ok(k.$("splash").hidden, "choosing a backup file alone does not start the splash");
+  k.click(k.btn(k.$("modalBody"), "Restore backup"));
+  ok(!k.$("splash").hidden && k.$("splash").classList.contains("backdropBlurred"), "confirming the restore replays the splash");
+  const off = kit(await mk({ settings: { showSplash: true }, quests: [], tasks: [] }));
+  off.$("splash").hidden = true; off.tab("settings");
+  const inp2 = off.$("restoreFile");
+  Object.defineProperty(inp2, "files", { value: [new off.w.File([JSON.stringify({ tasks: [], settings: { showSplash: false } })], "b.json")], configurable: true });
+  off.fire(inp2, "change"); await new Promise(r => setTimeout(r, 40));
+  off.click(off.btn(off.$("modalBody"), "Restore backup"));
+  ok(off.$("splash").hidden, "a restored backup with the splash turned off does not replay it");
+}
+
+{
+  // After an install finishes while the page stays in the browser tab, Options redraws as installed.
+  const k = kit(await mk());
+  k.tab("settings");
+  ok(!k.$("view").textContent.includes("Sidequest is installed."), "Options does not claim an install before one happens");
+  k.w.dispatchEvent(new k.w.Event("appinstalled"));
+  await new Promise(r => setTimeout(r, 400));
+  const t = k.$("view").textContent;
+  ok(t.includes("Sidequest is installed. Open it from your apps or desktop.") && t.includes("To uninstall Sidequest, open the app, open the title bar menu, and select Uninstall Sidequest..."), "a finished install in the browser tab redraws Options as installed, with the web app uninstall steps");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

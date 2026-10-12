@@ -9,10 +9,13 @@ export function el(tag, attrs, text) {
 }
 export function on(node, ev, fn) { node.addEventListener(ev, fn); return node; }
 // Plays a short sound effect, silently giving up on any failure (autoplay
-// blocked, missing file) since a sound effect is never worth surfacing an error over.
-export function playSfx(src) {
+// blocked, missing file) since a sound effect is never worth surfacing an error
+// over. `volume` is optional, 0 to 1.
+export function playSfx(src, volume) {
   try {
-    var a = new window.Audio(src), p = a.play();
+    var a = new window.Audio(src);
+    if (volume !== undefined) a.volume = volume;
+    var p = a.play();
     if (p && typeof p.catch === "function") p.catch(function () {});
   } catch (e) { /* no audio support */ }
 }

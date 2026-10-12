@@ -1,10 +1,10 @@
 import { state, ui, save, saveUI, changed, autoVault, purgeOldVault, APP_NAME, loadFromDbIfAvailable, checkForAppUpdate, nextAffirmationIndex } from "./state.js";
 import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest } from "./model.js";
-import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline } from "./dom.js";
+import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline, playSfx } from "./dom.js";
 import { lateTasks } from "./model.js";
 import {
   renderToday, renderSchedule, renderQuests, renderWorkshop,
-  renderVault, renderSettings, renderHelp, renderQuestPage, renderTimeline, setDeferredInstallPrompt, setAvailableUpdateVersion
+  renderVault, renderSettings, renderHelp, renderQuestPage, renderTimeline, setDeferredInstallPrompt, setInstalledThisSession, setAvailableUpdateVersion
 } from "./views.js";
 import { renderSearch, openSearch, closeSearch, wireSearchInput, focusSearch } from "./search.js";
 import {
@@ -108,10 +108,22 @@ if (isStandaloneApp) {
         window.location.reload();
       }
     }
-    // Matches the CSS spin's own .6s duration; with reduced motion the
-    // animation never runs, so this just becomes a near-instant head start.
-    setTimeout(doRefresh, 600);
+    // The reload would cut the sound off, so it waits out the 2.4s clip; with
+    // sound off it waits one 0.6s spin (reduced motion skips the spin only).
+    var sound = state.settings.audio;
+    if (sound) playSfx("assets/sfx/refresh.mp3", 0.25);
+    setTimeout(doRefresh, sound ? 2400 : 600);
   });
+}
+
+// "Open tab in app" (and install) moves this page into the app window without
+// reloading it, so it would stay on its old view with no splash. Reload once it
+// becomes the installed app for a normal launch.
+if (!isStandaloneApp && typeof window.matchMedia === "function") {
+  var standaloneQuery = window.matchMedia("(display-mode: standalone)");
+  if (standaloneQuery && typeof standaloneQuery.addEventListener === "function") {
+    standaloneQuery.addEventListener("change", function (e) { if (e.matches) window.location.reload(); });
+  }
 }
 
 export function renderView() {
@@ -168,6 +180,12 @@ export function wireMenu(btnId, menuId) {
 // Exposed so a test can cancel the splash's own pending timers after itself.
 export var cancelSplash = function () {};
 
+// Plays the launch sequence again on demand (after a backup restore).
+export function replaySplash() {
+  cancelSplash();
+  cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio, nextAffirmationIndex) || cancelSplash;
+}
+
 // Deferred one microtask so the whole import cycle (state.js etc.) finishes evaluating first.
 Promise.resolve().then(function () {
   $("brand").textContent = APP_NAME;
@@ -210,7 +228,18 @@ Promise.resolve().then(function () {
     setDeferredInstallPrompt(e);
     renderChrome();
   });
-  window.addEventListener("appinstalled", function () { setDeferredInstallPrompt(null); renderChrome(); });
+  // Chrome may move the open page into the new app window without reloading it,
+  // leaving the app on Options with no splash: reload for a normal first launch.
+  // A page that stays in the browser tab just redraws Options as installed.
+  window.addEventListener("appinstalled", function () {
+    setDeferredInstallPrompt(null);
+    setTimeout(function () {
+      var standalone = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+      if (standalone) { window.location.reload(); return; }
+      setInstalledThisSession(true);
+      renderAll();
+    }, 300);
+  });
 
   wireMenu("newBtn", "newMenu"); wireMenu("moreBtn", "moreMenu");
   wireSearchInput($("searchBox"), "side");

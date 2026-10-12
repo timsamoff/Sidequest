@@ -12,7 +12,7 @@ import {
 import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx } from "./dom.js";
 import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
 import { playConfetti } from "./confetti.js";
-import { openTask, go, renderView, renderAll, renderChrome, applyTheme } from "./app.js";
+import { openTask, go, renderView, renderAll, renderChrome, applyTheme, replaySplash } from "./app.js";
 import { stepDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
 import { buildExportSnapshot, renderExportDocument, exportFileName } from "./export.js";
 
@@ -1274,6 +1274,9 @@ function brandmarkField() {
 // Set by app.js's beforeinstallprompt listener; null once installed or triggered.
 var deferredInstallPrompt = null;
 export function setDeferredInstallPrompt(e) { deferredInstallPrompt = e; }
+// True once an install finishes while this browser tab stays open.
+var installedThisSession = false;
+export function setInstalledThisSession(v) { installedThisSession = v; }
 // Set by app.js after checkForAppUpdate() resolves; null unless a newer
 // version's stamp was found in meta/version (Claude artifact build only).
 var availableUpdateVersion = null;
@@ -1397,19 +1400,20 @@ export function renderSettings(page) {
     var isStandalone = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
     function uninstallLine() {
       var p = el("p", { "class": "hint" });
-      p.appendChild(document.createTextNode("To uninstall Sidequest, open your browser and go to "));
-      p.appendChild(el("code", null, "chrome://apps"));
-      p.appendChild(document.createTextNode(" or "));
-      p.appendChild(el("code", null, "edge://apps"));
-      p.appendChild(document.createTextNode(". Right-click the Sidequest icon and select "));
-      p.appendChild(el("strong", null, "Remove"));
-      p.appendChild(document.createTextNode(" or "));
-      p.appendChild(el("strong", null, "Uninstall"));
+      if (isStandalone) {
+        p.appendChild(document.createTextNode("To uninstall Sidequest, open the title bar menu and select "));
+      } else {
+        p.appendChild(document.createTextNode("To uninstall Sidequest, open the app, open the title bar menu, and select "));
+      }
+      p.appendChild(el("strong", null, "Uninstall Sidequest..."));
       p.appendChild(document.createTextNode("."));
       return p;
     }
     var installBox = el("div", { "class": "box", style: "margin-top:10px" });
     if (isStandalone) {
+      installBox.appendChild(uninstallLine());
+    } else if (installedThisSession) {
+      root.appendChild(el("p", { "class": "hint" }, "Sidequest is installed. Open it from your apps or desktop."));
       installBox.appendChild(uninstallLine());
     } else if (deferredInstallPrompt) {
       root.appendChild(el("p", { "class": "hint" }, "Install Sidequest as an app on your computer or mobile device. PWA installation is not supported by all browsers or devices."));
@@ -1730,8 +1734,10 @@ function restoreBackupFile(file, msg) {
     confirmDialog("Restore this backup?",
       "This backup holds " + np + (np === 1 ? " quest" : " quests") + " and " + nt + (nt === 1 ? " task" : " tasks") + ". Restoring replaces everything in Sidequest on this device: all current quests, tasks, notes, history, and settings. You will have a few seconds to undo it.",
       "Restore backup", function () {
+        if (state.settings.audio) playSfx("assets/sfx/restoreBackup.mp3");
         var before = JSON.stringify(state);
         setState(next); ui.sel = null; ui.detail = false; applyTheme(); save(); renderAll();
+        replaySplash();
         notify("Backup restored.", function () { setState(normalize(JSON.parse(before))); ui.sel = null; ui.detail = false; applyTheme(); save(); renderAll(); });
       });
   };

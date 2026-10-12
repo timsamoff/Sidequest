@@ -213,6 +213,8 @@ export function playSplash(showSplash, done, audio, pickIndex) {
   // Markup ships pre-blurred in plain HTML, before any JS runs -- avoids a
   // real flash-of-sharp-app bug. If the setting's off, hide it now instead.
   if (!root || !showSplash) { if (root) root.hidden = true; if (done) done(); return; }
+  // A replay starts from the hidden, class-stripped state the last run left behind.
+  root.hidden = false; root.classList.add("backdropBlurred");
 
   var tree = buildTree();
   var pairs = renderTree(root, tree); // [{path, node}], in draw order -- each node is its own path's real terminus
