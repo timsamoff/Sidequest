@@ -217,11 +217,11 @@ export function renderToday(root) {
 // still shows its own notice even if an earlier one was dismissed.
 var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/Sidequest/main/Claude-Sidequest/sidequest.html";
 function updateBanner() {
-  var box = el("div", { "class": "box updatebanner", style: "margin-top:22px" });
-  box.appendChild(el("h2", { style: "margin-bottom:4px" }, "Sidequest has leveled up!"));
+  var box = el("div", { "class": "box updatebanner", style: "margin-bottom:22px" });
+  box.appendChild(el("h2", { "class": "first", style: "margin-bottom:4px" }, "Sidequest has leveled up!"));
   box.appendChild(el("p", { "class": "hint first" }, "To update Sidequest, copy the prompt below:"));
   var promptText = "Please update my Sidequest artifact with the latest version.\n" + SIDEQUEST_RAW_URL;
-  var field = el("textarea", { "class": "updateprompt", readonly: "readonly", rows: "3", "aria-label": "Update prompt to paste into Claude" });
+  var field = el("textarea", { "class": "updateprompt", readonly: "readonly", rows: "1", "aria-label": "Update prompt to paste into Claude" });
   field.value = promptText;
   on(field, "focus", function () { field.select(); });
   box.appendChild(field);

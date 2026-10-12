@@ -133,7 +133,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 /* The update notice borrows the Overdue pill's colors so it stands out. */
 .updatebanner { background: var(--late-bg); border-color: color-mix(in srgb, var(--late) 40%, transparent); }
 .updatebanner .hint { color: var(--ink); }
-.updateprompt { width: 100%; max-width: 100%; min-height: 0; resize: none; font-size: var(--text-sm); }
+.updateprompt { display: block; width: 100%; max-width: 100%; min-height: 0; margin-top: var(--space-10); resize: none; font-size: var(--text-sm); }
 /* Stacked, Progress follows the burndown and gets the same gap above it Burndown has. */
 .pgrid .progresshead { margin-top: var(--space-14); }
 .listbox { overflow: hidden; margin-top: var(--space-12); }
