@@ -106,7 +106,7 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
 export function taskDialog(prefillQuestId) {
   var nt = nextTask();
   var questOpts = activeQuests().map(function (p) { return { value: p.id, label: p.name }; });
-  if (!questOpts.length) { notify("Add an active quest first (Quests > Choose as next quest)."); return; }
+  if (!questOpts.length) { notify("Tasks can only be added to open quests."); return; }
   var fixedQuest = typeof prefillQuestId === "string";
   var startId = fixedQuest ? prefillQuestId : (nt && !nt.isNext ? nt.questId : questOpts[0].value);
   var startQuest = findQuest(startId);
@@ -140,7 +140,7 @@ export function taskDialog(prefillQuestId) {
     if (isNaN(est) || est < 0 || est > 9999) return "Enter the estimated time as hours from 0 to 9999, or leave it empty.";
     var t = task("c" + uid(), blk, v.quest, v.what.slice(0, 400), v.done.slice(0, 200) || "It’s finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
     state.tasks.push(t); ui.sel = t.id; changed();
-    return { msg: blk === 0 ? "Task added to the Backlog." : "Task added to " + wd() + " " + blk + " (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ")." };
+    return { msg: blk === 0 ? t.what + " added as a task to " + dispQuest(t) + "’s backlog." : t.what + " added as a task to " + wd() + " " + blk + " in " + dispQuest(t) + ". (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ".)" };
   }, (fixedQuest ? "Assign a new task to this quest." : "Assign a new task to any open quest.") + " Adding start and due dates will automatically place the task within the quest’s corresponding " + wl() + ". Leaving the due date blank will place it in the quest’s backlog.");
 }
 export function questDialog() {
@@ -162,7 +162,7 @@ export function questDialog() {
     var coin = (coinN === "" || isNaN(coinN) || coinN < 0) ? "" : Math.min(999999, coinN);
     var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200), coin: coin, per: v.giverPer === "Quest" ? "Quest" : "Hour" };
     state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000), client: client })); changed();
-    return { msg: v.name + " added as a candidate for the next slot." };
+    return { msg: v.name + " has been added as a candidate quest on the Quests page. Promote the candidate to open it." };
   }, "New quests appear in the Candidate quests section on the Quests page. The quest name is the only required field.");
 }
 // Links are bidirectional, so the chosen quest shows this one too. Only
@@ -186,7 +186,7 @@ export function ideaDialog(idea) {
     if (!v.text) return "Enter a title for the idea.";
     if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 5000); changed(); return { msg: "Idea saved." }; }
     state.workshop.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000) }); changed();
-    return { msg: "Added to the Workshop." };
+    return { msg: v.text + " added to the Workshop." };
   }, idea ? undefined : "New ideas live in the Workshop. When ready, ideas can be made into candidate quests.");
 }
 // Steps with no decision yet, for one task -- shared by the cascade below.
@@ -203,11 +203,12 @@ export function decisionDialog(prefill) {
       if (!v.q) return "Enter a title for the decision.";
       if (decisionFor(stepId)) return "That step already has a decision.";
       state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: stepId }); changed();
-      return { msg: "Decision added." };
+      return { msg: v.q + " added as a decision to " + fixed.s.text + " in " + dispQuest(fixed.t) + "." };
     }, "For the step: " + opts[0].label + ". A decision is something you need to figure out before you can move forward. Answering it automatically checks that step off.");
     return;
   }
   // No fixed step: cascade Quest -> Task -> Step, same pattern as stepDialog().
+  if (!stepOptions().length) { notify("A decision can only be added to a step."); return; }
   if (!stepOptions().some(function (o) { return !decisionFor(o.value); })) {
     notify("Every step already has a decision. Add a step first (open a task and add one), then add the decision.");
     return;
@@ -232,7 +233,8 @@ export function decisionDialog(prefill) {
     if (!v.step) return "Choose a step.";
     if (decisionFor(v.step)) return "That step already has a decision.";
     state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: v.step }); changed();
-    return { msg: "Decision added." };
+    var at = findStep(v.step);
+    return { msg: v.q + " added as a decision to " + (at ? at.s.text + " in " + dispQuest(at.t) : "a step") + "." };
   }, "Decisions can be added to any step within a task.");
   var questSel = $("f-quest"), taskSel = $("f-task"), stepSel = $("f-step");
   if (questSel && taskSel && stepSel) {
@@ -270,7 +272,7 @@ export function decisionEditDialog(dec, onRemove) {
 // Edits one step in place: its text and whether it is on the Launch checklist. Remove
 // also removes its decision, since a decision must belong to a step.
 export function stepDialog(prefillQuestId) {
-  if (!orderedAll().length) { notify("Add a task first."); return; }
+  if (!orderedAll().length) { notify("Steps can only be added to a task."); return; }
   var selTask = ui.sel && findTask(ui.sel);
   var questOpts = liveQuests().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; });
   var startId = prefillQuestId || (selTask ? selTask.questId : (questOpts.length ? questOpts[0].value : ""));
@@ -284,7 +286,7 @@ export function stepDialog(prefillQuestId) {
     if (!v.text) return "Enter a title for the step.";
     if (!t) return "Choose a task.";
     t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false }); syncFromSteps(t); changed();
-    return { msg: "Step added to " + dispQuest(t) + "." };
+    return { msg: v.text + " added as a step to " + t.what + " in " + dispQuest(t) + "." };
   }, "Steps can be added to any tasks within a quest.");
   var questSel = $("f-quest"), taskSel = $("f-task");
   if (questSel && taskSel) {

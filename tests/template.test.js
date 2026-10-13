@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.4.0"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.4.1"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -2104,6 +2104,36 @@ async function exportClick(k, projectName) {
   ok(html.includes('"scopeSteps":[') && html.includes('"cps":['), "the burndown data carries scope steps and checkpoint dates");
   ok(html.includes("svgEl('polygon',{'class':'mark'"), "the burndown draws milestone marks");
   ok(html.includes(".etimeline .ebar.new, .etimeline .ebar.work, .etimeline .ebar.done { box-shadow: inset 0 0 0 1px"), "Gantt status bars get the live app's outline, so block bands never show a sliver around them");
+}
+
+{
+  // Messages and empty states: nothing exists yet, so each add says what it needs
+  const k = kit(await mk({ quests: [], tasks: [], workshop: [], decisions: [], settings: { hideWelcome: true } }));
+  k.tab("projects");
+  const desc = k.d.querySelector("#view .hint");
+  ok(!!desc.querySelector("strong") && desc.querySelector("strong").textContent === "Tap the + button to add your first quest.", "with no quests, the Quests page description ends with a bold first-quest sentence");
+  k.menuAct("newBtn", "newTask"); ok(k.$("toast").textContent === "Tasks can only be added to open quests.", "adding a task with no open quests explains the rule");
+  k.menuAct("newBtn", "newStep"); ok(k.$("toast").textContent === "Steps can only be added to a task.", "adding a step with no tasks explains the rule");
+  k.menuAct("newBtn", "newDecision"); ok(k.$("toast").textContent === "A decision can only be added to a step.", "adding a decision with no steps explains the rule");
+  k.menuAct("newBtn", "newQuest"); k.setField("name", "Test Quest"); k.click(k.btn(k.$("modalBody"), "Add quest"));
+  ok(k.$("toast").textContent === "Test Quest has been added as a candidate quest on the Quests page. Promote the candidate to open it.", "the new-quest confirmation says it is a candidate and how to open it");
+  k.tab("projects");
+  ok(!k.d.querySelector("#view .hint strong"), "the first-quest sentence goes away once a quest exists");
+}
+{
+  // Confirmations name where each new item went
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.menuAct("newBtn", "newTask"); k.setField("quest", "pSite"); k.setField("what", "Scheduled task"); k.setField("due", "2026-10-27"); k.click(k.btn(k.$("modalBody"), "Add task"));
+  ok(/^Scheduled task added as a task to \w+ \d+ in Sample Website\. \(.+ to .+\.\)$/.test(k.$("toast").textContent), "a scheduled task's confirmation names its block and quest, with the date range (" + k.$("toast").textContent + ")");
+  k.menuAct("newBtn", "newTask"); k.setField("quest", "pSite"); k.setField("what", "Unscheduled task"); k.click(k.btn(k.$("modalBody"), "Add task"));
+  ok(k.$("toast").textContent === "Unscheduled task added as a task to Sample Website’s backlog.", "a task with no due date says it went to the quest's backlog");
+  k.menuAct("newBtn", "newStep"); k.setField("text", "Brand new step"); k.click(k.btn(k.$("modalBody"), "Add step"));
+  ok(/^Brand new step added as a step to .+ in .+\.$/.test(k.$("toast").textContent), "a step's confirmation names its task and quest (" + k.$("toast").textContent + ")");
+  k.menuAct("newBtn", "newDecision"); k.setField("q", "Which font?"); k.click(k.btn(k.$("modalBody"), "Add decision"));
+  ok(/^Which font\? added as a decision to .+ in .+\.$/.test(k.$("toast").textContent), "a decision's confirmation names its step and quest (" + k.$("toast").textContent + ")");
+  k.menuAct("newBtn", "newIdea"); k.setField("text", "Try a plugin system"); k.click(k.btn(k.$("modalBody"), "Workshop it"));
+  ok(k.$("toast").textContent === "Try a plugin system added to the Workshop.", "an idea's confirmation names the idea and the Workshop");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

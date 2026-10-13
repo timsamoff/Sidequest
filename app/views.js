@@ -871,7 +871,9 @@ export function demoteToCandidate(id) {
 export function standingBlock() {
   var wrap = el("div");
   wrap.appendChild(el("h2", { "class": "first" }, "In progress"));
-  wrap.appendChild(el("p", { "class": "hint" }, "Quests are ordered by the start date of their next task. Pin a quest to the sidebar for quick access."));
+  var desc = el("p", { "class": "hint" }, "Quests are ordered by the start date of their next task. Pin a quest to the sidebar for quick access.");
+  if (!liveQuests().length) { desc.appendChild(document.createTextNode(" ")); desc.appendChild(el("strong", null, "Tap the + button to add your first quest.")); }
+  wrap.appendChild(desc);
   var box = el("div", { "class": "box", style: "margin-top:10px" });
   var groups = {}, order = [];
   ordered().forEach(function (t) {
