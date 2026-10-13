@@ -1057,7 +1057,7 @@ export function emptyVault() {
 }
 export function renderVault(root) {
   var all = vaultEntries(), filter = ui.vaultFilter || "all";
-  root.appendChild(el("p", { "class": "hint first" }, "Quests and ideas can be sent here to be shelved. Restore returns an item to where it was before. Deleting an item from the Vault is permanent. The Vault can be set to clear automatically at chosen intervals, or never."));
+  root.appendChild(el("p", { "class": "hint first" }, "Send quests and ideas here to be shelved. Restore returns an item to where it was before. Deleting an item from the Vault is permanent. The Vault can be set to clear automatically at chosen intervals, or never."));
   var counts = { all: all.length }; all.forEach(function (e) { counts[e.kind] = (counts[e.kind] || 0) + 1; });
   var chips = el("div", { "class": "chips", role: "group", "aria-label": "Filter the Vault" });
   KIND_FILTERS.forEach(function (f) {
@@ -1253,7 +1253,7 @@ function brandmarkField() {
   var w = el("div", { "class": "field" });
   w.appendChild(el("label", null, "Brandmark"));
   w.appendChild(el("p", { "class": "hint" }, "Must be " + BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, and up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."));
-  var msg = el("p", { "class": "msg", role: "alert" });
+  var msg = el("p", { "class": "msg schedulesmsg", role: "alert" });
   var preview = el("div", { "class": "brandmarkpreview" });
   function renderPreview() {
     preview.innerHTML = "";
@@ -1327,7 +1327,7 @@ export function renderSettings(page) {
 
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   root.appendChild(el("h2", { "class": "setmain-head" }, "Schedule defaults"));
-  root.appendChild(el("p", { "class": "hint" }, "You can also choose what to call a stretch of work throughout the app."));
+  root.appendChild(el("p", { "class": "hint" }, "Set the default duration and name for a stretch of work. The duration can also be set for each quest."));
   var scheduleBox = el("div", { "class": "box", style: "margin-top:10px" });
   var grid = el("div", { "class": "setgrid" });
   function fieldOf(id, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); grid.appendChild(w); }
