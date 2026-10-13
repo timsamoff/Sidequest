@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.4.1"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.5.0"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -1480,11 +1480,11 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   set("task-start", "2026-08-20");
   ok(t().start === "2026-08-20", "a start date is stored");
   set("task-start", "2026-09-05");
-  ok(t().start === "2026-08-20" && k.$("task-start").value === "2026-08-20" && k.$("view").textContent.includes("start date can’t be after"), "a start after the due date is rejected");
+  ok(t().start === "2026-08-20" && k.$("task-start").value === "2026-08-20" && k.$("view").textContent.includes("You can’t begin after you finish! Pick a start date on or before the due date."), "a start after the due date is rejected");
   set("task-start", "2026-07-01");
   ok(t().start === "2026-08-20" && k.$("view").textContent.includes("on or after"), "a start before the project's start is rejected");
   set("task-due", "2026-08-10");
-  ok(t().due === "2026-08-30" && k.$("view").textContent.includes("can’t be before the start"), "a due date before the start is rejected");
+  ok(t().due === "2026-08-30" && k.$("view").textContent.includes("You can’t finish before you begin! Pick a due date on or after the start date."), "a due date before the start is rejected");
   set("task-due", "2026-07-01");
   ok(t().due === "2026-08-30" && t().block === 4, "a due date before the project's start is rejected");
   set("task-est", "2.5");
@@ -1492,7 +1492,16 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   set("task-est", "-3");
   ok(t().est === 2.5, "a negative estimate is rejected");
   set("task-due", "");
-  ok(t().block === 0 && t().due === "" && t().start === "", "clearing the due date moves the task to the Backlog and clears the start");
+  ok(t().block === 0 && t().due === "" && t().start === "2026-08-20", "clearing the due date moves the task to the Backlog and keeps the start");
+  ok(k.$("task-start").value === "2026-08-20" && k.$("task-due").value === "", "the detail pane still shows the kept start date on a Backlog task");
+  set("task-start", "2026-08-25");
+  ok(t().start === "2026-08-25" && t().block === 0, "a Backlog task can be given a different start date without a due date");
+  set("task-due", "2026-08-22");
+  ok(t().block === 0 && t().due === "" && k.$("view").textContent.includes("You can’t finish before you begin! Pick a due date on or after the start date."), "a due date before the kept start is rejected");
+  set("task-due", "2026-08-30");
+  ok(t().block === 4 && t().due === "2026-08-30" && t().start === "2026-08-25", "adding a due date later keeps the start and schedules the task");
+  set("task-due", ""); set("task-start", "");
+  ok(t().block === 0 && t().due === "" && t().start === "", "with both dates deleted, both stay empty and the task is in the Backlog");
 }
 {
   // New Task dialog
@@ -1507,7 +1516,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.menuAct("newBtn", "newTask");
   k.setField("what", "Bad order"); k.setField("start", "2026-08-25"); k.setField("due", "2026-08-20");
   k.click(k.btn(k.$("modalBody"), "Add task"));
-  ok(!k.saved().tasks.some(x => x.what === "Bad order") && k.$("modalBody").textContent.includes("can’t be after"), "the dialog rejects a start after the due date");
+  ok(!k.saved().tasks.some(x => x.what === "Bad order") && k.$("modalBody").textContent.includes("You can’t begin after you finish! Pick a start date on or before the due date."), "the dialog rejects a start after the due date");
 }
 {
   // Slip shifts start and due together; Undo restores them
@@ -1540,7 +1549,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const ts = k.saved().tasks, by = id => ts.find(x => x.id === id);
   ok(by("n1").block === 40, "a saved block above 12 survives a reload");
   ok(by("n2").start === "" && by("n2").due === "2026-08-11", "a start after its due date is dropped on load");
-  ok(by("n3").start === "" && by("n3").due === "", "a Backlog task's dates are cleared on load");
+  ok(by("n3").start === "2026-08-11" && by("n3").due === "", "a Backlog task keeps its start date on load, but has no due date");
 }
 
 // Quest Giver Export writes through the same Save As dialog stub as Save backup's
@@ -2134,6 +2143,72 @@ async function exportClick(k, projectName) {
   ok(/^Which font\? added as a decision to .+ in .+\.$/.test(k.$("toast").textContent), "a decision's confirmation names its step and quest (" + k.$("toast").textContent + ")");
   k.menuAct("newBtn", "newIdea"); k.setField("text", "Try a plugin system"); k.click(k.btn(k.$("modalBody"), "Workshop it"));
   ok(k.$("toast").textContent === "Try a plugin system added to the Workshop.", "an idea's confirmation names the idea and the Workshop");
+}
+
+{
+  // New Task dialog: a start date alone is allowed, and the dialog says where the task will go
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.menuAct("newBtn", "newTask");
+  k.setField("quest", "pSite"); k.setField("what", "Start only");
+  k.setField("start", "2026-10-20"); k.fire(k.$("f-start"), "input");
+  const note = () => k.$("modalBody").querySelector("p.msg").textContent;
+  ok(note() === "A task with no due date goes to the quest’s backlog.", "entering a start date with no due date shows the backlog message right away (" + note() + ")");
+  k.setField("due", "2026-10-27"); k.fire(k.$("f-due"), "input");
+  ok(note() === "", "the message goes away on its own once a due date is added");
+  k.setField("due", ""); k.fire(k.$("f-due"), "input");
+  ok(note() === "A task with no due date goes to the quest’s backlog.", "and comes back if the due date is cleared again");
+  k.click(k.btn(k.$("modalBody"), "Add task"));
+  const made = k.saved().tasks.find(x => x.what === "Start only");
+  ok(!!made && made.block === 0 && made.due === "" && made.start === "2026-10-20", "the task is still created, in the Backlog, with its start date kept");
+  ok(k.$("toast").textContent === "Start only added as a task to Sample Website’s backlog.", "and the confirmation says it went to the backlog");
+  k.menuAct("newBtn", "newTask");
+  k.setField("quest", "pSite"); k.setField("what", "Bad order"); k.setField("start", "2026-10-30"); k.setField("due", "2026-10-27");
+  k.click(k.btn(k.$("modalBody"), "Add task"));
+  ok(!k.saved().tasks.some(x => x.what === "Bad order") && note().includes("You can’t begin after you finish!"), "a start after the due date is still refused");
+}
+{
+  // The Welcome box's Go to Options button lands on Start fresh
+  const k = kit(await mk());
+  let scrolled = 0;
+  k.w.HTMLElement.prototype.scrollIntoView = function () { scrolled++; this.setAttribute("data-scrolled", "1"); };
+  k.click(k.$("welcomeSettings"));
+  const h = k.$("startFreshHeading");
+  ok(k.d.querySelector('.tab[data-view="settings"][aria-current="page"]') && !!h && h.textContent === "Start fresh", "Go to Options opens Options, which has a Start fresh heading");
+  ok(h.getAttribute("data-scrolled") === "1" && k.d.activeElement === h, "and scrolls to it and moves focus there");
+}
+
+{
+  // Date rules and their messages, including a quest's own due date as a ceiling for its tasks
+  const saved = {
+    quests: [{ id: "pT", name: "Dates", status: "active", start: "2026-08-03", days: 7, due: "2026-08-31" }],
+    tasks: [{ id: "t1", block: 2, questId: "pT", what: "Dated task", done: "done", status: "Not started", steps: [] }]
+  };
+  const k = kit(await mk(saved));
+  k.click(k.$("welcomeDismiss"));
+  // New Task dialog
+  const tryTask = (due, start) => { k.menuAct("newBtn", "newTask"); k.setField("quest", "pT"); k.setField("what", "Probe"); k.setField("due", due || ""); k.setField("start", start || ""); k.click(k.btn(k.$("modalBody"), "Add task")); const m = k.$("modalBody").querySelector("p.msg"); return m ? m.textContent : ""; };
+  ok(tryTask("2026-07-20") === "This quest starts Aug 3, 2026. Pick a due date on or after that.", "a due date before the quest starts says when the quest starts");
+  k.click(k.btn(k.$("modalBody"), "Cancel"));
+  ok(tryTask("2026-09-10") === "This quest is due Aug 31, 2026. Pick a due date on or before that.", "a due date after the quest's own due date is refused with that date");
+  k.click(k.btn(k.$("modalBody"), "Cancel"));
+  ok(tryTask("2026-08-20", "2026-07-20") === "This quest starts Aug 3, 2026. Pick a start date on or after that.", "a start date before the quest starts says when the quest starts");
+  k.click(k.btn(k.$("modalBody"), "Cancel"));
+  ok(tryTask("2026-08-20", "2026-08-25") === "You can’t begin after you finish! Pick a start date on or before the due date.", "a start after the due date has its own message");
+  k.click(k.btn(k.$("modalBody"), "Cancel"));
+  tryTask("2026-08-31");
+  ok(k.saved().tasks.some(x => x.what === "Probe" && x.due === "2026-08-31"), "a due date on the quest's due date itself is allowed");
+  // Tasks detail pane
+  k.tab("schedule");
+  k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Dated task")));
+  const set = (id, v) => { const i = k.$(id); i.value = v; k.fire(i, "blur"); };
+  const t = () => k.saved().tasks.find(x => x.id === "t1");
+  set("task-due", "2026-09-10");
+  ok(t().due === "" && k.$("view").textContent.includes("This quest is due Aug 31, 2026. Pick a due date on or before that."), "the detail pane refuses a due date after the quest's due date");
+  set("task-due", "2026-07-20");
+  ok(k.$("view").textContent.includes("This quest starts Aug 3, 2026. Pick a due date on or after that."), "and a due date before the quest starts");
+  set("task-start", "2026-07-20");
+  ok(k.$("view").textContent.includes("This quest starts Aug 3, 2026. Pick a start date on or after that."), "and a start date before the quest starts");
 }
 
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");

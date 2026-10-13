@@ -44,6 +44,8 @@ export function unlinkQuests(aId, bId) {
   if (a) a.linkedQuestIds = a.linkedQuestIds.filter(function (id) { return id !== bId; });
   if (b) b.linkedQuestIds = b.linkedQuestIds.filter(function (id) { return id !== aId; });
 }
+// A quest's own due date, as ms, or null when it has none; its tasks' due dates may not pass it.
+export function questDueLimit(questId) { var p = findQuest(questId); return p && p.due ? parseISO(p.due) : null; }
 export function pset(questId) { var p = findQuest(questId); return { start: (p && p.start) || state.start, days: (p && p.days) || state.days }; }
 export function offsetFor(questId, n) { return n * pset(questId).days; }
 export function blockStartFor(questId, b) { return addDays(parseISO(pset(questId).start), offsetFor(questId, b - 1)); }

@@ -1,7 +1,7 @@
 import { state, ui, save, changed, autoVault, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, quest as makeQuest, task, st, S } from "./state.js";
 import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart, addDays } from "./dates.js";
 import {
-  WORDS, wd, wl, pset, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
+  WORDS, wd, wl, pset, questDueLimit, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
   checkpoints, live, counted, liveQuests, activeQuests, candidateQuests,
   findQuest, findAnyQuest, linkedQuests, linkQuests, unlinkQuests, chosen, dispQuest, dispWhat,
   totalUnits, remainingUnits, planned, ordered, backlogTasks, sortTasks,
@@ -194,7 +194,12 @@ export function welcomeBox() {
   welcomeHint.appendChild(document.createTextNode(" These sample quests are here for you to explore. Look around, make changes, and press / to search. You can edit the existing quests or, when you’re ready to start your own, open Options and choose Start fresh."));
   box.appendChild(welcomeHint);
   var acts = el("div", { "class": "actions" });
-  acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Go to Options" }, "Go to Options"), "click", function () { go("settings"); }));
+  acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Go to Options" }, "Go to Options"), "click", function () {
+    go("settings");
+    // The welcome text sends people here for Start fresh, so land on it.
+    var h = $("startFreshHeading");
+    if (h) { if (typeof h.scrollIntoView === "function") h.scrollIntoView(); h.focus({ preventScroll: true }); }
+  }));
   acts.appendChild(on(el("button", { type: "button", id: "welcomeDismiss", title: "Hide this welcome message" }, "Dismiss"), "click", function () { state.settings.hideWelcome = true; save(); renderView(); }));
   box.appendChild(acts);
   return box;
@@ -354,7 +359,7 @@ export function buildDetail(t, inline, readOnly) {
     var dg = el("div", { "class": "setgrid" });
     var dmsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function dfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); dg.appendChild(w); }
-    function shownStart() { return t.block === 0 ? "" : iso(taskStart(t)); }
+    function shownStart() { return t.start ? t.start : (t.block === 0 ? "" : iso(taskStart(t))); }
     function shownDue() { return t.block === 0 ? "" : iso(taskEnd(t)); }
     var sd = el("input", { type: "date", id: "task-start" }), bd = el("input", { type: "date", id: "task-due" });
     var ei = el("input", { type: "number", id: "task-est", min: "0", max: "9999", step: "0.25" });
@@ -364,11 +369,13 @@ export function buildDetail(t, inline, readOnly) {
     // "blur", not "change" -- a date input fires "change" per segment while typing.
     on(bd, "blur", function () {
       if (bd.value === shownDue()) return;
-      if (bd.value === "") { t.block = 0; t.start = ""; t.due = ""; t.added = ""; changed(); notify("Moved to the Backlog."); return; }
+      if (bd.value === "") { var hadStart = !!t.start; t.block = 0; t.due = ""; t.added = ""; changed(); notify(hadStart ? "Moved to the Backlog. Its start date is kept." : "Moved to the Backlog."); return; }
       if (!isISO(bd.value)) { resetDates(); dmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
       var blk = blockForDate(projKey(t), parseISO(bd.value));
-      if (blk === null) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(questFirst) + ", this quest’s own start date."; return; }
-      if (t.block > 0 && t.start && bd.value < t.start) { resetDates(); dmsg.textContent = "The due date can’t be before the start date."; return; }
+      if (blk === null) { resetDates(); dmsg.textContent = "This quest starts " + fmtY(questFirst) + ". Pick a due date on or after that."; return; }
+      var qdue = questDueLimit(projKey(t));
+      if (qdue !== null && parseISO(bd.value) > qdue) { resetDates(); dmsg.textContent = "This quest is due " + fmtY(qdue) + ". Pick a due date on or before that."; return; }
+      if (t.start && bd.value < t.start) { resetDates(); dmsg.textContent = "You can’t finish before you begin! Pick a due date on or after the start date."; return; }
       dmsg.textContent = "";
       if (t.block === 0) t.added = iso(TODAY);
       t.due = bd.value; t.block = blk; changed();
@@ -376,11 +383,10 @@ export function buildDetail(t, inline, readOnly) {
     });
     on(sd, "blur", function () {
       if (sd.value === shownStart()) return;
-      if (t.block === 0) { sd.value = ""; dmsg.textContent = "Add a due date first. A task with no due date is in the Backlog."; return; }
-      if (sd.value === "") { dmsg.textContent = ""; t.start = ""; changed(); notify("Start date cleared. The task starts when its " + wl() + " does."); return; }
+      if (sd.value === "") { dmsg.textContent = ""; t.start = ""; changed(); notify(t.block === 0 ? "Start date cleared." : "Start date cleared. The task starts when its " + wl() + " does."); return; }
       if (!isISO(sd.value)) { resetDates(); dmsg.textContent = "Enter a valid start date, or leave it empty."; return; }
-      if (parseISO(sd.value) < questFirst) { resetDates(); dmsg.textContent = "Pick a date on or after " + fmtY(questFirst) + ", this quest’s own start date."; return; }
-      if (sd.value > iso(taskEnd(t))) { resetDates(); dmsg.textContent = "The start date can’t be after the due date."; return; }
+      if (parseISO(sd.value) < questFirst) { resetDates(); dmsg.textContent = "This quest starts " + fmtY(questFirst) + ". Pick a start date on or after that."; return; }
+      if (t.block > 0 && sd.value > iso(taskEnd(t))) { resetDates(); dmsg.textContent = "You can’t begin after you finish! Pick a start date on or before the due date."; return; }
       dmsg.textContent = "";
       t.start = sd.value; changed(); notify("Start date saved.");
     });
@@ -1124,14 +1130,14 @@ export function helpTopics() {
       "The burndown counts tasks, one each, against the plan. Sidequest records the count itself every time something changes, so there’s nothing to type in, and a day you don’t open the app just keeps the last count. An orange line tracks scope. It climbs when a task is added and drops when one is removed, so growing work doesn’t quietly look like progress. A task added after its quest started carries an Added tag with its date, on the quest’s page and in Tasks. A quest marked Complete takes its open tasks off this chart. Point at a day or week, tap it, or focus the chart and use the arrow keys, to see its counts and which tasks are behind them."]],
     ["Add and schedule tasks", [
       "Tap **+**, then **New task**. Enter the quest, what you’re doing, and how you’ll know it’s done.",
-      "Pick a due date and the task lands in whichever " + w + " contains it. Add a start date if it begins later than that " + w + " does, and an estimated time in hours if that’s useful to you. Leave the due date empty and the task goes to the Backlog instead.",
+      "Pick a due date and the task lands in whichever " + w + " contains it. Add a start date if it begins later than that " + w + " does, and an estimated time in hours if that’s useful to you. Leave the due date empty and the task goes to the Backlog instead. A start date can stand alone: it is kept even without a due date, and the task stays in the Backlog until it has one.",
       "Open a task from **Tasks**, or select it right on its quest’s page where it expands in place, to change its status, add steps and notes, or edit its dates and estimate. A start date can’t fall after the due date. The pencil beside its name renames it.",
       "A quest’s page shows the estimated time still open beside its task count, something like “Est. 12 hours remaining,” and that number drops as tasks get done.",
       "A task is Not started, In progress, or Completed, shown as blue, yellow, and green everywhere it appears: the status menu, the task’s row, and its bar on a quest’s Timeline.",
       "Finishing every step on a task marks it done. Add a new step to a finished task and it reopens, since there’s now something left to do."]],
     ["Use the Backlog", [
       "The Backlog holds work with no dates yet. Add a task from its quest’s own page and leave the due date empty, or clear an existing task’s due date to send it there.",
-      "To schedule a Backlog item, open it and set a due date. Nothing in the Backlog counts toward the burndown until it has one. Going the other way, clearing a due date, also clears the start date, but keeps whatever estimate you set."]],
+      "To schedule a Backlog item, open it and set a due date. Nothing in the Backlog counts toward the burndown until it has one. Going the other way, clearing a due date moves the task back to the Backlog and keeps its start date and any estimate you set."]],
     ["Use the Workshop", [
       "The Workshop is where an idea lives before it’s worth a full quest record. **Add idea** needs nothing but a line of text and, if you want, a note.",
       "Select an idea’s title to open it and change the text or note. **Make candidate** is the only way out. See “From idea to quest: the whole path” for where it goes from there."]],
@@ -1446,7 +1452,7 @@ export function renderSettings(page) {
   backupPanel(backupBox, root);
   root.appendChild(backupBox);
 
-  root.appendChild(el("h2", null, "Start fresh"));
+  root.appendChild(el("h2", { id: "startFreshHeading", "class": "scrollhead", tabindex: "-1" }, "Start fresh"));
   var box = el("div", { "class": "dangerbox" });
   box.appendChild(el("p", { "class": "first" }, "Erase all Sidequest data stored in this browser or in Claude and start again. You’ll see a warning and have a chance to save a backup first."));
   box.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:12px", id: "startFresh", title: "Erase everything and start over" }, "Start fresh…"), "click", startFreshDialog));

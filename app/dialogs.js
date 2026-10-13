@@ -1,7 +1,7 @@
 import { state, ui, changed, isISO, task, quest as makeQuest } from "./state.js";
 import { iso, addDays, parseISO, fmt, fmtY, TODAY } from "./dates.js";
 import {
-  wd, wl, wpC, activeQuests, liveQuests, findQuest, dispQuest, nextTask, findTask,
+  wd, wl, wpC, questDueLimit, activeQuests, liveQuests, findQuest, dispQuest, nextTask, findTask,
   orderedAll, taskOptions, stepOptions, stepOptionsForTask, syncFromSteps, findStep, decisionFor,
   pset, blockForDate, taskStart, taskEnd, linkQuests
 } from "./model.js";
@@ -123,25 +123,36 @@ export function taskDialog(prefillQuestId) {
     if (!v.quest) return "Choose a quest.";
     if (!v.what) return "Enter a title for the task.";
     var blk = 0, start = "", due = "";
+    var first = parseISO(pset(v.quest).start);
+    if (v.start) {
+      if (!isISO(v.start)) return "Enter a valid start date, or leave it empty.";
+      if (parseISO(v.start) < first) return "This quest starts " + fmtY(first) + ". Pick a start date on or after that.";
+      start = v.start;
+    }
     if (v.due) {
       if (!isISO(v.due)) return "Enter a valid due date, or leave it empty for the Backlog.";
-      var first = parseISO(pset(v.quest).start);
       blk = blockForDate(v.quest, parseISO(v.due));
-      if (blk === null) return "Pick a due date on or after " + fmtY(first) + ", this quest’s own start date.";
+      if (blk === null) return "This quest starts " + fmtY(first) + ". Pick a due date on or after that.";
+      var qdue = questDueLimit(v.quest);
+      if (qdue !== null && parseISO(v.due) > qdue) return "This quest is due " + fmtY(qdue) + ". Pick a due date on or before that.";
+      if (start && start > v.due) return "You can’t begin after you finish! Pick a start date on or before the due date.";
       due = v.due;
-      if (v.start) {
-        if (!isISO(v.start)) return "Enter a valid start date, or leave it empty.";
-        if (parseISO(v.start) < first) return "Pick a start date on or after " + fmtY(first) + ", this quest’s own start date.";
-        if (v.start > due) return "The start date can’t be after the due date.";
-        start = v.start;
-      }
-    } else if (v.start) return "Add a due date too, or clear the start date. A task with no due date goes to the Backlog.";
+    }
     var est = v.est === "" ? 0 : parseFloat(v.est);
     if (isNaN(est) || est < 0 || est > 9999) return "Enter the estimated time as hours from 0 to 9999, or leave it empty.";
     var t = task("c" + uid(), blk, v.quest, v.what.slice(0, 400), v.done.slice(0, 200) || "It’s finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
     state.tasks.push(t); ui.sel = t.id; changed();
     return { msg: blk === 0 ? t.what + " added as a task to " + dispQuest(t) + "’s backlog." : t.what + " added as a task to " + wd() + " " + blk + " in " + dispQuest(t) + ". (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ".)" };
   }, (fixedQuest ? "Assign a new task to this quest." : "Assign a new task to any open quest.") + " Adding start and due dates will automatically place the task within the quest’s corresponding " + wl() + ". Leaving the due date blank will place it in the quest’s backlog.");
+  // A start date with no due date is allowed; say right away where the task will go.
+  var NO_DUE = "A task with no due date goes to the quest’s backlog.";
+  var sIn = $("f-start"), dIn = $("f-due"), noteLine = $("modalBody") && $("modalBody").querySelector("p.msg");
+  function showNoDue() {
+    if (!noteLine) return;
+    if (sIn.value && !dIn.value) noteLine.textContent = NO_DUE;
+    else if (noteLine.textContent === NO_DUE) noteLine.textContent = "";
+  }
+  if (sIn && dIn) ["input", "change"].forEach(function (ev) { on(sIn, ev, showNoDue); on(dIn, ev, showNoDue); });
 }
 export function questDialog() {
   formDialog("New candidate quest", [

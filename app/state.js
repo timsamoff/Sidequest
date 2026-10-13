@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.4.1";
+export var APP_VERSION = "0.5.0";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -198,9 +198,10 @@ export function normalize(s) {
       });
       var b = typeof t.block === "number" ? Math.round(t.block) : 1;
       b = Math.min(5000, Math.max(0, b));
-      // Explicit dates belong only to a scheduled task, and a start after its
-      // due date is dropped. The block is re-derived from the due date on load.
-      var tdue = b > 0 && isISO(t.due) ? t.due : "", tstart = b > 0 && isISO(t.start) ? t.start : "";
+      // The dates are independent: only a due date makes a task scheduled, and a
+      // start date may stand alone. A start after its due date is dropped, and the
+      // block is re-derived from the due date on load.
+      var tdue = b > 0 && isISO(t.due) ? t.due : "", tstart = isISO(t.start) ? t.start : "";
       if (tstart && tdue && tstart > tdue) tstart = "";
       var test = typeof t.est === "number" && t.est > 0 && t.est <= 9999 ? Math.round(t.est * 100) / 100 : 0;
       // The launch checklist now holds whole tasks, not steps -- a task with
