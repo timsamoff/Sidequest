@@ -57,6 +57,7 @@ npm run test:a11y
 
 - `index.html`: the whole app.
 - `assets/`: the icon in SVG and PNG sizes, used for the browser tab and phone home screen.
+- `Sidequest-Artifact/`: a single-file version for hosted app builders that keep your data in your own account. Its README has the setup steps.
 - `tests/`: the test runner and the checks for the sample data and core features.
 
 ## Credit

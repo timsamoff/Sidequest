@@ -769,8 +769,6 @@ function checkSocialMetaDrift() {
 // the actual build script inside a git hook.
 
 const ARTIFACT_BUNDLE = "Sidequest-Artifact/sidequest.html";
-// An identical copy at the pre-rename path keeps older published copies' update prompts working.
-const LEGACY_ARTIFACT_BUNDLE = "Claude-Sidequest/sidequest.html";
 const ARTIFACT_SOURCE_PATTERN = /^(app\/[\w-]+\.js|css\/[\w-]+\.css)$/;
 
 function checkArtifactBuildDrift() {
@@ -783,15 +781,14 @@ function checkArtifactBuildDrift() {
   const exception = common.findException("artifact-build-drift");
   if (exception) return violations;
 
-  const stale = [ARTIFACT_BUNDLE, LEGACY_ARTIFACT_BUNDLE].filter((f) => !common.isStaged(f));
-  if (stale.length) {
+  if (!common.isStaged(ARTIFACT_BUNDLE)) {
     violations.push(
       common.violation(
         "artifact-build-drift",
-        stale[0],
+        ARTIFACT_BUNDLE,
         null,
         `This commit changes ${touchedInputs.join(", ")} (an input to the Claude Artifact build), but ` +
-        `${stale.join(" and ")} ${stale.length > 1 ? "were" : "was"} not regenerated and staged in the same commit. Run \`npm run build:artifact\` ` +
+        `${ARTIFACT_BUNDLE} was not regenerated and staged in the same commit. Run \`npm run build:artifact\` ` +
         `and stage its output, or this commit leaves the downloadable artifact bundle stale.`
       )
     );
