@@ -1,52 +1,5 @@
-# Sidequest for Claude
+# This folder moved
 
-`sidequest.html` is a single self-contained file. Publishing it as your own Claude artifact gives you a version of Sidequest that saves your data to your Claude account instead of your browser, so it works the same across your devices.
+The Sidequest artifact files now live in [Sidequest-Artifact](../Sidequest-Artifact/README.md), and that README covers both Claude and Muse.
 
-This version needs no Sidequest account — there still isn't one, and never will be — but it does need your own Claude account, since publishing it and storing its data both happen through Claude. That's different from the plain web version (`index.html`), which needs no account of any kind.
-
-## First-time setup
-
-### If you just want it working (recommended for most people)
-
-1. Start a new conversation with Claude.
-2. Copy this exact message and send it:
-
-   > Please fetch this file and publish it as an artifact: https://raw.githubusercontent.com/timsamoff/Sidequest/main/Claude-Sidequest/sidequest.html — it needs the `db` capability for storage and the `downloads` capability so Save backup works.
-
-3. Open the artifact Claude gives you. That link is yours. Bookmark it or pin it, since it's how you'll get back to your data.
-
-No download, no upload — Claude fetches the file itself from that link.
-
-### If fetching doesn't work, or you prefer to upload
-
-1. Download `sidequest.html` from this folder.
-2. Start a new conversation with Claude and upload the file.
-3. Ask Claude to publish it as an artifact, and mention that it needs both the `db` and `downloads` capabilities. For example:
-
-   > Please publish this as an artifact. It needs the `db` capability for storage and the `downloads` capability so Save backup works.
-
-4. Open the artifact Claude gives you, same as above.
-
-Either way, without both capabilities declared at publish time, the app won't work right: no `db` means nothing saves, and no `downloads` means the Save backup button can't offer you a file.
-
-## Updating to a new version
-
-When a new `sidequest.html` is released, you can update without losing your data, but only if you republish onto your **existing** artifact rather than creating a new one.
-
-In the same conversation where your artifact already lives (or by giving Claude the link to it), either paste the raw-file link again or upload the new file, and ask Claude to update your existing Sidequest artifact with it — not to publish it as a new one. For example:
-
-> Here's an updated version of Sidequest: https://raw.githubusercontent.com/timsamoff/Sidequest/main/Claude-Sidequest/sidequest.html — please update my existing Sidequest artifact with it, not a new one.
-
-Your saved data lives with the artifact itself, not with any particular copy of the file, so an in-place update keeps it. Publishing as a brand-new artifact instead creates an empty database with no path back to your old data, so don't do that by mistake.
-
-## Sharing this with someone else
-
-By default, only you can edit your artifact. If you make it public or share the link, other people can view it, but their changes won't save back to your data unless you specifically grant them edit access.
-
-If you do grant someone edit access, keep in mind this version has no conflict handling: if two people edit the same task or quest at the same moment, whoever saves last wins, silently. That's fine for occasional shared use, but it isn't built for two people actively working in it at the same time.
-
-## What doesn't carry over from the web version
-
-This file has no Claude or AI branding of its own — that's intentional, so the file itself is portable. This README is the only place that explains the Claude-specific setup, since using this version requires a Claude account and a Claude conversation to publish it.
-
-Your data also doesn't stay only on your own device the way the plain web version's does — it lives with your Claude account, in Claude's own storage, not in your browser.
+The `sidequest.html` here is an identical copy, kept only so that Sidequest copies published before the move can still update from their old link. New setups should use `Sidequest-Artifact/`. This folder can be removed once older copies have updated.

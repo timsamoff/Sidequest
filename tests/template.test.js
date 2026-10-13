@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.3.9"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.4.0"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -1285,7 +1285,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     const k = kit(await mk(null, f.claude)); await wait();
     ok(k.$("view").textContent.includes("Sidequest has leveled up!"), "a newer version's stamp in meta/version shows the update banner on Today");
     const prompt = k.d.querySelector(".updatebanner textarea.updateprompt");
-    ok(!!prompt && prompt.readOnly && prompt.value === "Please update my Sidequest artifact with the latest version.\nhttps://raw.githubusercontent.com/timsamoff/Sidequest/main/Claude-Sidequest/sidequest.html", "the banner holds a read-only copy field with the prompt and the real raw GitHub URL");
+    ok(!!prompt && prompt.readOnly && prompt.value === "Please update my Sidequest artifact with the latest version, keeping all of my existing data.\nhttps://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html", "the banner holds a read-only copy field with the prompt and the real raw GitHub URL");
     ok(k.$("view").textContent.includes("To update Sidequest, copy the prompt below:") && !!k.btn(k.$("view"), "Copy prompt"), "the banner tells the user to copy the prompt, with a Copy prompt button");
     ok(k.$("view").textContent.includes("None of your data will be touched."), "the banner reassures about data safety");
     k.click(k.btn(k.$("view"), "Dismiss"));

@@ -758,7 +758,7 @@ function checkSocialMetaDrift() {
 // ---------------------------------------------------------------------------
 // Gate: artifact-build-drift
 // ---------------------------------------------------------------------------
-// Claude-Sidequest/sidequest.html is a committed, generated file (npm run
+// Sidequest-Artifact/sidequest.html is a committed, generated file (npm run
 // build:artifact concatenates app/*.js + css/*.css -- see scripts/build-
 // artifact.js) so users can download it directly from GitHub without needing
 // Node/npm. If a commit changes one of the build's real inputs but doesn't
@@ -768,7 +768,9 @@ function checkSocialMetaDrift() {
 // other gates (checkClaudeMdTouched/checkReadmeTouched), and avoids running
 // the actual build script inside a git hook.
 
-const ARTIFACT_BUNDLE = "Claude-Sidequest/sidequest.html";
+const ARTIFACT_BUNDLE = "Sidequest-Artifact/sidequest.html";
+// An identical copy at the pre-rename path keeps older published copies' update prompts working.
+const LEGACY_ARTIFACT_BUNDLE = "Claude-Sidequest/sidequest.html";
 const ARTIFACT_SOURCE_PATTERN = /^(app\/[\w-]+\.js|css\/[\w-]+\.css)$/;
 
 function checkArtifactBuildDrift() {
@@ -781,14 +783,15 @@ function checkArtifactBuildDrift() {
   const exception = common.findException("artifact-build-drift");
   if (exception) return violations;
 
-  if (!common.isStaged(ARTIFACT_BUNDLE)) {
+  const stale = [ARTIFACT_BUNDLE, LEGACY_ARTIFACT_BUNDLE].filter((f) => !common.isStaged(f));
+  if (stale.length) {
     violations.push(
       common.violation(
         "artifact-build-drift",
-        ARTIFACT_BUNDLE,
+        stale[0],
         null,
         `This commit changes ${touchedInputs.join(", ")} (an input to the Claude Artifact build), but ` +
-        `${ARTIFACT_BUNDLE} was not regenerated and staged in the same commit. Run \`npm run build:artifact\` ` +
+        `${stale.join(" and ")} ${stale.length > 1 ? "were" : "was"} not regenerated and staged in the same commit. Run \`npm run build:artifact\` ` +
         `and stage its output, or this commit leaves the downloadable artifact bundle stale.`
       )
     );

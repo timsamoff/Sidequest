@@ -215,12 +215,12 @@ export function renderToday(root) {
 // update this artifact themselves, since nothing in its own runtime can do
 // it. Dismissing records the version, not a plain flag, so a later update
 // still shows its own notice even if an earlier one was dismissed.
-var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/Sidequest/main/Claude-Sidequest/sidequest.html";
+var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html";
 function updateBanner() {
   var box = el("div", { "class": "box updatebanner", style: "margin-bottom:22px" });
   box.appendChild(el("h2", { "class": "first", style: "margin-bottom:4px" }, "Sidequest has leveled up!"));
   box.appendChild(el("p", { "class": "hint first" }, "To update Sidequest, copy the prompt below:"));
-  var promptText = "Please update my Sidequest artifact with the latest version.\n" + SIDEQUEST_RAW_URL;
+  var promptText = "Please update my Sidequest artifact with the latest version, keeping all of my existing data.\n" + SIDEQUEST_RAW_URL;
   var field = el("textarea", { "class": "updateprompt", readonly: "readonly", rows: "1", "aria-label": "Update prompt to paste into Claude" });
   field.value = promptText;
   on(field, "focus", function () { field.select(); });

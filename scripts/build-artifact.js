@@ -27,8 +27,11 @@ const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
 const APP_DIR = path.join(ROOT, "app");
-const OUT_DIR = path.join(ROOT, "Claude-Sidequest");
+const OUT_DIR = path.join(ROOT, "Sidequest-Artifact");
 const OUT_FILE = path.join(OUT_DIR, "sidequest.html");
+// Published copies made before the folder rename still point their update prompt at the old path.
+const LEGACY_DIR = path.join(ROOT, "Claude-Sidequest");
+const LEGACY_FILE = path.join(LEGACY_DIR, "sidequest.html");
 
 // A published artifact has no assets/ directory alongside it -- index.html's
 // relative favicon/apple-touch-icon <link> tags (assets/sidequest-icon.svg
@@ -199,7 +202,9 @@ function build() {
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(OUT_FILE, out, "utf8");
-  console.log("Built " + path.relative(ROOT, OUT_FILE) + " (" + Buffer.byteLength(out, "utf8") + " bytes) from " + MODULE_ORDER.length + " app modules.");
+  fs.mkdirSync(LEGACY_DIR, { recursive: true });
+  fs.writeFileSync(LEGACY_FILE, out, "utf8");
+  console.log("Built " + path.relative(ROOT, OUT_FILE) + " (" + Buffer.byteLength(out, "utf8") + " bytes) from " + MODULE_ORDER.length + " app modules (plus a copy at " + path.relative(ROOT, LEGACY_FILE) + " for older published copies).");
 }
 
 build();
