@@ -72,7 +72,7 @@ export function overduePanel() {
   var late = lateTasks();
   var box = el("div");
   if (!late.length) { box.className = "box"; box.appendChild(el("p", { "class": "hint first" }, "Nothing is overdue.")); return box; }
-  box.appendChild(el("h2", { "class": "first" }, "Overdue tasks: " + late.length));
+  box.appendChild(el("h2", { "class": "first" }, "Overdue"));
   var ul = el("ul", { "class": "tlist", style: "margin-top:8px" });
   late.forEach(function (t) {
     var li = el("li"); var b = el("button", { type: "button", "class": "item", title: "View this task" });
@@ -975,7 +975,7 @@ export function renderTimeline(root) {
   root.appendChild(el("h2", null, "Milestones"));
   var mbox = el("div", { "class": "box", style: "margin-top:10px" });
   var ul = el("ul", { "class": "mslist" });
-  if (!r.milestones.length) ul.appendChild(el("li", { "class": "hint" }, "No milestones yet. Mark a task as one from its own row to see it here."));
+  if (!r.milestones.length) ul.appendChild(el("li", { "class": "hint" }, "No milestones set. Mark any open task as a milestone."));
   r.milestones.slice().sort(function (a, b) { return a.date - b.date; }).forEach(function (m) {
     var li = el("li"); li.appendChild(el("span", { "class": "d" }, fmtY(m.date)));
     var mtext = el("span", { style: "flex:1 1 auto" });

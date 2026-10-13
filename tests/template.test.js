@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.3.8"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.3.9"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -122,7 +122,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("view").textContent.includes("Next up") && k.d.querySelector("#view .chartbox svg") && /Remaining: \d+ of \d+ tasks/.test(k.$("view").textContent), "Today works with sample data");
   const next = k.d.querySelector("#view .panel .ptitle").textContent;
   ok(next === "Write the page copy", "Next up is the lowest-block open sample task: " + next);
-  ok(k.$("view").textContent.includes("Overdue tasks: 1") && k.$("view").textContent.includes("Build the sign-in flow") && /Remaining: 11 of 12 tasks/.test(k.$("view").textContent), "the samples include one overdue task, so the burndown sits above the plan");
+  ok(k.$("view").textContent.includes("Overdue") && !k.$("view").textContent.includes("Overdue tasks: 1") && k.$("view").textContent.includes("Build the sign-in flow") && /Remaining: 11 of 12 tasks/.test(k.$("view").textContent), "the samples include one overdue task, so the burndown sits above the plan");
   const projLink = k.btn(k.d.querySelector("#view .panel"), "Sample Website");
   ok(!!projLink && projLink.classList.contains("qlink"), "Next up names the quest as a link");
   k.click(projLink);
