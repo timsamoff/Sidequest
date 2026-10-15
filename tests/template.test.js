@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.5.0"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.5.1"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -1286,7 +1286,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     ok(k.$("view").textContent.includes("Sidequest has leveled up!"), "a newer version's stamp in meta/version shows the update banner on Today");
     const prompt = k.d.querySelector(".updatebanner textarea.updateprompt");
     ok(!!prompt && prompt.readOnly && prompt.value === "Please update my Sidequest artifact with the latest version, keeping all of my existing data.\nhttps://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html", "the banner holds a read-only copy field with the prompt and the real raw GitHub URL");
-    ok(k.$("view").textContent.includes("To update Sidequest, copy the prompt below:") && !!k.btn(k.$("view"), "Copy prompt"), "the banner tells the user to copy the prompt, with a Copy prompt button");
+    ok(/You are questing in version \d+\.\d+\.\d+, and Sidequest version 9\.9\.9 is ready to go\. To update, copy the prompt below and paste it into your AI chat\./.test(k.$("view").textContent) && !!k.btn(k.$("view"), "Copy prompt"), "the banner names the current and new versions, tells the user to copy the prompt, and has a Copy prompt button");
     ok(k.$("view").textContent.includes("None of your data will be touched."), "the banner reassures about data safety");
     k.click(k.btn(k.$("view"), "Dismiss"));
     ok(!k.$("view").textContent.includes("Sidequest has leveled up!") && k.saved().settings.dismissedUpdateVersion === "9.9.9", "Dismiss hides the banner and records the dismissed version");
