@@ -37,12 +37,16 @@ Muse can't provision a database for a shared artifact on its own, so you ask you
 2. Paste this prompt. Muse fetches the file from the repo itself, so there's nothing to download or attach:
 
 ```
-Please fetch https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html and build it as a private fullstack web artifact for me, and call it Sidequest. I understand the build can take 20 to 30 minutes. Keep all of its features, behavior, and design exactly as they are. To avoid gaps, first inventory every interactive element in the original file — every button, dialog, toggle, setting, view, and import flow — then verify each one works identically in the build. Examples of what must survive the port: the sound effects (audible when the Sound Effects setting in Options is ON), the completion graffiti effect (turned off by the Completion FX setting in Options), the GitHub version-check and update-prompt flow. Migrate all of the app's persisted state, which is the whole JSON object stored in the browser localStorage key "sidequest-template-v1" (quests, tasks, decisions, Workshop ideas, sidebar pins, burndown history, and settings, plus its start-date and sprint-length defaults), into the Muse database so my data persists in my Muse environment. Start with empty data. Before handing the app over, work through the full inventory click-testing each item — and fix anything that errors, stays silent, or behaves differently instead of working. Do not rely on console errors alone; some failures (like swallowed audio errors) leave no trace there.
+Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty. If a Sidequest artifact already exists, update it instead and keep all of my existing data.
+
+Keep every feature as is, including the sound effects and the GitHub version check with its update prompt. Keep the Spectral and Public Sans web fonts loading, using the Google Fonts stylesheet already in the source file's <head>, because the launch quotes are sized for Spectral and wrap onto a third line without it.
+
+When it's built, launch the app several times to confirm every launch quote fits its two-line box, and click-test every button, dialog, and import before handing it over.
 ```
 
 Muse builds the app in the background and hands you a card to open it. Your data lives only in your Muse environment.
 
-If fetching doesn't work, you can attach the file instead. Save `sidequest.html` from this folder (or from the repo: https://github.com/timsamoff/Sidequest/blob/main/Sidequest-Artifact/sidequest.html, using the Raw button), attach it to the chat, and paste the same prompt with "Please fetch ... and build it" changed back to "Please build the attached sidequest.html".
+If fetching doesn't work, you can attach the file instead. Save `sidequest.html` from this folder (or from the repo: https://github.com/timsamoff/Sidequest/blob/main/Sidequest-Artifact/sidequest.html, using the Raw button), attach it to the chat, and paste the same prompt with the link in its first sentence replaced by "the attached sidequest.html".
 
 The first time you open the app, it asks for permission to check for updates online. Choose "Always allow" so the version check runs without asking again.
 
