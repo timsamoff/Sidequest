@@ -37,9 +37,12 @@ Muse can't provision a database for a shared artifact on its own, so you ask you
 2. Paste this prompt. Muse fetches the file from the repo itself, so there's nothing to download or attach:
 
 ```
-Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty. If a Sidequest artifact already exists, update it instead and keep all of my existing data.
+Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty.
 
-Keep every feature as is, including the sound effects and the GitHub version check, and keep its update prompt word for word. Keep the Spectral and Public Sans web fonts loading, using the Google Fonts stylesheet already in the source file's <head>, because the launch quotes are sized for Spectral and wrap onto a third line without it.
+Keep every feature as is, including the sound effects and the GitHub version check, and keep its update prompt word for word.
+
+Keep this Google Fonts stylesheet in the <head> of the client's index.html, and make sure it survives the build into the published bundles, because the launch quotes are sized for Spectral and overflow their two-line box in the Georgia fallback:
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600&family=Public+Sans:wght@400;500;600&display=swap">
 
 When it's built, launch the app several times to confirm every launch quote fits its two-line box, and click-test every button, dialog, and import before handing it over.
 ```

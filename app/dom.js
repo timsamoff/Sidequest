@@ -8,6 +8,10 @@ export function el(tag, attrs, text) {
   return e;
 }
 export function on(node, ev, fn) { node.addEventListener(ev, fn); return node; }
+// True when the page is running as a Claude artifact (Claude's own capabilities are present).
+export function inClaude() {
+  try { return !!(window.claude && typeof window.claude.use === "function"); } catch (e) { return false; }
+}
 // Plays a short sound effect, silently giving up on any failure (autoplay
 // blocked, missing file) since a sound effect is never worth surfacing an error
 // over. `volume` is optional, 0 to 1.

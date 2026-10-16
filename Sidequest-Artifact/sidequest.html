@@ -688,6 +688,10 @@ function el(tag, attrs, text) {
   return e;
 }
 function on(node, ev, fn) { node.addEventListener(ev, fn); return node; }
+// True when the page is running as a Claude artifact (Claude's own capabilities are present).
+function inClaude() {
+  try { return !!(window.claude && typeof window.claude.use === "function"); } catch (e) { return false; }
+}
 // Plays a short sound effect, silently giving up on any failure (autoplay
 // blocked, missing file) since a sound effect is never worth surfacing an error
 // over. `volume` is optional, 0 to 1.
@@ -1086,7 +1090,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.7.0";
+var APP_VERSION = "0.7.1";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -3164,7 +3168,7 @@ function updateBanner() {
   box.appendChild(el("p", { "class": "hint first" }, "You are questing in version " + APP_VERSION + ", and Sidequest version " + availableUpdateVersion + " is ready to go. To update, copy the prompt below and paste it into your AI chat."));
   // The ?v= suffix makes the link a new address, so a fetch tool that cached an older copy cannot reuse it.
   var promptText = "Please update my Sidequest artifact with the latest version, keeping all of my existing data.\n" + SIDEQUEST_RAW_URL + "?v=" + availableUpdateVersion;
-  var field = el("textarea", { "class": "updateprompt", readonly: "readonly", rows: "1", "aria-label": "Update prompt to paste into Claude" });
+  var field = el("textarea", { "class": "updateprompt", readonly: "readonly", rows: "1", "aria-label": "Update prompt to paste into your AI chat" });
   field.value = promptText;
   on(field, "focus", function () { field.select(); });
   box.appendChild(field);
@@ -3189,7 +3193,7 @@ function updateBanner() {
 function backupReminder() {
   var n = daysSinceBackup(), box = el("div", { "class": "box", style: "margin-top:22px" });
   box.appendChild(el("p", { "class": "first" }, state.settings.lastBackup ? "It has been " + n + " days since your last backup." : "You have used Sidequest for " + n + " days without saving a backup."));
-  box.appendChild(el("p", { "class": "hint" }, "Your data lives only in this browser on this device. A backup file protects it if the browser’s data is ever cleared."));
+  box.appendChild(el("p", { "class": "hint" }, "Your data is stored in this browser on this device. A backup file protects it if the browser’s data is ever cleared."));
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   backupControls(box, msg, function () { box.remove(); notify("Backup saved."); });
   box.appendChild(msg);
@@ -4100,7 +4104,7 @@ function helpTopics() {
       "**Undo last slip**, in the same dialog, puts everything back where it was."]],
     ["Options, backup, and starting over", [
       "**Options** covers how Sidequest looks and schedules by default: the length of a " + w + " in days, what to call it (Block, Sprint, and so on), date format, theme, whether the splash plays on open, whether a burndown draws its lines in when it comes into view (**Animated burndown**), whether **Sound effects** play at all, and whether finishing a quest sets off a **Completion FX** confetti burst.",
-      "Everything lives in this browser only, so **Backup and restore** matters. **Save backup** writes a file wherever you choose. **Restore backup** reads one back in, after warning you it replaces everything currently here, with a few seconds to undo if you change your mind. Go two weeks without a backup and Today will say so, quietly.",
+      (inClaude() ? "Your data is saved in Claude, so it follows you across devices, but **Backup and restore** is still worth knowing. " : "Everything lives in this browser only, so **Backup and restore** matters. ") + "**Save backup** writes a file wherever you choose. **Restore backup** reads one back in, after warning you it replaces everything currently here, with a few seconds to undo if you change your mind." + (inClaude() ? "" : " Go two weeks without a backup and Today will say so, quietly."),
       "**Vault** items can delete themselves automatically, 7, 30, 60, or 90 days after being vaulted, or never, if you leave it there. Sidequest checks this once, each time it opens, with no second warning once the setting is on.",
       "**Start fresh** erases everything, after one warning. Back it up first if there’s anything worth keeping. You can start completely empty, or with the sample quests back in place."]],
     ["Import from Trello or Todoist", [
@@ -4139,7 +4143,7 @@ function blankState() {
 }
 function startFreshDialog() {
   openModal("Start fresh", function (body) {
-    body.appendChild(el("p", { "class": "first" }, "Start fresh erases everything stored in this browser or in Claude. This cannot be undone."));
+    body.appendChild(el("p", { "class": "first" }, "Start fresh erases everything stored in " + (inClaude() ? "Claude" : "this browser") + ". This cannot be undone."));
     body.appendChild(el("p", { "class": "hint" }, "Save a backup first if you think you’ll want anything back."));
     var msg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
     backupControls(body, msg); body.appendChild(msg);
@@ -4331,9 +4335,7 @@ function renderSettings(page) {
   if (state.settings.vaultPurgeDays) vaultBox.appendChild(el("p", { "class": "hint" }, "Checked each time Sidequest opens. An item older than this, counted from when it was vaulted, is deleted permanently with no further warning."));
   root.appendChild(vaultBox);
 
-  var inClaudeNow = false;
-  try { inClaudeNow = !!(window.claude && typeof window.claude.use === "function"); } catch (e) { inClaudeNow = false; }
-  if (!inClaudeNow) {
+  if (!inClaude()) {
     root.appendChild(el("h2", null, "Install Sidequest"));
     // navigator.standalone is Safari-specific (not in the spec, no matchMedia
     // support on older iOS) -- both checks together cover Chrome/Edge/Android
@@ -4382,7 +4384,7 @@ function renderSettings(page) {
 
   root.appendChild(el("h2", { id: "startFreshHeading", "class": "scrollhead", tabindex: "-1" }, "Start fresh"));
   var box = el("div", { "class": "dangerbox" });
-  box.appendChild(el("p", { "class": "first" }, "Erase all Sidequest data stored in this browser or in Claude and start again. You’ll see a warning and have a chance to save a backup first."));
+  box.appendChild(el("p", { "class": "first" }, "Erase all Sidequest data stored in " + (inClaude() ? "Claude" : "this browser") + " and start again. You’ll see a warning and have a chance to save a backup first."));
   box.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:12px", id: "startFresh", title: "Erase everything and start over" }, "Start fresh…"), "click", startFreshDialog));
   root.appendChild(box);
 
@@ -4421,9 +4423,7 @@ function daysSinceBackup() {
 }
 // The Claude version keeps its data in its own db, so only the web app nags.
 function backupReminderDue() {
-  var inClaude = false;
-  try { inClaude = !!(window.claude && typeof window.claude.use === "function"); } catch (e) { inClaude = false; }
-  return !inClaude && daysSinceBackup() >= BACKUP_REMIND_DAYS;
+  return !inClaude() && daysSinceBackup() >= BACKUP_REMIND_DAYS;
 }
 function lastBackupText() {
   var lb = state.settings.lastBackup;
@@ -4673,7 +4673,7 @@ function restoreBackupFile(file, msg) {
     msg.textContent = "";
     var next = normalize(obj), np = next.quests.length, nt = next.tasks.length;
     confirmDialog("Restore this backup?",
-      "This backup holds " + np + (np === 1 ? " quest" : " quests") + " and " + nt + (nt === 1 ? " task" : " tasks") + ". Restoring replaces everything in Sidequest on this device: all current quests, tasks, notes, history, and settings. You will have a few seconds to undo it.",
+      "This backup holds " + np + (np === 1 ? " quest" : " quests") + " and " + nt + (nt === 1 ? " task" : " tasks") + ". Restoring replaces everything in Sidequest" + (inClaude() ? "" : " on this device") + ": all current quests, tasks, notes, history, and settings. You will have a few seconds to undo it.",
       "Restore backup", function () {
         if (state.settings.audio) playSfx(SFX_RESTORE_BACKUP);
         var before = JSON.stringify(state);
@@ -4694,7 +4694,7 @@ function backupControls(host, msg, onDone) {
 // `hintHost`, if given, is where the leading description sentence goes instead
 // of `root`, so a caller can keep it outside the card wrapping the rest.
 function backupPanel(root, hintHost) {
-  (hintHost || root).appendChild(el("p", { "class": "hint" }, "Your data is saved in this browser on this device, or in Claude when using Sidequest there. Create a backup from time to time and keep the file somewhere safe. You can restore your data from a backup at any time."));
+  (hintHost || root).appendChild(el("p", { "class": "hint" }, (inClaude() ? "Your data is saved in Claude." : "Your data is saved in this browser on this device.") + " Create a backup from time to time and keep the file somewhere safe. You can restore your data from a backup at any time."));
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   var last = el("p", { "class": "hint" }, lastBackupText());
   var acts = backupControls(root, msg, function () { last.textContent = lastBackupText(); });

@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.7.0"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.7.1"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -1176,6 +1176,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   {
     const k = kit(await mk({ settings: { hideWelcome: true, since: iso(-20) } }));
     ok(k.$("view").textContent.includes("You have used Sidequest for 20 days without saving a backup."), "with no backup after 20 days, Today says so");
+    ok(k.$("view").textContent.includes("Your data is stored in this browser on this device. A backup file protects it if the browser’s data is ever cleared."), "and the reminder says where the data is stored");
     const got = stub(k);
     k.click(k.btn(k.$("view"), "Save backup")); await wait();
     ok(!k.$("view").textContent.includes("without saving a backup") && k.saved().settings.lastBackup === iso(0) && !!got(), "its Save backup button saves right there and the note goes away");
@@ -2289,6 +2290,38 @@ async function exportClick(k, projectName) {
   ok(!k.saved().tasks.some(t => t.what === "Choose one of the candidates and set the others aside" || t.isNext), "the first-install samples have no next-quest placeholder task");
   const old = kit(await mk({ quests: [{ id: "q1", name: "Old save", status: "active", start: "2026-08-03", days: 7 }], tasks: [{ id: "n1", block: 6, questId: null, what: "Choose one of the candidates and set the others aside", done: "One is chosen", isNext: true, status: "Not started", steps: [] }, { id: "t1", block: 1, questId: "q1", what: "Real task", done: "d", status: "Not started", steps: [], due: "2026-08-05" }], settings: { hideWelcome: true } }));
   ok(old.saved().tasks.length === 1 && old.saved().tasks[0].what === "Real task", "an old save's placeholder task is dropped on load, and real tasks are kept");
+}
+{
+  // Web app versus Claude version: where the data lives is named correctly in each
+  const claudeStub = { use: async () => null };
+  const readOptions = async (claude) => {
+    const k = kit(await mk(null, claude));
+    k.tab("settings");
+    const options = k.$("view").textContent;
+    k.click(k.$("startFresh")); await new Promise(r => setTimeout(r, 30));
+    const dialog = k.$("modalBody").textContent;
+    k.click(k.btn(k.$("modalBody"), "Cancel"));
+    const input = k.$("restoreFile");
+    Object.defineProperty(input, "files", { value: [new k.w.File([JSON.stringify({ tasks: [] })], "b.json")], configurable: true });
+    k.fire(input, "change"); await new Promise(r => setTimeout(r, 40));
+    const restore = k.$("modalBody").textContent;
+    k.click(k.btn(k.$("modalBody"), "Cancel"));
+    k.tab("help");
+    return { options, dialog, restore, help: k.$("view").textContent };
+  };
+  const web = await readOptions(null), cl = await readOptions(claudeStub);
+  ok(web.options.includes("Your data is saved in this browser on this device.") && !web.options.includes("saved in Claude"), "web: the Backup and restore description says this browser on this device");
+  ok(cl.options.includes("Your data is saved in Claude.") && !cl.options.includes("this browser"), "Claude: the Backup and restore description says Claude, and Options never says this browser");
+  ok(web.options.includes("Erase all Sidequest data stored in this browser and start again.") && cl.options.includes("Erase all Sidequest data stored in Claude and start again."), "the Start fresh description names the right place in each version");
+  ok(web.dialog.includes("erases everything stored in this browser.") && cl.dialog.includes("erases everything stored in Claude.") && !cl.dialog.includes("this browser"), "and so does the Start fresh warning");
+  ok(web.restore.includes("everything in Sidequest on this device:") && cl.restore.includes("everything in Sidequest: all current") && !cl.restore.includes("on this device"), "the restore warning only says on this device in the web app");
+  ok(web.help.includes("Everything lives in this browser only") && web.help.includes("Today will say so") && cl.help.includes("Your data is saved in Claude, so it follows you across devices") && !cl.help.includes("Today will say so"), "Help describes each version's own storage, and the two-week backup reminder only on the web");
+}
+{
+  // The Muse prompt in the artifact README carries the app's Google Fonts link; the two must not drift apart
+  const hrefOf = (text) => { const i = text.indexOf('href="https://fonts.googleapis.com'); return i < 0 ? null : text.slice(i + 6, text.indexOf('"', i + 6)); };
+  const museReadme = fs.readFileSync(path.join(__dirname, "..", "Sidequest-Artifact", "README.md"), "utf8");
+  ok(!!hrefOf(html) && hrefOf(museReadme) === hrefOf(html), "the Muse prompt's Google Fonts link is the same one index.html loads");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);
