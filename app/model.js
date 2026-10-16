@@ -17,6 +17,10 @@ export function candidateQuests() { return liveQuests().filter(function (p) { re
 export function completeQuests() { return liveQuests().filter(function (p) { return p.status === "complete"; }); }
 // A Complete-but-not-vaulted quest's tasks drop out of every cross-quest
 // surface (Tasks, Today, the burndown/Timeline), reversible the instant its status changes back.
+// A Candidate quest's tasks are not counted anywhere across quests (Today, Tasks, Timeline,
+// the burndown) until it is promoted, dates or not; they show on the quest's own page.
+export function isCandidateTask(t) { var p = findQuest(t.questId); return !!p && p.status === "candidate" && !p.vault; }
+export function isHiddenFromPlan(t) { return isHiddenComplete(t) || isCandidateTask(t); }
 export function isHiddenComplete(t) { var p = findQuest(t.questId); return !!p && p.status === "complete" && !p.vault; }
 // Searches every quest, vaulted or not -- a vaulted quest's own page
 // must stay reachable, read-only, until restored.
@@ -86,7 +90,7 @@ export function questEstimate(p) {
 }
 export function chartStart() {
   var min = null;
-  state.tasks.forEach(function (t) { if ((t.vault && t.vault.why !== "done") || t.block === 0 || isHiddenComplete(t)) return; var v = parseISO(pset(projKey(t)).start); if (min === null || v < min) min = v; });
+  state.tasks.forEach(function (t) { if ((t.vault && t.vault.why !== "done") || t.block === 0 || isHiddenFromPlan(t)) return; var v = parseISO(pset(projKey(t)).start); if (min === null || v < min) min = v; });
   return min === null ? parseISO(state.start) : min;
 }
 // Days between points on the main burndown: daily or every few days when the
@@ -152,10 +156,12 @@ export function sortTasks(list) {
     return aDone - bDone || (a.t.block || 99) - (b.t.block || 99) || a.i - b.i;
   }).map(function (x) { return x.t; });
 }
-export function ordered() { return sortTasks(live(state.tasks).filter(function (t) { return t.block > 0 && !isHiddenComplete(t); })); }
+export function ordered() { return sortTasks(live(state.tasks).filter(function (t) { return t.block > 0 && !isHiddenFromPlan(t); })); }
 export function orderedAll() { return sortTasks(live(state.tasks)); }
-export function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0 && !isHiddenComplete(t); })); }
-export function burnTasks() { return counted().filter(function (t) { return t.block > 0 && !isHiddenComplete(t); }); }
+export function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0 && !isHiddenFromPlan(t); })); }
+export function burnTasks() { return counted().filter(function (t) { return t.block > 0 && !isHiddenFromPlan(t); }); }
+// Tasks that count for the empty-state wording on Today and Tasks: everything but a Candidate quest's.
+export function planCounted() { return counted().filter(function (t) { return !isCandidateTask(t); }); }
 // --- One quest's own burndown ---
 // From counted(), not burnTasks() -- a Complete quest's own page keeps
 // showing its burndown even while its tasks are hidden cross-quest.

@@ -1,7 +1,7 @@
 import { state, ui, changed, isISO, task, quest as makeQuest } from "./state.js";
 import { iso, addDays, parseISO, fmt, fmtY, TODAY } from "./dates.js";
 import {
-  wd, wl, wpC, questDueLimit, activeQuests, liveQuests, findQuest, dispQuest, nextTask, findTask,
+  wd, wl, wpC, questDueLimit, liveQuests, findQuest, dispQuest, nextTask, findTask,
   orderedAll, taskOptions, stepOptions, stepOptionsForTask, syncFromSteps, findStep, decisionFor,
   pset, blockForDate, taskStart, taskEnd, linkQuests
 } from "./model.js";
@@ -105,10 +105,12 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
   });
 }
 
+// Quests that can take work: Candidates (so they can be built out before promotion) and In progress.
+function workQuests() { return liveQuests().filter(function (p) { return p.status === "active" || p.status === "candidate"; }); }
 export function taskDialog(prefillQuestId) {
   var nt = nextTask();
-  var questOpts = activeQuests().map(function (p) { return { value: p.id, label: p.name }; });
-  if (!questOpts.length) { notify("Tasks can only be added to open quests."); return; }
+  var questOpts = workQuests().map(function (p) { return { value: p.id, label: p.name }; });
+  if (!questOpts.length) { notify("Tasks can only be added to a quest."); return; }
   var fixedQuest = typeof prefillQuestId === "string";
   var startId = fixedQuest ? prefillQuestId : (nt && !nt.isNext ? nt.questId : questOpts[0].value);
   var startQuest = findQuest(startId);
@@ -225,7 +227,7 @@ export function decisionDialog(prefill) {
     notify("Every step already has a decision. Add a step first (open a task and add one), then add the decision.");
     return;
   }
-  var questOpts = liveQuests().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; });
+  var questOpts = workQuests().map(function (p) { return { value: p.id, label: p.name }; });
   var startQuest = (typeof prefill === "string" && prefill) || (questOpts.length ? questOpts[0].value : "");
   var startTasks = taskOptions(startQuest);
   var startTask = startTasks.length ? startTasks[0].value : "";
@@ -286,7 +288,7 @@ export function decisionEditDialog(dec, onRemove) {
 export function stepDialog(prefillQuestId) {
   if (!orderedAll().length) { notify("Steps can only be added to a task."); return; }
   var selTask = ui.sel && findTask(ui.sel);
-  var questOpts = liveQuests().filter(function (p) { return p.status === "active"; }).map(function (p) { return { value: p.id, label: p.name }; });
+  var questOpts = workQuests().map(function (p) { return { value: p.id, label: p.name }; });
   var startId = prefillQuestId || (selTask ? selTask.questId : (questOpts.length ? questOpts[0].value : ""));
   var pick = selTask ? selTask.id : ((nextTask() || orderedAll()[0]).id);
   formDialog("New step", [

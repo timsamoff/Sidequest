@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.6.1";
+export var APP_VERSION = "0.7.0";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -35,8 +35,8 @@ export function sampleData() {
   var appHistory = {}; appHistory[day(0)] = [4, 4]; appHistory[day(5)] = [4, 3]; appHistory[day(9)] = [5, 4];
   // Runs a little late, then ahead, then lands on time, so its Burndown crosses the planned line.
   var doneHistory = {}; doneHistory[day(-28)] = [4, 4]; doneHistory[day(-20)] = [4, 3]; doneHistory[day(-15)] = [4, 2]; doneHistory[day(-12)] = [4, 1]; doneHistory[day(-1)] = [4, 0];
-  // A twelfth task was added on day 9, so the main burndown's scope line steps up once.
-  var allHistory = {}; allHistory[day(0)] = [11, 11]; allHistory[day(5)] = [11, 10]; allHistory[day(9)] = [12, 11];
+  // An eleventh task was added on day 9, so the main burndown's scope line steps up once.
+  var allHistory = {}; allHistory[day(0)] = [10, 10]; allHistory[day(5)] = [10, 9]; allHistory[day(9)] = [11, 10];
   var quests = [
     // pApp <-> pSite demonstrates a bidirectional quest link.
     quest("pApp", "Sample App", "active", { hist: appHistory, notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedQuestIds: ["pSite"] }),
@@ -64,7 +64,6 @@ export function sampleData() {
     task("g2", 2, "pGame", "Make the first ten levels", "Ten levels load and can be finished start to end"),
     task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid"), st("g3c", "Record a trailer")], { milestone: true }),
     task("g4", 0, "pGame", "Add a level editor", "Players can build, save, and share a level"),
-    task("n1", 6, null, "Choose one of the candidates and set the others aside", "One is chosen", [], { isNext: true }),
     // pDone's own tasks, all finished. Four weekly tasks at weight 2 each give
     // an even planned line, which doneHistory above then zig-zags around.
     task("d1", 1, "pDone", "Design the feature", "The design is agreed", [st("d1a", "Sketch the approach", true), st("d1b", "Get sign-off", true)], { status: "Completed", doneAt: day(-22) }),
@@ -191,7 +190,7 @@ export function normalize(s) {
       // placeholder only) be null/absent; an orphaned questId drops the task.
       var rawId = typeof t.questId === "string" ? t.questId : t.projectId;
       var pid = (typeof rawId === "string" && questIds[rawId]) ? rawId : null;
-      if (!pid && !t.isNext) return;
+      if (!pid || t.isNext) return; // the old "choose the next quest" placeholder task is dropped
       var steps = [];
       if (Array.isArray(t.steps)) t.steps.forEach(function (x) {
         if (x && typeof x.id === "string") steps.push({ id: S(x.id, 40), text: S(x.text, 300), done: x.done === true, launch: x.launch === true });

@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { fmt, fmtY, addDays, addMonths, parseISO, TODAY } from "./dates.js";
-import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, dispQuest, findQuest, questBurn, questBurnTasks, burnTasks, short, isHiddenComplete, blockStartFor, blockEndFor, blockForDate, checkpointStep, globalActual, histAt, milestoneTasks, allMilestoneTasks } from "./model.js";
+import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, dispQuest, findQuest, questBurn, questBurnTasks, burnTasks, short, isHiddenFromPlan, blockStartFor, blockEndFor, blockForDate, checkpointStep, globalActual, histAt, milestoneTasks, allMilestoneTasks } from "./model.js";
 import { el, on } from "./dom.js";
 
 export function svgEl(tag, attrs, text) {
@@ -291,7 +291,7 @@ export function rangeBlock() {
   var rs = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), 1);
   var lanes = [], groups = {}, order = [];
   counted().forEach(function (t) {
-    if (t.isNext || t.block === 0 || isHiddenComplete(t)) return;
+    if (t.isNext || t.block === 0 || isHiddenFromPlan(t)) return;
     var g = groups[t.questId], a = taskStart(t), b = taskEnd(t);
     if (!g) { g = groups[t.questId] = { questId: t.questId, name: dispQuest(t), a: a, b: b }; order.push(t.questId); }
     if (a < g.a) g.a = a;

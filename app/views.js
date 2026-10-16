@@ -2,7 +2,7 @@ import { state, ui, save, changed, autoVault, STATUSES, APP_NAME, APP_VERSION, i
 import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart, addDays } from "./dates.js";
 import {
   WORDS, wd, wl, pset, questDueLimit, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
-  checkpoints, live, counted, liveQuests, activeQuests, candidateQuests,
+  checkpoints, live, counted, planCounted, liveQuests, activeQuests, candidateQuests,
   findQuest, findAnyQuest, linkedQuests, linkQuests, unlinkQuests, chosen, dispQuest, dispWhat,
   totalUnits, remainingUnits, planned, ordered, backlogTasks, sortTasks,
   isLate, lateTasks, setStatus, syncFromSteps, nextTask, questTasksAllDone, questTotalUnits, questRemainingUnits,
@@ -34,8 +34,9 @@ export function nextUpPanel() {
   var t = nextTask();
   if (!t) {
     var nb = backlogTasks().length;
-    box.appendChild(el("p", { "class": "ptitle" }, nb ? "Nothing is scheduled." : (counted().length ? "Every task is done." : "No tasks yet.")));
-    box.appendChild(el("p", { "class": "pmeta" }, nb ? nb + (nb === 1 ? " item is" : " items are") + " waiting in the Backlog. Choose a " + wl() + " for one." : (counted().length ? "Add a task with the + button, or choose your next quest." : "Start one with the + button.")));
+    box.appendChild(el("p", { "class": "ptitle" }, nb ? "Nothing is scheduled." : (planCounted().length ? "All tasks complete!" : "No tasks yet.")));
+    var emptyMeta = nb ? nb + (nb === 1 ? " item is" : " items are") + " waiting in the Backlog. Choose a " + wl() + " for one." : (planCounted().length ? "" : (candidateQuests().length || activeQuests().length ? "Start one with the + button." : "Start a candidate quest with the + button to add tasks."));
+    if (emptyMeta) box.appendChild(el("p", { "class": "pmeta" }, emptyMeta));
     if (nb) { var ba = el("div", { "class": "actions" }); ba.appendChild(on(el("button", { type: "button", "class": "primary", title: "Go to the Backlog on the Tasks page" }, "Open the Backlog"), "click", function () { go("schedule"); })); box.appendChild(ba); }
     return box;
   }
@@ -287,7 +288,7 @@ export function renderSchedule(root) {
   var desc = "Tasks are gathered from all open quests.";
   if (!o.length && !bl.length) {
     root.appendChild(el("p", { "class": "hint first" }, desc));
-    root.appendChild(el("p", { "class": "hint" }, counted().length ? "No open tasks. Completed tasks are in the Vault." : "No tasks yet. Use the + button to add one."));
+    root.appendChild(el("p", { "class": "hint" }, planCounted().length ? "No open tasks. Completed tasks are in the Vault." : "No tasks yet. Use the + button to add one."));
     return;
   }
   if (!ui.sel || !findTask(ui.sel)) { var nt = nextTask() || o[0] || bl[0]; ui.sel = nt.id; }
@@ -579,29 +580,20 @@ function questRow(r) {
   li.appendChild(row);
   return li;
 }
-export function pagesSection(excludeIds) {
+// Quests that are not In progress and not Candidates: Pending (Active with no open tasks yet) and Completed.
+export function questRowsOutsideProgress(excludeIds) {
+  return liveQuests().filter(function (p) { return p.status !== "candidate" && (!excludeIds || excludeIds.indexOf(p.id) < 0); }).map(function (p) { return { id: p.id, key: "quest:" + p.id, name: p.name, meta: questMeta(p), complete: p.status === "complete" }; });
+}
+function questListSection(title, rows, first) {
   var sec = el("div");
-  var rows = liveQuests().filter(function (p) { return p.status !== "candidate" && (!excludeIds || excludeIds.indexOf(p.id) < 0); }).map(function (p) { return { id: p.id, key: "quest:" + p.id, name: p.name, meta: questMeta(p), complete: p.status === "complete" }; });
-  var pending = rows.filter(function (r) { return !r.complete; }), complete = rows.filter(function (r) { return r.complete; });
-  if (!rows.length) {
-    sec.appendChild(el("h2", null, "Pending and completed"));
-    sec.appendChild(el("p", { "class": "hint" }, "Nothing here right now."));
-    return sec;
-  }
-  if (pending.length) {
-    sec.appendChild(el("h2", null, "Pending"));
-    var pul = el("ul", { "class": "list" });
-    pending.forEach(function (r) { pul.appendChild(questRow(r)); });
-    sec.appendChild(pul);
-  }
-  if (complete.length) {
-    sec.appendChild(el("h2", null, "Completed"));
-    var cul = el("ul", { "class": "list" });
-    complete.forEach(function (r) { cul.appendChild(questRow(r)); });
-    sec.appendChild(cul);
-  }
+  sec.appendChild(el("h2", first ? { "class": "first" } : null, title));
+  var ul = el("ul", { "class": "list" });
+  rows.forEach(function (r) { ul.appendChild(questRow(r)); });
+  sec.appendChild(ul);
   return sec;
 }
+export function pendingSection(rows, first) { return questListSection("Pending", rows, first); }
+export function completedSection(rows, first) { return questListSection("Completed", rows, first); }
 // A quest's own lifecycle status decides how much of the page renders.
 // Promotion is in-place -- the same record and id carry through, never a second record.
 export function renderQuestPage(root, id) {
@@ -849,6 +841,8 @@ export function promoteToActive(id) {
   var p = findAnyQuest(id);
   if (!p) return;
   p.status = "active";
+  // Tasks added while it was a Candidate were part of the plan from the start, not scope added later.
+  state.tasks.forEach(function (x) { if (x.questId === p.id) x.added = ""; });
   if (p.savedLinkIds) {
     p.savedLinkIds.forEach(function (lid) { if (findAnyQuest(lid)) linkQuests(p.id, lid); });
     p.savedLinkIds = null;
@@ -870,24 +864,22 @@ export function demoteToCandidate(id) {
   notify("Sent back to Candidates.");
 }
 export function standingBlock() {
-  var wrap = el("div");
-  wrap.appendChild(el("h2", { "class": "first" }, "In progress"));
-  var desc = el("p", { "class": "hint" }, "Quests are ordered by the start date of their next task. Pin a quest to the sidebar for quick access.");
-  if (!liveQuests().length) { desc.appendChild(document.createTextNode(" ")); desc.appendChild(el("strong", null, "Tap the + button to add your first quest.")); }
-  wrap.appendChild(desc);
-  var box = el("div", { "class": "box", style: "margin-top:10px" });
   var groups = {}, order = [];
   ordered().forEach(function (t) {
     if (t.isNext || t.status === "Completed") return;
     var quest = findQuest(t.questId);
-    if (quest && quest.status === "complete") return;
+    if (!quest || quest.status !== "active") return;
     var g = groups[t.questId]; if (!g) { g = groups[t.questId] = { questId: t.questId, name: dispQuest(t), open: 0, first: t }; order.push(g); }
     g.open++;
   });
   order.sort(function (a, b) { return taskStart(a.first) - taskStart(b.first); });
   var questIds = order.map(function (g) { return g.questId; });
+  if (!order.length) return { node: null, questIds: questIds };
+  var wrap = el("div");
+  wrap.appendChild(el("h2", { "class": "first" }, "In progress"));
+  wrap.appendChild(el("p", { "class": "hint" }, "Quests are ordered by the start date of their next task. Pin a quest to the sidebar for quick access."));
+  var box = el("div", { "class": "box", style: "margin-top:10px" });
   var ul = el("ul", { "class": "standing" });
-  if (!order.length) ul.appendChild(el("li", null, counted().length ? "No open tasks." : "No tasks yet. Start one with the + button."));
   order.forEach(function (g) {
     var li = el("li"), row = el("div", { "class": "srow" }), textWrap = el("div", { style: "flex:1 1 200px" });
     var nm = el("button", { type: "button", "class": "textbtn qlink", title: "View this quest" }, g.name);
@@ -904,13 +896,13 @@ export function standingBlock() {
   box.appendChild(ul); wrap.appendChild(box);
   return { node: wrap, questIds: questIds };
 }
-export function candidatesSection() {
+export function candidatesSection(first) {
   var sec = el("div");
-  var hd = el("div", { "class": "sechead" }); hd.appendChild(el("h2", null, "Candidate quests")); sec.appendChild(hd);
+  sec.appendChild(el("h2", first ? { "class": "first" } : null, "Candidate quests"));
   sec.appendChild(el("p", { "class": "hint" }, "Promoting a candidate quest moves it to In progress. Sending it to the Vault shelves it."));
   var list = el("ul", { "class": "list" });
   var cs = candidateQuests();
-  if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidates. Add a candidate."));
+  if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidate quests yet. Start one with the + button."));
   cs.forEach(function (cd) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nmWrap = el("div", { style: "flex:1 1 200px" });
@@ -933,9 +925,14 @@ export function candidatesSection() {
 }
 export function renderQuests(root) {
   var standing = standingBlock();
-  root.appendChild(standing.node);
-  root.appendChild(pagesSection(standing.questIds));
-  root.appendChild(candidatesSection());
+  var rows = questRowsOutsideProgress(standing.questIds);
+  var pending = rows.filter(function (r) { return !r.complete; }), complete = rows.filter(function (r) { return r.complete; });
+  var first = true;
+  function lead() { var f = first; first = false; return f; }
+  if (standing.node) { root.appendChild(standing.node); first = false; }
+  if (pending.length) root.appendChild(pendingSection(pending, lead()));
+  root.appendChild(candidatesSection(lead()));
+  if (complete.length) root.appendChild(completedSection(complete, false));
 }
 export function renderWorkshop(root) {
   root.appendChild(el("p", { "class": "hint first" }, "Your ideas live here until you make them a candidate quest. Sending them to the Vault shelves them."));
@@ -1115,7 +1112,7 @@ export function helpTopics() {
     ["From idea to quest: the whole path", [
       "An idea starts in the **Workshop**, with nothing more than a line of text and an optional note. This is the place for something you’re not ready to commit to. It costs nothing to put there, and nothing to leave sitting.",
       "When an idea is worth doing, select **Make candidate**. Its note becomes the candidate’s Notes, and it moves to **Quests**, under **Candidate quests**. This move only goes one way: a candidate can’t be sent back to the Workshop. If you change your mind, vault it instead.",
-      "A candidate has its own page, the same shape as an active quest’s: Tasks, Schedule, Notes, Quest Giver info. You can build the whole thing out, start date and all, before it’s running. The only pieces missing are Quest links and the usual finish-line buttons, since neither one means anything until the quest is real.",
+      "A candidate has its own page, the same shape as an active quest’s: Tasks, Schedule, Notes, Quest Giver info. You can build the whole thing out, tasks and start date and all, before it’s running. A candidate’s tasks don’t count anywhere else (Today, Tasks, Timeline, the burndown) until you promote it. The only pieces missing are Quest links and the usual finish-line buttons, since neither one means anything until the quest is real.",
       "**Promote** turns a candidate into an active quest. It’s the same record with the same id and the same tasks, only its status moves. From here it behaves like any other quest: it can be marked complete, sent to the Vault, or demoted back to a candidate if it turns out the timing was wrong.",
       "**Demote**, on an active quest’s page, is the reverse of Promote. Its Quest links come off on both sides first, since a candidate isn’t a link target, but Sidequest remembers them, and promoting the quest again puts them back.",
       "A quest finishes by **Mark complete**, or on its own once every task is done. From there, **Reopen** brings it back to active, or **Vault** sets it aside. Nothing is destroyed until you delete it from the Vault."]],
