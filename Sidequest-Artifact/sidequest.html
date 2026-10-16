@@ -699,6 +699,41 @@ function playSfx(src, volume) {
     if (p && typeof p.catch === "function") p.catch(function () {});
   } catch (e) { /* no audio support */ }
 }
+// Money fields work like a cash register: digits fill in from the cents, and the
+// commas and decimal point are added as you type. The cap is 999,999.99.
+function formatMoney(n) {
+  if (typeof n !== "number" || isNaN(n) || n <= 0) return "";
+  var cents = Math.round(n * 100), whole = String(Math.floor(cents / 100)), frac = String(cents % 100), out = "";
+  if (frac.length < 2) frac = "0" + frac;
+  for (var i = 0; i < whole.length; i++) { if (i > 0 && (whole.length - i) % 3 === 0) out += ","; out += whole.charAt(i); }
+  return out + "." + frac;
+}
+// Reads a typed or pasted amount ("1,234.56") as a number, or "" if it is not one.
+function parseMoney(s) {
+  var n = parseFloat(String(s || "").replace(/,/g, ""));
+  if (isNaN(n) || n <= 0) return "";
+  return Math.min(999999.99, Math.round(n * 100) / 100);
+}
+// Turns a text input into a money field; `onChange` gets the amount, or "" when empty.
+function moneyInput(input, onChange) {
+  input.setAttribute("inputmode", "numeric"); input.setAttribute("autocomplete", "off");
+  function apply(n) {
+    input.value = formatMoney(n);
+    try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) { /* not a focusable text input */ }
+    if (onChange) onChange(typeof n === "number" ? n : "");
+  }
+  on(input, "input", function () {
+    var digits = input.value.replace(/[^0-9]/g, "").replace(/^0+/, "");
+    if (digits.length > 8) digits = digits.slice(0, 8);
+    apply(digits === "" ? "" : parseInt(digits, 10) / 100);
+  });
+  on(input, "paste", function (e) {
+    var data = e.clipboardData || window.clipboardData, n = data ? parseMoney(data.getData("text")) : "";
+    if (n === "") return;
+    e.preventDefault(); apply(n);
+  });
+  return input;
+}
 // A pencil icon button: the app's one affordance for "change this text".
 var PENCIL = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
 function pencilButton(label, title, onClick) {
@@ -1045,7 +1080,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.5.1";
+var APP_VERSION = "0.6.0";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -1212,7 +1247,7 @@ function normalize(s) {
         // Validated below, once every quest's real id is known.
         linkedQuestIds: Array.isArray(linked) ? linked.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : [],
         savedLinkIds: saved ? saved.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : null,
-        client: { org: S(xc.org, 200), poc: S(xc.poc, 200), phone: S(xc.phone, 200), email: S(xc.email, 200), address: S(xc.address, 500), website: S(xc.website, 200), coin: (typeof xc.coin === "number" && xc.coin >= 0 && xc.coin <= 999999) ? xc.coin : "", per: (xc.per === "Hour" || xc.per === "Quest") ? xc.per : "Hour" }
+        client: { org: S(xc.org, 200), poc: S(xc.poc, 200), phone: S(xc.phone, 200), email: S(xc.email, 200), address: S(xc.address, 500), website: S(xc.website, 200), coin: (typeof xc.coin === "number" && xc.coin > 0 && xc.coin <= 999999.99) ? Math.round(xc.coin * 100) / 100 : "", per: (xc.per === "Hour" || xc.per === "Quest") ? xc.per : "Hour" }
       };
     });
   }
@@ -2513,6 +2548,8 @@ function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
         (f.options || []).forEach(function (o) { inp.appendChild(el("option", { value: o.value }, o.label)); });
       } else if (f.type === "textarea") {
         inp = el("textarea", { id: id, rows: f.rows || 4 });
+      } else if (f.type === "money") {
+        inp = moneyInput(el("input", { type: "text", id: id }), null);
       } else {
         inp = el("input", { type: f.type || "text", id: id, autocomplete: "off" });
         if (f.list) inp.setAttribute("list", f.list);
@@ -2607,12 +2644,11 @@ function questDialog() {
     { key: "giverEmail", label: "Email", type: "email" },
     { key: "giverWebsite", label: "Website", type: "url" },
     { key: "giverAddress", label: "Address", type: "textarea", rows: 3 },
-    { key: "giverCoin", label: "Bounty", type: "number", min: "0", max: "999999", step: "1" },
+    { key: "giverCoin", label: "Bounty", type: "money" },
     { key: "giverPer", label: "Per", type: "select", options: [{ value: "Hour", label: "Hour" }, { value: "Quest", label: "Quest" }] }
   ], "Add quest", function (v) {
     if (!v.name) return "Enter a title for the candidate quest.";
-    var coinN = v.giverCoin === "" ? "" : parseInt(v.giverCoin, 10);
-    var coin = (coinN === "" || isNaN(coinN) || coinN < 0) ? "" : Math.min(999999, coinN);
+    var coin = parseMoney(v.giverCoin);
     var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200), coin: coin, per: v.giverPer === "Quest" ? "Quest" : "Hour" };
     state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000), client: client })); changed();
     return { msg: v.name + " has been added as a candidate quest on the Quests page. Promote the candidate to open it." };
@@ -2928,7 +2964,7 @@ function nextUpPanel() {
   if (!t) {
     var nb = backlogTasks().length;
     box.appendChild(el("p", { "class": "ptitle" }, nb ? "Nothing is scheduled." : (counted().length ? "Every task is done." : "No tasks yet.")));
-    box.appendChild(el("p", { "class": "pmeta" }, nb ? nb + (nb === 1 ? " item is" : " items are") + " waiting in the Backlog. Choose a " + wl() + " for one." : (counted().length ? "Add a task with the + button, or choose your next quest." : "Add one with the + button.")));
+    box.appendChild(el("p", { "class": "pmeta" }, nb ? nb + (nb === 1 ? " item is" : " items are") + " waiting in the Backlog. Choose a " + wl() + " for one." : (counted().length ? "Add a task with the + button, or choose your next quest." : "Start one with the + button.")));
     if (nb) { var ba = el("div", { "class": "actions" }); ba.appendChild(on(el("button", { type: "button", "class": "primary", title: "Go to the Backlog on the Tasks page" }, "Open the Backlog"), "click", function () { go("schedule"); })); box.appendChild(ba); }
     return box;
   }
@@ -3521,7 +3557,7 @@ function renderQuestPage(root, id) {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
     root.appendChild(el("h2", null, "Quest Giver"));
-    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Bounty: " + p.client.coin + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
+    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Bounty: " + formatMoney(p.client.coin) + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
     root.appendChild(el("p", { "class": "hint notetext" }, cgLines.length ? cgLines.join("\n") : "No Quest Giver."));
     return;
   }
@@ -3587,7 +3623,7 @@ function renderQuestPage(root, id) {
 
   if (readOnly) {
     root.appendChild(el("h2", null, "Quest Giver"));
-    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website, gc.coin !== "" ? "Bounty: " + gc.coin + " per " + gc.per.toLowerCase() : ""].filter(Boolean);
+    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website, gc.coin !== "" ? "Bounty: " + formatMoney(gc.coin) + " per " + gc.per.toLowerCase() : ""].filter(Boolean);
     root.appendChild(el("p", { "class": "hint notetext" }, glines.length ? glines.join("\n") : "No Quest Giver."));
   } else {
     root.appendChild(el("h2", null, "Quest Giver"));
@@ -3613,14 +3649,8 @@ function renderQuestPage(root, id) {
     gaw.appendChild(gaddr); giverBox.appendChild(gaw);
     var gg2 = el("div", { "class": "setgrid", style: "margin-top:10px" });
     var gcw = el("div", { "class": "field" }); gcw.appendChild(el("label", { "for": "giver-coin-" + p.id }, "Bounty"));
-    var gcoin = el("input", { type: "number", id: "giver-coin-" + p.id, min: "0", max: "999999", step: "1" });
-    gcoin.value = p.client.coin === "" ? "" : String(p.client.coin);
-    on(gcoin, "input", function () {
-      if (gcoin.value === "") { p.client.coin = ""; save(); return; }
-      var n = parseInt(gcoin.value, 10);
-      p.client.coin = (isNaN(n) || n < 0) ? "" : Math.min(999999, n);
-      save();
-    });
+    var gcoin = moneyInput(el("input", { type: "text", id: "giver-coin-" + p.id }), function (n) { p.client.coin = n; save(); });
+    gcoin.value = formatMoney(p.client.coin);
     gcw.appendChild(gcoin); gg2.appendChild(gcw);
     var gpw = el("div", { "class": "field" }); gpw.appendChild(el("label", { "for": "giver-per-" + p.id }, "Per"));
     var gper = el("select", { id: "giver-per-" + p.id, "class": "plain" });
@@ -3785,7 +3815,7 @@ function standingBlock() {
   order.sort(function (a, b) { return taskStart(a.first) - taskStart(b.first); });
   var questIds = order.map(function (g) { return g.questId; });
   var ul = el("ul", { "class": "standing" });
-  if (!order.length) ul.appendChild(el("li", null, "No open tasks."));
+  if (!order.length) ul.appendChild(el("li", null, counted().length ? "No open tasks." : "No tasks yet. Start one with the + button."));
   order.forEach(function (g) {
     var li = el("li"), row = el("div", { "class": "srow" }), textWrap = el("div", { style: "flex:1 1 200px" });
     var nm = el("button", { type: "button", "class": "textbtn qlink", title: "View this quest" }, g.name);

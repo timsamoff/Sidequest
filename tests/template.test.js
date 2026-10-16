@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.5.1"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.6.0"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -1760,12 +1760,19 @@ async function exportClick(k, projectName) {
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   ok(!!k.$("giver-coin-pApp") && k.d.querySelector('label[for="giver-coin-pApp"]').textContent === "Bounty", "the quest page has a Bounty field, under Address in the Quest Giver box");
   ok(!!k.$("giver-per-pApp") && k.d.querySelector('label[for="giver-per-pApp"]').textContent === "Per" && k.$("giver-per-pApp").value === "Hour", "and a Per select, defaulting to Hour");
-  k.$("giver-coin-pApp").value = "25"; k.fire(k.$("giver-coin-pApp"), "input");
+  const coinEl = () => k.$("giver-coin-pApp");
+  // Typing works like a cash register: each digit enters from the cents, with commas and a decimal point added
+  const typeInto = (text) => { coinEl().value = text; k.fire(coinEl(), "input"); return coinEl().value; };
+  ok(typeInto("1") === "0.01" && typeInto("0.012") === "0.12" && typeInto("0.123") === "1.23" && typeInto("1.234") === "12.34", "typing digits fills in from the cents: 0.01, 0.12, 1.23, 12.34");
+  ok(typeInto("12.345") === "123.45" && typeInto("123.456") === "1,234.56" && typeInto("1,234.567") === "12,345.67", "commas appear as the amount grows");
   k.$("giver-per-pApp").value = "Quest"; k.fire(k.$("giver-per-pApp"));
   const client = k.saved().quests.find(q => q.id === "pApp").client;
-  ok(client.coin === 25 && client.per === "Quest", "Coin and Per save live, Coin as a real number");
-  k.$("giver-coin-pApp").value = "not a number"; k.fire(k.$("giver-coin-pApp"), "input");
-  ok(k.saved().quests.find(q => q.id === "pApp").client.coin === "", "a non-numeric Coin value is rejected back to empty, since the field only allows numbers");
+  ok(client.coin === 12345.67 && client.per === "Quest", "the amount saves live as a real number in dollars and cents, and Per saves with it");
+  ok(typeInto("12,345.6") === "1,234.56" && typeInto("1,234.5") === "123.45", "backspace drops the last digit");
+  ok(typeInto("999,999.99") === "999,999.99" && typeInto("999,999.991") === "999,999.99" && k.saved().quests.find(q => q.id === "pApp").client.coin === 999999.99, "the amount stops at 999,999.99");
+  ok(typeInto("not a number") === "" && k.saved().quests.find(q => q.id === "pApp").client.coin === "", "non-numeric text is rejected back to empty");
+  typeInto("5"); ok(typeInto("0.0") === "" && k.saved().quests.find(q => q.id === "pApp").client.coin === "", "backspacing to nothing clears the field");
+  ok(typeInto("0") === "", "a lone zero stays empty, so a zero bounty is never stored");
   const { html } = await exportClick(k, "Sample App");
   ok(!html.includes("Bounty") && !html.includes('"per"') && !html.includes("giver-coin"), "Bounty/Per never appear in the Quest Giver Export");
 }
@@ -2211,6 +2218,29 @@ async function exportClick(k, projectName) {
   ok(k.$("view").textContent.includes("This quest starts Aug 3, 2026. Pick a start date on or after that."), "and a start date before the quest starts");
 }
 
+{
+  // Bounty in the New Quest dialog, and old whole-number values on load
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.menuAct("newBtn", "newQuest"); k.setField("name", "Money Quest"); k.setField("giverCoin", "1,234.5"); k.click(k.btn(k.$("modalBody"), "Add quest"));
+  ok(k.saved().quests.find(q => q.name === "Money Quest").client.coin === 1234.5, "the New Quest dialog reads a typed amount with a comma and a decimal point");
+  k.menuAct("newBtn", "newQuest"); k.setField("name", "Bad Money"); k.setField("giverCoin", "abc"); k.click(k.btn(k.$("modalBody"), "Add quest"));
+  ok(k.saved().quests.find(q => q.name === "Bad Money").client.coin === "", "and treats non-numeric text as no bounty");
+  const old = kit(await mk({ quests: [{ id: "q1", name: "Old", status: "active", start: "2026-08-03", days: 7, client: { coin: 1500, per: "Hour" } }, { id: "q2", name: "Zero", status: "active", start: "2026-08-03", days: 7, client: { coin: 0, per: "Hour" } }, { id: "q3", name: "Huge", status: "active", start: "2026-08-03", days: 7, client: { coin: 5000000, per: "Hour" } }], tasks: [] }));
+  const qs = old.saved().quests;
+  ok(qs.find(q => q.id === "q1").client.coin === 1500 && qs.find(q => q.id === "q2").client.coin === "" && qs.find(q => q.id === "q3").client.coin === "", "a saved whole-number bounty keeps loading, and a zero or over-the-cap value loads as empty");
+}
+{
+  // The Quests page's empty In progress line points at the + button only when there are no tasks at all
+  const none = kit(await mk({ quests: [{ id: "q1", name: "Empty", status: "active", start: "2026-08-03", days: 7 }], tasks: [], settings: { hideWelcome: true } }));
+  none.tab("projects");
+  ok(none.$("view").textContent.includes("No tasks yet. Start one with the + button.") && !none.$("view").textContent.includes("No open tasks."), "with no tasks at all, the Quests page says there are none yet and to start one with the + button");
+  none.tab("today");
+  ok(none.$("view").textContent.includes("No tasks yet.") && none.$("view").textContent.includes("Start one with the + button."), "with no tasks at all, Today's Next up panel says to start one with the + button");
+  const done = kit(await mk({ quests: [{ id: "q1", name: "Done", status: "active", start: "2026-08-03", days: 7 }], tasks: [{ id: "t1", block: 1, questId: "q1", what: "Finished", done: "d", status: "Completed", steps: [], due: "2026-08-05" }], settings: { hideWelcome: true } }));
+  done.tab("projects");
+  ok(done.$("view").textContent.includes("No open tasks.") && !done.$("view").textContent.includes("Start one with the + button."), "with tasks that are all finished, it only says there are no open tasks");
+}
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);
 

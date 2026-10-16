@@ -19,6 +19,41 @@ export function playSfx(src, volume) {
     if (p && typeof p.catch === "function") p.catch(function () {});
   } catch (e) { /* no audio support */ }
 }
+// Money fields work like a cash register: digits fill in from the cents, and the
+// commas and decimal point are added as you type. The cap is 999,999.99.
+export function formatMoney(n) {
+  if (typeof n !== "number" || isNaN(n) || n <= 0) return "";
+  var cents = Math.round(n * 100), whole = String(Math.floor(cents / 100)), frac = String(cents % 100), out = "";
+  if (frac.length < 2) frac = "0" + frac;
+  for (var i = 0; i < whole.length; i++) { if (i > 0 && (whole.length - i) % 3 === 0) out += ","; out += whole.charAt(i); }
+  return out + "." + frac;
+}
+// Reads a typed or pasted amount ("1,234.56") as a number, or "" if it is not one.
+export function parseMoney(s) {
+  var n = parseFloat(String(s || "").replace(/,/g, ""));
+  if (isNaN(n) || n <= 0) return "";
+  return Math.min(999999.99, Math.round(n * 100) / 100);
+}
+// Turns a text input into a money field; `onChange` gets the amount, or "" when empty.
+export function moneyInput(input, onChange) {
+  input.setAttribute("inputmode", "numeric"); input.setAttribute("autocomplete", "off");
+  function apply(n) {
+    input.value = formatMoney(n);
+    try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) { /* not a focusable text input */ }
+    if (onChange) onChange(typeof n === "number" ? n : "");
+  }
+  on(input, "input", function () {
+    var digits = input.value.replace(/[^0-9]/g, "").replace(/^0+/, "");
+    if (digits.length > 8) digits = digits.slice(0, 8);
+    apply(digits === "" ? "" : parseInt(digits, 10) / 100);
+  });
+  on(input, "paste", function (e) {
+    var data = e.clipboardData || window.clipboardData, n = data ? parseMoney(data.getData("text")) : "";
+    if (n === "") return;
+    e.preventDefault(); apply(n);
+  });
+  return input;
+}
 // A pencil icon button: the app's one affordance for "change this text".
 var PENCIL = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
 export function pencilButton(label, title, onClick) {

@@ -9,7 +9,7 @@ import {
   validPage, isPinned, pinPage, unpinPage, questMeta, fmtHours, fmtHoursLong, questEstimate, recordHist, checkpointStep, globalActual,
   findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask, questTasks
 } from "./model.js";
-import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx } from "./dom.js";
+import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx, moneyInput, formatMoney } from "./dom.js";
 import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
 import { playConfetti } from "./confetti.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme, replaySplash } from "./app.js";
@@ -35,7 +35,7 @@ export function nextUpPanel() {
   if (!t) {
     var nb = backlogTasks().length;
     box.appendChild(el("p", { "class": "ptitle" }, nb ? "Nothing is scheduled." : (counted().length ? "Every task is done." : "No tasks yet.")));
-    box.appendChild(el("p", { "class": "pmeta" }, nb ? nb + (nb === 1 ? " item is" : " items are") + " waiting in the Backlog. Choose a " + wl() + " for one." : (counted().length ? "Add a task with the + button, or choose your next quest." : "Add one with the + button.")));
+    box.appendChild(el("p", { "class": "pmeta" }, nb ? nb + (nb === 1 ? " item is" : " items are") + " waiting in the Backlog. Choose a " + wl() + " for one." : (counted().length ? "Add a task with the + button, or choose your next quest." : "Start one with the + button.")));
     if (nb) { var ba = el("div", { "class": "actions" }); ba.appendChild(on(el("button", { type: "button", "class": "primary", title: "Go to the Backlog on the Tasks page" }, "Open the Backlog"), "click", function () { go("schedule"); })); box.appendChild(ba); }
     return box;
   }
@@ -628,7 +628,7 @@ export function renderQuestPage(root, id) {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
     root.appendChild(el("h2", null, "Quest Giver"));
-    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Bounty: " + p.client.coin + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
+    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Bounty: " + formatMoney(p.client.coin) + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
     root.appendChild(el("p", { "class": "hint notetext" }, cgLines.length ? cgLines.join("\n") : "No Quest Giver."));
     return;
   }
@@ -694,7 +694,7 @@ export function renderQuestPage(root, id) {
 
   if (readOnly) {
     root.appendChild(el("h2", null, "Quest Giver"));
-    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website, gc.coin !== "" ? "Bounty: " + gc.coin + " per " + gc.per.toLowerCase() : ""].filter(Boolean);
+    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website, gc.coin !== "" ? "Bounty: " + formatMoney(gc.coin) + " per " + gc.per.toLowerCase() : ""].filter(Boolean);
     root.appendChild(el("p", { "class": "hint notetext" }, glines.length ? glines.join("\n") : "No Quest Giver."));
   } else {
     root.appendChild(el("h2", null, "Quest Giver"));
@@ -720,14 +720,8 @@ export function renderQuestPage(root, id) {
     gaw.appendChild(gaddr); giverBox.appendChild(gaw);
     var gg2 = el("div", { "class": "setgrid", style: "margin-top:10px" });
     var gcw = el("div", { "class": "field" }); gcw.appendChild(el("label", { "for": "giver-coin-" + p.id }, "Bounty"));
-    var gcoin = el("input", { type: "number", id: "giver-coin-" + p.id, min: "0", max: "999999", step: "1" });
-    gcoin.value = p.client.coin === "" ? "" : String(p.client.coin);
-    on(gcoin, "input", function () {
-      if (gcoin.value === "") { p.client.coin = ""; save(); return; }
-      var n = parseInt(gcoin.value, 10);
-      p.client.coin = (isNaN(n) || n < 0) ? "" : Math.min(999999, n);
-      save();
-    });
+    var gcoin = moneyInput(el("input", { type: "text", id: "giver-coin-" + p.id }), function (n) { p.client.coin = n; save(); });
+    gcoin.value = formatMoney(p.client.coin);
     gcw.appendChild(gcoin); gg2.appendChild(gcw);
     var gpw = el("div", { "class": "field" }); gpw.appendChild(el("label", { "for": "giver-per-" + p.id }, "Per"));
     var gper = el("select", { id: "giver-per-" + p.id, "class": "plain" });
@@ -892,7 +886,7 @@ export function standingBlock() {
   order.sort(function (a, b) { return taskStart(a.first) - taskStart(b.first); });
   var questIds = order.map(function (g) { return g.questId; });
   var ul = el("ul", { "class": "standing" });
-  if (!order.length) ul.appendChild(el("li", null, "No open tasks."));
+  if (!order.length) ul.appendChild(el("li", null, counted().length ? "No open tasks." : "No tasks yet. Start one with the + button."));
   order.forEach(function (g) {
     var li = el("li"), row = el("div", { "class": "srow" }), textWrap = el("div", { style: "flex:1 1 200px" });
     var nm = el("button", { type: "button", "class": "textbtn qlink", title: "View this quest" }, g.name);

@@ -5,7 +5,7 @@ import {
   orderedAll, taskOptions, stepOptions, stepOptionsForTask, syncFromSteps, findStep, decisionFor,
   pset, blockForDate, taskStart, taskEnd, linkQuests
 } from "./model.js";
-import { $, el, on, uid, notify } from "./dom.js";
+import { $, el, on, uid, notify, moneyInput, parseMoney } from "./dom.js";
 import { closeMenus } from "./app.js";
 
 /* modal */
@@ -71,6 +71,8 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
         (f.options || []).forEach(function (o) { inp.appendChild(el("option", { value: o.value }, o.label)); });
       } else if (f.type === "textarea") {
         inp = el("textarea", { id: id, rows: f.rows || 4 });
+      } else if (f.type === "money") {
+        inp = moneyInput(el("input", { type: "text", id: id }), null);
       } else {
         inp = el("input", { type: f.type || "text", id: id, autocomplete: "off" });
         if (f.list) inp.setAttribute("list", f.list);
@@ -165,12 +167,11 @@ export function questDialog() {
     { key: "giverEmail", label: "Email", type: "email" },
     { key: "giverWebsite", label: "Website", type: "url" },
     { key: "giverAddress", label: "Address", type: "textarea", rows: 3 },
-    { key: "giverCoin", label: "Bounty", type: "number", min: "0", max: "999999", step: "1" },
+    { key: "giverCoin", label: "Bounty", type: "money" },
     { key: "giverPer", label: "Per", type: "select", options: [{ value: "Hour", label: "Hour" }, { value: "Quest", label: "Quest" }] }
   ], "Add quest", function (v) {
     if (!v.name) return "Enter a title for the candidate quest.";
-    var coinN = v.giverCoin === "" ? "" : parseInt(v.giverCoin, 10);
-    var coin = (coinN === "" || isNaN(coinN) || coinN < 0) ? "" : Math.min(999999, coinN);
+    var coin = parseMoney(v.giverCoin);
     var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200), coin: coin, per: v.giverPer === "Quest" ? "Quest" : "Hour" };
     state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000), client: client })); changed();
     return { msg: v.name + " has been added as a candidate quest on the Quests page. Promote the candidate to open it." };
