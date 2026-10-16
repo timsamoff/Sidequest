@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.7.1";
+export var APP_VERSION = "0.7.2";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -24,6 +24,8 @@ export function quest(id, name, status, extra) {
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
+// The name other modules import. The single-file build cannot rename an import (`quest as makeQuest`), so this is a real export.
+export function makeQuest(id, name, status, extra) { return quest(id, name, status, extra); }
 export function sampleData() {
   var n = new Date(), D = 86400000;
   var thisMon = Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - ((n.getDay() + 6) % 7));

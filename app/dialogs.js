@@ -1,4 +1,4 @@
-import { state, ui, changed, isISO, task, quest as makeQuest } from "./state.js";
+import { state, ui, changed, isISO, task, makeQuest } from "./state.js";
 import { iso, addDays, parseISO, fmt, fmtY, TODAY } from "./dates.js";
 import {
   wd, wl, wpC, questDueLimit, liveQuests, findQuest, dispQuest, nextTask, findTask,

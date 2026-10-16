@@ -1090,7 +1090,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.7.1";
+var APP_VERSION = "0.7.2";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -1107,6 +1107,8 @@ function quest(id, name, status, extra) {
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
+// The name other modules import. The single-file build cannot rename an import (`quest as makeQuest`), so this is a real export.
+function makeQuest(id, name, status, extra) { return quest(id, name, status, extra); }
 function sampleData() {
   var n = new Date(), D = 86400000;
   var thisMon = Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - ((n.getDay() + 6) % 7));

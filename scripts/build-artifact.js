@@ -79,6 +79,10 @@ const MODULE_ORDER = [
 ];
 
 function stripModuleSyntax(source, filename) {
+  // The bundle is one scope with every import removed, so an aliased import (`a as b`) would leave `b` undefined at runtime.
+  (source.match(/^import\s*\{[\s\S]*?\}\s*from/gm) || []).forEach(function (imp) {
+    if (/\sas\s/.test(imp)) throw new Error("build-artifact: aliased import in " + filename + ": " + imp.split(String.fromCharCode(10)).join(" ") + " -- import the real name; the single-file build cannot rename imports.");
+  });
   // Drop every import statement, single-line or multi-line (some destructuring
   // lists in this codebase, e.g. dialogs.js/views.js, span several lines).
   // Matches `import {` ... `} from "...";` non-greedily across newlines.

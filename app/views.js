@@ -1,4 +1,4 @@
-import { state, ui, save, changed, autoVault, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, quest as makeQuest, task, st, S } from "./state.js";
+import { state, ui, save, changed, autoVault, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, makeQuest, task, st, S } from "./state.js";
 import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart, addDays } from "./dates.js";
 import {
   WORDS, wd, wl, pset, questDueLimit, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
