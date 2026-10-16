@@ -39,7 +39,7 @@ Muse can't provision a database for a shared artifact on its own, so you ask you
 ```
 Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty. If a Sidequest artifact already exists, update it instead and keep all of my existing data.
 
-Keep every feature as is, including the sound effects and the GitHub version check with its update prompt. Keep the Spectral and Public Sans web fonts loading, using the Google Fonts stylesheet already in the source file's <head>, because the launch quotes are sized for Spectral and wrap onto a third line without it.
+Keep every feature as is, including the sound effects and the GitHub version check, and keep its update prompt word for word. Keep the Spectral and Public Sans web fonts loading, using the Google Fonts stylesheet already in the source file's <head>, because the launch quotes are sized for Spectral and wrap onto a third line without it.
 
 When it's built, launch the app several times to confirm every launch quote fits its two-line box, and click-test every button, dialog, and import before handing it over.
 ```
@@ -57,7 +57,7 @@ When a new version is released, a banner on the Today page says so. It holds a p
 > Please update my Sidequest artifact with the latest version, keeping all of my existing data.
 > https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html
 
-Paste it into the conversation where you built your app, or give the builder the link to your artifact. Your data lives with your account, not in the file, so an update keeps it.
+Paste it into the conversation where you built your app, or give the builder the link to your artifact. The banner adds ?v= and the new version number to the end of the link, so a builder that cached an older copy of the file fetches the new one instead. If you type the prompt yourself, you can add the same suffix. Your data lives with your account, not in the file, so an update keeps it.
 
 On Claude, update your **existing** artifact. Publishing the file as a brand-new artifact creates an empty database with no path back to your old data. If you do it by accident, your old artifact and its data are still there; go back to that one.
 
