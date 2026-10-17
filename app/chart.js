@@ -61,6 +61,18 @@ function renderBurn(host, wide, cfg) {
   acts.forEach(function (a, i) { if (a === null) { flush(); return; } seg.push(x(i) + "," + y(a)); });
   flush();
   acts.forEach(function (a, i) { if (a !== null) actualHost.appendChild(svgEl("circle", { "class": "dot", cx: x(i), cy: y(a), r: 5.5 })); });
+  // Dotted projection from today's count to the pace-based finish, clipped at the right edge.
+  var fc = cfg.forecast, fstop = null;
+  if (fc && TODAY >= cps[0] && TODAY <= cps[n - 1]) {
+    var fx = function (ms) { return L + (W - L - R) * (ms - cps[0]) / (cps[n - 1] - cps[0]); };
+    var endMs = Math.min(fc.finish, cps[n - 1]), endV = Math.max(0, fc.open - fc.rate * (endMs - TODAY) / 86400000);
+    if (endMs > TODAY) {
+      var fHost = revealGroup("burnclip-forecast-" + Math.random().toString(36).slice(2));
+      fHost.appendChild(svgEl("line", { "class": "forecast", x1: fx(TODAY), y1: y(fc.open), x2: fx(endMs), y2: y(endV) }));
+      fstop = { x: fx(endMs), y: y(endV), text: "At this pace you finish around " + fmtY(fc.finish) + ".", order: 2 };
+      host.dataset.forecast = "1";
+    }
+  }
   // Tasks in scope: level, then a ramp (one chart step wide) ending on the date it changed.
   var ss = cfg.scopeSteps;
   if (ss && (ss.length > 1 || (ss.length === 1 && cfg.scopeEnd > ss[0].ms))) {
@@ -74,18 +86,6 @@ function renderBurn(host, wide, cfg) {
     });
     sp.push(px(cfg.scopeEnd) + "," + y(pv));
     scopeHost.appendChild(svgEl("polyline", { "class": "scope", points: sp.join(" ") }));
-  }
-  // Dotted projection from today's count to the pace-based finish, clipped at the right edge.
-  var fc = cfg.forecast, fstop = null;
-  if (fc && TODAY >= cps[0] && TODAY <= cps[n - 1]) {
-    var fx = function (ms) { return L + (W - L - R) * (ms - cps[0]) / (cps[n - 1] - cps[0]); };
-    var endMs = Math.min(fc.finish, cps[n - 1]), endV = Math.max(0, fc.open - fc.rate * (endMs - TODAY) / 86400000);
-    if (endMs > TODAY) {
-      var fHost = revealGroup("burnclip-forecast-" + Math.random().toString(36).slice(2));
-      fHost.appendChild(svgEl("line", { "class": "forecast", x1: fx(TODAY), y1: y(fc.open), x2: fx(endMs), y2: y(endV) }));
-      fstop = { x: fx(endMs), y: y(endV), text: "At this pace you finish around " + fmtY(fc.finish) + ".", order: 2 };
-      host.dataset.forecast = "1";
-    }
   }
   // Everything the user can point at or arrow to, left to right.
   var guide = svgEl("line", { "class": "guide", x1: 0, x2: 0, y1: T, y2: H - B });

@@ -173,10 +173,10 @@ export function burnParts(o) {
   var l1 = el("span"); l1.appendChild(el("i", { "class": "p" })); l1.appendChild(document.createTextNode("Ideal"));
   var l2 = el("span"); l2.appendChild(el("i")); l2.appendChild(document.createTextNode("Actual"));
   lg.appendChild(l1); lg.appendChild(l2);
-  var l3 = el("span"); l3.appendChild(el("i", { "class": "s" })); l3.appendChild(document.createTextNode("Scope")); lg.appendChild(l3);
   cb.appendChild(lg);
   if (quest) drawQuestChart(host, quest, o.wide); else drawChart(host, o.wide);
   if (host.dataset.forecast) { var l4 = el("span"); l4.appendChild(el("i", { "class": "f" })); l4.appendChild(document.createTextNode("Forecast")); lg.appendChild(l4); }
+  var l3 = el("span"); l3.appendChild(el("i", { "class": "s" })); l3.appendChild(document.createTextNode("Scope")); lg.appendChild(l3);
   var rn = quest ? questRemainingUnits(quest) : remainingUnits(), tot = quest ? questTotalUnits(quest) : totalUnits(), rb = el("div", { "class": "box" });
   var nbk = quest ? counted().filter(function (t) { return t.questId === quest.id && !t.isNext && t.block === 0; }).length : backlogTasks().length;
   rb.appendChild(el("p", { "class": "hint first remaining" }, "Remaining: " + rn + " of " + tot + (tot === 1 ? " task" : " tasks") + (nbk ? " | Backlog: " + nbk + " unscheduled " + (nbk === 1 ? "task" : "tasks") : "")));
@@ -418,8 +418,9 @@ export function buildDetail(t, inline, readOnly) {
     } else {
       on(cb, "change", function () { s.done = cb.checked; syncFromSteps(t); changed(); });
       var textSpan = el("span", null, s.text);
-      lab.appendChild(cb); lab.appendChild(textSpan); sli.appendChild(lab);
-      var ac = el("div", { "class": "li-actions" });
+      lab.appendChild(cb); lab.appendChild(textSpan);
+      var stepTop = el("div", { "class": "steptop" }); stepTop.appendChild(lab); sli.appendChild(stepTop);
+      var ac = el("div", { "class": "li-actions stepactions" });
       if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the decision for this step", title: "Open this decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { decisionEditDialog(dc, function () { removeNow(dc, "decisions", "Decision"); }); }));
       else ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Add a decision to this step: " + s.text, title: "Add a decision to this step" }, "Add decision"), "click", function () { decisionDialog({ step: s.id }); }));
       var stepPen = pencilButton("Rename this step", "Rename this step");
@@ -432,7 +433,7 @@ export function buildDetail(t, inline, readOnly) {
           onDone: function () { stepPen.hidden = false; }
         });
       });
-      ac.appendChild(stepPen);
+      stepTop.appendChild(stepPen);
       ac.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Remove this step" }, "Remove"), "click", function () {
         t.steps = t.steps.filter(function (x) { return x.id !== s.id; });
         state.decisions = state.decisions.filter(function (x) { return x.step !== s.id; });

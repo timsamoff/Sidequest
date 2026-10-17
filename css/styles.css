@@ -107,6 +107,8 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .tab[aria-current="page"] { background: var(--sel); color: var(--ink); font-weight: 600; box-shadow: inset 3px 0 0 var(--planned); }
 .navbottom { margin-top: auto; padding-top: var(--space-8); border-top: 1px solid var(--line); flex-shrink: 0; overflow-y: visible; }
 .column { min-width: 0; }
+/* Opaque cover over the top safe area (a host app's own bar, a phone's status bar) so scrolled content never shows through above the sticky header. */
+body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 9; pointer-events: none; }
 .topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); padding: var(--space-12) var(--space-24); background: var(--bg); border-bottom: 1px solid var(--line); }
 .topact { display: flex; gap: var(--space-8); align-items: center; flex: none; }
 .topact button { white-space: nowrap; }
@@ -214,8 +216,12 @@ select.status[data-v="Not started"] { background: var(--chip-new); }
 select.status[data-v="In progress"] { background: var(--chip-work); }
 select.status[data-v="Completed"] { background: var(--chip-done); }
 .steps { list-style: none; margin: var(--space-8) 0 0; padding: 0; }
-.steps li { display: flex; flex-wrap: wrap; gap: var(--space-10); align-items: flex-start; padding: var(--space-5) 0; }
+.steps li { display: flex; flex-wrap: wrap; gap: 0 var(--space-10); align-items: flex-start; padding: var(--space-5) 0; }
 .steps li label { display: flex; gap: var(--space-10); align-items: flex-start; flex: 1 1 auto; cursor: pointer; }
+.steps li .steptop { display: flex; gap: var(--space-8); align-items: flex-start; flex: 1 1 100%; }
+/* Lines the buttons up under the title: checkbox width plus its gap. */
+/* The pencil makes the title row taller than its text; the negative margin brings the buttons as close to the title as they sit to the row border below. */
+.steps li .stepactions { flex: 1 1 100%; margin: calc(-1 * var(--space-4)) 0 0 30px; flex-wrap: wrap; }
 .steps li.done label span { color: var(--muted); text-decoration: line-through; }
 input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin: var(--space-2) 0 0; flex: none; accent-color: var(--planned); }
 .inline { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-10); }
@@ -281,14 +287,14 @@ svg.chart { display: block; width: 100%; height: auto; }
 .chart .axis { fill: var(--muted); font-size: 12px; font-family: var(--font-sans); }
 .chart .planned { fill: none; stroke: var(--planned); stroke-width: 2.5; stroke-dasharray: 7 5; }
 .chart .actual { fill: none; stroke: var(--burn); stroke-width: 3; }
-.chart .forecast { fill: none; stroke: var(--burn); stroke-width: 3; stroke-dasharray: 1 6; stroke-linecap: round; }
+.chart .forecast { fill: none; stroke: var(--forecast); stroke-width: 3; stroke-dasharray: 1 6; stroke-linecap: round; }
 .chart .scope { fill: none; stroke: var(--scope); stroke-width: 2; }
 .chart .dot { fill: var(--burn); stroke: var(--surface); stroke-width: 2; }
 .legend { display: flex; flex-wrap: wrap; gap: var(--space-16); padding: var(--space-6) var(--space-4) var(--space-10); font-size: .88rem; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: var(--space-8); }
 .legend i { display: inline-block; width: 24px; height: 0; border-top: 3px solid var(--burn); }
 .legend i.p { border-top: 3px dashed var(--planned); }
-.legend i.f { border-top: 3px dotted var(--burn); }
+.legend i.f { border-top: 3px dotted var(--forecast); }
 .legend i.s { border-top: 2px solid var(--scope); }
 .scopechg { display: inline-block; height: 1.5em; vertical-align: middle; box-sizing: border-box; min-width: calc(var(--n, 0) * 1.6em); text-align: left; background: var(--scope); color: var(--scope-ink); font-weight: 600; padding: 0 var(--space-6); border-radius: var(--radius-track); }
 .tablewrap { margin-top: var(--space-12); overflow-x: auto; }

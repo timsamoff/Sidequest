@@ -61,7 +61,7 @@
   --on-planned: #FFFFFF;
   --actual: #C8631A;
   --scope: #FFAC1C; --scope-ink: #1B252D;
-  --burn: #C62F2F;
+  --burn: #C62F2F; --forecast: #8F1F1F;
   --focus: #2F5D8A;
   --late: #A8261C;
   --late-bg: #F8DDD9;
@@ -82,13 +82,13 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #131A20; --surface: #1B252D; --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
-    --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723; --milestone: #F0A29C; --milestone-bg: #4A2321;
+    --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723; --milestone: #F0A29C; --milestone-bg: #4A2321;
     --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
   }
 }
 :root[data-theme="dark"] {
   --bg: #131A20; --surface: #1B252D; --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
-  --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723; --milestone: #F0A29C; --milestone-bg: #4A2321;
+  --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723; --milestone: #F0A29C; --milestone-bg: #4A2321;
   --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
 }
 
@@ -201,6 +201,8 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .tab[aria-current="page"] { background: var(--sel); color: var(--ink); font-weight: 600; box-shadow: inset 3px 0 0 var(--planned); }
 .navbottom { margin-top: auto; padding-top: var(--space-8); border-top: 1px solid var(--line); flex-shrink: 0; overflow-y: visible; }
 .column { min-width: 0; }
+/* Opaque cover over the top safe area (a host app's own bar, a phone's status bar) so scrolled content never shows through above the sticky header. */
+body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 9; pointer-events: none; }
 .topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); padding: var(--space-12) var(--space-24); background: var(--bg); border-bottom: 1px solid var(--line); }
 .topact { display: flex; gap: var(--space-8); align-items: center; flex: none; }
 .topact button { white-space: nowrap; }
@@ -308,8 +310,12 @@ select.status[data-v="Not started"] { background: var(--chip-new); }
 select.status[data-v="In progress"] { background: var(--chip-work); }
 select.status[data-v="Completed"] { background: var(--chip-done); }
 .steps { list-style: none; margin: var(--space-8) 0 0; padding: 0; }
-.steps li { display: flex; flex-wrap: wrap; gap: var(--space-10); align-items: flex-start; padding: var(--space-5) 0; }
+.steps li { display: flex; flex-wrap: wrap; gap: 0 var(--space-10); align-items: flex-start; padding: var(--space-5) 0; }
 .steps li label { display: flex; gap: var(--space-10); align-items: flex-start; flex: 1 1 auto; cursor: pointer; }
+.steps li .steptop { display: flex; gap: var(--space-8); align-items: flex-start; flex: 1 1 100%; }
+/* Lines the buttons up under the title: checkbox width plus its gap. */
+/* The pencil makes the title row taller than its text; the negative margin brings the buttons as close to the title as they sit to the row border below. */
+.steps li .stepactions { flex: 1 1 100%; margin: calc(-1 * var(--space-4)) 0 0 30px; flex-wrap: wrap; }
 .steps li.done label span { color: var(--muted); text-decoration: line-through; }
 input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin: var(--space-2) 0 0; flex: none; accent-color: var(--planned); }
 .inline { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-10); }
@@ -375,14 +381,14 @@ svg.chart { display: block; width: 100%; height: auto; }
 .chart .axis { fill: var(--muted); font-size: 12px; font-family: var(--font-sans); }
 .chart .planned { fill: none; stroke: var(--planned); stroke-width: 2.5; stroke-dasharray: 7 5; }
 .chart .actual { fill: none; stroke: var(--burn); stroke-width: 3; }
-.chart .forecast { fill: none; stroke: var(--burn); stroke-width: 3; stroke-dasharray: 1 6; stroke-linecap: round; }
+.chart .forecast { fill: none; stroke: var(--forecast); stroke-width: 3; stroke-dasharray: 1 6; stroke-linecap: round; }
 .chart .scope { fill: none; stroke: var(--scope); stroke-width: 2; }
 .chart .dot { fill: var(--burn); stroke: var(--surface); stroke-width: 2; }
 .legend { display: flex; flex-wrap: wrap; gap: var(--space-16); padding: var(--space-6) var(--space-4) var(--space-10); font-size: .88rem; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: var(--space-8); }
 .legend i { display: inline-block; width: 24px; height: 0; border-top: 3px solid var(--burn); }
 .legend i.p { border-top: 3px dashed var(--planned); }
-.legend i.f { border-top: 3px dotted var(--burn); }
+.legend i.f { border-top: 3px dotted var(--forecast); }
 .legend i.s { border-top: 2px solid var(--scope); }
 .scopechg { display: inline-block; height: 1.5em; vertical-align: middle; box-sizing: border-box; min-width: calc(var(--n, 0) * 1.6em); text-align: left; background: var(--scope); color: var(--scope-ink); font-weight: 600; padding: 0 var(--space-6); border-radius: var(--radius-track); }
 .tablewrap { margin-top: var(--space-12); overflow-x: auto; }
@@ -1114,7 +1120,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.8.0";
+var APP_VERSION = "0.8.1";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -1634,6 +1640,18 @@ function renderBurn(host, wide, cfg) {
   acts.forEach(function (a, i) { if (a === null) { flush(); return; } seg.push(x(i) + "," + y(a)); });
   flush();
   acts.forEach(function (a, i) { if (a !== null) actualHost.appendChild(svgEl("circle", { "class": "dot", cx: x(i), cy: y(a), r: 5.5 })); });
+  // Dotted projection from today's count to the pace-based finish, clipped at the right edge.
+  var fc = cfg.forecast, fstop = null;
+  if (fc && TODAY >= cps[0] && TODAY <= cps[n - 1]) {
+    var fx = function (ms) { return L + (W - L - R) * (ms - cps[0]) / (cps[n - 1] - cps[0]); };
+    var endMs = Math.min(fc.finish, cps[n - 1]), endV = Math.max(0, fc.open - fc.rate * (endMs - TODAY) / 86400000);
+    if (endMs > TODAY) {
+      var fHost = revealGroup("burnclip-forecast-" + Math.random().toString(36).slice(2));
+      fHost.appendChild(svgEl("line", { "class": "forecast", x1: fx(TODAY), y1: y(fc.open), x2: fx(endMs), y2: y(endV) }));
+      fstop = { x: fx(endMs), y: y(endV), text: "At this pace you finish around " + fmtY(fc.finish) + ".", order: 2 };
+      host.dataset.forecast = "1";
+    }
+  }
   // Tasks in scope: level, then a ramp (one chart step wide) ending on the date it changed.
   var ss = cfg.scopeSteps;
   if (ss && (ss.length > 1 || (ss.length === 1 && cfg.scopeEnd > ss[0].ms))) {
@@ -1647,18 +1665,6 @@ function renderBurn(host, wide, cfg) {
     });
     sp.push(px(cfg.scopeEnd) + "," + y(pv));
     scopeHost.appendChild(svgEl("polyline", { "class": "scope", points: sp.join(" ") }));
-  }
-  // Dotted projection from today's count to the pace-based finish, clipped at the right edge.
-  var fc = cfg.forecast, fstop = null;
-  if (fc && TODAY >= cps[0] && TODAY <= cps[n - 1]) {
-    var fx = function (ms) { return L + (W - L - R) * (ms - cps[0]) / (cps[n - 1] - cps[0]); };
-    var endMs = Math.min(fc.finish, cps[n - 1]), endV = Math.max(0, fc.open - fc.rate * (endMs - TODAY) / 86400000);
-    if (endMs > TODAY) {
-      var fHost = revealGroup("burnclip-forecast-" + Math.random().toString(36).slice(2));
-      fHost.appendChild(svgEl("line", { "class": "forecast", x1: fx(TODAY), y1: y(fc.open), x2: fx(endMs), y2: y(endV) }));
-      fstop = { x: fx(endMs), y: y(endV), text: "At this pace you finish around " + fmtY(fc.finish) + ".", order: 2 };
-      host.dataset.forecast = "1";
-    }
   }
   // Everything the user can point at or arrow to, left to right.
   var guide = svgEl("line", { "class": "guide", x1: 0, x2: 0, y1: T, y2: H - B });
@@ -3186,10 +3192,10 @@ function burnParts(o) {
   var l1 = el("span"); l1.appendChild(el("i", { "class": "p" })); l1.appendChild(document.createTextNode("Ideal"));
   var l2 = el("span"); l2.appendChild(el("i")); l2.appendChild(document.createTextNode("Actual"));
   lg.appendChild(l1); lg.appendChild(l2);
-  var l3 = el("span"); l3.appendChild(el("i", { "class": "s" })); l3.appendChild(document.createTextNode("Scope")); lg.appendChild(l3);
   cb.appendChild(lg);
   if (quest) drawQuestChart(host, quest, o.wide); else drawChart(host, o.wide);
   if (host.dataset.forecast) { var l4 = el("span"); l4.appendChild(el("i", { "class": "f" })); l4.appendChild(document.createTextNode("Forecast")); lg.appendChild(l4); }
+  var l3 = el("span"); l3.appendChild(el("i", { "class": "s" })); l3.appendChild(document.createTextNode("Scope")); lg.appendChild(l3);
   var rn = quest ? questRemainingUnits(quest) : remainingUnits(), tot = quest ? questTotalUnits(quest) : totalUnits(), rb = el("div", { "class": "box" });
   var nbk = quest ? counted().filter(function (t) { return t.questId === quest.id && !t.isNext && t.block === 0; }).length : backlogTasks().length;
   rb.appendChild(el("p", { "class": "hint first remaining" }, "Remaining: " + rn + " of " + tot + (tot === 1 ? " task" : " tasks") + (nbk ? " | Backlog: " + nbk + " unscheduled " + (nbk === 1 ? "task" : "tasks") : "")));
@@ -3431,8 +3437,9 @@ function buildDetail(t, inline, readOnly) {
     } else {
       on(cb, "change", function () { s.done = cb.checked; syncFromSteps(t); changed(); });
       var textSpan = el("span", null, s.text);
-      lab.appendChild(cb); lab.appendChild(textSpan); sli.appendChild(lab);
-      var ac = el("div", { "class": "li-actions" });
+      lab.appendChild(cb); lab.appendChild(textSpan);
+      var stepTop = el("div", { "class": "steptop" }); stepTop.appendChild(lab); sli.appendChild(stepTop);
+      var ac = el("div", { "class": "li-actions stepactions" });
       if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the decision for this step", title: "Open this decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { decisionEditDialog(dc, function () { removeNow(dc, "decisions", "Decision"); }); }));
       else ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Add a decision to this step: " + s.text, title: "Add a decision to this step" }, "Add decision"), "click", function () { decisionDialog({ step: s.id }); }));
       var stepPen = pencilButton("Rename this step", "Rename this step");
@@ -3445,7 +3452,7 @@ function buildDetail(t, inline, readOnly) {
           onDone: function () { stepPen.hidden = false; }
         });
       });
-      ac.appendChild(stepPen);
+      stepTop.appendChild(stepPen);
       ac.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Remove this step" }, "Remove"), "click", function () {
         t.steps = t.steps.filter(function (x) { return x.id !== s.id; });
         state.decisions = state.decisions.filter(function (x) { return x.step !== s.id; });
