@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.7.3"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.7.4"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -818,16 +818,16 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const before = k.d.querySelector("#view .estleft").textContent;
   const row = [...k.d.querySelectorAll("#view .questmain .tlist li")].find(li => li.textContent.includes("Run a beta with five friends"));
   k.click(row.querySelector("button.item"));
-  ok(k.$("viewTitle").textContent === "Sample App" && !!k.d.querySelector("#view .questmain .tlist .detail"), "clicking a task on a quest's page opens it in place, not on the Tasks page");
+  ok(k.$("viewTitle").textContent === "Sample App" && !!k.d.querySelector("#view .questmain .tlist:not(.sectionlist) .detail"), "clicking a task on a quest's page opens it in place, not on the Tasks page");
   ok(k.d.querySelector("#ptask-" + row.id.slice(6) + " button.item").getAttribute("aria-expanded") === "true", "the open row is marked expanded");
-  ok(k.d.querySelectorAll("#view .questmain .tlist .detail").length === 1 && !k.d.querySelector("#view .questmain .detail h2"), "one task is open at a time, with no quest heading repeated inside it");
+  ok(k.d.querySelectorAll("#view .questmain .tlist:not(.sectionlist) .detail").length === 1 && !k.d.querySelector("#view .questmain .detail h2"), "one task is open at a time, with no quest heading repeated inside it");
   ok(!!k.btn(k.d.querySelector("#view .questmain .detail"), "Open in Tasks"), "an Open in Tasks link is offered");
   const sel = k.d.querySelector("#view .questmain .detail .status"); sel.value = "Completed"; k.fire(sel);
-  ok(k.d.querySelectorAll("#view .questmain .tlist .detail").length === 1, "the task stays open after an edit");
+  ok(k.d.querySelectorAll("#view .questmain .tlist:not(.sectionlist) .detail").length === 1, "the task stays open after an edit");
   const after = k.d.querySelector("#view .estleft").textContent;
   ok(before === "Est. 27 hours remaining" && after === "Est. 23 hours remaining", "completing a 4 h task lowers the open estimate (" + before + " -> " + after + ")");
   k.click(k.d.querySelector("#view .questmain .tlist button.item[aria-expanded='true']"));
-  ok(!k.d.querySelector("#view .questmain .tlist .detail"), "clicking the open task again closes it");
+  ok(!k.d.querySelector("#view .questmain .tlist:not(.sectionlist) .detail"), "clicking the open task again closes it");
   // the launch checklist's own task row also opens the task in place, same as a regular Tasks row
   const launchRow = [...k.d.querySelectorAll("#view .questmain .tlist.check button.item")].find(b => b.textContent.includes("Submit to the app store"));
   k.click(launchRow);
@@ -2358,6 +2358,21 @@ async function exportClick(k, projectName) {
   k.click(yes);
   ok(nActive() === before + 2, "Promote anyway promotes");
   k.tab("projects"); ok(k.$("view").textContent.includes("Your limit is 2"), "the Quests page notes being over the limit");
+}
+{
+  // Contact info and Quest Giver open in place like a task row and start collapsed
+  const k = kit(await mk());
+  k.click(k.$("welcomeDismiss"));
+  k.tab("settings");
+  let row = k.d.querySelector("#view .setside .sectionlist");
+  ok(row.querySelector("button.item").getAttribute("aria-expanded") === "false" && row.querySelector(".detail").hidden, "Contact info starts collapsed");
+  k.click(row.querySelector("button.item"));
+  ok(row.querySelector("button.item").getAttribute("aria-expanded") === "true" && !row.querySelector(".detail").hidden && !!row.querySelector("#set-contact-phone"), "selecting its row opens the fields");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
+  row = k.d.querySelector("#view .questmain .sectionlist");
+  ok(row.querySelector("button.item").getAttribute("aria-expanded") === "false" && row.querySelector(".detail").hidden, "Quest Giver starts collapsed");
+  k.click(row.querySelector("button.item"));
+  ok(!row.querySelector(".detail").hidden, "and opens when its row is selected");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

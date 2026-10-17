@@ -596,6 +596,24 @@ export function pendingSection(rows, first) { return questListSection("Pending",
 export function completedSection(rows, first) { return questListSection("Completed", rows, first); }
 // A quest's own lifecycle status decides how much of the page renders.
 // Promotion is in-place -- the same record and id carry through, never a second record.
+// A one-row section that opens in place like a task row: a title row, then the fields. Starts collapsed.
+function collapsibleSection(key, summary, detail, emptyText) {
+  var ul = el("ul", { "class": "tlist sectionlist" }), li = el("li");
+  var open = !!ui.sectionOpen[key];
+  var line = el("div", { "class": "l2" });
+  var b = el("button", { type: "button", "class": "item", "aria-expanded": open ? "true" : "false", title: open ? "Collapse this section" : "Expand this section" }, null);
+  b.appendChild(line);
+  function paint() { var t = summary(); line.textContent = t || emptyText; line.style.color = t ? "" : "var(--muted)"; }
+  paint();
+  detail.classList.add("detail"); detail.hidden = !open;
+  on(b, "click", function () {
+    open = !open; ui.sectionOpen[key] = open; detail.hidden = !open;
+    b.setAttribute("aria-expanded", open ? "true" : "false"); b.title = open ? "Collapse this section" : "Expand this section";
+    paint();
+  });
+  li.appendChild(b); li.appendChild(detail); ul.appendChild(li);
+  return ul;
+}
 export function renderQuestPage(root, id) {
   var p = findQuest(id);
   if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Quest not found.")); return; }
@@ -693,7 +711,7 @@ export function renderQuestPage(root, id) {
   } else {
     root.appendChild(el("h2", null, "Quest Giver"));
     root.appendChild(el("p", { "class": "hint" }, "The client or contact for this quest. If filled, this information will appear on the Quest Giver Export."));
-    var giverBox = el("div", { "class": "box", style: "margin-top:10px" });
+    var giverBox = el("div");
     var gg = el("div", { "class": "setgrid" });
     function gfield(key, id, label, type, full) {
       var w = el("div", { "class": "field" + (full ? " full" : "") }); w.appendChild(el("label", { "for": id }, label));
@@ -723,7 +741,7 @@ export function renderQuestPage(root, id) {
     on(gper, "change", function () { p.client.per = gper.value; save(); });
     gpw.appendChild(gper); gg2.appendChild(gpw);
     giverBox.appendChild(gg2);
-    root.appendChild(giverBox);
+    root.appendChild(collapsibleSection("giver:" + p.id, function () { return [p.client.org, p.client.poc].filter(Boolean).join(" · "); }, giverBox, "Add Quest Giver details"));
   }
 
   var ar = el("div", { "class": "actions questactions", style: "margin-top:14px" });
@@ -1309,8 +1327,8 @@ export function renderSettings(page) {
   var side = el("aside", { "class": "setside" });
   var root = el("div", { "class": "setmain" });
   split.appendChild(side); split.appendChild(root); page.appendChild(split);
-  side.appendChild(el("h2", { "class": "first" }, "Your contact info"));
-  var contactBox = el("div", { "class": "box", style: "margin-top:10px" });
+  side.appendChild(el("h2", { "class": "first" }, "Adventurer"));
+  var contactBox = el("div");
   var cg = el("div", { "class": "setgrid" });
   function cfield(key, id, label, type, full) {
     var w = el("div", { "class": "field" + (full ? " full" : "") }); w.appendChild(el("label", { "for": id }, label));
@@ -1330,7 +1348,7 @@ export function renderSettings(page) {
   on(addr, "input", function () { state.settings.contact.address = addr.value.slice(0, 500); save(); });
   aw.appendChild(addr); contactBox.appendChild(aw);
   contactBox.appendChild(brandmarkField());
-  side.appendChild(contactBox);
+  side.appendChild(collapsibleSection("contact", function () { var c = state.settings.contact; return [c.company, c.name].filter(Boolean).join(" · "); }, contactBox, "Add your contact details"));
 
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   root.appendChild(el("h2", { "class": "setmain-head" }, "Schedule defaults"));
