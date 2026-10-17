@@ -3746,7 +3746,7 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
   // the wide breakpoint, via CSS, so a stacked page keeps its normal section gap).
   var cls = first === true ? "first" : first === "questcharts-head" ? "questcharts-head" : "";
   var hd = el("div", { "class": "sechead" + (cls ? " " + cls : "") });
-  hd.appendChild(el("h2", cls ? { "class": cls } : null, "Schedule"));
+  hd.appendChild(el("h2", cls ? { "class": cls + (cls === "questcharts-head" ? " sechead-h" : "") } : null, "Schedule"));
   if (extraBtn) hd.appendChild(extraBtn);
   host.appendChild(hd);
   var eff = pset(p.id);
@@ -3798,7 +3798,7 @@ function questCharts(p, wide, expandBtn, first) {
     // Slip moves incomplete tasks only -- see slipDialog().
     var slipBtn = el("button", { type: "button", "class": "small", title: "Push this quest’s incomplete tasks later to catch up" }, "Slip schedule");
     on(slipBtn, "click", function () { slipDialog(p); });
-    var hd1 = el("div", { "class": "sechead" }); hd1.appendChild(el("h2", null, "Timeline")); hd1.appendChild(slipBtn);
+    var hd1 = el("div", { "class": "sechead" }); hd1.appendChild(el("h2", { "class": "sechead-h" }, "Timeline")); hd1.appendChild(slipBtn);
     out.appendChild(hd1);
     out.appendChild(tl.node); wireMilestoneDiamonds(tl.node);
     var b = burnParts({ quest: p, wide: wide, level: "h2" });
@@ -4322,7 +4322,7 @@ function renderSettings(page) {
   [[0, "No limit"], [2, "2"], [3, "3"], [4, "4"], [5, "5"]].forEach(function (o) { var op = el("option", { value: String(o[0]) }, o[1]); if (o[0] === state.settings.wipLimit) op.selected = true; wipSel.appendChild(op); });
   on(wipSel, "change", function () { state.settings.wipLimit = parseInt(wipSel.value, 10); changed(); });
   fieldOf("set-wip", "Warn when active quests exceed", wipSel);
-  fieldOf("set-dust", "Mark a quest as gathering dust after", dustSel);
+  fieldOf("set-dust", "Quests begin gathering dust after", dustSel);
   scheduleBox.appendChild(grid); scheduleBox.appendChild(msg); root.appendChild(scheduleBox);
 
   root.appendChild(el("h2", null, "Appearance and formats"));
@@ -4417,7 +4417,7 @@ function renderSettings(page) {
 
   root.appendChild(el("h2", null, "Import"));
   var importBox = el("div", { "class": "box", style: "margin-top:10px" });
-  importBox.appendChild(el("p", { "class": "hint first" }, "Bring in tasks from Trello (JSON) or Todoist (CSV) as a new quest."));
+  importBox.appendChild(el("p", { "class": "hint", style: "margin-bottom:12px" }, "Bring in tasks from Trello (JSON) or Todoist (CSV) as a new quest."));
   importPanel(importBox);
   root.appendChild(importBox);
 
