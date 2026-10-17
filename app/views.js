@@ -176,6 +176,7 @@ export function burnParts(o) {
   var l3 = el("span"); l3.appendChild(el("i", { "class": "s" })); l3.appendChild(document.createTextNode("Scope")); lg.appendChild(l3);
   cb.appendChild(lg);
   if (quest) drawQuestChart(host, quest, o.wide); else drawChart(host, o.wide);
+  if (host.dataset.forecast) { var l4 = el("span"); l4.appendChild(el("i", { "class": "f" })); l4.appendChild(document.createTextNode("Forecast")); lg.appendChild(l4); }
   var rn = quest ? questRemainingUnits(quest) : remainingUnits(), tot = quest ? questTotalUnits(quest) : totalUnits(), rb = el("div", { "class": "box" });
   var nbk = quest ? counted().filter(function (t) { return t.questId === quest.id && !t.isNext && t.block === 0; }).length : backlogTasks().length;
   rb.appendChild(el("p", { "class": "hint first remaining" }, "Remaining: " + rn + " of " + tot + (tot === 1 ? " task" : " tasks") + (nbk ? " | Backlog: " + nbk + " unscheduled " + (nbk === 1 ? "task" : "tasks") : "")));

@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.7.4";
+export var APP_VERSION = "0.8.0";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -38,13 +38,16 @@ export function sampleData() {
   // Runs a little late, then ahead, then lands on time, so its Burndown crosses the planned line.
   var doneHistory = {}; doneHistory[day(-28)] = [4, 4]; doneHistory[day(-20)] = [4, 3]; doneHistory[day(-15)] = [4, 2]; doneHistory[day(-12)] = [4, 1]; doneHistory[day(-1)] = [4, 0];
   // An eleventh task was added on day 9, so the main burndown's scope line steps up once.
-  var allHistory = {}; allHistory[day(0)] = [10, 10]; allHistory[day(5)] = [10, 9]; allHistory[day(9)] = [11, 10];
+  var allHistory = {}; allHistory[day(0)] = [15, 15]; allHistory[day(5)] = [15, 14]; allHistory[day(6)] = [15, 13]; allHistory[day(9)] = [16, 14]; allHistory[day(11)] = [16, 13]; allHistory[day(13)] = [16, 12];
+  // Three of five tasks finished at a steady pace, so its Burndown shows a Forecast line to a finish inside the chart.
+  var newsHistory = {}; newsHistory[day(0)] = [5, 5]; newsHistory[day(6)] = [5, 4]; newsHistory[day(11)] = [5, 3]; newsHistory[day(13)] = [5, 2];
   var quests = [
     // pApp <-> pSite demonstrates a bidirectional quest link.
     quest("pApp", "Sample App", "active", { hist: appHistory, notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedQuestIds: ["pSite"] }),
     // launchCritical: the app's launch checklist shows the site's own status.
     quest("pSite", "Sample Website", "active", { start: day(14), linkedQuestIds: ["pApp"], launchCritical: true }),
     quest("pGame", "Sample Game", "active", { start: day(21), days: 14, due: day(21 + 122) }),
+    quest("pNews", "Sample Newsletter", "active", { start: day(0), hist: newsHistory, notes: "A monthly note to readers. Three issues are out and the next two are scheduled." }),
     quest("pExt", "Sample Browser Extension", "candidate", { start: day(28), notes: "A small tool that could ship in a month" }),
     quest("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own quests" }),
     // Demonstrates a Complete quest: drops out of In progress but still shows in the plain Quests list.
@@ -62,6 +65,11 @@ export function sampleData() {
     task("w1", 1, "pSite", "Write the page copy", "Every page has final text", [st("w1a", "Write the home page", true), st("w1b", "Write the about page"), st("w1c", "Write the contact page")], { status: "In progress" }),
     task("w2", 2, "pSite", "Build the layout", "Pages look right on a phone and a laptop", [st("w2a", "Build the header and footer"), st("w2b", "Make the layout work on phones"), st("w2c", "Compress the images")]),
     task("w3", 3, "pSite", "Launch the site", "The site is live and checked", [st("w3a", "Point the domain at the site"), st("w3b", "Check every page on a phone"), st("w3c", "Announce it")]),
+    task("n1", 1, "pNews", "Pick a name and a format", "A name and a one-page outline", [st("n1a", "Choose a name", true), st("n1b", "Outline the format", true)], { status: "Completed" }),
+    task("n2", 2, "pNews", "Write the first issue", "A finished issue ready to send", [st("n2a", "Draft the issue", true), st("n2b", "Proofread it", true)], { status: "Completed" }),
+    task("n3", 3, "pNews", "Set up the mailing list", "Readers can sign up and receive an issue", [st("n3a", "Pick a mailing tool", true), st("n3b", "Add a sign-up form", true)], { status: "Completed" }),
+    task("n4", 4, "pNews", "Write the second issue", "A finished issue ready to send", [st("n4a", "Draft the issue"), st("n4b", "Proofread it")], { status: "In progress" }),
+    task("n5", 5, "pNews", "Send to the first fifty readers", "Fifty readers have the first issue", [st("n5a", "Collect fifty addresses"), st("n5b", "Send the issue")]),
     task("g1", 1, "pGame", "Prototype the core mechanic", "Someone can play for one minute", [st("g1a", "Make the player move"), st("g1b", "Add one obstacle"), st("g1c", "Add a win and a lose state")]),
     task("g2", 2, "pGame", "Make the first ten levels", "Ten levels load and can be finished start to end"),
     task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid"), st("g3c", "Record a trailer")], { milestone: true }),
@@ -79,7 +87,7 @@ export function sampleData() {
   var EST = { a1: 3, a2: 6, a3: 8, a4: 4, a5: 5, a6: 4, w1: 3, w2: 10, w3: 2, g1: 12, g2: 20, g3: 8, g4: 16, e1: 4, e2: 1, d1: 6, d2: 12, d3: 8, d4: 3 };
   tasks.forEach(function (t) { if (EST[t.id]) t.est = EST[t.id]; });
   // When the finished tasks were completed (Sample Finished Quest's are a bit late, early, then on time).
-  var DONE = { a1: day(5), d1: day(-20), d2: day(-15), d3: day(-12), d4: day(-1) };
+  var DONE = { n1: day(6), n2: day(11), n3: day(13), a1: day(5), d1: day(-20), d2: day(-15), d3: day(-12), d4: day(-1) };
   tasks.forEach(function (t) { if (DONE[t.id]) t.doneAt = DONE[t.id]; });
   // Explicit start/due dates for every scheduled task. A start date is only
   // set when the task's own estimate is light enough the block would otherwise look misleadingly full.
@@ -88,7 +96,7 @@ export function sampleData() {
     a4: { start: day(25), due: day(27) }, a5: { start: day(31), due: day(34) },
     w1: { start: day(19), due: day(20) }, w2: { start: day(22), due: day(27) }, w3: { due: day(34) },
     g2: { start: day(37), due: day(47) }, g3: { start: day(55), due: day(58) },
-    e1: { start: day(29), due: day(32) }, d1: { due: day(-25) }, d2: { due: day(-18) }, d3: { due: day(-11) }, d4: { due: day(-4) }
+    e1: { start: day(29), due: day(32) }, n1: { due: day(5) }, n2: { due: day(12) }, n3: { due: day(19) }, n4: { due: day(26) }, n5: { due: day(33) }, d1: { due: day(-25) }, d2: { due: day(-18) }, d3: { due: day(-11) }, d4: { due: day(-4) }
   };
   tasks.forEach(function (t) {
     var s = SCHEDULE[t.id]; if (!s) return;

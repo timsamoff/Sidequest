@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { fmt, fmtY, addDays, addMonths, parseISO, TODAY } from "./dates.js";
-import { totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, dispQuest, findQuest, questBurn, questBurnTasks, burnTasks, short, isHiddenFromPlan, blockStartFor, blockEndFor, blockForDate, checkpointStep, globalActual, histAt, milestoneTasks, allMilestoneTasks } from "./model.js";
+import { velocityForecast, pset, totalUnits, checkpoints, planned, chartStart, counted, taskStart, taskEnd, chosen, dispQuest, findQuest, questBurn, questBurnTasks, burnTasks, short, isHiddenFromPlan, blockStartFor, blockEndFor, blockForDate, checkpointStep, globalActual, histAt, milestoneTasks, allMilestoneTasks } from "./model.js";
 import { el, on } from "./dom.js";
 
 export function svgEl(tag, attrs, text) {
@@ -20,7 +20,7 @@ if (typeof document !== "undefined") document.addEventListener("pointerdown", fu
 // Draws a burndown. cfg: { cps, planned[], actual[], total, label, marks[], tip(i) }.
 // One keyboard stop; arrows/Home/End/Esc navigate. Tooltip works on hover, tap, and focus.
 function renderBurn(host, wide, cfg) {
-  host.innerHTML = "";
+  host.innerHTML = ""; delete host.dataset.forecast;
   host.style.position = "relative";
   var cps = cfg.cps, n = cps.length, pl = cfg.planned, acts = cfg.actual;
   var ymax = Math.max(cfg.total, 1); acts.forEach(function (a) { if (a !== null && a > ymax) ymax = a; });
@@ -75,6 +75,18 @@ function renderBurn(host, wide, cfg) {
     sp.push(px(cfg.scopeEnd) + "," + y(pv));
     scopeHost.appendChild(svgEl("polyline", { "class": "scope", points: sp.join(" ") }));
   }
+  // Dotted projection from today's count to the pace-based finish, clipped at the right edge.
+  var fc = cfg.forecast, fstop = null;
+  if (fc && TODAY >= cps[0] && TODAY <= cps[n - 1]) {
+    var fx = function (ms) { return L + (W - L - R) * (ms - cps[0]) / (cps[n - 1] - cps[0]); };
+    var endMs = Math.min(fc.finish, cps[n - 1]), endV = Math.max(0, fc.open - fc.rate * (endMs - TODAY) / 86400000);
+    if (endMs > TODAY) {
+      var fHost = revealGroup("burnclip-forecast-" + Math.random().toString(36).slice(2));
+      fHost.appendChild(svgEl("line", { "class": "forecast", x1: fx(TODAY), y1: y(fc.open), x2: fx(endMs), y2: y(endV) }));
+      fstop = { x: fx(endMs), y: y(endV), text: "At this pace you finish around " + fmtY(fc.finish) + ".", order: 2 };
+      host.dataset.forecast = "1";
+    }
+  }
   // Everything the user can point at or arrow to, left to right.
   var guide = svgEl("line", { "class": "guide", x1: 0, x2: 0, y1: T, y2: H - B });
   guide.style.display = "none"; svg.appendChild(guide);
@@ -94,6 +106,10 @@ function renderBurn(host, wide, cfg) {
     svg.appendChild(mh);
     stops.push({ x: cx, y: cy, text: m.text + ", " + fmtY(m.ms), el: mh, week: -1, order: 1 });
   });
+  if (fstop) {
+    var fh = svgEl("circle", { "class": "hit", cx: fstop.x, cy: fstop.y, r: 11 });
+    svg.appendChild(fh); fstop.el = fh; fstop.week = -1; stops.push(fstop);
+  }
   stops.sort(function (p, q) { return p.x - q.x || p.order - q.order; });
 
   var tip = el("div", { "class": "charttip", role: "status", "aria-live": "polite" }); tip.hidden = true;
@@ -203,6 +219,7 @@ export function drawChart(host, wide) {
   var total = totalUnits(), cps = checkpoints(), n = cps.length, ga = globalActual(cps);
   var pl = cps.map(planned), tasks = burnTasks(), span = checkpointStep() * 86400000, sc = scopeSteps(cps, state.hist, total);
   renderBurn(host, wide, {
+    forecast: velocityForecast(tasks, state.days, cps[0]),
     cps: cps, planned: pl, actual: ga.actual, total: total, scopeSteps: sc.steps, scopeEnd: sc.end,
     label: "Burndown chart. Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". An orange line shows the tasks in scope.",
     tip: function (i) { return weekTip(cps, i, pl, ga.actual, ga.scope, tasks, span, true); }
@@ -217,6 +234,7 @@ export function drawQuestChart(host, p, wide) {
   var marks = milestoneTasks(p.id).map(function (t) { return { ms: taskEnd(t), text: t.what }; });
   var sc = scopeSteps(cps, p.hist, bd.total);
   renderBurn(host, wide, {
+    forecast: velocityForecast(bd.tasks, pset(p.id).days, cps[0]),
     cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks, scopeSteps: sc.steps, scopeEnd: sc.end,
     label: "Burndown chart for " + p.name + ". Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". An orange line shows the tasks in scope.",
     tip: function (i) { return weekTip(cps, i, pl, bd.actual, bd.scope, bd.tasks, span, false); }

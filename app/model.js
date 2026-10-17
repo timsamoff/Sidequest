@@ -167,6 +167,19 @@ export function backlogTasks() { return sortTasks(live(state.tasks).filter(funct
 export function burnTasks() { return counted().filter(function (t) { return t.block > 0 && !isHiddenFromPlan(t); }); }
 // Tasks that count for the empty-state wording on Today and Tasks: everything but a Candidate quest's.
 export function planCounted() { return counted().filter(function (t) { return !isCandidateTask(t); }); }
+// Projects a finish from the tasks completed in the last four blocks (four
+// block lengths of days), so it needs two blocks of history and one finished task first.
+export function velocityForecast(tasks, blockDays, sinceMs) {
+  var open = tasks.filter(isOpen).length;
+  if (!open || !blockDays) return null;
+  var history = (TODAY - sinceMs) / DAY;
+  if (history < 2 * blockDays) return null;
+  var windowDays = Math.min(4 * blockDays, history), from = TODAY - windowDays * DAY;
+  var done = tasks.filter(function (t) { return t.status === "Completed" && t.doneAt && parseISO(t.doneAt) >= from && parseISO(t.doneAt) <= TODAY; }).length;
+  if (!done) return null;
+  var rate = done / windowDays;
+  return { open: open, done: done, rate: rate, windowDays: windowDays, finish: TODAY + Math.ceil(open / rate) * DAY };
+}
 // --- One quest's own burndown ---
 // From counted(), not burnTasks() -- a Complete quest's own page keeps
 // showing its burndown even while its tasks are hidden cross-quest.
