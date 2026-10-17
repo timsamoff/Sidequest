@@ -3,7 +3,7 @@ import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart, addDays } from "./date
 import {
   WORDS, wd, wl, pset, questDueLimit, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
   checkpoints, live, counted, planCounted, liveQuests, activeQuests, candidateQuests,
-  findQuest, findAnyQuest, linkedQuests, linkQuests, unlinkQuests, chosen, dispQuest, dispWhat,
+  findQuest, isDusty, findAnyQuest, linkedQuests, linkQuests, unlinkQuests, chosen, dispQuest, dispWhat,
   totalUnits, remainingUnits, planned, ordered, backlogTasks, sortTasks,
   isLate, lateTasks, setStatus, syncFromSteps, nextTask, questTasksAllDone, questTotalUnits, questRemainingUnits,
   validPage, isPinned, pinPage, unpinPage, questMeta, fmtHours, fmtHoursLong, questEstimate, recordHist, checkpointStep, globalActual,
@@ -285,14 +285,11 @@ export function taskRow(t) {
 }
 export function renderSchedule(root) {
   var o = ordered(), bl = backlogTasks();
-  var desc = "Tasks are gathered from all open quests.";
   if (!o.length && !bl.length) {
-    root.appendChild(el("p", { "class": "hint first" }, desc));
-    root.appendChild(el("p", { "class": "hint" }, planCounted().length ? "No open tasks. Completed tasks are in the Vault." : "No tasks yet. Use the + button to add one."));
+    root.appendChild(el("p", { "class": "hint first" }, planCounted().length ? "No open tasks. Completed tasks are in the Vault." : "No tasks yet. Use the + button to add one."));
     return;
   }
   if (!ui.sel || !findTask(ui.sel)) { var nt = nextTask() || o[0] || bl[0]; ui.sel = nt.id; }
-  root.appendChild(el("p", { "class": "hint first" + (ui.detail ? " hide-on-mobile" : "") }, desc));
   var split = el("div", { "class": "split" + (ui.detail ? " detail-open" : "") });
   var lp = el("div", { "class": "listpane" });
   var ul = el("ul", { "class": "tlist" });
@@ -565,6 +562,7 @@ function questPinButton(key, name) {
   var pinned = isPinned(key);
   return on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + name, title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
 }
+function dustChip() { return el("span", { "class": "chip dust", style: "margin-left:8px", title: "No activity for a while" }, "Gathering dust"); }
 function questRow(r) {
   var li = el("li"), row = el("div", { "class": "crow oneline" });
   var nm = el("div", { style: "flex:1 1 200px" });
@@ -572,6 +570,8 @@ function questRow(r) {
   on(link, "click", function () { go(r.key); });
   nm.appendChild(link);
   if (r.complete) nm.appendChild(el("span", { "class": "chip questcomplete", style: "margin-left:8px" }, "Complete"));
+  var rq = findQuest(r.key.slice(6));
+  if (rq && isDusty(rq)) nm.appendChild(dustChip());
   nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, r.meta));
   row.appendChild(nm);
   var acts = el("div", { "class": "li-actions" });
@@ -604,6 +604,7 @@ export function renderQuestPage(root, id) {
   var page = root, split = null;
   var metaLine = el("p", { "class": "hint" });
   if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip questcomplete", style: "margin-right:8px" }, "Complete"));
+  if (isDusty(p)) metaLine.appendChild(el("span", { "class": "chip dust", style: "margin-right:8px", title: "No activity for a while" }, "Gathering dust"));
   metaLine.appendChild(document.createTextNode(questMeta(p)));
   if (!readOnly) {
     split = el("div", { "class": "questsplit" });
@@ -781,7 +782,6 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
   if (readOnly) {
     host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start ? fmtY(parseISO(eff.start)) : "unset") + (p.due ? ", due " + fmtY(parseISO(p.due)) : "") + ", " + wl() + " length " + eff.days + " days" + "."));
   } else {
-    host.appendChild(el("p", { "class": "hint" }, "Set the quest’s start date, due date, and " + wl() + " length."));
     var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
     var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
@@ -801,10 +801,12 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
   }
 }
 
+var EXPAND_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M15 3h6v6"></path><path d="M9 21H3v-6"></path><path d="M21 3l-7 7"></path><path d="M3 21l7-7"></path></svg>';
 // Right column: Schedule, Timeline, Burndown, flowing continuously. Expand opens all three large.
 function questChartsPanel(p) {
   var side = el("aside", { "class": "questcharts", "aria-label": "Schedule, timeline, and burndown" });
   var ex = el("button", { type: "button", "class": "small questexpand", title: "Expand the schedule, timeline, and burndown" }, "Expand");
+  ex.appendChild(el("span", { "class": "expandicon", "aria-hidden": "true" })); ex.lastChild.innerHTML = EXPAND_ICON;
   on(ex, "click", function () { openModal("Timeline and burndown for " + p.name, function (body) { body.appendChild(questCharts(p, true, null, true)); }, { full: true }); });
   side.appendChild(questCharts(p, false, ex));
   return side;
@@ -837,9 +839,18 @@ function questCharts(p, wide, expandBtn, first) {
 
 // Promotes in place -- same record, same id. Restores any links set aside by
 // a prior demoteToCandidate(), only ones still pointing at a quest that still exists.
+function overWip() { var n = state.settings.wipLimit; return !!n && activeQuests().length >= n; }
 export function promoteToActive(id) {
   var p = findAnyQuest(id);
   if (!p) return;
+  var n = activeQuests().length;
+  if (overWip() && p.status !== "active") {
+    confirmDialog("Promote past your limit?", "You already have " + n + " active " + (n === 1 ? "quest" : "quests") + ". Promote it anyway?", "Promote anyway", function () { doPromote(p); });
+    return;
+  }
+  doPromote(p);
+}
+function doPromote(p) {
   p.status = "active";
   // Tasks added while it was a Candidate were part of the plan from the start, not scope added later.
   state.tasks.forEach(function (x) { if (x.questId === p.id) x.added = ""; });
@@ -877,7 +888,6 @@ export function standingBlock() {
   if (!order.length) return { node: null, questIds: questIds };
   var wrap = el("div");
   wrap.appendChild(el("h2", { "class": "first" }, "In progress"));
-  wrap.appendChild(el("p", { "class": "hint" }, "Quests are ordered by the start date of their next task. Pin a quest to the sidebar for quick access."));
   var box = el("div", { "class": "box", style: "margin-top:10px" });
   var ul = el("ul", { "class": "standing" });
   order.forEach(function (g) {
@@ -885,6 +895,8 @@ export function standingBlock() {
     var nm = el("button", { type: "button", "class": "textbtn qlink", title: "View this quest" }, g.name);
     on(nm, "click", function () { go(validPage("quest:" + g.questId) ? "quest:" + g.questId : "projects"); });
     textWrap.appendChild(nm);
+    var dq = findQuest(g.questId);
+    if (dq && isDusty(dq)) textWrap.appendChild(dustChip());
     var nx = el("div", { "class": "snext" }); nx.appendChild(document.createTextNode("Next up: "));
     var tl = el("button", { type: "button", "class": "textbtn", title: "View this task" }, short(g.first.what, 90));
     on(tl, "click", function () { openTask(g.first.id); });
@@ -899,7 +911,7 @@ export function standingBlock() {
 export function candidatesSection(first) {
   var sec = el("div");
   sec.appendChild(el("h2", first ? { "class": "first" } : null, "Candidate quests"));
-  sec.appendChild(el("p", { "class": "hint" }, "Promoting a candidate quest moves it to In progress. Sending it to the Vault shelves it."));
+  if (state.settings.wipLimit && activeQuests().length > state.settings.wipLimit) sec.appendChild(el("p", { "class": "hint" }, "You have " + activeQuests().length + " active quests. Your limit is " + state.settings.wipLimit + "."));
   var list = el("ul", { "class": "list" });
   var cs = candidateQuests();
   if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidate quests yet. Start one with the + button."));
@@ -935,8 +947,7 @@ export function renderQuests(root) {
   if (complete.length) root.appendChild(completedSection(complete, false));
 }
 export function renderWorkshop(root) {
-  root.appendChild(el("p", { "class": "hint first" }, "Your ideas live here until you make them a candidate quest. Sending them to the Vault shelves them."));
-  var hd = el("div", { "class": "sechead" });
+  var hd = el("div", { "class": "sechead workshophead" });
   hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add new idea" }, "Add idea"), "click", function () { ideaDialog(); })); root.appendChild(hd);
   var pl = el("ul", { "class": "list", style: "margin-top:12px" });
   var ps = live(state.workshop);
@@ -986,7 +997,6 @@ export function renderTimeline(root) {
   mbox.appendChild(ul); root.appendChild(mbox);
   root.appendChild(burnPanel({ wide: true, level: "h2" }));
   root.appendChild(el("h2", null, "Task counts"));
-  root.appendChild(el("p", { "class": "hint" }, "Task counts are recorded automatically when you make changes. On days with no changes, the previous count carries forward."));
   var wrap = el("div", { "class": "tablewrap weekly" }); var table = el("table");
   var cps = checkpoints(), ga = globalActual(cps), stepMs = checkpointStep() * DAY;
   var thead = el("thead"); var hr = el("tr"); [stepMs === 7 * DAY ? "Week starting" : "Date", "Planned remaining", "Actual remaining", "Tasks in scope", "Scope change"].forEach(function (h) { hr.appendChild(el("th", null, h)); }); thead.appendChild(hr); table.appendChild(thead);
@@ -1057,7 +1067,6 @@ export function emptyVault() {
 }
 export function renderVault(root) {
   var all = vaultEntries(), filter = ui.vaultFilter || "all";
-  root.appendChild(el("p", { "class": "hint first" }, "Send quests and ideas here to be shelved. Restore returns an item to where it was before. Deleting an item from the Vault is permanent. The Vault can be set to clear automatically at chosen intervals, or never."));
   var counts = { all: all.length }; all.forEach(function (e) { counts[e.kind] = (counts[e.kind] || 0) + 1; });
   var chips = el("div", { "class": "chips", role: "group", "aria-label": "Filter the Vault" });
   KIND_FILTERS.forEach(function (f) {
@@ -1179,7 +1188,6 @@ export function helpTopics() {
   ];
 }
 export function renderHelp(root) {
-  root.appendChild(el("p", { "class": "hint first" }, "Everything you need to know about Sidequest. Choose a topic to learn more."));
   var acts = el("div", { "class": "actions", style: "margin-top:10px" }), items = [];
   var openAll = el("button", { type: "button", "class": "small", id: "helpOpen" }, "Open all"), closeAll = el("button", { type: "button", "class": "small", id: "helpClose" }, "Close all");
   on(openAll, "click", function () { items.forEach(function (d) { d.open = true; }); });
@@ -1302,7 +1310,6 @@ export function renderSettings(page) {
   var root = el("div", { "class": "setmain" });
   split.appendChild(side); split.appendChild(root); page.appendChild(split);
   side.appendChild(el("h2", { "class": "first" }, "Your contact info"));
-  side.appendChild(el("p", { "class": "hint" }, "Your contact info (global). If filled, this information will appear on the Quest Giver Export."));
   var contactBox = el("div", { "class": "box", style: "margin-top:10px" });
   var cg = el("div", { "class": "setgrid" });
   function cfield(key, id, label, type, full) {
@@ -1327,7 +1334,6 @@ export function renderSettings(page) {
 
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   root.appendChild(el("h2", { "class": "setmain-head" }, "Schedule defaults"));
-  root.appendChild(el("p", { "class": "hint" }, "Set the default duration and name for a stretch of work. The duration can also be set for each quest."));
   var scheduleBox = el("div", { "class": "box", style: "margin-top:10px" });
   var grid = el("div", { "class": "setgrid" });
   function fieldOf(id, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); grid.appendChild(w); }
@@ -1338,6 +1344,14 @@ export function renderSettings(page) {
   Object.keys(WORDS).forEach(function (k) { var op = el("option", { value: k }, k); if (k === wd()) op.selected = true; bwSel.appendChild(op); });
   on(bwSel, "change", function () { state.settings.blockWord = bwSel.value; changed(); });
   fieldOf("set-word", "Name for each stretch of work", bwSel);
+  var dustSel = el("select", { id: "set-dust", "class": "plain" });
+  [[0, "Never"], [7, "7 days"], [14, "14 days"], [30, "30 days"], [60, "60 days"]].forEach(function (o) { var op = el("option", { value: String(o[0]) }, o[1]); if (o[0] === state.settings.dustDays) op.selected = true; dustSel.appendChild(op); });
+  on(dustSel, "change", function () { state.settings.dustDays = parseInt(dustSel.value, 10); changed(); });
+  var wipSel = el("select", { id: "set-wip", "class": "plain" });
+  [[0, "No limit"], [2, "2"], [3, "3"], [4, "4"], [5, "5"]].forEach(function (o) { var op = el("option", { value: String(o[0]) }, o[1]); if (o[0] === state.settings.wipLimit) op.selected = true; wipSel.appendChild(op); });
+  on(wipSel, "change", function () { state.settings.wipLimit = parseInt(wipSel.value, 10); changed(); });
+  fieldOf("set-wip", "Warn when active quests exceed", wipSel);
+  fieldOf("set-dust", "Mark a quest as gathering dust after", dustSel);
   scheduleBox.appendChild(grid); scheduleBox.appendChild(msg); root.appendChild(scheduleBox);
 
   root.appendChild(el("h2", null, "Appearance and formats"));
@@ -1416,35 +1430,34 @@ export function renderSettings(page) {
     if (isStandalone) {
       installBox.appendChild(uninstallLine());
     } else if (installedThisSession) {
-      root.appendChild(el("p", { "class": "hint" }, "Sidequest is installed. Open it from your apps or desktop."));
+      installBox.appendChild(el("p", { "class": "hint first" }, "Sidequest is installed. Open it from your apps or desktop."));
       installBox.appendChild(uninstallLine());
     } else if (deferredInstallPrompt) {
-      root.appendChild(el("p", { "class": "hint" }, "Install Sidequest as an app on your computer or mobile device. PWA installation is not supported by all browsers or devices."));
+      installBox.appendChild(el("p", { "class": "hint first" }, "Install Sidequest as an app on your computer or mobile device. PWA installation is not supported by all browsers or devices."));
       installBox.appendChild(on(el("button", { type: "button", id: "installBtn" }, "Install Sidequest"), "click", triggerInstall));
     } else if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-      root.appendChild(el("p", { "class": "hint" }, "On iPhone or iPad: tap Share, then Add to Home Screen."));
-      installBox.hidden = true;
+      installBox.appendChild(el("p", { "class": "hint first" }, "On iPhone or iPad: tap Share, then Add to Home Screen."));
     } else {
-      root.appendChild(el("p", { "class": "hint" }, "Sidequest is already installed as an app, or your browser does not support PWA installation."));
+      installBox.appendChild(el("p", { "class": "hint first" }, "Sidequest is already installed as an app, or your browser does not support PWA installation."));
       installBox.appendChild(uninstallLine());
     }
     root.appendChild(installBox);
   }
 
   root.appendChild(el("h2", null, "Import"));
-  root.appendChild(el("p", { "class": "hint" }, "Bring in tasks from Trello (JSON) or Todoist (CSV) as a new quest."));
   var importBox = el("div", { "class": "box", style: "margin-top:10px" });
+  importBox.appendChild(el("p", { "class": "hint first" }, "Bring in tasks from Trello (JSON) or Todoist (CSV) as a new quest."));
   importPanel(importBox);
   root.appendChild(importBox);
 
   root.appendChild(el("h2", null, "Backup and restore"));
   var backupBox = el("div", { "class": "box", style: "margin-top:10px" });
-  backupPanel(backupBox, root);
+  backupPanel(backupBox);
   root.appendChild(backupBox);
 
   root.appendChild(el("h2", { id: "startFreshHeading", "class": "scrollhead", tabindex: "-1" }, "Start fresh"));
   var box = el("div", { "class": "dangerbox" });
-  box.appendChild(el("p", { "class": "first" }, "Erase all Sidequest data stored in " + (inClaude() ? "Claude" : "this browser") + " and start again. You’ll see a warning and have a chance to save a backup first."));
+  box.appendChild(el("p", { "class": "hint first" }, "Erase all Sidequest data stored in " + (inClaude() ? "Claude" : "this browser") + " and start again. You’ll see a warning and have a chance to save a backup first."));
   box.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:12px", id: "startFresh", title: "Erase everything and start over" }, "Start fresh…"), "click", startFreshDialog));
   root.appendChild(box);
 

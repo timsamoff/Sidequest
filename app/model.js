@@ -8,6 +8,11 @@ export var WORDS = { Block: ["block", "blocks"], Sprint: ["sprint", "sprints"], 
 export function wd() { return state.settings.blockWord in WORDS ? state.settings.blockWord : "Block"; }
 export function wl() { return WORDS[wd()][0]; }
 export function wpC() { var w = WORDS[wd()][1]; return w.charAt(0).toUpperCase() + w.slice(1); }
+// An active quest nobody has touched for settings.dustDays days (0 = off).
+export function isDusty(q) {
+  var n = state.settings.dustDays;
+  return !!n && q.status === "active" && !q.vault && !!q.touched && (TODAY - parseISO(q.touched)) / DAY >= n;
+}
 /* quest helpers -- Quest is the top-tier entity every task/decision/milestone
    attaches to by id, promoted in place from candidate to active. */
 export function live(a) { return a.filter(function (x) { return !x.vault; }); }

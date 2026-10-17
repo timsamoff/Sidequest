@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.7.2"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.7.3"'), "version kept in state.js");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -336,7 +336,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // reload samples
   k.tab("settings"); k.click(k.$("startFresh")); const r = [...k.d.querySelectorAll('#modalBody input[name=fresh]')]; r[1].checked = true; k.fire(r[1]);
   const a2 = k.$("freshAck"); a2.checked = true; k.fire(a2); k.click(k.$("freshGo"));
-  ok(k.saved().tasks.length === 17 && k.saved().pins.includes("quest:pApp"), "the samples can be reloaded");
+  ok(k.saved().tasks.length === 19 && k.saved().pins.includes("quest:pApp"), "the samples can be reloaded");
 }
 
 /* ---- core behavior still intact ---- */
@@ -361,7 +361,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.w.showSaveFilePicker = (opts) => { asked = opts; return Promise.resolve({ createWritable: () => Promise.resolve({ write: (t) => { written = t; return Promise.resolve(); }, close: () => Promise.resolve() }) }); };
   k.click(k.$("saveFile")); await new Promise(r => setTimeout(r, 30));
   const j = JSON.parse(written);
-  ok(j.tasks.length === 17 && j.quests.find(p => p.name === "Sample Game").days === 14, "Save backup writes the sample data");
+  ok(j.tasks.length === 19 && j.quests.find(p => p.name === "Sample Game").days === 14, "Save backup writes the sample data");
   ok(/^sidequest-backup-\d{4}-\d{2}-\d{2}\.json$/.test(asked.suggestedName), "and suggests a dated .json file name (" + asked.suggestedName + ")");
   ok(k.$("view").textContent.includes("Backup saved."), "and says it saved");
   ok(!k.$("showText") && !k.$("backupText") && !k.$("restoreText"), "there is no backup text box and no paste box any more");
@@ -460,7 +460,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // Timeline, but stay visible on the quest's own page.
   k.tab("schedule");
   ok(!k.$("view").textContent.includes("Sketch the main screens"), "a Complete-but-kept quest's tasks are hidden from the Tasks list");
-  ok(k.$("view").textContent.includes("Tasks are gathered from all open quests.") && !k.$("view").textContent.includes("Tasks from complete quests are not listed here"), "the Tasks page description is the single short sentence");
+  ok(!k.$("view").textContent.includes("Tasks are gathered from all open quests.") && !k.$("view").textContent.includes("Tasks from complete quests are not listed here"), "the Tasks page has no description line");
   k.tab("timeline");
   ok(![...k.d.querySelectorAll("#view .lane .lname")].some(l => l.textContent === "Sample App"), "a Complete-but-kept quest's lane is hidden from the global Timeline");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
@@ -854,7 +854,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const th = [...k.d.querySelectorAll("#view .weekly th")].map(h => h.textContent);
   ok(th.join() === "Week starting,Planned remaining,Actual remaining,Tasks in scope,Scope change", "the counts table has a scope column (" + th.join() + ")");
   ok(!k.d.querySelector("#view .weekly input"), "nothing in the counts table is editable");
-  ok(!/Enter the number/.test(k.$("view").textContent) && /Task counts are recorded automatically/.test(k.$("view").textContent), "its hint says the counts are recorded automatically");
+  ok(!/Enter the number/.test(k.$("view").textContent) && !/Task counts are recorded automatically/.test(k.$("view").textContent), "the page has no description line");
   const cells = [...k.d.querySelectorAll("#view .weekly tbody tr")].map(tr => [...tr.children].map(c => c.textContent));
   ok(cells[0][2] === "10" && cells[0][3] === "10" && cells[1][2] === "9" && cells[2][2] === "10", "past rows read back the recorded counts, carrying a quiet day forward (" + JSON.stringify(cells.slice(0, 3)) + ")");
   ok(cells[0][4] === "" && cells[1][4] === "" && cells[2][4] === "+1", "and the sample shows one scope change, a task added mid-way (" + JSON.stringify(cells.slice(0, 3).map(r => r[4])) + ")");
@@ -1224,7 +1224,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     const n = f.log.filter(x => x === "set:state/main").length;
     k.tab("settings"); k.click(k.$("saveFile")); await wait();
     ok(f.log.filter(x => x === "set:state/main").length > n && JSON.parse(f.store["state/main"].json).settings.lastBackup, "after loading, a change is written to the db");
-    ok(f.saves.length === 1 && /^sidequest-backup-\d{4}-\d{2}-\d{2}\.json$/.test(f.saves[0].filename) && JSON.parse(f.saves[0].data).tasks.length === 17, "Save backup hands the viewer a dated .json file through the downloads capability");
+    ok(f.saves.length === 1 && /^sidequest-backup-\d{4}-\d{2}-\d{2}\.json$/.test(f.saves[0].filename) && JSON.parse(f.saves[0].data).tasks.length === 19, "Save backup hands the viewer a dated .json file through the downloads capability");
     ok(k.$("view").textContent.includes("Backup saved.") && k.$("view").textContent.includes("(today)"), "and says it saved");
   }
   {
@@ -2322,6 +2322,42 @@ async function exportClick(k, projectName) {
   const hrefOf = (text) => { const i = text.indexOf('href="https://fonts.googleapis.com'); return i < 0 ? null : text.slice(i + 6, text.indexOf('"', i + 6)); };
   const museReadme = fs.readFileSync(path.join(__dirname, "..", "Sidequest-Artifact", "README.md"), "utf8");
   ok(!!hrefOf(html) && hrefOf(museReadme) === hrefOf(html), "the Muse prompt's Google Fonts link is the same one index.html loads");
+}
+{
+  // Gathering dust: an active quest nobody has touched for the chosen number of days
+  const k = kit(await mk());
+  k.tab("settings"); k.$("set-dust").value = "30"; k.fire(k.$("set-dust"), "change");
+  const raw = JSON.parse(k.w.localStorage.getItem("sidequest-template-v1"));
+  const aq = raw.quests.find(q => q.status === "active");
+  ok(typeof aq.touched === "string" && aq.touched.length === 10, "every quest records the day it was last touched");
+  k.tab("projects"); ok(k.$("view").textContent.split("Gathering dust").length === 2 && raw.quests.find(q => q.id === "pNext").touched < raw.quests.find(q => q.id === "pApp").touched, "the samples have exactly one quest gathering dust, and a freshly touched one is not marked");
+  const old = JSON.parse(JSON.stringify(raw));
+  old.quests.forEach(q => { if (q.status === "active") q.touched = "2020-01-01"; });
+  const k2 = kit(await mk(old));
+  k2.tab("projects");
+  ok(k2.$("view").textContent.includes("Gathering dust"), "an active quest untouched for 30+ days shows the Gathering dust pill on the Quests page");
+  old.settings.dustDays = 0;
+  const k3 = kit(await mk(old)); k3.tab("projects");
+  ok(!k3.$("view").textContent.includes("Gathering dust"), "Never turns the marker off");
+  old.settings.dustDays = 30;
+  const k4 = kit(await mk(old)); k4.tab("settings");
+  ok(!!k4.$("set-dust"), "Options has the gathering-dust setting");
+}
+{
+  // WIP limit: promoting past it asks first, and never blocks
+  const k = kit(await mk());
+  const nActive = () => JSON.parse(k.w.localStorage.getItem("sidequest-template-v1")).quests.filter(q => q.status === "active").length;
+  const before = nActive();
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Promote"));
+  ok(nActive() === before + 1 && !k.d.getElementById("confirmYes"), "with no limit set, Promote just promotes");
+  k.tab("settings"); k.$("set-wip").value = "2"; k.fire(k.$("set-wip"), "change");
+  ok(JSON.parse(k.w.localStorage.getItem("sidequest-template-v1")).settings.wipLimit === 2, "the limit saves");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Promote"));
+  const yes = k.d.getElementById("confirmYes");
+  ok(yes && k.d.body.textContent.includes("Promote it anyway?") && nActive() === before + 1, "past the limit, Promote asks first and changes nothing yet");
+  k.click(yes);
+  ok(nActive() === before + 2, "Promote anyway promotes");
+  k.tab("projects"); ok(k.$("view").textContent.includes("Your limit is 2"), "the Quests page notes being over the limit");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

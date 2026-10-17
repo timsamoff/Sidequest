@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.7.2";
+export var APP_VERSION = "0.7.3";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -20,7 +20,7 @@ export function task(id, block, questId, what, done, steps, extra) {
 // A quest's own lifecycle: "candidate" or "active". Promoted in place -- the
 // same record and id carry through candidate -> active -> vaulted, never a second record.
 export function quest(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, justReopened: false, client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, justReopened: false, touched: "", sig: "", client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -45,12 +45,12 @@ export function sampleData() {
     // launchCritical: the app's launch checklist shows the site's own status.
     quest("pSite", "Sample Website", "active", { start: day(14), linkedQuestIds: ["pApp"], launchCritical: true }),
     quest("pGame", "Sample Game", "active", { start: day(21), days: 14, due: day(21 + 122) }),
-    quest("pExt", "Sample Browser Extension", "candidate", { notes: "A small tool that could ship in a month" }),
+    quest("pExt", "Sample Browser Extension", "candidate", { start: day(28), notes: "A small tool that could ship in a month" }),
     quest("pCli", "Sample Command-Line Tool", "candidate", { notes: "Would save time on your own quests" }),
     // Demonstrates a Complete quest: drops out of In progress but still shows in the plain Quests list.
     quest("pDone", "Sample Finished Quest", "complete", { start: day(-28), notes: "Shipped and wrapped up.", hist: doneHistory }),
-    // Demonstrates a promoted-but-task-less Active quest, which lands under Pending instead of In progress.
-    quest("pNext", "Sample Next Quest", "active", { notes: "Chosen, but nothing scheduled yet." })
+    // Demonstrates a promoted-but-task-less Active quest, which lands under Pending instead of In progress; untouched for 45 days, so it also shows Gathering dust.
+    quest("pNext", "Sample Next Quest", "active", { touched: new Date(n.getTime() - 45 * D).toISOString().slice(0, 10), notes: "Chosen, but nothing scheduled yet." })
   ];
   var tasks = [
     task("a1", 1, "pApp", "Sketch the main screens", "Sketches for every screen", [st("a1a", "Sketch the home screen", true), st("a1b", "Sketch the sign-in screen", true), st("a1c", "Sketch the settings screen", true)], { status: "Completed", doneAt: lastWeek }),
@@ -68,12 +68,15 @@ export function sampleData() {
     task("g4", 0, "pGame", "Add a level editor", "Players can build, save, and share a level"),
     // pDone's own tasks, all finished. Four weekly tasks at weight 2 each give
     // an even planned line, which doneHistory above then zig-zags around.
+    // A Candidate with tasks of its own: they show on its page but do not count anywhere until it is promoted.
+    task("e1", 1, "pExt", "Sketch the toolbar button", "A mockup you would be happy to click", [st("e1a", "Pick an icon style"), st("e1b", "Mock up the popup")]),
+    task("e2", 0, "pExt", "Decide which browsers to support", "A short list of browsers"),
     task("d1", 1, "pDone", "Design the feature", "The design is agreed", [st("d1a", "Sketch the approach", true), st("d1b", "Get sign-off", true)], { status: "Completed", doneAt: day(-22) }),
     task("d2", 2, "pDone", "Build the core feature", "It works end to end", [st("d2a", "Build the happy path", true), st("d2b", "Handle errors", true)], { status: "Completed", doneAt: day(-15) }),
     task("d3", 3, "pDone", "Test it", "The top bugs are fixed", [st("d3a", "Run through every screen", true), st("d3b", "Fix what’s broken", true)], { status: "Completed", doneAt: day(-8) }),
     task("d4", 4, "pDone", "Ship it", "It’s live", [st("d4a", "Write the release notes", true), st("d4b", "Announce it", true)], { status: "Completed", doneAt: day(-1) })
   ];
-  var EST = { a1: 3, a2: 6, a3: 8, a4: 4, a5: 5, a6: 4, w1: 3, w2: 10, w3: 2, g1: 12, g2: 20, g3: 8, g4: 16, d1: 6, d2: 12, d3: 8, d4: 3 };
+  var EST = { a1: 3, a2: 6, a3: 8, a4: 4, a5: 5, a6: 4, w1: 3, w2: 10, w3: 2, g1: 12, g2: 20, g3: 8, g4: 16, e1: 4, e2: 1, d1: 6, d2: 12, d3: 8, d4: 3 };
   tasks.forEach(function (t) { if (EST[t.id]) t.est = EST[t.id]; });
   // When the finished tasks were completed (Sample Finished Quest's are a bit late, early, then on time).
   var DONE = { a1: day(5), d1: day(-20), d2: day(-15), d3: day(-12), d4: day(-1) };
@@ -85,7 +88,7 @@ export function sampleData() {
     a4: { start: day(25), due: day(27) }, a5: { start: day(31), due: day(34) },
     w1: { start: day(19), due: day(20) }, w2: { start: day(22), due: day(27) }, w3: { due: day(34) },
     g2: { start: day(37), due: day(47) }, g3: { start: day(55), due: day(58) },
-    d1: { due: day(-25) }, d2: { due: day(-18) }, d3: { due: day(-11) }, d4: { due: day(-4) }
+    e1: { start: day(29), due: day(32) }, d1: { due: day(-25) }, d2: { due: day(-18) }, d3: { due: day(-11) }, d4: { due: day(-4) }
   };
   tasks.forEach(function (t) {
     var s = SCHEDULE[t.id]; if (!s) return;
@@ -94,6 +97,8 @@ export function sampleData() {
   });
   // Shorter than its two-week block: starts two days in, due a week later.
   tasks.forEach(function (t) { if (t.id === "g1") { t.start = day(23); t.due = day(30); } });
+  // A Backlog task can keep a start date with no due date.
+  tasks.forEach(function (t) { if (t.id === "g4") t.start = day(40); });
   // Sample App's last task joined the plan after the quest started: a scope change.
   tasks.forEach(function (t) { if (t.id === "a5") t.added = day(9); });
   return {
@@ -121,7 +126,7 @@ export function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop,
     pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "" }
+    settings: { theme: "auto", dateFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, dustDays: 30, wipLimit: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "" }
   };
 }
 
@@ -172,6 +177,7 @@ export function normalize(s) {
         lastSlip: cleanSlip(x.lastSlip),
         // Set aside by completionDialog()'s auto-unpin so Reopen can restore it.
         wasPinned: x.wasPinned === true,
+        touched: isISO(x.touched) ? x.touched : "", sig: S(x.sig, 20),
         // Validated below, once every quest's real id is known.
         linkedQuestIds: Array.isArray(linked) ? linked.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : [],
         savedLinkIds: saved ? saved.filter(function (id) { return typeof id === "string"; }).slice(0, 60) : null,
@@ -254,6 +260,8 @@ export function normalize(s) {
     }
     // A data: URI, capped well above the 300 KB upload limit for base64 overhead; anything else is dropped, not truncated.
     if (typeof s.settings.brandmark === "string" && /^data:image\//.test(s.settings.brandmark) && s.settings.brandmark.length <= 500000) d.settings.brandmark = s.settings.brandmark;
+    if ([0, 2, 3, 4, 5].indexOf(s.settings.wipLimit) >= 0) d.settings.wipLimit = s.settings.wipLimit;
+    if ([0, 7, 14, 30, 60].indexOf(s.settings.dustDays) >= 0) d.settings.dustDays = s.settings.dustDays;
     if (typeof s.settings.audio === "boolean") d.settings.audio = s.settings.audio;
     if (typeof s.settings.completionFx === "boolean") d.settings.completionFx = s.settings.completionFx;
     if (typeof s.settings.dismissedUpdateVersion === "string") d.settings.dismissedUpdateVersion = S(s.settings.dismissedUpdateVersion, 20);
@@ -429,7 +437,20 @@ export function nextAffirmationIndex(count) {
   try { window.localStorage.setItem(KEY2, JSON.stringify(state)); } catch (e) { /* ignore */ }
   return next;
 }
+// Stamps a quest as touched today when its own record or its tasks differ from the last saved copy (history and slip-undo data do not count).
+function touchQuests() {
+  var today = iso(TODAY);
+  state.quests.forEach(function (q) {
+    if (q.vault) return;
+    var rest = {}; Object.keys(q).forEach(function (k) { if (k !== "touched" && k !== "sig" && k !== "hist" && k !== "lastSlip" && k !== "justReopened") rest[k] = q[k]; });
+    var text = JSON.stringify([rest, state.tasks.filter(function (t) { return t.questId === q.id; })]), h = 5381;
+    for (var i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+    var sig = h.toString(36);
+    if (!q.touched || (q.sig && q.sig !== sig)) q.touched = today;
+    q.sig = sig;
+  });
+}
 export function changed() {
-  autoVault(); syncTaskBlocks(); sweepQuestCompletion(); recordHistory(); recordQuestHistory(); save(); renderAll();
+  autoVault(); syncTaskBlocks(); sweepQuestCompletion(); touchQuests(); recordHistory(); recordQuestHistory(); save(); renderAll();
 }
 
