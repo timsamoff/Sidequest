@@ -310,7 +310,7 @@ select.status[data-v="Not started"] { background: var(--chip-new); }
 select.status[data-v="In progress"] { background: var(--chip-work); }
 select.status[data-v="Completed"] { background: var(--chip-done); }
 .steps { list-style: none; margin: var(--space-8) 0 0; padding: 0; }
-.steps li { display: flex; flex-wrap: wrap; gap: 0 var(--space-10); align-items: flex-start; padding: var(--space-5) 0; }
+.steps li { display: flex; flex-wrap: wrap; gap: 0 var(--space-10); align-items: flex-start; padding: var(--space-5) 0; border-bottom: 0; }
 .steps li label { display: flex; gap: var(--space-10); align-items: flex-start; flex: 1 1 auto; cursor: pointer; }
 .steps li .steptop { display: flex; gap: var(--space-8); align-items: flex-start; flex: 1 1 100%; }
 /* Lines the buttons up under the title: checkbox width plus its gap. */
@@ -1120,7 +1120,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.8.1";
+var APP_VERSION = "0.8.2";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
