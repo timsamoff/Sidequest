@@ -206,8 +206,8 @@ export function welcomeBox() {
   return box;
 }
 export function renderToday(root) {
-  if (!state.settings.hideWelcome) root.appendChild(welcomeBox());
   if (availableUpdateVersion && state.settings.dismissedUpdateVersion !== availableUpdateVersion) root.appendChild(updateBanner());
+  if (!state.settings.hideWelcome) root.appendChild(welcomeBox());
   var g = pgrid(), b = burnParts({});
   g.put(el("h2", null, "Next up"), 1, 1); g.put(nextUpPanel(), 1, 2); g.put(overduePanel(), 1, 3);
   var progress = el("div"); b.count.style.marginTop = "0";
