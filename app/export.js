@@ -249,8 +249,8 @@ function renderSection(node) {
 }
 
 var EXPORT_CSS = "\
-:root { --bg:#F2F4F1; --surface:#FFFFFF; --ink:#1A2733; --muted:#566772; --line:#D3DAD5; --planned:#2F5D8A; --burn:#C62F2F; --scope:#FFAC1C; --est:#B9CCE0; --chip-idle:#E7ECE8; --chip-work:#F6E3C4; --chip-done:#CFE6D5; --chip-new:#D3E3F6; --chip-ink:#1A2733; --late:#A8261C; --late-bg:#F8DDD9; --milestone:#A1241F; --milestone-bg:#F7DCDC; }\
-@media (prefers-color-scheme: dark) { :root { --bg:#131A20; --surface:#1B252D; --ink:#E6ECEF; --muted:#9AABB5; --line:#2C3843; --planned:#86B4E0; --burn:#E5534B; --scope:#FFAC1C; --est:#34506B; --chip-idle:#26323B; --chip-work:#4A3B22; --chip-done:#21402C; --chip-new:#2A4560; --chip-ink:#E6ECEF; --late:#F2A29B; --late-bg:#4A2723; --milestone:#F0A29C; --milestone-bg:#4A2321; } }\
+:root { --bg:#F2F4F1; --surface:#FFFFFF; --ink:#1A2733; --muted:#566772; --line:#D3DAD5; --planned:#2F5D8A; --burn:#C62F2F; --scope:#FFAC1C; --est:#B9CCE0; --chip-idle:#E7ECE8; --chip-work:#F6E3C4; --chip-done:#CFE6D5; --chip-new:#D3E3F6; --chip-ink:#1A2733; --late:#A8261C; --late-bg:#F8DDD9; --milestone:#694C80; --milestone-bg:#E8DFF1; --badge-attention:#755315; --badge-attention-bg:#F5E6C8; --badge-priority:#5A4106; --badge-priority-bg:#EFD58A; --badge-active:#1F4E78; --badge-active-bg:#C2D8EE; --badge-pending:#34475A; --badge-pending-bg:#CBD6E0; --badge-done:#315C3C; --badge-done-bg:#CFE6D5; --badge-neutral:#47433E; --badge-neutral-bg:#D4D1CD; --badge-info:#275568; --badge-info-bg:#CFE3EC; }\
+@media (prefers-color-scheme: dark) { :root { --bg:#131A20; --surface:#1B252D; --ink:#E6ECEF; --muted:#9AABB5; --line:#2C3843; --planned:#86B4E0; --burn:#E5534B; --scope:#FFAC1C; --est:#34506B; --chip-idle:#26323B; --chip-work:#4A3B22; --chip-done:#21402C; --chip-new:#2A4560; --chip-ink:#E6ECEF; --late:#F2A29B; --late-bg:#4A2723; --milestone:#D0B6E1; --milestone-bg:#382D43; --badge-attention:#F0C879; --badge-attention-bg:#49391F; --badge-priority:#F5D77A; --badge-priority-bg:#5A4A18; --badge-active:#C4DCF0; --badge-active-bg:#2C5478; --badge-pending:#D5DEE6; --badge-pending-bg:#3A4754; --badge-done:#B5DDBF; --badge-done-bg:#21402C; --badge-neutral:#D8D4CF; --badge-neutral-bg:#403C38; --badge-info:#C8DFE9; --badge-info-bg:#2F4E5C; } }\
 * { box-sizing: border-box; }\
 body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; line-height: 1.4; }\
 .ewrap { max-width: 1100px; margin: 0 auto; }\
@@ -275,12 +275,12 @@ h1, h2, h3, h4, h5 { font-weight: 700; margin-top: 0; }\
 @media (min-width: 900px) { .esplit { grid-template-columns: 1.1fr 1fr; align-items: start; } }\
 .efirst { margin-top: 0; }\
 .hint { color: var(--muted); font-size: .92rem; }\
-.chip { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--chip-idle); color: var(--chip-ink); font-size: .8rem; font-weight: 600; }\
-.chip[data-v='Not started'] { background: var(--chip-new); }\
-.chip[data-v='In progress'] { background: var(--chip-work); }\
-.chip[data-v='Completed'] { background: var(--chip-done); }\
-.chip.questcomplete { background: var(--chip-done); }\
-.chip.launchcrit { background: var(--chip-work); }\
+.chip { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--badge-neutral-bg); color: var(--badge-neutral); font-size: .8rem; font-weight: 600; }\
+.chip[data-v='Not started'] { background: var(--badge-pending-bg); color: var(--badge-pending); }\
+.chip[data-v='In progress'] { background: var(--badge-active-bg); color: var(--badge-active); }\
+.chip[data-v='Completed'], .chip.questcomplete { background: var(--badge-done-bg); color: var(--badge-done); }\
+.chip.launchcrit { background: var(--badge-priority-bg); color: var(--badge-priority); }\
+.chip.backlog { background: var(--badge-neutral-bg); color: var(--badge-neutral); }\
 .chip.milestonechip { background: var(--milestone-bg); color: var(--milestone); }\
 .chip.ereadonly { background: var(--muted); color: var(--surface); vertical-align: middle; font-size: .7rem; margin-left: 8px; }\
 .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--late-bg); color: var(--late); font-size: .8rem; font-weight: 600; }\
