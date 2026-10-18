@@ -23,7 +23,7 @@ function snapshotTasks(p) {
   });
 }
 function questBurnTasksOrdered(p) {
-  var ts = live(state.tasks).filter(function (t) { return !t.isNext && t.questId === p.id; });
+  var ts = live(state.tasks).filter(function (t) { return t.questId === p.id; });
   return ts.slice().sort(function (a, b) {
     var aDone = a.status === "Completed" ? 1 : 0, bDone = b.status === "Completed" ? 1 : 0;
     return aDone - bDone || (a.block || 99) - (b.block || 99);

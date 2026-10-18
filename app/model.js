@@ -34,7 +34,7 @@ export function findAnyQuest(id) { return findQuest(id); }
 // True only when the quest has at least one counted task and every one of
 // them is Completed -- an empty task list must never read as "done."
 export function questTasksAllDone(p) {
-  var ts = counted().filter(function (t) { return !t.isNext && t.questId === p.id; });
+  var ts = counted().filter(function (t) { return t.questId === p.id; });
   return ts.length > 0 && ts.every(function (t) { return t.status === "Completed"; });
 }
 // Direct links only, one hop -- a linked quest may itself have further
@@ -66,7 +66,7 @@ export function blockForDate(questId, dateMs) {
   if (dateMs < start) return null;
   return Math.floor((dateMs - start) / (eff.days * DAY)) + 1;
 }
-export function projKey(t) { return t.isNext ? null : t.questId; }
+export function projKey(t) { return t.questId; }
 // A task's own start/due dates, when set, are the truth; otherwise it fills its
 // block. Its block is always the one containing its due date (see syncTaskBlocks).
 export function taskStart(t) { return t.start ? parseISO(t.start) : blockStartFor(projKey(t), t.block); }
@@ -75,7 +75,7 @@ export function taskEnd(t) { return t.due ? parseISO(t.due) : blockEndFor(projKe
 // change to a quest's start or block length can't leave a stale block behind.
 export function syncTaskBlocks() {
   state.tasks.forEach(function (t) {
-    if (t.isNext || t.block === 0 || !t.due) return;
+    if (t.block === 0 || !t.due) return;
     var b = blockForDate(t.questId, parseISO(t.due));
     t.block = b === null ? 1 : b;
   });
@@ -88,7 +88,7 @@ export function fmtHoursLong(h) { var r = Math.round(h * 100) / 100; return r + 
 export function questEstimate(p) {
   var total = 0, left = 0;
   questTasks(p.id).forEach(function (t) {
-    if (t.isNext || !(t.est > 0)) return;
+    if (!(t.est > 0)) return;
     total += t.est; if (t.status !== "Completed") left += t.est;
   });
   return { total: total, left: left };
@@ -146,8 +146,8 @@ export function questTasks(questId) { return state.tasks.filter(function (t) { r
 // The "chosen" quest is the first active one with no tasks yet. If two are
 // both task-less, whichever was promoted first wins.
 export function chosen() { var a = activeQuests(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.questId === a[i].id; })) return a[i]; return null; }
-export function dispQuest(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next quest"; } var p = findQuest(t.questId); return p ? p.name : ""; }
-export function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next quest. Add its first tasks with the + button."; return t.what; }
+export function dispQuest(t) { var p = findQuest(t.questId); return p ? p.name : ""; }
+export function dispWhat(t) { return t.what; }
 // The burndown counts tasks, one each.
 function isOpen(t) { return t.status !== "Completed"; }
 export function totalUnits() { return burnTasks().length; }
@@ -240,7 +240,7 @@ export function isPinned(key) { return state.pins.indexOf(key) >= 0; }
 export function pinPage(key) { if (!isPinned(key)) state.pins.push(key); changed(); notify(pageTitle(key) + " pinned to the sidebar."); }
 export function unpinPage(key) { state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); notify(pageTitle(key) + " removed from the sidebar. It is still listed under Quests."); }
 export function questMeta(p) {
-  var ts = questTasks(p.id).filter(function (t) { return !t.isNext; });
+  var ts = questTasks(p.id);
   var parts = [];
   if (ts.length) {
     var bk = ts.filter(function (t) { return t.block === 0; }).length;
@@ -272,7 +272,7 @@ export function milestoneTasks(questId) {
 // Every milestone task across every live quest, labeled by quest name since
 // the global Timeline shows every quest's milestones together.
 export function allMilestoneTasks() {
-  return live(state.tasks).filter(function (t) { return !t.isNext && t.milestone; });
+  return live(state.tasks).filter(function (t) { return t.milestone; });
 }
 // A decision must link to a real step -- no "None" option. If questId is
 // given, only that quest's steps are offered.

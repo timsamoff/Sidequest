@@ -39,7 +39,7 @@ Muse can't provision a database for a shared artifact on its own, so you ask you
 ```
 Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty.
 
-Keep every feature as is, including the sound effects and the GitHub version check, and keep its update prompt word for word.
+Keep every feature as is, including the sound effects and the GitHub version check, and keep its update prompt word for word. The one wording change: wherever the app says your data is saved in this browser, say it is saved in your Muse environment instead.
 
 Keep this Google Fonts stylesheet in the <head> of the client's index.html, and make sure it survives the build into the published bundles, because the launch quotes are sized for Spectral and overflow their two-line box in the Georgia fallback:
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600&family=Public+Sans:wght@400;500;600&display=swap">

@@ -112,7 +112,7 @@ export function taskDialog(prefillQuestId) {
   var questOpts = workQuests().map(function (p) { return { value: p.id, label: p.name }; });
   if (!questOpts.length) { notify("Tasks can only be added to a quest."); return; }
   var fixedQuest = typeof prefillQuestId === "string";
-  var startId = fixedQuest ? prefillQuestId : (nt && !nt.isNext ? nt.questId : questOpts[0].value);
+  var startId = fixedQuest ? prefillQuestId : (nt ? nt.questId : questOpts[0].value);
   var startQuest = findQuest(startId);
   var fields = fixedQuest && startQuest
     ? [{ key: "quest", label: "Quest", type: "static", value: startQuest.name }]
@@ -323,7 +323,7 @@ export function slipDialog(p) {
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push dates later" }, "Push dates later"), "click", function () {
       var n = parseInt(inp.value, 10);
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
-      var targets = state.tasks.filter(function (t) { return t.questId === p.id && !t.isNext && t.block > 0 && t.status !== "Completed" && !t.vault; });
+      var targets = state.tasks.filter(function (t) { return t.questId === p.id && t.block > 0 && t.status !== "Completed" && !t.vault; });
       if (!targets.length) { err.textContent = "Nothing incomplete is scheduled to slip."; return; }
       var snap = targets.map(function (t) { return { id: t.id, block: t.block, start: t.start, due: t.due }; });
       targets.forEach(function (t) {

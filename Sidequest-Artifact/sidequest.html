@@ -871,7 +871,7 @@ function findAnyQuest(id) { return findQuest(id); }
 // True only when the quest has at least one counted task and every one of
 // them is Completed -- an empty task list must never read as "done."
 function questTasksAllDone(p) {
-  var ts = counted().filter(function (t) { return !t.isNext && t.questId === p.id; });
+  var ts = counted().filter(function (t) { return t.questId === p.id; });
   return ts.length > 0 && ts.every(function (t) { return t.status === "Completed"; });
 }
 // Direct links only, one hop -- a linked quest may itself have further
@@ -903,7 +903,7 @@ function blockForDate(questId, dateMs) {
   if (dateMs < start) return null;
   return Math.floor((dateMs - start) / (eff.days * DAY)) + 1;
 }
-function projKey(t) { return t.isNext ? null : t.questId; }
+function projKey(t) { return t.questId; }
 // A task's own start/due dates, when set, are the truth; otherwise it fills its
 // block. Its block is always the one containing its due date (see syncTaskBlocks).
 function taskStart(t) { return t.start ? parseISO(t.start) : blockStartFor(projKey(t), t.block); }
@@ -912,7 +912,7 @@ function taskEnd(t) { return t.due ? parseISO(t.due) : blockEndFor(projKey(t), t
 // change to a quest's start or block length can't leave a stale block behind.
 function syncTaskBlocks() {
   state.tasks.forEach(function (t) {
-    if (t.isNext || t.block === 0 || !t.due) return;
+    if (t.block === 0 || !t.due) return;
     var b = blockForDate(t.questId, parseISO(t.due));
     t.block = b === null ? 1 : b;
   });
@@ -925,7 +925,7 @@ function fmtHoursLong(h) { var r = Math.round(h * 100) / 100; return r + (r === 
 function questEstimate(p) {
   var total = 0, left = 0;
   questTasks(p.id).forEach(function (t) {
-    if (t.isNext || !(t.est > 0)) return;
+    if (!(t.est > 0)) return;
     total += t.est; if (t.status !== "Completed") left += t.est;
   });
   return { total: total, left: left };
@@ -983,8 +983,8 @@ function questTasks(questId) { return state.tasks.filter(function (t) { return t
 // The "chosen" quest is the first active one with no tasks yet. If two are
 // both task-less, whichever was promoted first wins.
 function chosen() { var a = activeQuests(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.questId === a[i].id; })) return a[i]; return null; }
-function dispQuest(t) { if (t.isNext) { var c = chosen(); return c ? c.name : "Next quest"; } var p = findQuest(t.questId); return p ? p.name : ""; }
-function dispWhat(t) { if (t.isNext && chosen()) return "Chosen as the next quest. Add its first tasks with the + button."; return t.what; }
+function dispQuest(t) { var p = findQuest(t.questId); return p ? p.name : ""; }
+function dispWhat(t) { return t.what; }
 // The burndown counts tasks, one each.
 function isOpen(t) { return t.status !== "Completed"; }
 function totalUnits() { return burnTasks().length; }
@@ -1077,7 +1077,7 @@ function isPinned(key) { return state.pins.indexOf(key) >= 0; }
 function pinPage(key) { if (!isPinned(key)) state.pins.push(key); changed(); notify(pageTitle(key) + " pinned to the sidebar."); }
 function unpinPage(key) { state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); notify(pageTitle(key) + " removed from the sidebar. It is still listed under Quests."); }
 function questMeta(p) {
-  var ts = questTasks(p.id).filter(function (t) { return !t.isNext; });
+  var ts = questTasks(p.id);
   var parts = [];
   if (ts.length) {
     var bk = ts.filter(function (t) { return t.block === 0; }).length;
@@ -1109,7 +1109,7 @@ function milestoneTasks(questId) {
 // Every milestone task across every live quest, labeled by quest name since
 // the global Timeline shows every quest's milestones together.
 function allMilestoneTasks() {
-  return live(state.tasks).filter(function (t) { return !t.isNext && t.milestone; });
+  return live(state.tasks).filter(function (t) { return t.milestone; });
 }
 // A decision must link to a real step -- no "None" option. If questId is
 // given, only that quest's steps are offered.
@@ -1151,7 +1151,7 @@ var APP_NAME = "Sidequest";
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
 function st(id, text, done) { return { id: id, text: text, done: done === true }; }
 function task(id, block, questId, what, done, steps, extra) {
-  var t = { id: id, block: block, questId: questId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, isNext: false, start: "", due: "", est: 0, added: "", launch: false, milestone: false };
+  var t = { id: id, block: block, questId: questId, what: what, done: done, status: "Not started", notes: "", steps: steps || [], custom: false, start: "", due: "", est: 0, added: "", launch: false, milestone: false };
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
   return t;
 }
@@ -1364,7 +1364,7 @@ function normalize(s) {
       ts.push({
         id: S(t.id, 40), block: b, questId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
-        custom: t.custom === true, isNext: t.isNext === true, launch: t.launch === true || wasStepLaunch,
+        custom: t.custom === true, launch: t.launch === true || wasStepLaunch,
         // A milestone needs a real due date to plot on the chart -- a Backlog
         // task (block 0) can never be one, even if saved data says otherwise.
         milestone: t.milestone === true && b > 0,
@@ -1913,7 +1913,7 @@ function rangeBlock() {
   var rs = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), 1);
   var lanes = [], groups = {}, order = [];
   counted().forEach(function (t) {
-    if (t.isNext || t.block === 0 || isHiddenFromPlan(t)) return;
+    if (t.block === 0 || isHiddenFromPlan(t)) return;
     var g = groups[t.questId], a = taskStart(t), b = taskEnd(t);
     if (!g) { g = groups[t.questId] = { questId: t.questId, name: dispQuest(t), a: a, b: b }; order.push(t.questId); }
     if (a < g.a) g.a = a;
@@ -1942,7 +1942,7 @@ function rangeBlock() {
 function questRangeBlock(p) {
   var ts = questBurnTasks(p).slice().sort(function (x, y) { return taskStart(x) - taskStart(y); });
   var mss = milestoneTasks(p.id).map(function (t) { return { id: t.id, text: t.what, date: taskEnd(t) }; });
-  var nb = counted().filter(function (t) { return t.questId === p.id && !t.isNext && t.block === 0; }).length;
+  var nb = counted().filter(function (t) { return t.questId === p.id && t.block === 0; }).length;
   var backlog = nb ? " " + nb + (nb === 1 ? " backlog task is" : " backlog tasks are") + " not shown until scheduled." : "";
   if (!ts.length) return { node: el("p", { "class": "hint" }, "Nothing is scheduled yet. Create a task with a due date to see them here." + backlog), milestones: mss, empty: true };
   var first = Infinity, maxEnd = -Infinity;
@@ -1985,7 +1985,7 @@ function snapshotTasks(p) {
   });
 }
 function questBurnTasksOrdered(p) {
-  var ts = live(state.tasks).filter(function (t) { return !t.isNext && t.questId === p.id; });
+  var ts = live(state.tasks).filter(function (t) { return t.questId === p.id; });
   return ts.slice().sort(function (a, b) {
     var aDone = a.status === "Completed" ? 1 : 0, bDone = b.status === "Completed" ? 1 : 0;
     return aDone - bDone || (a.block || 99) - (b.block || 99);
@@ -2702,7 +2702,7 @@ function taskDialog(prefillQuestId) {
   var questOpts = workQuests().map(function (p) { return { value: p.id, label: p.name }; });
   if (!questOpts.length) { notify("Tasks can only be added to a quest."); return; }
   var fixedQuest = typeof prefillQuestId === "string";
-  var startId = fixedQuest ? prefillQuestId : (nt && !nt.isNext ? nt.questId : questOpts[0].value);
+  var startId = fixedQuest ? prefillQuestId : (nt ? nt.questId : questOpts[0].value);
   var startQuest = findQuest(startId);
   var fields = fixedQuest && startQuest
     ? [{ key: "quest", label: "Quest", type: "static", value: startQuest.name }]
@@ -2913,7 +2913,7 @@ function slipDialog(p) {
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push dates later" }, "Push dates later"), "click", function () {
       var n = parseInt(inp.value, 10);
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
-      var targets = state.tasks.filter(function (t) { return t.questId === p.id && !t.isNext && t.block > 0 && t.status !== "Completed" && !t.vault; });
+      var targets = state.tasks.filter(function (t) { return t.questId === p.id && t.block > 0 && t.status !== "Completed" && !t.vault; });
       if (!targets.length) { err.textContent = "Nothing incomplete is scheduled to slip."; return; }
       var snap = targets.map(function (t) { return { id: t.id, block: t.block, start: t.start, due: t.due }; });
       targets.forEach(function (t) {
@@ -3070,7 +3070,7 @@ function stepsAndEst(l3, t) {
   if (t.est > 0) l3.appendChild(el("span", null, "Est " + fmtHours(t.est)));
 }
 function addedChip(t) {
-  if (!t.added || t.isNext || !t.questId || t.added <= pset(t.questId).start) return null;
+  if (!t.added || !t.questId || t.added <= pset(t.questId).start) return null;
   return el("span", { "class": "chip added", title: "Added to the plan after this quest started" }, "Added " + fmt(parseISO(t.added)));
 }
 function nextUpPanel() {
@@ -3087,7 +3087,7 @@ function nextUpPanel() {
   box.appendChild(el("p", { "class": "ptitle" }, dispWhat(t)));
   var meta = el("p", { "class": "pmeta" });
   var pname = dispQuest(t);
-  if (!t.isNext && validPage("quest:" + t.questId)) {
+  if (validPage("quest:" + t.questId)) {
     var pl = el("button", { type: "button", "class": "textbtn qlink", title: "View this quest" }, pname);
     on(pl, "click", function () { go("quest:" + t.questId); });
     meta.appendChild(pl);
@@ -3095,15 +3095,11 @@ function nextUpPanel() {
   meta.appendChild(document.createTextNode(" · " + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + " "));
   if (isLate(t)) meta.appendChild(el("span", { "class": "badge" }, "Overdue"));
   box.appendChild(meta);
-  if (!(t.isNext && !chosen())) box.appendChild(el("p", { "class": "pline" }, "Done when: " + t.done));
+  box.appendChild(el("p", { "class": "pline" }, "Done when: " + t.done));
   var open = t.steps.filter(function (s) { return !s.done; })[0];
   if (open && t.steps.length) box.appendChild(el("p", { "class": "pline" }, "Next step: " + open.text));
   var acts = el("div", { "class": "actions" });
-  if (t.isNext && !chosen()) {
-    acts.appendChild(on(el("button", { type: "button", "class": "primary", title: "Go to Quests to choose a candidate" }, "Choose the next quest"), "click", function () { go("projects"); }));
-  } else {
-    if (t.status === "Not started") acts.appendChild(on(el("button", { type: "button", "class": "primary", title: "Mark in progress" }, "Start"), "click", function () { t.status = "In progress"; changed(); }));
-  }
+  if (t.status === "Not started") acts.appendChild(on(el("button", { type: "button", "class": "primary", title: "Mark in progress" }, "Start"), "click", function () { t.status = "In progress"; changed(); }));
   acts.appendChild(on(el("button", { type: "button", title: "View this task" }, "Open task"), "click", function () { openTask(t.id); }));
   box.appendChild(acts);
   return box;
@@ -3222,7 +3218,7 @@ function burnParts(o) {
   if (host.dataset.forecast) { var l4 = el("span"); l4.appendChild(el("i", { "class": "f" })); l4.appendChild(document.createTextNode("Forecast")); lg.appendChild(l4); }
   var l3 = el("span"); l3.appendChild(el("i", { "class": "s" })); l3.appendChild(document.createTextNode("Scope")); lg.appendChild(l3);
   var rn = quest ? questRemainingUnits(quest) : remainingUnits(), tot = quest ? questTotalUnits(quest) : totalUnits(), rb = el("div", { "class": "box" });
-  var nbk = quest ? counted().filter(function (t) { return t.questId === quest.id && !t.isNext && t.block === 0; }).length : backlogTasks().length;
+  var nbk = quest ? counted().filter(function (t) { return t.questId === quest.id && t.block === 0; }).length : backlogTasks().length;
   rb.appendChild(el("p", { "class": "hint first remaining" }, "Remaining: " + rn + " of " + tot + (tot === 1 ? " task" : " tasks") + (nbk ? " | Backlog: " + nbk + " unscheduled " + (nbk === 1 ? "task" : "tasks") : "")));
   return { h: h, chart: cb, count: rb };
 }
@@ -3381,7 +3377,7 @@ function buildDetail(t, inline, readOnly) {
   top.appendChild(right); box.appendChild(top);
   var whatRow = el("div", { "class": "editrow" });
   var whatP = el("p", { "class": "what", style: "flex:0 1 auto;min-width:0" }, dispWhat(t)); whatRow.appendChild(whatP);
-  if (!t.isNext && !readOnly) {
+  if (!readOnly) {
     var whatPen = pencilButton("Rename this task", "Rename this task");
     on(whatPen, "click", function () {
       whatPen.hidden = true;
@@ -3395,11 +3391,11 @@ function buildDetail(t, inline, readOnly) {
     whatRow.appendChild(whatPen);
   }
   box.appendChild(whatRow);
-  if (!(t.isNext && chosen())) box.appendChild(el("p", { "class": "dmeta" }, "Done when: " + t.done));
-  if (!t.isNext && readOnly) {
+  box.appendChild(el("p", { "class": "dmeta" }, "Done when: " + t.done));
+  if (readOnly) {
     box.appendChild(el("p", { "class": "dmeta" }, t.est > 0 ? "Estimated time: " + t.est + " h" : ""));
   }
-  if (!t.isNext && !readOnly) {
+  if (!readOnly) {
     var dg = el("div", { "class": "setgrid" });
     var dmsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function dfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); dg.appendChild(w); }
@@ -3509,7 +3505,7 @@ function buildDetail(t, inline, readOnly) {
     on(ta, "input", function () { t.notes = ta.value.slice(0, 5000); save(); });
     box.appendChild(ta);
   }
-  if (!t.isNext && (inline || !readOnly)) {
+  if (inline || !readOnly) {
     var ar = el("div", { "class": "actions", style: "margin-top:14px" });
     if (readOnly) {
       // Nothing to offer here -- the quest page's own Restore button is the one way back to editing.
@@ -3702,7 +3698,7 @@ function renderQuestPage(root, id) {
   if (!readOnly && p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this quest is Complete. Reopen it to bring them back."));
   // questTasks(), not ordered()/backlogTasks()/live() -- a quest's own page keeps
   // showing its tasks even while Complete or vaulted, when cross-quest lists exclude them.
-  var ts = sortTasks(questTasks(p.id).filter(function (t) { return !t.isNext && !t.launch; }));
+  var ts = sortTasks(questTasks(p.id).filter(function (t) { return !t.launch; }));
   if (ts.length) {
     var ul = el("ul", { "class": "tlist" });
     ts.forEach(function (t) {
@@ -3922,8 +3918,6 @@ function doPromote(p) {
     p.savedLinkIds.forEach(function (lid) { if (findAnyQuest(lid)) linkQuests(p.id, lid); });
     p.savedLinkIds = null;
   }
-  var t = state.tasks.filter(function (x) { return x.isNext; })[0];
-  if (t) t.status = "Completed";
   changed();
   if (state.settings.audio) playSfx(SFX_QUEST);
 }
@@ -3941,7 +3935,7 @@ function demoteToCandidate(id) {
 function standingBlock() {
   var groups = {}, order = [];
   ordered().forEach(function (t) {
-    if (t.isNext || t.status === "Completed") return;
+    if (t.status === "Completed") return;
     var quest = findQuest(t.questId);
     if (!quest || quest.status !== "active") return;
     var g = groups[t.questId]; if (!g) { g = groups[t.questId] = { questId: t.questId, name: dispQuest(t), open: 0, first: t }; order.push(g); }

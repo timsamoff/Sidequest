@@ -309,7 +309,7 @@ export function rangeBlock() {
   var rs = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), 1);
   var lanes = [], groups = {}, order = [];
   counted().forEach(function (t) {
-    if (t.isNext || t.block === 0 || isHiddenFromPlan(t)) return;
+    if (t.block === 0 || isHiddenFromPlan(t)) return;
     var g = groups[t.questId], a = taskStart(t), b = taskEnd(t);
     if (!g) { g = groups[t.questId] = { questId: t.questId, name: dispQuest(t), a: a, b: b }; order.push(t.questId); }
     if (a < g.a) g.a = a;
@@ -338,7 +338,7 @@ export function rangeBlock() {
 export function questRangeBlock(p) {
   var ts = questBurnTasks(p).slice().sort(function (x, y) { return taskStart(x) - taskStart(y); });
   var mss = milestoneTasks(p.id).map(function (t) { return { id: t.id, text: t.what, date: taskEnd(t) }; });
-  var nb = counted().filter(function (t) { return t.questId === p.id && !t.isNext && t.block === 0; }).length;
+  var nb = counted().filter(function (t) { return t.questId === p.id && t.block === 0; }).length;
   var backlog = nb ? " " + nb + (nb === 1 ? " backlog task is" : " backlog tasks are") + " not shown until scheduled." : "";
   if (!ts.length) return { node: el("p", { "class": "hint" }, "Nothing is scheduled yet. Create a task with a due date to see them here." + backlog), milestones: mss, empty: true };
   var first = Infinity, maxEnd = -Infinity;
