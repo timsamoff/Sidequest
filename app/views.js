@@ -68,8 +68,11 @@ export function pgrid() {
 export function overduePanel() {
   var late = lateTasks();
   var box = el("div");
-  if (!late.length) { box.className = "box"; box.appendChild(el("p", { "class": "hint first" }, "Nothing is overdue.")); return box; }
   box.appendChild(el("h2", { "class": "first" }, "Overdue"));
+  if (!late.length) {
+    var none = el("div", { "class": "box", style: "margin-top:8px" });
+    none.appendChild(el("p", { "class": "hint first" }, "Nothing is overdue.")); box.appendChild(none); return box;
+  }
   var ul = el("ul", { "class": "tlist", style: "margin-top:8px" });
   late.forEach(function (t) {
     var li = el("li"); var b = el("button", { type: "button", "class": "item", title: "View this task" });
@@ -280,10 +283,16 @@ export function taskRow(t) {
   on(b, "click", function () { ui.sel = t.id; ui.detail = true; renderView(); scrollTop(); });
   li.appendChild(b); return li;
 }
+// A one-line empty state in the same card the lists use.
+function emptyList(text) {
+  var ul = el("ul", { "class": "list", style: "margin-top:0" });
+  ul.appendChild(el("li", { "class": "hint" }, text));
+  return ul;
+}
 export function renderSchedule(root) {
   var o = ordered(), bl = backlogTasks();
   if (!o.length && !bl.length) {
-    root.appendChild(el("p", { "class": "hint first" }, planCounted().length ? "No open tasks. Completed tasks are in the Vault." : "No tasks yet. Use the + button to add one."));
+    root.appendChild(emptyList(planCounted().length ? "No open tasks. Completed tasks are in the Vault." : "No tasks yet. Use the + button to add one."));
     return;
   }
   if (!ui.sel || !findTask(ui.sel)) { var nt = nextTask() || o[0] || bl[0]; ui.sel = nt.id; }
@@ -601,7 +610,7 @@ function collapsibleSection(key, summary, detail, emptyText) {
   var line = el("div", { "class": "l2" });
   var b = el("button", { type: "button", "class": "item", "aria-expanded": open ? "true" : "false", title: open ? "Collapse this section" : "Expand this section" }, null);
   b.appendChild(line);
-  function paint() { var t = summary(); line.textContent = t || emptyText; line.style.color = t ? "" : "var(--muted)"; }
+  function paint() { var t = summary(); line.textContent = t || emptyText; line.style.color = t ? "" : "var(--muted)"; line.style.fontSize = t ? "" : "var(--text-sm)"; }
   paint();
   detail.classList.add("detail"); detail.hidden = !open;
   on(b, "click", function () {
@@ -965,7 +974,7 @@ export function renderWorkshop(root) {
   hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add new idea" }, "Add idea"), "click", function () { ideaDialog(); })); root.appendChild(hd);
   var pl = el("ul", { "class": "list", style: "margin-top:12px" });
   var ps = live(state.workshop);
-  if (!ps.length) pl.appendChild(el("li", { "class": "hint" }, "Nothing here."));
+  if (!ps.length) pl.appendChild(el("li", { "class": "hint" }, "No ideas yet."));
   ps.forEach(function (p) {
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     var nm = el("div", { style: "flex:1 1 200px" });
@@ -1082,6 +1091,7 @@ export function emptyVault() {
 export function renderVault(root) {
   var all = vaultEntries(), filter = ui.vaultFilter || "all";
   var counts = { all: all.length }; all.forEach(function (e) { counts[e.kind] = (counts[e.kind] || 0) + 1; });
+  if (!all.length) { root.appendChild(emptyList("The Vault is empty. Completed tasks and removed items appear here.")); return; }
   var chips = el("div", { "class": "chips", role: "group", "aria-label": "Filter the Vault" });
   KIND_FILTERS.forEach(function (f) {
     var b = el("button", { type: "button", "class": "chipbtn", "aria-pressed": filter === f[0] ? "true" : "false" }, f[1] + " (" + (counts[f[0]] || 0) + ")");
@@ -1090,7 +1100,7 @@ export function renderVault(root) {
   });
   root.appendChild(chips);
   var shown = all.filter(function (e) { return filter === "all" || e.kind === filter; });
-  if (!shown.length) { root.appendChild(el("p", { "class": "hint" }, all.length ? "Nothing of that kind in the Vault." : "The Vault is empty. Completed tasks and removed items appear here.")); return; }
+  if (!shown.length) { root.appendChild(emptyList("Nothing of that kind in the Vault.")); return; }
   var ul = el("ul", { "class": "list" });
   shown.forEach(function (e) {
     var li = el("li"), row = el("div", { "class": "crow", style: "align-items:center" });
@@ -1274,10 +1284,9 @@ function readBrandmarkFile(file, msg, onDone) {
 }
 function brandmarkField() {
   var w = el("div", { "class": "field" });
-  w.appendChild(el("label", null, "Brandmark"));
-  w.appendChild(el("p", { "class": "hint" }, "Must be " + BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, and up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."));
   var msg = el("p", { "class": "msg schedulesmsg", role: "alert" });
   var preview = el("div", { "class": "brandmarkpreview" });
+  var limits = el("p", { "class": "hint", style: "margin-top:6px" }, "Must be " + BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, and up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB.");
   function renderPreview() {
     preview.innerHTML = "";
     if (state.settings.brandmark) {
@@ -1294,9 +1303,10 @@ function brandmarkField() {
       preview.appendChild(on(el("button", { type: "button", "class": "small", title: "Add brandmark" }, "Add brandmark"), "click", function () { file.click(); }));
       preview.appendChild(file);
     }
+    limits.hidden = !!state.settings.brandmark;
   }
   renderPreview();
-  w.appendChild(preview); w.appendChild(msg);
+  w.appendChild(preview); w.appendChild(limits); w.appendChild(msg);
   return w;
 }
 // Set by app.js's beforeinstallprompt listener; null once installed or triggered.

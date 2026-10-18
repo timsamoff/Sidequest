@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.8.6"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.8.7"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2265,7 +2265,7 @@ async function exportClick(k, projectName) {
   k.menuAct("newBtn", "newStep"); k.setField("text", "A step"); k.click(k.btn(k.$("modalBody"), "Add step"));
   ok(k.saved().tasks.find(t => t.what === "Dated candidate task").steps.length === 1, "and a step can be added to that task");
   k.tab("today");
-  ok(k.$("view").textContent.includes("No tasks yet.") && !k.$("view").textContent.includes("Dated candidate task") && !k.$("view").textContent.includes("Overdue"), "Today ignores it: no Next up, no Overdue (its date is long past), still says no tasks yet");
+  ok(k.$("view").textContent.includes("No tasks yet.") && !k.$("view").textContent.includes("Dated candidate task") && k.$("view").textContent.includes("Nothing is overdue."), "Today ignores it: no Next up, nothing overdue (its date is long past), still says no tasks yet");
   k.tab("schedule");
   ok(!k.$("view").textContent.includes("Dated candidate task"), "the Tasks page does not list it");
   k.tab("timeline");
@@ -2396,6 +2396,25 @@ async function exportClick(k, projectName) {
   const topics = async (claude) => { const k = kit(await mk(undefined, claude)); k.tab("help"); return [...k.d.querySelectorAll("#view .helpitem summary")].map(x => x.textContent); };
   const web = await topics(), cl = await topics({ use: () => Promise.reject(new Error("no")) });
   ok(web.includes("Install Sidequest on this device") && !cl.includes("Install Sidequest on this device") && cl.length === web.length - 1, "Help hides the install topic in a Claude artifact only");
+}
+{
+  // With nothing overdue the section keeps its Overdue heading
+  const k = kit(await mk()); k.click(k.$("welcomeDismiss"));
+  const raw = JSON.parse(k.w.localStorage.getItem("sidequest-template-v1"));
+  raw.tasks.forEach(t => { t.due = ""; t.start = ""; t.block = 0; });
+  const k2 = kit(await mk(raw)); k2.tab("today");
+  const heads = [...k2.d.querySelectorAll("#view h2")].map(h => h.textContent);
+  ok(heads.includes("Overdue") && k2.$("view").textContent.includes("Nothing is overdue."), "with nothing overdue Today still shows the Overdue heading");
+}
+{
+  // Empty Tasks and Vault pages show their message in a list card, and the Vault has no filters until it holds something
+  const k = kit(await mk()); k.click(k.$("welcomeDismiss"));
+  const raw = JSON.parse(k.w.localStorage.getItem("sidequest-template-v1"));
+  raw.tasks = []; raw.quests = []; raw.workshop = []; raw.decisions = [];
+  const k2 = kit(await mk(raw));
+  k2.tab("schedule"); ok(!!k2.d.querySelector("#view ul.list li.hint") && k2.$("view").textContent.includes("No tasks yet."), "an empty Tasks page shows its message in a card");
+  k2.tab("vault"); ok(!!k2.d.querySelector("#view ul.list li.hint") && k2.$("view").textContent.includes("The Vault is empty.") && !k2.d.querySelector("#view .chips"), "an empty Vault shows its message in a card with no filter buttons");
+  const k3 = kit(await mk()); k3.tab("vault"); ok(!!k3.d.querySelector("#view .chips"), "the Vault filters appear once it holds items");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

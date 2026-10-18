@@ -242,6 +242,18 @@ export function drawQuestChart(host, p, wide) {
   return true;
 }
 
+// Hides month labels that would run into each other on a narrow chart. Labels
+// that carry a year win over plain ones, and nothing changes while the chart has no width.
+function thinMonthLabels(months) {
+  if (!months.isConnected || !months.offsetWidth) return;
+  var spans = [].slice.call(months.children), kept = [];
+  spans.forEach(function (sp) { sp.hidden = false; });
+  var rects = spans.map(function (sp) { return sp.getBoundingClientRect(); });
+  function fits(i) { return kept.every(function (k) { return rects[i].right + 6 <= rects[k].left || rects[i].left >= rects[k].right + 6; }); }
+  spans.forEach(function (sp, i) { if (sp.textContent.indexOf("’") >= 0 || sp.textContent.indexOf("'") >= 0) { if (fits(i)) kept.push(i); } });
+  spans.forEach(function (sp, i) { if (kept.indexOf(i) < 0 && fits(i)) kept.push(i); });
+  spans.forEach(function (sp, i) { sp.hidden = kept.indexOf(i) < 0; });
+}
 // Draws a timeline: the month header, one lane per entry, the milestones lane,
 // and the today line. Shared by the all-quests Timeline and a quest's own.
 function timelineNode(lanes, mss, rs, maxEnd, hint) {
@@ -260,6 +272,7 @@ function timelineNode(lanes, mss, rs, maxEnd, hint) {
     cur = addMonths(cur, 1); mcount++;
   }
   wrap.appendChild(months);
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(function () { thinMonthLabels(months); }).observe(months);
   var area = el("div", { style: "position:relative" });
   lanes.forEach(function (ln) {
     var lane = el("div", { "class": "lane" });
