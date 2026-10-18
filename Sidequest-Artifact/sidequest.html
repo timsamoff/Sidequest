@@ -253,7 +253,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .scrollhead { scroll-margin-top: 90px; }
 .scrollhead:focus { outline: none; }
 /* The update notice borrows the Overdue pill's colors so it stands out. */
-.updatebanner { background: var(--late-bg); border-color: color-mix(in srgb, var(--late) 40%, transparent); }
+.updatebanner { background: var(--badge-info-bg); border-color: color-mix(in srgb, var(--badge-info) 45%, transparent); }
 .updatebanner .hint { color: var(--ink); }
 .updateprompt { display: block; width: 100%; max-width: 100%; min-height: 0; margin-top: var(--space-10); resize: none; font-size: var(--text-sm); }
 /* Stacked, Progress follows the burndown and gets the same gap above it Burndown has. */
@@ -1145,7 +1145,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.8.5";
+var APP_VERSION = "0.8.6";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -4251,7 +4251,8 @@ function renderHelp(root) {
   on(openAll, "click", function () { items.forEach(function (d) { d.open = true; }); });
   on(closeAll, "click", function () { items.forEach(function (d) { d.open = false; }); });
   acts.appendChild(openAll); acts.appendChild(closeAll); root.appendChild(acts);
-  helpTopics().forEach(function (t, i) {
+  // The install topic is about the web app, so a published Claude artifact skips it.
+  helpTopics().filter(function (t) { return !(inClaude() && t[0] === "Install Sidequest on this device"); }).forEach(function (t, i) {
     var d = el("details", { "class": "helpitem" }); if (i === 0) d.open = true;
     d.appendChild(el("summary", null, t[0]));
     var body = el("div", { "class": "hbody" }), ul = el("ul");
@@ -4286,7 +4287,7 @@ function startFreshDialog() {
     var go1 = el("button", { type: "button", "class": "dangerfill", id: "freshGo", title: "Erase everything and start over" }, "Erase everything"); go1.disabled = true;
     on(cb, "change", function () { go1.disabled = !cb.checked; });
     on(go1, "click", function () {
-      var keep = state.settings; keep.hideWelcome = true;
+      var keep = state.settings; keep.hideWelcome = false;
       if (picked === "original") { setState(defaults()); state.settings = keep; } else { setState(blankState()); }
       ui.sel = null; ui.detail = false; ui.vaultFilter = "all"; applyTheme(); save(); closeModal(); go("today"); notify("Started fresh.");
     });

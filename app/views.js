@@ -1207,7 +1207,8 @@ export function renderHelp(root) {
   on(openAll, "click", function () { items.forEach(function (d) { d.open = true; }); });
   on(closeAll, "click", function () { items.forEach(function (d) { d.open = false; }); });
   acts.appendChild(openAll); acts.appendChild(closeAll); root.appendChild(acts);
-  helpTopics().forEach(function (t, i) {
+  // The install topic is about the web app, so a published Claude artifact skips it.
+  helpTopics().filter(function (t) { return !(inClaude() && t[0] === "Install Sidequest on this device"); }).forEach(function (t, i) {
     var d = el("details", { "class": "helpitem" }); if (i === 0) d.open = true;
     d.appendChild(el("summary", null, t[0]));
     var body = el("div", { "class": "hbody" }), ul = el("ul");
@@ -1242,7 +1243,7 @@ export function startFreshDialog() {
     var go1 = el("button", { type: "button", "class": "dangerfill", id: "freshGo", title: "Erase everything and start over" }, "Erase everything"); go1.disabled = true;
     on(cb, "change", function () { go1.disabled = !cb.checked; });
     on(go1, "click", function () {
-      var keep = state.settings; keep.hideWelcome = true;
+      var keep = state.settings; keep.hideWelcome = false;
       if (picked === "original") { setState(defaults()); state.settings = keep; } else { setState(blankState()); }
       ui.sel = null; ui.detail = false; ui.vaultFilter = "all"; applyTheme(); save(); closeModal(); go("today"); notify("Started fresh.");
     });

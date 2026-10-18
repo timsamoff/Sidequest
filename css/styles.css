@@ -136,7 +136,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .scrollhead { scroll-margin-top: 90px; }
 .scrollhead:focus { outline: none; }
 /* The update notice borrows the Overdue pill's colors so it stands out. */
-.updatebanner { background: var(--late-bg); border-color: color-mix(in srgb, var(--late) 40%, transparent); }
+.updatebanner { background: var(--badge-info-bg); border-color: color-mix(in srgb, var(--badge-info) 45%, transparent); }
 .updatebanner .hint { color: var(--ink); }
 .updateprompt { display: block; width: 100%; max-width: 100%; min-height: 0; margin-top: var(--space-10); resize: none; font-size: var(--text-sm); }
 /* Stacked, Progress follows the burndown and gets the same gap above it Burndown has. */

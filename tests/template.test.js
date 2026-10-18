@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.8.5"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.8.6"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -328,7 +328,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("view").textContent.includes("Start fresh"), "Start fresh is in Settings");
   k.click(k.$("startFresh")); ok(k.$("modalBody").textContent.includes("The sample quests") && k.$("modalBody").textContent.includes("A blank slate"), "offers empty or sample quests");
   const a = k.$("freshAck"); a.checked = true; k.fire(a); k.click(k.$("freshGo"));
-  ok(k.$("view").textContent.includes("No tasks yet") && k.saved().tasks.length === 0 && k.saved().settings.hideWelcome === true, "empty planner: nothing left, welcome stays hidden");
+  ok(k.$("view").textContent.includes("No tasks yet") && k.saved().tasks.length === 0 && k.saved().settings.hideWelcome === false && k.$("view").textContent.includes("Your new adventure begins here!"), "empty planner: nothing left, and the welcome message comes back");
   ok(k.saved().quests.length === 0 && k.saved().pins.length === 0, "no quests and no pins after a fresh start");
   // add own quest from scratch: a task needs an active quest to attach to
   k.menuAct("newBtn", "newQuest"); k.setField("name", "My App"); k.click(k.btn(k.$("modalBody"), "Add quest"));
@@ -339,6 +339,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.tab("settings"); k.click(k.$("startFresh")); const r = [...k.d.querySelectorAll('#modalBody input[name=fresh]')]; r[1].checked = true; k.fire(r[1]);
   const a2 = k.$("freshAck"); a2.checked = true; k.fire(a2); k.click(k.$("freshGo"));
   ok(k.saved().tasks.length === 24 && k.saved().pins.includes("quest:pApp"), "the samples can be reloaded");
+  ok(k.saved().settings.hideWelcome === false, "reloading the samples brings the welcome message back too");
 }
 
 /* ---- core behavior still intact ---- */
@@ -2389,6 +2390,12 @@ async function exportClick(k, projectName) {
   raw.tasks.forEach(t => { if (t.status === "Completed") { t.status = "In progress"; t.doneAt = ""; } });
   const k2 = kit(await mk(raw)); k2.tab("timeline");
   ok(!k2.d.querySelector("#view .chart line.forecast"), "with nothing finished there is no pace to project from");
+}
+{
+  // The web-app install topic is hidden inside a Claude artifact
+  const topics = async (claude) => { const k = kit(await mk(undefined, claude)); k.tab("help"); return [...k.d.querySelectorAll("#view .helpitem summary")].map(x => x.textContent); };
+  const web = await topics(), cl = await topics({ use: () => Promise.reject(new Error("no")) });
+  ok(web.includes("Install Sidequest on this device") && !cl.includes("Install Sidequest on this device") && cl.length === web.length - 1, "Help hides the install topic in a Claude artifact only");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);
