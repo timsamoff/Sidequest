@@ -182,7 +182,7 @@ function build() {
       function () { return '<link rel="icon" type="image/svg+xml" href="' + faviconDataUri + '">'; }
     )
     .replace(
-      /<link rel="stylesheet" href="css\/tokens\.css">\s*\n<link rel="stylesheet" href="css\/styles\.css">/,
+      /<link rel="stylesheet" href="css\/tokens\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="css\/styles\.css(?:\?v=[0-9.]+)?">/,
       function () { return "<style>\n" + tokens + "\n" + styles + "\n</style>"; }
     )
     .replace(
@@ -198,6 +198,7 @@ function build() {
   if (/rel="manifest"/.test(out)) throw new Error("build-artifact: a manifest <link> survived into the bundle -- a published artifact has no manifest.json alongside it.");
   if (bundledScript.search(/<\/script/i) !== -1) throw new Error("build-artifact: an unescaped </script> sequence survived in the bundled script -- it would close the tag early and truncate the rest of the file.");
   if (out.indexOf(faviconDataUri) === -1) throw new Error("build-artifact: favicon <link> tags not found/replaced -- check index.html's <head> hasn't changed shape.");
+  if (/href="css\//.test(out)) throw new Error("build-artifact: a css <link> survived into the bundle -- the stylesheets must be inlined.");
   if (out.indexOf("<style>") === -1) throw new Error("build-artifact: css <link> tags not found/replaced -- check index.html's <head> hasn't changed shape.");
   if (out.indexOf(bundledScript) === -1) throw new Error("build-artifact: script tag not found/replaced -- check index.html's closing <body> hasn't changed shape.");
 

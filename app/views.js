@@ -425,12 +425,12 @@ export function buildDetail(t, inline, readOnly) {
       else ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Add a decision to this step: " + s.text, title: "Add a decision to this step" }, "Add decision"), "click", function () { decisionDialog({ step: s.id }); }));
       var stepPen = pencilButton("Rename this step", "Rename this step");
       on(stepPen, "click", function () {
-        stepPen.hidden = true;
+        stepPen.hidden = true; sli.classList.add("editing");
         editInline(textSpan, {
           label: "Step", max: 300, value: function () { return s.text; },
           onSave: function (v) { s.text = v.slice(0, 300); changed(); },
           onEmpty: function () { notify("A step needs text."); },
-          onDone: function () { stepPen.hidden = false; }
+          onDone: function () { stepPen.hidden = false; sli.classList.remove("editing"); }
         });
       });
       stepTop.appendChild(stepPen);

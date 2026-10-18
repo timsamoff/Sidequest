@@ -339,6 +339,8 @@ select.status[data-v="Completed"] { background: var(--chip-done); }
 /* Lines the buttons up under the title: checkbox width plus its gap. */
 /* The pencil makes the title row taller than its text; the negative margin brings the buttons as close to the title as they sit to the row border below. */
 .steps li .stepactions { flex: 1 1 100%; margin: calc(-1 * var(--space-4)) 0 0 30px; flex-wrap: wrap; }
+/* While a step name is being edited the input is taller than the text, so the buttons must not be pulled up into it. */
+.steps li.editing .stepactions { margin-top: var(--space-8); }
 .steps li.done label span { color: var(--muted); text-decoration: line-through; }
 input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin: var(--space-2) 0 0; flex: none; accent-color: var(--planned); }
 .inline { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-10); }
@@ -1143,7 +1145,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.8.3";
+var APP_VERSION = "0.8.4";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -3467,12 +3469,12 @@ function buildDetail(t, inline, readOnly) {
       else ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Add a decision to this step: " + s.text, title: "Add a decision to this step" }, "Add decision"), "click", function () { decisionDialog({ step: s.id }); }));
       var stepPen = pencilButton("Rename this step", "Rename this step");
       on(stepPen, "click", function () {
-        stepPen.hidden = true;
+        stepPen.hidden = true; sli.classList.add("editing");
         editInline(textSpan, {
           label: "Step", max: 300, value: function () { return s.text; },
           onSave: function (v) { s.text = v.slice(0, 300); changed(); },
           onEmpty: function () { notify("A step needs text."); },
-          onDone: function () { stepPen.hidden = false; }
+          onDone: function () { stepPen.hidden = false; sli.classList.remove("editing"); }
         });
       });
       stepTop.appendChild(stepPen);
