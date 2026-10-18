@@ -330,7 +330,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .questexpand { display: none; }
 .questexpand .expandicon { display: inline-block; margin-left: var(--space-6); vertical-align: -2px; }
 .modal.full { max-width: none; width: 100%; height: 100%; max-height: none; }
-.chart .mark { fill: var(--burn); }
+.chart .mark { fill: var(--milestone-bg); stroke: var(--milestone); stroke-width: 2; stroke-linejoin: round; }
 .chart .hit { fill: transparent; }
 svg.chart.nofocusring { outline: none; }
 .chart .guide { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
@@ -366,7 +366,7 @@ svg.chart.nofocusring { outline: none; }
      above it when stacked, since the two sections are DOM siblings there. */
   .setmain-head { margin-top: 0; }
 }
-.ms { position: absolute; top: 4px; width: 14px; height: 14px; background: var(--burn); transform: translateX(-7px) rotate(45deg); border-radius: 2px; cursor: pointer; }
+.ms { position: absolute; top: 4px; width: 14px; height: 14px; background: var(--milestone-bg); border: 2px solid var(--milestone); box-sizing: border-box; transform: translateX(-7px) rotate(45deg); border-radius: 2px; cursor: pointer; }
 /* The diamond is only 14px, so an invisible larger area makes it easy to hit. */
 .ms::after { content: ""; position: absolute; inset: -6px; }
 .ms:hover, .ms:focus-visible { box-shadow: 0 0 0 3px var(--planned); }

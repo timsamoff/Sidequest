@@ -56,9 +56,9 @@
   --chip-done: #CFE6D5;
   --chip-new: #D3E3F6;
   --chip-ink: #1A2733;
-  --badge-attention: #755315; --badge-attention-bg: #F5E6C8;
-  --badge-priority: #5A4106; --badge-priority-bg: #EFD58A;
-  --badge-active: #1F4E78; --badge-active-bg: #C2D8EE;
+  --badge-attention: #4F3416; --badge-attention-bg: #DDC3A5;
+  --badge-priority: #4A2E00; --badge-priority-bg: #F8C15A;
+  --badge-active: #6B4A0F; --badge-active-bg: #F6E3C4;
   --badge-pending: #34475A; --badge-pending-bg: #CBD6E0;
   --badge-done: #315C3C; --badge-done-bg: #CFE6D5;
   --badge-neutral: #47433E; --badge-neutral-bg: #D4D1CD;
@@ -75,9 +75,9 @@
     --bg: #131A20; --surface: #1B252D; --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
     --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
     --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
-    --badge-attention: #F0C879; --badge-attention-bg: #49391F;
-    --badge-priority: #F5D77A; --badge-priority-bg: #5A4A18;
-    --badge-active: #C4DCF0; --badge-active-bg: #2C5478;
+    --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
+    --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
+    --badge-active: #F0D49A; --badge-active-bg: #4A3B22;
     --badge-pending: #D5DEE6; --badge-pending-bg: #3A4754;
     --badge-done: #B5DDBF; --badge-done-bg: #21402C;
     --badge-neutral: #D8D4CF; --badge-neutral-bg: #403C38;
@@ -89,9 +89,9 @@
   --bg: #131A20; --surface: #1B252D; --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
   --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
   --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
-  --badge-attention: #F0C879; --badge-attention-bg: #49391F;
-  --badge-priority: #F5D77A; --badge-priority-bg: #5A4A18;
-  --badge-active: #C4DCF0; --badge-active-bg: #2C5478;
+  --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
+  --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
+  --badge-active: #F0D49A; --badge-active-bg: #4A3B22;
   --badge-pending: #D5DEE6; --badge-pending-bg: #3A4754;
   --badge-done: #B5DDBF; --badge-done-bg: #21402C;
   --badge-neutral: #D8D4CF; --badge-neutral-bg: #403C38;

@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.8.4"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.8.5"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
