@@ -144,7 +144,7 @@ function fullScanSocialMetaDrift() {
   let readmeOpening = null;
   for (const line of lines) {
     const t = line.trim();
-    if (t && !t.startsWith("#")) { readmeOpening = t; break; }
+    if (t && !t.startsWith("#") && !t.startsWith("<")) { readmeOpening = t; break; }
   }
   if (readmeOpening === null || !readmeOpening.startsWith(ogDesc)) {
     return [common.violation("social-meta-drift", "index.html", null, `og:description ("${ogDesc.slice(0, 60)}...") no longer matches the start of README's opening paragraph.`)];

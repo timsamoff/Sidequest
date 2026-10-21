@@ -713,11 +713,11 @@ function extractOgDescription(source) {
 }
 
 function extractReadmeOpeningParagraph(readmeText) {
-  // First non-heading, non-blank paragraph line.
+  // First paragraph line that is not blank, a heading, or an HTML tag.
   const lines = readmeText.split("\n");
   for (const line of lines) {
     const t = line.trim();
-    if (t && !t.startsWith("#")) return t;
+    if (t && !t.startsWith("#") && !t.startsWith("<")) return t; // skips headings and HTML lines such as the logo <img>
   }
   return null;
 }

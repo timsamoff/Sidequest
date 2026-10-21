@@ -1,3 +1,5 @@
+<img  src="../assets/sidequest-icon-512.png"  width="128px"  alt="Sidequest">
+
 # Sidequest as an artifact
 
 `sidequest.html` is a single self-contained file. Hand it to an AI app builder and you get your own copy of Sidequest that saves your data to your account instead of your browser, so it works the same across your devices. This folder covers two builders: Claude and Muse.

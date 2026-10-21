@@ -1,3 +1,5 @@
+<img  src="assets/sidequest-icon-512.png"  width="128px"  alt="Sidequest">
+
 # Sidequest
 
 A small quest planner that runs entirely in your browser. There is no account, no server, and no build step. Open `index.html` and start.
