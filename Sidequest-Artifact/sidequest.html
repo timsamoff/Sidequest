@@ -364,7 +364,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .setgrid .field { min-width: 0; justify-content: flex-end; }
 .setgrid .field.full { grid-column: 1 / -1; }
 .setgrid input, .setgrid select { min-width: 0; height: 42px; }
-.brandmarkpreview { display: flex; align-items: center; gap: var(--space-12); }
+/* Label text sits a few pixels inside its box, so the button gets matching extra space above it; the hint below sits as close as a label does to its field. */
+.brandmarkpreview { display: flex; align-items: center; gap: var(--space-12); margin-top: var(--space-5); }
 .brandmarkpreview img { max-width: 80px; max-height: 80px; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); }
 @media (max-width: 640px) { .setgrid { grid-template-columns: minmax(0, 1fr); } }
 .about p { margin-top: var(--space-2); }
@@ -1074,8 +1075,10 @@ function pageTitle(key) {
   return "";
 }
 function isPinned(key) { return state.pins.indexOf(key) >= 0; }
-function pinPage(key) { if (!isPinned(key)) state.pins.push(key); changed(); notify(pageTitle(key) + " pinned to the sidebar."); }
-function unpinPage(key) { state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); notify(pageTitle(key) + " removed from the sidebar. It is still listed under Quests."); }
+// The Claude version shows pinned quests in the Main menu, not a sidebar.
+function pinHome() { return inClaude() ? "main menu" : "sidebar"; }
+function pinPage(key) { if (!isPinned(key)) state.pins.push(key); changed(); notify(pageTitle(key) + " pinned to the " + pinHome() + "."); }
+function unpinPage(key) { state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); notify(pageTitle(key) + " removed from the " + pinHome() + ". It is still listed under Quests."); }
 function questMeta(p) {
   var ts = questTasks(p.id);
   var parts = [];
@@ -1145,7 +1148,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.8.8";
+var APP_VERSION = "0.9.0";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -3249,10 +3252,13 @@ function welcomeBox() {
   box.appendChild(el("h2", { style: "margin-bottom:4px" }, "Welcome to Sidequest"));
   var welcomeHint = el("p", { "class": "hint first" });
   welcomeHint.appendChild(el("strong", null, "Your new adventure begins here!"));
-  welcomeHint.appendChild(document.createTextNode(" These sample quests are here for you to explore. Look around, make changes, and press / to search. You can edit the existing quests or, when you’re ready to start your own, open Options and choose Start fresh."));
+  var blank = !state.quests.length;
+  welcomeHint.appendChild(document.createTextNode(blank
+    ? " You’re looking at a blank slate now, but that won’t last long. Time to start questing!"
+    : " These sample quests are here for you to explore. Look around, make changes, and press / to search. You can edit the existing quests or, when you’re ready to start your own, open Options and choose Start fresh."));
   box.appendChild(welcomeHint);
   var acts = el("div", { "class": "actions" });
-  acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Go to Options" }, "Go to Options"), "click", function () {
+  if (!blank) acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Go to Options" }, "Go to Options"), "click", function () {
     go("settings");
     // The welcome text sends people here for Start fresh, so land on it.
     var h = $("startFreshHeading");
@@ -3624,7 +3630,7 @@ function launchSection(root, p) {
 // Pin/Unpin for a quest, shared by In progress and the Quests list.
 function questPinButton(key, name) {
   var pinned = isPinned(key);
-  return on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + name, title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
+  return on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + name, title: pinned ? "Unpin from the " + (inClaude() ? "main menu" : "sidebar") : "Pin to the " + (inClaude() ? "main menu" : "sidebar") }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
 }
 function dustChip() { return el("span", { "class": "chip dust", style: "margin-left:8px", title: "No activity for a while" }, "Gathering dust"); }
 function questRow(r) {
@@ -4343,7 +4349,7 @@ function brandmarkField() {
   var w = el("div", { "class": "field" });
   var msg = el("p", { "class": "msg schedulesmsg", role: "alert" });
   var preview = el("div", { "class": "brandmarkpreview" });
-  var limits = el("p", { "class": "hint", style: "margin-top:6px" }, "Must be " + BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, and up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB.");
+  var limits = el("p", { "class": "hint", style: "margin-top:0" }, "Must be " + BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, and up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB.");
   function renderPreview() {
     preview.innerHTML = "";
     if (state.settings.brandmark) {

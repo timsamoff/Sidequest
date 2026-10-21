@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.8.8"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.9.0"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2415,6 +2415,19 @@ async function exportClick(k, projectName) {
   k2.tab("schedule"); ok(!!k2.d.querySelector("#view ul.list li.hint") && k2.$("view").textContent.includes("No tasks yet."), "an empty Tasks page shows its message in a card");
   k2.tab("vault"); ok(!!k2.d.querySelector("#view ul.list li.hint") && k2.$("view").textContent.includes("The Vault is empty.") && !k2.d.querySelector("#view .chips"), "an empty Vault shows its message in a card with no filter buttons");
   const k3 = kit(await mk()); k3.tab("vault"); ok(!!k3.d.querySelector("#view .chips"), "the Vault filters appear once it holds items");
+}
+{
+  // Welcome wording follows what is in the app; pin wording follows where pinned quests live
+  const k = kit(await mk());
+  ok(k.$("view").textContent.includes("These sample quests are here for you to explore") && !!k.$("welcomeSettings"), "the welcome message on sample data keeps its sample wording and Options button");
+  const raw = JSON.parse(k.w.localStorage.getItem("sidequest-template-v1"));
+  raw.quests = []; raw.tasks = []; raw.settings.hideWelcome = false;
+  const k2 = kit(await mk(raw));
+  ok(k2.$("view").textContent.includes("You’re looking at a blank slate now") && !k2.$("view").textContent.includes("sample quests") && !k2.$("welcomeSettings") && !!k2.$("welcomeDismiss"), "with no quests the welcome message says blank slate, with no Options button");
+  const claude = { use: () => Promise.reject(new Error("no")) };
+  const pinWords = async (c) => { const kk = kit(await mk(undefined, c)); kk.click(kk.$("welcomeDismiss")); kk.tab("projects"); const btn = [...kk.d.querySelectorAll("#view .pintoggle")][0]; return btn.title; };
+  const webTitle = await pinWords(), clTitle = await pinWords(claude);
+  ok(/sidebar/.test(webTitle) && /main menu/.test(clTitle) && !/sidebar/.test(clTitle), "the pin button says sidebar on the web and main menu in a Claude artifact (" + webTitle + " / " + clTitle + ")");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

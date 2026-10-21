@@ -1,5 +1,5 @@
 import { state, changed, CHECKPOINTS } from "./state.js";
-import { notify } from "./dom.js";
+import { notify, inClaude } from "./dom.js";
 import { DAY, iso, addDays, parseISO, TODAY, weekStart } from "./dates.js";
 
 export var CORE = [["today", "Today"], ["projects", "Quests"], ["schedule", "Tasks"], ["timeline", "Timeline"]];
@@ -237,8 +237,10 @@ export function pageTitle(key) {
   return "";
 }
 export function isPinned(key) { return state.pins.indexOf(key) >= 0; }
-export function pinPage(key) { if (!isPinned(key)) state.pins.push(key); changed(); notify(pageTitle(key) + " pinned to the sidebar."); }
-export function unpinPage(key) { state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); notify(pageTitle(key) + " removed from the sidebar. It is still listed under Quests."); }
+// The Claude version shows pinned quests in the Main menu, not a sidebar.
+function pinHome() { return inClaude() ? "main menu" : "sidebar"; }
+export function pinPage(key) { if (!isPinned(key)) state.pins.push(key); changed(); notify(pageTitle(key) + " pinned to the " + pinHome() + "."); }
+export function unpinPage(key) { state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); notify(pageTitle(key) + " removed from the " + pinHome() + ". It is still listed under Quests."); }
 export function questMeta(p) {
   var ts = questTasks(p.id);
   var parts = [];

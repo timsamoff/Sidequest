@@ -247,7 +247,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .setgrid .field { min-width: 0; justify-content: flex-end; }
 .setgrid .field.full { grid-column: 1 / -1; }
 .setgrid input, .setgrid select { min-width: 0; height: 42px; }
-.brandmarkpreview { display: flex; align-items: center; gap: var(--space-12); }
+/* Label text sits a few pixels inside its box, so the button gets matching extra space above it; the hint below sits as close as a label does to its field. */
+.brandmarkpreview { display: flex; align-items: center; gap: var(--space-12); margin-top: var(--space-5); }
 .brandmarkpreview img { max-width: 80px; max-height: 80px; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); }
 @media (max-width: 640px) { .setgrid { grid-template-columns: minmax(0, 1fr); } }
 .about p { margin-top: var(--space-2); }

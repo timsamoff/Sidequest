@@ -192,10 +192,13 @@ export function welcomeBox() {
   box.appendChild(el("h2", { style: "margin-bottom:4px" }, "Welcome to Sidequest"));
   var welcomeHint = el("p", { "class": "hint first" });
   welcomeHint.appendChild(el("strong", null, "Your new adventure begins here!"));
-  welcomeHint.appendChild(document.createTextNode(" These sample quests are here for you to explore. Look around, make changes, and press / to search. You can edit the existing quests or, when you’re ready to start your own, open Options and choose Start fresh."));
+  var blank = !state.quests.length;
+  welcomeHint.appendChild(document.createTextNode(blank
+    ? " You’re looking at a blank slate now, but that won’t last long. Time to start questing!"
+    : " These sample quests are here for you to explore. Look around, make changes, and press / to search. You can edit the existing quests or, when you’re ready to start your own, open Options and choose Start fresh."));
   box.appendChild(welcomeHint);
   var acts = el("div", { "class": "actions" });
-  acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Go to Options" }, "Go to Options"), "click", function () {
+  if (!blank) acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Go to Options" }, "Go to Options"), "click", function () {
     go("settings");
     // The welcome text sends people here for Start fresh, so land on it.
     var h = $("startFreshHeading");
@@ -567,7 +570,7 @@ export function launchSection(root, p) {
 // Pin/Unpin for a quest, shared by In progress and the Quests list.
 function questPinButton(key, name) {
   var pinned = isPinned(key);
-  return on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + name, title: pinned ? "Unpin from the sidebar" : "Pin to the sidebar" }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
+  return on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + name, title: pinned ? "Unpin from the " + (inClaude() ? "main menu" : "sidebar") : "Pin to the " + (inClaude() ? "main menu" : "sidebar") }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
 }
 function dustChip() { return el("span", { "class": "chip dust", style: "margin-left:8px", title: "No activity for a while" }, "Gathering dust"); }
 function questRow(r) {
@@ -1286,7 +1289,7 @@ function brandmarkField() {
   var w = el("div", { "class": "field" });
   var msg = el("p", { "class": "msg schedulesmsg", role: "alert" });
   var preview = el("div", { "class": "brandmarkpreview" });
-  var limits = el("p", { "class": "hint", style: "margin-top:6px" }, "Must be " + BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, and up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB.");
+  var limits = el("p", { "class": "hint", style: "margin-top:0" }, "Must be " + BRANDMARK_MAX_DIM + "×" + BRANDMARK_MAX_DIM + " pixels or smaller, and up to " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB.");
   function renderPreview() {
     preview.innerHTML = "";
     if (state.settings.brandmark) {
