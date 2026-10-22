@@ -292,6 +292,7 @@ svg.chart { display: block; width: 100%; height: auto; }
 .chart .actual { fill: none; stroke: var(--burn); stroke-width: 3; }
 .chart .forecast { fill: none; stroke: var(--forecast); stroke-width: 3; stroke-dasharray: 1 6; stroke-linecap: round; }
 .chart .scope { fill: none; stroke: var(--scope); stroke-width: 2; }
+.chart .forecastdot { fill: var(--forecast); stroke: var(--surface); stroke-width: 2; }
 .chart .dot { fill: var(--burn); stroke: var(--surface); stroke-width: 2; }
 .legend { display: flex; flex-wrap: wrap; gap: var(--space-16); padding: var(--space-6) var(--space-4) var(--space-10); font-size: .88rem; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: var(--space-8); }

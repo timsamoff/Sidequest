@@ -409,6 +409,7 @@ svg.chart { display: block; width: 100%; height: auto; }
 .chart .actual { fill: none; stroke: var(--burn); stroke-width: 3; }
 .chart .forecast { fill: none; stroke: var(--forecast); stroke-width: 3; stroke-dasharray: 1 6; stroke-linecap: round; }
 .chart .scope { fill: none; stroke: var(--scope); stroke-width: 2; }
+.chart .forecastdot { fill: var(--forecast); stroke: var(--surface); stroke-width: 2; }
 .chart .dot { fill: var(--burn); stroke: var(--surface); stroke-width: 2; }
 .legend { display: flex; flex-wrap: wrap; gap: var(--space-16); padding: var(--space-6) var(--space-4) var(--space-10); font-size: .88rem; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: var(--space-8); }
@@ -1148,7 +1149,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.9.0";
+var APP_VERSION = "0.9.1";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -1649,10 +1650,12 @@ function renderBurn(host, wide, cfg) {
   // not stroke-dasharray, which would fight Ideal's own dash pattern).
   var animate = state.settings.animatedBurndown;
   var revealGroups = [];
-  function revealGroup(clipId) {
+  // x0 and w limit the reveal to part of the chart, so a line that starts partway across draws from its own start.
+  function revealGroup(clipId, x0, w) {
     if (!animate) return svg;
     var clip = svgEl("clipPath", { id: clipId });
-    var rect = svgEl("rect", { class: "burnreveal", x: L, y: 0, width: 0, height: H });
+    var rect = svgEl("rect", { class: "burnreveal", x: x0 === undefined ? L : x0, y: 0, width: 0, height: H });
+    rect.revealTo = w;
     clip.appendChild(rect);
     svg.appendChild(clip);
     var g = svgEl("g", { "clip-path": "url(#" + clipId + ")" });
@@ -1662,20 +1665,27 @@ function renderBurn(host, wide, cfg) {
   }
   var plannedHost = revealGroup("burnclip-planned-" + Math.random().toString(36).slice(2));
   plannedHost.appendChild(svgEl("polyline", { "class": "planned", points: pl.map(function (p, i) { return x(i) + "," + y(p); }).join(" ") }));
-  var actualHost = revealGroup("burnclip-actual-" + Math.random().toString(36).slice(2));
+  // Actual only reaches its last recorded point, so its reveal stops there and the Forecast can start the moment it finishes.
+  var lastActual = -1; acts.forEach(function (a, i) { if (a !== null) lastActual = i; });
+  var actualHost = revealGroup("burnclip-actual-" + Math.random().toString(36).slice(2), undefined, lastActual >= 0 ? x(lastActual) - L + 8 : undefined);
   var seg = [];
   function flush() { if (seg.length > 1) actualHost.appendChild(svgEl("polyline", { "class": "actual", points: seg.join(" ") })); seg = []; }
   acts.forEach(function (a, i) { if (a === null) { flush(); return; } seg.push(x(i) + "," + y(a)); });
   flush();
   acts.forEach(function (a, i) { if (a !== null) actualHost.appendChild(svgEl("circle", { "class": "dot", cx: x(i), cy: y(a), r: 5.5 })); });
   // Dotted projection from today's count to the pace-based finish, clipped at the right edge.
-  var fc = cfg.forecast, fstop = null;
+  var fc = cfg.forecast, fstop = null, fdot = null, fdotIdx = -1;
   if (fc && TODAY >= cps[0] && TODAY <= cps[n - 1]) {
     var fx = function (ms) { return L + (W - L - R) * (ms - cps[0]) / (cps[n - 1] - cps[0]); };
     var endMs = Math.min(fc.finish, cps[n - 1]), endV = Math.max(0, fc.open - fc.rate * (endMs - TODAY) / 86400000);
     if (endMs > TODAY) {
-      var fHost = revealGroup("burnclip-forecast-" + Math.random().toString(36).slice(2));
+      var fHost = revealGroup("burnclip-forecast-" + Math.random().toString(36).slice(2), fx(TODAY) - 4, fx(endMs) - fx(TODAY) + 8);
       fHost.appendChild(svgEl("line", { "class": "forecast", x1: fx(TODAY), y1: y(fc.open), x2: fx(endMs), y2: y(endV) }));
+      // The end dot sits outside the reveal clip, which would cut it in half at the chart edge; it fades in after the line has drawn.
+      fdotIdx = revealGroups.length - 1;
+      fdot = svgEl("circle", { "class": "forecastdot", cx: fx(endMs), cy: y(endV), r: 5.5 });
+      if (animate) { fdot.style.opacity = "0"; fdot.style.transition = "opacity 250ms ease"; }
+      svg.appendChild(fdot);
       fstop = { x: fx(endMs), y: y(endV), text: "At this pace you finish around " + fmtY(fc.finish) + ".", order: 2 };
       host.dataset.forecast = "1";
     }
@@ -1731,8 +1741,9 @@ function renderBurn(host, wide, cfg) {
       if (started) return; started = true;
       revealGroups.forEach(function (rect, i) {
         rect.style.transition = "width " + stepMs + "ms ease";
-        setTimeout(function () { rect.setAttribute("width", fullW); }, 20 + i * stepMs);
+        setTimeout(function () { rect.setAttribute("width", rect.revealTo || fullW); }, 20 + i * stepMs);
       });
+      if (fdot) setTimeout(function () { fdot.style.opacity = "1"; }, 20 + (fdotIdx + 1) * stepMs);
     }
     function tryStart() {
       if (started) return;
