@@ -310,7 +310,8 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
    leaving only the title row visibly tinted. */
 .tlist li:has(> .item[aria-expanded="true"]) > .detail { background: transparent; }
 .metarow { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: var(--space-4) var(--space-12); }
-.estleft { margin-left: auto; white-space: nowrap; }
+/* Right-aligned beside the count while both fit on one line; when it wraps, space-between puts it on the left under the count. */
+.estleft { white-space: nowrap; }
 .item .l1 { color: var(--muted); font-size: var(--text-sm); }
 .item .l1 b { color: var(--ink); font-weight: 600; }
 /* A date line with a tag pinned to its right end. */
@@ -426,7 +427,7 @@ tbody tr:last-child td { border-bottom: 0; }
 
 #view > .range:first-child { margin-top: var(--space-4); }
 .workshophead { margin-top: var(--space-12); }
-.range { margin-top: var(--space-12); padding: var(--space-14) var(--space-16) var(--space-10); }
+.range { margin-top: var(--space-12); padding: var(--space-14) var(--space-16) var(--space-18); }
 .months { position: relative; height: 22px; border-bottom: 1px solid var(--line); }
 .months span { position: absolute; top: 0; font-size: .75rem; color: var(--muted); transform: translateX(-2px); white-space: nowrap; }
 .lane { margin-top: var(--space-12); }
@@ -488,7 +489,8 @@ svg.chart.nofocusring { outline: none; }
 .ms { position: absolute; top: 4px; width: 14px; height: 14px; background: var(--milestone-bg); border: 2px solid var(--milestone); box-sizing: border-box; transform: translateX(-7px) rotate(45deg); border-radius: 2px; cursor: pointer; }
 /* The diamond is only 14px, so an invisible larger area makes it easy to hit. */
 .ms::after { content: ""; position: absolute; inset: -6px; }
-.ms:hover, .ms:focus-visible { box-shadow: 0 0 0 3px var(--planned); }
+.ms:hover { box-shadow: 0 0 0 3px color-mix(in srgb, var(--planned) 35%, transparent); }
+.ms:focus-visible { box-shadow: 0 0 0 3px var(--planned); }
 .today { position: absolute; top: 22px; bottom: 0; width: 0; border-left: 2px solid var(--burn); opacity: .7; cursor: pointer; }
 /* The line itself is 2px wide, too narrow to reliably hover/tap -- an invisible
    wider hit area makes it easy to hit, same pattern as .ms::after. */
@@ -1162,7 +1164,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.9.4";
+var APP_VERSION = "0.9.5";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -1961,7 +1963,7 @@ function timelineNode(lanes, mss, rs, maxEnd, hint) {
     on(todayLine, "keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); clear(); } });
   }
   wrap.appendChild(area);
-  wrap.appendChild(el("p", { "class": "hint", style: "margin-top:10px" }, hint));
+  if (hint) wrap.appendChild(el("p", { "class": "hint", style: "margin-top:10px" }, hint));
   return wrap;
 }
 
@@ -1990,7 +1992,7 @@ function rangeBlock() {
   }
   // Labeled by quest name since the Timeline shows every quest's milestones together.
   var mss = allMilestoneTasks().map(function (t) { var p = findQuest(t.questId); return { id: t.id, text: (p ? p.name + ": " : "") + t.what, date: taskEnd(t) }; });
-  var wrap = timelineNode(lanes, mss, rs, maxEnd, "The red line marks today." + (openEnded ? " The chosen quest has no length set, so its bar runs open-ended." : ""));
+  var wrap = timelineNode(lanes, mss, rs, maxEnd, openEnded ? "The chosen quest has no length set, so its bar runs open-ended." : "");
   return { node: wrap, milestones: mss };
 }
 
@@ -2017,7 +2019,7 @@ function questRangeBlock(p) {
   });
   mss.forEach(function (m) { if (m.date < first) first = m.date; });
   var f0 = new Date(first), rs = Date.UTC(f0.getUTCFullYear(), f0.getUTCMonth(), 1);
-  return { node: timelineNode(lanes, mss, rs, maxEnd, "The red line marks today." + backlog), milestones: mss, empty: false };
+  return { node: timelineNode(lanes, mss, rs, maxEnd, ""), milestones: mss, empty: false };
 }
 
 
@@ -4599,7 +4601,7 @@ function renderSettings(page) {
 
   root.appendChild(el("h2", { id: "startFreshHeading", "class": "scrollhead", tabindex: "-1" }, "Start fresh"));
   var box = el("div", { "class": "dangerbox" });
-  box.appendChild(el("p", { "class": "hint first" }, "Erase all Sidequest data stored in " + (inClaude() ? "Claude" : "this browser") + " and start again. You’ll see a warning and have a chance to save a backup first."));
+  box.appendChild(el("p", { "class": "hint first" }, "Erase all Sidequest data stored in " + (inClaude() ? "Claude" : "this browser") + " and start again (options are retained). You will receive a warning and have a chance to save a backup first."));
   box.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:12px", id: "startFresh", title: "Erase everything and start over" }, "Start fresh…"), "click", startFreshDialog));
   root.appendChild(box);
 

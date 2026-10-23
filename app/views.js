@@ -1498,7 +1498,7 @@ export function renderSettings(page) {
 
   root.appendChild(el("h2", { id: "startFreshHeading", "class": "scrollhead", tabindex: "-1" }, "Start fresh"));
   var box = el("div", { "class": "dangerbox" });
-  box.appendChild(el("p", { "class": "hint first" }, "Erase all Sidequest data stored in " + (inClaude() ? "Claude" : "this browser") + " and start again. You’ll see a warning and have a chance to save a backup first."));
+  box.appendChild(el("p", { "class": "hint first" }, "Erase all Sidequest data stored in " + (inClaude() ? "Claude" : "this browser") + " and start again (options are retained). You will receive a warning and have a chance to save a backup first."));
   box.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:12px", id: "startFresh", title: "Erase everything and start over" }, "Start fresh…"), "click", startFreshDialog));
   root.appendChild(box);
 

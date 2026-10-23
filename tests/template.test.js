@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.9.4"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.9.5"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -786,7 +786,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!side.querySelector("#proj-start") && !!side.querySelector("#proj-days") && !split.querySelector(".questmain #proj-start") && ![...split.querySelectorAll(".questmain h2")].some(h => h.textContent === "Schedule"), "the Schedule heading and fields are in the right column, not the left");
   ok(!!k.btn(side, "Expand"), "the right column has an Expand button");
   ok(side.querySelectorAll(".lane").length === 6, "one timeline lane per scheduled task, plus the milestones lane (" + side.querySelectorAll(".lane").length + ")");
-  ok(side.textContent.includes("1 backlog task is not shown until scheduled"), "an unscheduled Backlog task is counted, not drawn");
+  ok(!side.textContent.includes("not shown until scheduled") && !side.textContent.includes("The red line marks today"), "an unscheduled Backlog task is not drawn, and the Timeline has no caption under it");
   ok(side.querySelectorAll(".ms").length === 1 && /Run a beta with five friends/.test(side.querySelector(".ms").getAttribute("aria-label")), "the timeline shows only this quest's milestone");
   const svg = side.querySelector("svg.chart");
   ok(/^Burndown chart for Sample App\./.test(svg.getAttribute("aria-label")), "the burndown is this quest's own");
@@ -2342,7 +2342,7 @@ async function exportClick(k, projectName) {
   const web = await readOptions(null), cl = await readOptions(claudeStub);
   ok(web.options.includes("Your data is saved in this browser on this device.") && !web.options.includes("saved in Claude"), "web: the Backup and restore description says this browser on this device");
   ok(cl.options.includes("Your data is saved in Claude.") && !cl.options.includes("this browser"), "Claude: the Backup and restore description says Claude, and Options never says this browser");
-  ok(web.options.includes("Erase all Sidequest data stored in this browser and start again.") && cl.options.includes("Erase all Sidequest data stored in Claude and start again."), "the Start fresh description names the right place in each version");
+  ok(web.options.includes("Erase all Sidequest data stored in this browser and start again (options are retained). You will receive a warning and have a chance to save a backup first.") && cl.options.includes("Erase all Sidequest data stored in Claude and start again (options are retained)."), "the Start fresh description names the right place in each version");
   ok(web.dialog.includes("erases everything stored in this browser.") && cl.dialog.includes("erases everything stored in Claude.") && !cl.dialog.includes("this browser"), "and so does the Start fresh warning");
   ok(web.restore.includes("everything in Sidequest on this device:") && cl.restore.includes("everything in Sidequest: all current") && !cl.restore.includes("on this device"), "the restore warning only says on this device in the web app");
   ok(web.help.includes("Everything lives in this browser only") && web.help.includes("Today will say so") && cl.help.includes("Your data is saved in Claude, so it follows you across devices") && !cl.help.includes("Today will say so"), "Help describes each version's own storage, and the two-week backup reminder only on the web");

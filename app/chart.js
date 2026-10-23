@@ -323,7 +323,7 @@ function timelineNode(lanes, mss, rs, maxEnd, hint) {
     on(todayLine, "keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); clear(); } });
   }
   wrap.appendChild(area);
-  wrap.appendChild(el("p", { "class": "hint", style: "margin-top:10px" }, hint));
+  if (hint) wrap.appendChild(el("p", { "class": "hint", style: "margin-top:10px" }, hint));
   return wrap;
 }
 
@@ -352,7 +352,7 @@ export function rangeBlock() {
   }
   // Labeled by quest name since the Timeline shows every quest's milestones together.
   var mss = allMilestoneTasks().map(function (t) { var p = findQuest(t.questId); return { id: t.id, text: (p ? p.name + ": " : "") + t.what, date: taskEnd(t) }; });
-  var wrap = timelineNode(lanes, mss, rs, maxEnd, "The red line marks today." + (openEnded ? " The chosen quest has no length set, so its bar runs open-ended." : ""));
+  var wrap = timelineNode(lanes, mss, rs, maxEnd, openEnded ? "The chosen quest has no length set, so its bar runs open-ended." : "");
   return { node: wrap, milestones: mss };
 }
 
@@ -379,5 +379,5 @@ export function questRangeBlock(p) {
   });
   mss.forEach(function (m) { if (m.date < first) first = m.date; });
   var f0 = new Date(first), rs = Date.UTC(f0.getUTCFullYear(), f0.getUTCMonth(), 1);
-  return { node: timelineNode(lanes, mss, rs, maxEnd, "The red line marks today." + backlog), milestones: mss, empty: false };
+  return { node: timelineNode(lanes, mss, rs, maxEnd, ""), milestones: mss, empty: false };
 }
