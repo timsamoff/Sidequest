@@ -212,7 +212,7 @@ kbd { font: inherit; font-size: .9em; border: 1px solid var(--line); border-bott
 .searchwrap input { width: 100%; }
 .searchbar { display: flex; flex-wrap: wrap; gap: var(--space-10) var(--space-16); align-items: center; }
 .searchbar input[type="search"] { flex: 1 1 260px; width: auto; }
-.searchbar label { display: flex; gap: var(--space-8); align-items: center; color: var(--muted); cursor: pointer; }
+.searchbar label { display: flex; gap: var(--space-8); align-items: center; color: var(--muted); font-size: var(--text-sm); cursor: pointer; }
 input[type="search"] { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; }
 mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding: 0 var(--space-1); }
 .sgroup { margin-top: var(--space-22); }
@@ -329,9 +329,9 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .detail .what { font-family: var(--font-serif); font-size: 1.25rem; font-weight: 600; line-height: 1.3; margin-top: var(--space-8); }
 .detail .dmeta { color: var(--muted); margin-top: var(--space-4); }
 select.status { border: 1px solid var(--line); border-radius: var(--radius-pill); padding: var(--space-5) var(--space-12); min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
-select.status[data-v="Not started"] { background: var(--chip-new); }
-select.status[data-v="In progress"] { background: var(--chip-work); }
-select.status[data-v="Completed"] { background: var(--chip-done); }
+select.status[data-v="Not started"] { background: var(--badge-pending-bg); color: var(--badge-pending); }
+select.status[data-v="In progress"] { background: var(--badge-active-bg); color: var(--badge-active); }
+select.status[data-v="Completed"] { background: var(--badge-done-bg); color: var(--badge-done); }
 .steps { list-style: none; margin: var(--space-8) 0 0; padding: 0; }
 .steps li { display: flex; flex-wrap: wrap; gap: 0 var(--space-10); align-items: flex-start; padding: var(--space-5) 0; border-bottom: 0; }
 .steps li label { display: flex; gap: var(--space-10); align-items: flex-start; flex: 1 1 auto; cursor: pointer; }
@@ -457,9 +457,9 @@ svg.chart.nofocusring { outline: none; }
 .charttip[hidden], .todaytip[hidden] { display: none; }
 /* A task's bar takes its status color, with a faint edge so a pale bar still reads on the gray track. */
 .bar.new, .bar.work, .bar.done { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-ink) 28%, transparent); }
-.bar.new { background: var(--chip-new); }
-.bar.work { background: var(--chip-work); }
-.bar.done { background: var(--chip-done); }
+.bar.new { background: var(--badge-pending-bg); }
+.bar.work { background: var(--badge-active-bg); }
+.bar.done { background: var(--badge-done-bg); }
 @media (min-width: 900px) {
   /* .questactions comes last in the markup (after .questcharts) so it renders
      at the true bottom of the page when stacked; placed back under .questmain
@@ -1162,7 +1162,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.9.3";
+var APP_VERSION = "0.9.4";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -2337,9 +2337,9 @@ svg.echart { display: block; width: 100%; height: auto; }\
 .etimeline .etrack { position: relative; height: 20px; margin-top: 4px; background: var(--chip-idle); border-radius: 4px; }\
 .etimeline .eblk { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: color-mix(in srgb, var(--muted) 24%, transparent); }\
 .etimeline .ebar { position: absolute; top: 2px; bottom: 2px; min-width: 6px; border-radius: 4px; background: var(--planned); }\
-.etimeline .ebar.new { background: var(--chip-new); }\
-.etimeline .ebar.work { background: var(--chip-work); }\
-.etimeline .ebar.done { background: var(--chip-done); }\
+.etimeline .ebar.new { background: var(--badge-pending-bg); }\
+.etimeline .ebar.work { background: var(--badge-active-bg); }\
+.etimeline .ebar.done { background: var(--badge-done-bg); }\
 .etimeline .ebar.new, .etimeline .ebar.work, .etimeline .ebar.done { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-ink) 28%, transparent); }\
 .etimeline .ems { position: absolute; top: 4px; width: 12px; height: 12px; background: var(--milestone-bg); border: 2px solid var(--milestone); box-sizing: border-box; transform: translateX(-6px) rotate(45deg); border-radius: 2px; }\
 .etimeline .ems::after { content: ''; position: absolute; inset: -6px; }\

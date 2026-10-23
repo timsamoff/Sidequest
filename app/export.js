@@ -318,9 +318,9 @@ svg.echart { display: block; width: 100%; height: auto; }\
 .etimeline .etrack { position: relative; height: 20px; margin-top: 4px; background: var(--chip-idle); border-radius: 4px; }\
 .etimeline .eblk { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: color-mix(in srgb, var(--muted) 24%, transparent); }\
 .etimeline .ebar { position: absolute; top: 2px; bottom: 2px; min-width: 6px; border-radius: 4px; background: var(--planned); }\
-.etimeline .ebar.new { background: var(--chip-new); }\
-.etimeline .ebar.work { background: var(--chip-work); }\
-.etimeline .ebar.done { background: var(--chip-done); }\
+.etimeline .ebar.new { background: var(--badge-pending-bg); }\
+.etimeline .ebar.work { background: var(--badge-active-bg); }\
+.etimeline .ebar.done { background: var(--badge-done-bg); }\
 .etimeline .ebar.new, .etimeline .ebar.work, .etimeline .ebar.done { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-ink) 28%, transparent); }\
 .etimeline .ems { position: absolute; top: 4px; width: 12px; height: 12px; background: var(--milestone-bg); border: 2px solid var(--milestone); box-sizing: border-box; transform: translateX(-6px) rotate(45deg); border-radius: 2px; }\
 .etimeline .ems::after { content: ''; position: absolute; inset: -6px; }\
