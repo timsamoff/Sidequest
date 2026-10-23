@@ -659,7 +659,7 @@ export function renderQuestPage(root, id) {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
     root.appendChild(el("h2", null, "Quest Giver"));
-    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Bounty: " + formatMoney(p.client.coin) + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
+    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Bounty: " + formatMoney(p.client.coin, state.settings.coinFormat) + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
     root.appendChild(el("p", { "class": "hint notetext" }, cgLines.length ? cgLines.join("\n") : "No Quest Giver."));
     if (linkedQuests(p).length) { root.appendChild(el("h2", null, "Quest links")); linksSection(root, p); }
     return;
@@ -726,7 +726,7 @@ export function renderQuestPage(root, id) {
 
   if (readOnly) {
     root.appendChild(el("h2", null, "Quest Giver"));
-    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website, gc.coin !== "" ? "Bounty: " + formatMoney(gc.coin) + " per " + gc.per.toLowerCase() : ""].filter(Boolean);
+    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website, gc.coin !== "" ? "Bounty: " + formatMoney(gc.coin, state.settings.coinFormat) + " per " + gc.per.toLowerCase() : ""].filter(Boolean);
     root.appendChild(el("p", { "class": "hint notetext" }, glines.length ? glines.join("\n") : "No Quest Giver."));
   } else {
     root.appendChild(el("h2", null, "Quest Giver"));
@@ -752,8 +752,8 @@ export function renderQuestPage(root, id) {
     gaw.appendChild(gaddr); giverBox.appendChild(gaw);
     var gg2 = el("div", { "class": "setgrid", style: "margin-top:10px" });
     var gcw = el("div", { "class": "field" }); gcw.appendChild(el("label", { "for": "giver-coin-" + p.id }, "Bounty"));
-    var gcoin = moneyInput(el("input", { type: "text", id: "giver-coin-" + p.id }), function (n) { p.client.coin = n; save(); });
-    gcoin.value = formatMoney(p.client.coin);
+    var gcoin = moneyInput(el("input", { type: "text", id: "giver-coin-" + p.id }), function (n) { p.client.coin = n; save(); }, state.settings.coinFormat);
+    gcoin.value = formatMoney(p.client.coin, state.settings.coinFormat);
     gcw.appendChild(gcoin); gg2.appendChild(gcw);
     var gpw = el("div", { "class": "field" }); gpw.appendChild(el("label", { "for": "giver-per-" + p.id }, "Per"));
     var gper = el("select", { id: "giver-per-" + p.id, "class": "plain" });
@@ -1405,29 +1405,36 @@ export function renderSettings(page) {
   var th = el("select", { id: "set-theme", "class": "plain" });
   [["auto", "Match this device"], ["light", "Light"], ["dark", "Dark"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if (o[0] === state.settings.theme) op.selected = true; th.appendChild(op); });
   on(th, "change", function () { state.settings.theme = th.value; applyTheme(); save(); });
-  tw.appendChild(th); ag.appendChild(tw);
-  appearanceBox.appendChild(ag);
+  tw.appendChild(th);
   var ag2 = el("div", { "class": "setgrid", style: "margin-top:10px" });
+  var cw = el("div", { "class": "field" }); cw.appendChild(el("label", { "for": "set-coin" }, "Coin"));
+  var cs = el("select", { id: "set-coin", "class": "plain" });
+  [["us", "US (1,234.56)"], ["eu", "European (1.234,56)"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if (o[0] === state.settings.coinFormat) op.selected = true; cs.appendChild(op); });
+  on(cs, "change", function () { state.settings.coinFormat = cs.value; changed(); });
+  cw.appendChild(cs); ag.appendChild(cw);
+  appearanceBox.appendChild(ag);
   var sw = el("div", { "class": "field" }); sw.appendChild(el("label", { "for": "set-splash" }, "Splash screen on open"));
   var ss = el("select", { id: "set-splash", "class": "plain" });
   [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.showSplash) op.selected = true; ss.appendChild(op); });
   on(ss, "change", function () { state.settings.showSplash = ss.value === "on"; save(); });
-  sw.appendChild(ss); ag2.appendChild(sw);
+  sw.appendChild(ss);
   var abw = el("div", { "class": "field" }); abw.appendChild(el("label", { "for": "set-animated-burndown" }, "Animated burndown"));
   var abs = el("select", { id: "set-animated-burndown", "class": "plain" });
   [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.animatedBurndown) op.selected = true; abs.appendChild(op); });
   on(abs, "change", function () { state.settings.animatedBurndown = abs.value === "on"; save(); });
-  abw.appendChild(abs); ag2.appendChild(abw);
-  var fxw = el("div", { "class": "field" }); fxw.appendChild(el("label", { "for": "set-completion-fx" }, "Completion FX"));
+  abw.appendChild(abs);
+  var fxw = el("div", { "class": "field" }); fxw.appendChild(el("label", { "for": "set-completion-fx" }, "Completion effects"));
   var fxs = el("select", { id: "set-completion-fx", "class": "plain" });
   [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.completionFx) op.selected = true; fxs.appendChild(op); });
   on(fxs, "change", function () { state.settings.completionFx = fxs.value === "on"; save(); });
-  fxw.appendChild(fxs); ag2.appendChild(fxw);
+  fxw.appendChild(fxs);
   var aw2 = el("div", { "class": "field" }); aw2.appendChild(el("label", { "for": "set-audio" }, "Sound effects"));
   var as = el("select", { id: "set-audio", "class": "plain" });
   [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.audio) op.selected = true; as.appendChild(op); });
   on(as, "change", function () { state.settings.audio = as.value === "on"; save(); });
-  aw2.appendChild(as); ag2.appendChild(aw2);
+  aw2.appendChild(as);
+  // Order on screen: Date format, Coin, Theme, Animated burndown, Splash screen on open, Sound effects, Completion effects.
+  [tw, abw, sw, aw2, fxw].forEach(function (w) { ag2.appendChild(w); });
   appearanceBox.appendChild(ag2);
   root.appendChild(appearanceBox);
 

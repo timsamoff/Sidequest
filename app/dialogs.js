@@ -72,7 +72,7 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
       } else if (f.type === "textarea") {
         inp = el("textarea", { id: id, rows: f.rows || 4 });
       } else if (f.type === "money") {
-        inp = moneyInput(el("input", { type: "text", id: id }), null);
+        inp = moneyInput(el("input", { type: "text", id: id }), null, state.settings.coinFormat);
       } else {
         inp = el("input", { type: f.type || "text", id: id, autocomplete: "off" });
         if (f.list) inp.setAttribute("list", f.list);
@@ -173,7 +173,7 @@ export function questDialog() {
     { key: "giverPer", label: "Per", type: "select", options: [{ value: "Hour", label: "Hour" }, { value: "Quest", label: "Quest" }] }
   ], "Add quest", function (v) {
     if (!v.name) return "Enter a title for the candidate quest.";
-    var coin = parseMoney(v.giverCoin);
+    var coin = parseMoney(v.giverCoin, state.settings.coinFormat);
     var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200), coin: coin, per: v.giverPer === "Quest" ? "Quest" : "Hour" };
     state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000), client: client })); changed();
     return { msg: v.name + " has been added as a candidate quest on the Quests page. Promote the candidate to open it." };

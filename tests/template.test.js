@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.9.2"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.9.3"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2455,6 +2455,26 @@ async function exportClick(k, projectName) {
   const pinWords = async (c) => { const kk = kit(await mk(undefined, c)); kk.click(kk.$("welcomeDismiss")); kk.tab("projects"); const btn = [...kk.d.querySelectorAll("#view .pintoggle")][0]; return btn.title; };
   const webTitle = await pinWords(), clTitle = await pinWords(claude);
   ok(/sidebar/.test(webTitle) && /main menu/.test(clTitle) && !/sidebar/.test(clTitle), "the pin button says sidebar on the web and main menu in a Claude artifact (" + webTitle + " / " + clTitle + ")");
+}
+{
+  // Coin setting: US 1,234.56 or European 1.234,56 for money fields
+  const k = kit(await mk()); k.click(k.$("welcomeDismiss"));
+  k.tab("settings");
+  const sel = k.$("set-coin");
+  ok(!!sel && sel.value === "us" && [...sel.options].map(o => o.textContent).join() === "US (1,234.56),European (1.234,56)", "Options has a Coin setting that defaults to US");
+  const order = [...k.d.querySelectorAll("#view .setgrid label")].map(l => l.textContent);
+  ok(order.slice(order.indexOf("Date format"), order.indexOf("Date format") + 7).join() === "Date format,Coin,Theme,Animated burndown,Splash screen on open,Sound effects,Completion effects", "the Appearance settings read Date format, Coin, Theme, Animated burndown, Splash screen on open, Sound effects, Completion effects");
+  sel.value = "eu"; k.fire(sel);
+  ok(k.saved().settings.coinFormat === "eu", "choosing European saves");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Website"));
+  const coin = k.$("giver-coin-pSite");
+  coin.value = "123456"; k.fire(coin, "input");
+  ok(coin.value === "1.234,56" && k.saved().quests.find(q => q.id === "pSite").client.coin === 1234.56, "typing digits shows European style and still stores the plain number 1234.56");
+  k.tab("settings"); const sel2 = k.$("set-coin"); sel2.value = "us"; k.fire(sel2);
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Website"));
+  ok(k.$("giver-coin-pSite").value === "1,234.56", "switching back to US redisplays the same amount as 1,234.56");
+  const raw = JSON.parse(k.w.localStorage.getItem("sidequest-template-v1")); raw.settings.coinFormat = "nonsense";
+  const k2 = kit(await mk(raw)); ok(k2.saved().settings.coinFormat === "us", "an invalid saved Coin value falls back to US");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

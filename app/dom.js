@@ -24,25 +24,38 @@ export function playSfx(src, volume) {
   } catch (e) { /* no audio support */ }
 }
 // Money fields work like a cash register: digits fill in from the cents, and the
-// commas and decimal point are added as you type. The cap is 999,999.99.
-export function formatMoney(n) {
+// separators are added as you type. The cap is 999,999.99. `style` is "us"
+// (1,234.56) or "eu" (1.234,56); it is the Options "Coin" setting.
+function moneySeps(style) { return style === "eu" ? { group: ".", dec: "," } : { group: ",", dec: "." }; }
+export function formatMoney(n, style) {
   if (typeof n !== "number" || isNaN(n) || n <= 0) return "";
+  var sep = moneySeps(style);
   var cents = Math.round(n * 100), whole = String(Math.floor(cents / 100)), frac = String(cents % 100), out = "";
   if (frac.length < 2) frac = "0" + frac;
-  for (var i = 0; i < whole.length; i++) { if (i > 0 && (whole.length - i) % 3 === 0) out += ","; out += whole.charAt(i); }
-  return out + "." + frac;
+  for (var i = 0; i < whole.length; i++) { if (i > 0 && (whole.length - i) % 3 === 0) out += sep.group; out += whole.charAt(i); }
+  return out + sep.dec + frac;
 }
-// Reads a typed or pasted amount ("1,234.56") as a number, or "" if it is not one.
-export function parseMoney(s) {
-  var n = parseFloat(String(s || "").replace(/,/g, ""));
+// Reads a typed or pasted amount as a number, or "" if it is not one. Either style is accepted:
+// when both separators appear the later one is the decimal point, and a lone separator followed
+// by exactly three digits is the style's thousands separator.
+export function parseMoney(s, style) {
+  var t = String(s || "").replace(/[^0-9.,]/g, "");
+  var lastDot = t.lastIndexOf("."), lastCom = t.lastIndexOf(","), dec = "";
+  if (lastDot >= 0 && lastCom >= 0) dec = lastDot > lastCom ? "." : ",";
+  else if (lastDot >= 0 || lastCom >= 0) {
+    var ch = lastDot >= 0 ? "." : ",", count = t.split(ch).length - 1, after = t.length - 1 - t.lastIndexOf(ch);
+    if (count === 1 && !(after === 3 && moneySeps(style).group === ch)) dec = ch;
+  }
+  var norm = dec ? t.replace(dec === "." ? /,/g : /\./g, "").replace(dec, ".") : t.replace(/[.,]/g, "");
+  var n = parseFloat(norm);
   if (isNaN(n) || n <= 0) return "";
   return Math.min(999999.99, Math.round(n * 100) / 100);
 }
 // Turns a text input into a money field; `onChange` gets the amount, or "" when empty.
-export function moneyInput(input, onChange) {
+export function moneyInput(input, onChange, style) {
   input.setAttribute("inputmode", "numeric"); input.setAttribute("autocomplete", "off");
   function apply(n) {
-    input.value = formatMoney(n);
+    input.value = formatMoney(n, style);
     try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) { /* not a focusable text input */ }
     if (onChange) onChange(typeof n === "number" ? n : "");
   }
@@ -52,7 +65,7 @@ export function moneyInput(input, onChange) {
     apply(digits === "" ? "" : parseInt(digits, 10) / 100);
   });
   on(input, "paste", function (e) {
-    var data = e.clipboardData || window.clipboardData, n = data ? parseMoney(data.getData("text")) : "";
+    var data = e.clipboardData || window.clipboardData, n = data ? parseMoney(data.getData("text"), style) : "";
     if (n === "") return;
     e.preventDefault(); apply(n);
   });
