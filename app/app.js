@@ -85,8 +85,8 @@ on($("renameBtn"), "click", renameCurrentQuest);
 
 // Shown only for the installed PWA, since a normal browser tab already
 // refreshes itself (F5/pull-to-refresh) -- fixed for the whole session, so
-// computed once rather than per-render. navigator.standalone is Safari-only
-// (not in the spec, no matchMedia support on older iOS).
+// computed once rather than per-render. navigator.standalone is a non-standard
+// flag some mobile browsers use instead of the display-mode query.
 var isStandaloneApp = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
 if (isStandaloneApp) {
   $("refreshBtn").hidden = false;

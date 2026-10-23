@@ -1164,7 +1164,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.9.5";
+var APP_VERSION = "0.9.6";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -4536,8 +4536,8 @@ function renderSettings(page) {
   [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.audio) op.selected = true; as.appendChild(op); });
   on(as, "change", function () { state.settings.audio = as.value === "on"; save(); });
   aw2.appendChild(as);
-  // Order on screen: Date format, Coin, Theme, Animated burndown, Splash screen on open, Sound effects, Completion effects.
-  [tw, abw, sw, aw2, fxw].forEach(function (w) { ag2.appendChild(w); });
+  // Order on screen: Date format, Coin, Splash screen on open, Theme, Animated burndown, Completion effects, Sound effects.
+  [sw, tw, abw, fxw, aw2].forEach(function (w) { ag2.appendChild(w); });
   appearanceBox.appendChild(ag2);
   root.appendChild(appearanceBox);
 
@@ -4555,9 +4555,8 @@ function renderSettings(page) {
 
   if (!inClaude()) {
     root.appendChild(el("h2", null, "Install Sidequest"));
-    // navigator.standalone is Safari-specific (not in the spec, no matchMedia
-    // support on older iOS) -- both checks together cover Chrome/Edge/Android
-    // and iOS home-screen installs.
+    // navigator.standalone is a non-standard flag some mobile browsers use instead of
+    // the display-mode query; the two checks together cover every installed app.
     var isStandalone = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
     function uninstallLine() {
       var p = el("p", { "class": "hint" });
@@ -4580,9 +4579,10 @@ function renderSettings(page) {
       installBox.appendChild(el("p", { "class": "hint first" }, "Install Sidequest as an app on your computer or mobile device. PWA installation is not supported by all browsers or devices."));
       installBox.appendChild(on(el("button", { type: "button", id: "installBtn" }, "Install Sidequest"), "click", triggerInstall));
     } else if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+      // These devices have no Install button, so they get their own steps.
       installBox.appendChild(el("p", { "class": "hint first" }, "On iPhone or iPad: tap Share, then Add to Home Screen."));
     } else {
-      installBox.appendChild(el("p", { "class": "hint first" }, "Sidequest is already installed as an app, or your browser does not support PWA installation."));
+      installBox.appendChild(el("p", { "class": "hint first" }, "Sidequest is already installed as an app, or your browser does not show an Install button. If it is not installed, look in your browser’s menu for Install or Add to Home Screen."));
       installBox.appendChild(uninstallLine());
     }
     root.appendChild(installBox);
@@ -5266,8 +5266,8 @@ on($("renameBtn"), "click", renameCurrentQuest);
 
 // Shown only for the installed PWA, since a normal browser tab already
 // refreshes itself (F5/pull-to-refresh) -- fixed for the whole session, so
-// computed once rather than per-render. navigator.standalone is Safari-only
-// (not in the spec, no matchMedia support on older iOS).
+// computed once rather than per-render. navigator.standalone is a non-standard
+// flag some mobile browsers use instead of the display-mode query.
 var isStandaloneApp = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
 if (isStandaloneApp) {
   $("refreshBtn").hidden = false;

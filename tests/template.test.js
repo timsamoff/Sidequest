@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.9.5"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.9.6"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2040,7 +2040,7 @@ async function exportClick(k, projectName) {
   k.tab("settings");
   const box = k.$("view");
   ok(box.textContent.includes("To uninstall Sidequest, open the title bar menu and select Uninstall Sidequest...") && !box.textContent.includes("chrome://apps"), "running standalone points to the app window's own menu for uninstalling");
-  ok(!box.textContent.includes("Install Sidequest as an app") && !box.textContent.includes("already installed as an app, or your browser does not support"), "the normal install-prompt and unsupported-browser copy are not shown while standalone");
+  ok(!box.textContent.includes("Install Sidequest as an app") && !box.textContent.includes("already installed as an app, or your browser does not show an Install button"), "the normal install-prompt and unsupported-browser copy are not shown while standalone");
   ok(!box.textContent.includes("Refresh"), "Options itself no longer offers a Refresh button -- it moved to the top bar");
 }
 {
@@ -2050,7 +2050,14 @@ async function exportClick(k, projectName) {
   ok(k.$("refreshBtn").hidden, "the top-bar Refresh button stays hidden outside standalone mode");
   k.tab("settings");
   const box = k.$("view");
-  ok(box.textContent.includes("already installed as an app, or your browser does not support"), "a normal (non-standalone) browser tab still shows the existing fallback copy");
+  ok(box.textContent.includes("already installed as an app, or your browser does not show an Install button") && !/iPhone|iPad/.test(box.textContent) && box.textContent.includes("Add to Home Screen"), "a normal (non-standalone) browser tab shows generic install copy that names no phone");
+  // iPhone and iPad have no Install button, so they alone get their own steps
+  const realNav = Object.getOwnPropertyDescriptor(global, "navigator");
+  Object.defineProperty(global, "navigator", { value: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)" }, configurable: true, writable: true });
+  const kIos = kit(await mk()); kIos.tab("settings");
+  const iosText = kIos.$("view").textContent;
+  if (realNav) Object.defineProperty(global, "navigator", realNav); else delete global.navigator;
+  ok(iosText.includes("On iPhone or iPad: tap Share, then Add to Home Screen.") && !iosText.includes("does not show an Install button"), "an iPhone or iPad sees the Share, then Add to Home Screen steps instead of the generic line");
 }
 
 {
@@ -2463,7 +2470,7 @@ async function exportClick(k, projectName) {
   const sel = k.$("set-coin");
   ok(!!sel && sel.value === "us" && [...sel.options].map(o => o.textContent).join() === "US (1,234.56),European (1.234,56)", "Options has a Coin setting that defaults to US");
   const order = [...k.d.querySelectorAll("#view .setgrid label")].map(l => l.textContent);
-  ok(order.slice(order.indexOf("Date format"), order.indexOf("Date format") + 7).join() === "Date format,Coin,Theme,Animated burndown,Splash screen on open,Sound effects,Completion effects", "the Appearance settings read Date format, Coin, Theme, Animated burndown, Splash screen on open, Sound effects, Completion effects");
+  ok(order.slice(order.indexOf("Date format"), order.indexOf("Date format") + 7).join() === "Date format,Coin,Splash screen on open,Theme,Animated burndown,Completion effects,Sound effects", "the Appearance settings read Date format, Coin, Splash screen on open, Theme, Animated burndown, Completion effects, Sound effects");
   sel.value = "eu"; k.fire(sel);
   ok(k.saved().settings.coinFormat === "eu", "choosing European saves");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Website"));

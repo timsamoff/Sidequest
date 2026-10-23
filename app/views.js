@@ -1433,8 +1433,8 @@ export function renderSettings(page) {
   [["on", "On"], ["off", "Off"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if ((o[0] === "on") === state.settings.audio) op.selected = true; as.appendChild(op); });
   on(as, "change", function () { state.settings.audio = as.value === "on"; save(); });
   aw2.appendChild(as);
-  // Order on screen: Date format, Coin, Theme, Animated burndown, Splash screen on open, Sound effects, Completion effects.
-  [tw, abw, sw, aw2, fxw].forEach(function (w) { ag2.appendChild(w); });
+  // Order on screen: Date format, Coin, Splash screen on open, Theme, Animated burndown, Completion effects, Sound effects.
+  [sw, tw, abw, fxw, aw2].forEach(function (w) { ag2.appendChild(w); });
   appearanceBox.appendChild(ag2);
   root.appendChild(appearanceBox);
 
@@ -1452,9 +1452,8 @@ export function renderSettings(page) {
 
   if (!inClaude()) {
     root.appendChild(el("h2", null, "Install Sidequest"));
-    // navigator.standalone is Safari-specific (not in the spec, no matchMedia
-    // support on older iOS) -- both checks together cover Chrome/Edge/Android
-    // and iOS home-screen installs.
+    // navigator.standalone is a non-standard flag some mobile browsers use instead of
+    // the display-mode query; the two checks together cover every installed app.
     var isStandalone = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
     function uninstallLine() {
       var p = el("p", { "class": "hint" });
@@ -1477,9 +1476,10 @@ export function renderSettings(page) {
       installBox.appendChild(el("p", { "class": "hint first" }, "Install Sidequest as an app on your computer or mobile device. PWA installation is not supported by all browsers or devices."));
       installBox.appendChild(on(el("button", { type: "button", id: "installBtn" }, "Install Sidequest"), "click", triggerInstall));
     } else if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+      // These devices have no Install button, so they get their own steps.
       installBox.appendChild(el("p", { "class": "hint first" }, "On iPhone or iPad: tap Share, then Add to Home Screen."));
     } else {
-      installBox.appendChild(el("p", { "class": "hint first" }, "Sidequest is already installed as an app, or your browser does not support PWA installation."));
+      installBox.appendChild(el("p", { "class": "hint first" }, "Sidequest is already installed as an app, or your browser does not show an Install button. If it is not installed, look in your browser’s menu for Install or Add to Home Screen."));
       installBox.appendChild(uninstallLine());
     }
     root.appendChild(installBox);
