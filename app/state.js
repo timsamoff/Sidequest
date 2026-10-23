@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.9.1";
+export var APP_VERSION = "0.9.2";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -20,7 +20,7 @@ export function task(id, block, questId, what, done, steps, extra) {
 // A quest's own lifecycle: "candidate" or "active". Promoted in place -- the
 // same record and id carry through candidate -> active -> vaulted, never a second record.
 export function quest(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], savedLinkIds: null, launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, justReopened: false, touched: "", sig: "", client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, justReopened: false, touched: "", sig: "", client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -173,7 +173,7 @@ export function normalize(s) {
       var days = (typeof x.days === "number" && x.days >= 1 && x.days <= 90) ? Math.round(x.days)
         : (typeof x.mult === "number" && x.mult >= 0.25 && x.mult <= 5) ? Math.max(1, Math.round(d.days * x.mult)) : d.days;
       var linked = Array.isArray(x.linkedQuestIds) ? x.linkedQuestIds : x.linkedProjectIds;
-      // Set aside while demoted to candidate, so a later promotion can restore the same links.
+      // Old saves set a demoted quest's links aside here; they are turned back into real links below.
       var saved = Array.isArray(x.savedLinkIds) ? x.savedLinkIds : null;
       var xc = x.client && typeof x.client === "object" ? x.client : {};
       return {
@@ -196,7 +196,17 @@ export function normalize(s) {
   var questIds = {}; d.quests.forEach(function (p) { questIds[p.id] = true; });
   d.quests.forEach(function (p) {
     p.linkedQuestIds = p.linkedQuestIds.filter(function (id) { return id !== p.id && questIds[id]; });
-    if (p.savedLinkIds) p.savedLinkIds = p.savedLinkIds.filter(function (id) { return id !== p.id && questIds[id]; });
+  });
+  // A demoted quest used to keep its links in savedLinkIds; they are ordinary links now, on both sides.
+  var byId = {}; d.quests.forEach(function (p) { byId[p.id] = p; });
+  d.quests.forEach(function (p) {
+    (p.savedLinkIds || []).forEach(function (id) {
+      var o = byId[id];
+      if (!o || o === p) return;
+      if (p.linkedQuestIds.indexOf(id) < 0 && p.linkedQuestIds.length < 60) p.linkedQuestIds.push(id);
+      if (o.linkedQuestIds.indexOf(p.id) < 0 && o.linkedQuestIds.length < 60) o.linkedQuestIds.push(p.id);
+    });
+    delete p.savedLinkIds;
   });
   if (Array.isArray(s.tasks)) {
     var ts = [];
@@ -413,6 +423,10 @@ export function autoVault() {
 }
 // Permanently deletes Vault entries older than settings.vaultPurgeDays,
 // checked once at boot. 0 means Never; no confirmation, the Settings control itself is standing consent.
+// Removes every link that points at a quest which no longer exists.
+export function removeLinksTo(ids) {
+  state.quests.forEach(function (q) { q.linkedQuestIds = q.linkedQuestIds.filter(function (id) { return ids.indexOf(id) < 0; }); });
+}
 export function purgeOldVault() {
   var days = state.settings.vaultPurgeDays;
   if (!days) return;
@@ -421,7 +435,9 @@ export function purgeOldVault() {
   state.quests.filter(old).forEach(function (p) {
     state.tasks = state.tasks.filter(function (t) { return t.questId !== p.id; });
   });
+  var goneIds = state.quests.filter(old).map(function (p) { return p.id; });
   state.quests = state.quests.filter(function (p) { return !old(p); });
+  removeLinksTo(goneIds);
   state.workshop = state.workshop.filter(function (p) { return !old(p); });
 }
 // Shuffled-bucket randomizer: draws from state.settings.affirmationBucket (a

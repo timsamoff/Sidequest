@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.9.1"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.9.2"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -640,22 +640,49 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!k.saved().quests.find(p => p.id === "pExt").vault, "Vault on the candidate page sends it to the Vault");
 }
 {
-  // demoting a linked quest sets its links aside and strips them from both
-  // sides; promoting it again restores them
+  // Demoting or vaulting keeps a quest's links, shown read-only; promoting or restoring makes them live again
   const k = kit(await mk());
-  // pApp and pSite are linked by the sample data
   k.tab("projects"); k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  ok(!!k.btn(k.$("view"), "Demote"), "Sample App's page offers Demote");
   k.click(k.btn(k.$("view"), "Demote"));
-  const demoted = k.saved().quests.find(p => p.id === "pApp");
-  ok(demoted.status === "candidate" && demoted.linkedQuestIds.length === 0, "demoting clears the quest's own live links");
-  ok(JSON.stringify(demoted.savedLinkIds) === JSON.stringify(["pSite"]), "demoting saves the prior links for later");
-  const site = k.saved().quests.find(p => p.id === "pSite");
-  ok(site.linkedQuestIds.indexOf("pApp") < 0, "demoting also removes the link from the other quest's side");
-  k.click(k.btn(k.$("view"), "Promote"));
-  const restored = k.saved().quests.find(p => p.id === "pApp");
-  ok(restored.status === "active" && restored.linkedQuestIds.indexOf("pSite") >= 0 && restored.savedLinkIds === null, "promoting again restores the saved link and clears the saved copy");
-  ok(k.saved().quests.find(p => p.id === "pSite").linkedQuestIds.indexOf("pApp") >= 0, "the other quest's side of the link is restored too");
+  const links = () => k.saved().quests.find(p => p.id === "pApp").linkedQuestIds;
+  ok(k.saved().quests.find(p => p.id === "pApp").status === "candidate" && links().indexOf("pSite") >= 0 && k.saved().quests.find(p => p.id === "pSite").linkedQuestIds.indexOf("pApp") >= 0, "demoting keeps the link on both sides");
+  ok(k.saved().quests.find(p => p.id === "pApp").savedLinkIds === undefined, "there is no separate set-aside list any more");
+  let sec = [...k.d.querySelectorAll("#view h2")].find(h => h.textContent === "Quest links");
+  ok(!!sec && !!k.d.querySelector("#view .qinert") && !k.btn(k.$("view"), "Link quest"), "a demoted quest's page shows its link read-only, with no way to add links");
+  ok(!!k.d.querySelector("#view .list button[disabled]") && !!k.btn(k.$("view"), "Unlink"), "its Launch critical toggle is disabled but Unlink still works");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Website"));
+  const row = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample App"));
+  ok(!!row && !!row.querySelector(".qinert") && !row.querySelector(".qlink") && row.textContent.includes("Candidate"), "the other quest lists the demoted one as plain text labeled Candidate, not clickable");
+  const opts = () => { k.click(k.btn(k.$("view"), "Link quest")); return [...k.d.querySelectorAll("#f-quest option")].map(o => o.textContent); };
+  ok(k.btn(k.$("view"), "Link quest") ? !opts().includes("Sample App") : true, "a Candidate is not offered as a link target");
+  k.click(k.btn(k.$("modalBody"), "Cancel") || k.btn(k.$("modalBody"), "Close") || k.$("modalBody"));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App")); k.click(k.btn(k.$("view"), "Promote"));
+  ok(k.saved().quests.find(p => p.id === "pApp").status === "active" && links().indexOf("pSite") >= 0, "promoting makes the same link live again");
+}
+{
+  // Vaulting keeps the links too; deleting forever removes them
+  const k = kit(await mk());
+  k.tab("projects"); k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
+  k.click(k.btn(k.$("view"), "Vault"));
+  const q = id => k.saved().quests.find(p => p.id === id);
+  ok(!!q("pApp").vault && q("pApp").linkedQuestIds.indexOf("pSite") >= 0 && q("pSite").linkedQuestIds.indexOf("pApp") >= 0, "vaulting keeps the links on both sides");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Website"));
+  const row = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample App"));
+  ok(!!row && !!row.querySelector(".qinert") && row.textContent.includes("Vaulted") && !row.querySelector(".qlink"), "a live quest lists its vaulted partner as plain text labeled Vaulted");
+  k.tab("vault");
+  const del = [...k.d.querySelectorAll("#view li")].find(li => li.textContent.includes("Sample App"));
+  k.click(k.btn(del, "Delete forever")); k.click(k.$("confirmYes"));
+  ok(!q("pApp") && q("pSite").linkedQuestIds.indexOf("pApp") < 0, "deleting a vaulted quest forever removes the link from its partner");
+}
+{
+  // Saves from before this change kept a demoted quest's links in savedLinkIds; they load as real links
+  const k = kit(await mk());
+  const raw = JSON.parse(k.w.localStorage.getItem("sidequest-template-v1"));
+  const app = raw.quests.find(p => p.id === "pApp"), site = raw.quests.find(p => p.id === "pSite");
+  app.status = "candidate"; app.savedLinkIds = ["pSite"]; app.linkedQuestIds = []; site.linkedQuestIds = [];
+  const k2 = kit(await mk(raw));
+  const a2 = k2.saved().quests.find(p => p.id === "pApp"), s2 = k2.saved().quests.find(p => p.id === "pSite");
+  ok(a2.linkedQuestIds.indexOf("pSite") >= 0 && s2.linkedQuestIds.indexOf("pApp") >= 0 && a2.savedLinkIds === undefined, "an older save's set-aside links become real links on both sides");
 }
 {
   // New quest also collects Quest Giver fields up front

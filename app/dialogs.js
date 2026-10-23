@@ -182,7 +182,7 @@ export function questDialog() {
 // Links are bidirectional, so the chosen quest shows this one too. Only
 // quests not already linked are offered.
 export function linkQuestDialog(p) {
-  var opts = liveQuests().filter(function (x) { return x.id !== p.id && p.linkedQuestIds.indexOf(x.id) < 0; }).map(function (x) { return { value: x.id, label: x.name }; });
+  var opts = liveQuests().filter(function (x) { return x.id !== p.id && x.status !== "candidate" && p.linkedQuestIds.indexOf(x.id) < 0; }).map(function (x) { return { value: x.id, label: x.name }; });
   if (!opts.length) { notify("Every other quest is already linked."); return; }
   formDialog("Link quest", [{ key: "quest", label: "Quest to link", type: "select", options: opts, value: opts[0].value }], "Link quest", function (v) {
     var other = findQuest(v.quest);

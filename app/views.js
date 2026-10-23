@@ -1,4 +1,4 @@
-import { state, ui, save, changed, autoVault, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, makeQuest, task, st, S } from "./state.js";
+import { state, ui, save, changed, autoVault, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, makeQuest, task, st, S, removeLinksTo } from "./state.js";
 import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart, addDays } from "./dates.js";
 import {
   WORDS, wd, wl, pset, questDueLimit, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
@@ -497,20 +497,28 @@ export function buildDetail(t, inline, readOnly) {
 
 // Bidirectional link, not a subtask hierarchy. Lists p's own direct links only, one hop.
 export function linksSection(root, p) {
-  var readOnly = !!p.vault;
+  // Only a live quest (not a Candidate, not vaulted) can add links or follow them.
+  var ownerLive = !p.vault && p.status !== "candidate";
   var links = linkedQuests(p);
   var ul = el("ul", { "class": "list" });
   if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No quest links."));
   links.forEach(function (lp) {
+    var inert = !ownerLive || !!lp.vault || lp.status === "candidate";
     var li = el("li"), row = el("div", { "class": "crow oneline" });
-    var nm = el("button", { type: "button", "class": "textbtn qlink", title: "View this quest" }, lp.name);
-    on(nm, "click", function () { go("quest:" + lp.id); });
-    row.appendChild(nm);
+    if (inert) {
+      row.appendChild(el("span", { "class": "qinert", style: "font-weight:600" }, lp.name));
+      if (lp.vault) row.appendChild(el("span", { "class": "chip" }, "Vaulted"));
+      else if (lp.status === "candidate") row.appendChild(el("span", { "class": "chip" }, "Candidate"));
+    } else {
+      var nm = el("button", { type: "button", "class": "textbtn qlink", title: "View this quest" }, lp.name);
+      on(nm, "click", function () { go("quest:" + lp.id); });
+      row.appendChild(nm);
+    }
     if (lp.launchCritical) row.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
-    if (!readOnly) {
+    if (!p.vault) {
       var acts = el("div", { "class": "li-actions" });
-      // Toggles lp's own record -- visible from either side of the link.
-      var lc = el("button", { type: "button", "class": "small" + (lp.launchCritical ? " on" : ""), "aria-pressed": lp.launchCritical ? "true" : "false", title: lp.launchCritical ? "Unmark this quest as launch critical" : "Mark this quest as launch critical" }, lp.launchCritical ? "Skip Launch" : "Launch critical");
+      // Toggles lp's own record -- visible from either side of the link; off for a quest that is not live.
+      var lc = el("button", { type: "button", "class": "small" + (lp.launchCritical ? " on" : ""), "aria-pressed": lp.launchCritical ? "true" : "false", disabled: inert ? true : undefined, title: inert ? "Only available while both quests are live" : (lp.launchCritical ? "Unmark this quest as launch critical" : "Mark this quest as launch critical") }, lp.launchCritical ? "Skip Launch" : "Launch critical");
       on(lc, "click", function () { lp.launchCritical = !lp.launchCritical; changed(); });
       acts.appendChild(lc);
       var rm = el("button", { type: "button", "class": "small danger", title: "Remove this link" }, "Unlink");
@@ -520,8 +528,9 @@ export function linksSection(root, p) {
     li.appendChild(row); ul.appendChild(li);
   });
   root.appendChild(ul);
-  if (readOnly) return;
-  var candidates = liveQuests().filter(function (x) { return x.id !== p.id && p.linkedQuestIds.indexOf(x.id) < 0; });
+  if (!ownerLive) return;
+  // A Candidate is not a link target, and neither is a vaulted quest.
+  var candidates = liveQuests().filter(function (x) { return x.id !== p.id && x.status !== "candidate" && p.linkedQuestIds.indexOf(x.id) < 0; });
   if (candidates.length) {
     var addRow = el("div", { "class": "actions", style: "margin-top:10px" });
     addRow.appendChild(on(el("button", { type: "button", "class": "small", title: "Create a link to another quest" }, "Link quest"), "click", function () { linkQuestDialog(p); }));
@@ -652,6 +661,7 @@ export function renderQuestPage(root, id) {
     root.appendChild(el("h2", null, "Quest Giver"));
     var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Bounty: " + formatMoney(p.client.coin) + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
     root.appendChild(el("p", { "class": "hint notetext" }, cgLines.length ? cgLines.join("\n") : "No Quest Giver."));
+    if (linkedQuests(p).length) { root.appendChild(el("h2", null, "Quest links")); linksSection(root, p); }
     return;
   }
 
@@ -696,8 +706,8 @@ export function renderQuestPage(root, id) {
 
   launchSection(root, p);
 
-  // A candidate isn't a real destination for other quests to link to yet.
-  if (p.status !== "candidate") {
+  // A Candidate that was never linked has no section; one that kept links from before it was demoted shows them read-only.
+  if (p.status !== "candidate" || linkedQuests(p).length) {
     root.appendChild(el("h2", null, "Quest links"));
     linksSection(root, p);
   }
@@ -882,20 +892,13 @@ function doPromote(p) {
   p.status = "active";
   // Tasks added while it was a Candidate were part of the plan from the start, not scope added later.
   state.tasks.forEach(function (x) { if (x.questId === p.id) x.added = ""; });
-  if (p.savedLinkIds) {
-    p.savedLinkIds.forEach(function (lid) { if (findAnyQuest(lid)) linkQuests(p.id, lid); });
-    p.savedLinkIds = null;
-  }
   changed();
   if (state.settings.audio) playSfx("assets/sfx/quest.mp3");
 }
-// Sends an active quest back to Candidates. A candidate isn't a real link
-// target, so its links are set aside in savedLinkIds (restored on re-promotion), not just dropped.
+// Sends an active quest back to Candidates. Its links are kept, shown read-only, and live again on promotion.
 export function demoteToCandidate(id) {
   var p = findAnyQuest(id);
   if (!p) return;
-  p.savedLinkIds = p.linkedQuestIds.slice();
-  p.linkedQuestIds.slice().forEach(function (lid) { unlinkQuests(p.id, lid); });
   p.status = "candidate";
   changed();
   notify("Sent back to Candidates.");
@@ -1070,7 +1073,10 @@ export function vaultEntries() {
   state.workshop.forEach(function (p) { if (p.vault) out.push({ kind: "idea", list: "workshop", item: p, title: p.text }); });
   return out.sort(function (a, b) { return a.item.vault.at < b.item.vault.at ? 1 : (a.item.vault.at > b.item.vault.at ? -1 : 0); });
 }
-export function dropEntry(e) { state[e.list] = state[e.list].filter(function (x) { return x !== e.item; }); }
+export function dropEntry(e) {
+  state[e.list] = state[e.list].filter(function (x) { return x !== e.item; });
+  if (e.list === "quests") removeLinksTo([e.item.id]);
+}
 export function restoreEntry(e) {
   e.item.vault = null;
   // Reverses vaultQuest()'s task cascade, or the quest comes back empty.
