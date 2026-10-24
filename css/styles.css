@@ -14,7 +14,7 @@ p { margin: 0; }
 .schedulesmsg:empty { margin-top: 0; min-height: 0; }
 
 input, select, button, textarea { font: inherit; color: var(--ink); margin: 0; }
-input[type="text"], input[type="date"], input[type="number"], input[type="tel"], input[type="email"], input[type="url"], textarea {
+input[type="text"], input[type="date"], input[type="number"], input[type="tel"], input[type="email"], input[type="url"], input[type="search"], textarea {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%;
 }
 /* iOS WebKit sizes a date input to its content and can overflow its container. */
@@ -79,6 +79,8 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .hbody { padding: 0 var(--space-14) var(--space-12); }
 .hbody ul { margin: 0; padding-left: 1.2rem; }
 .hbody li { margin-top: var(--space-6); }
+/* Bold text inside a Field guide section is the dark blue; the section headings stay as they are. */
+.hbody b, .hbody strong { color: var(--planned); }
 kbd { font: inherit; font-size: .9em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 var(--space-6); background: var(--bg); }
 .standing { list-style: none; margin: 0; padding: 0; }
 .standing li { padding: var(--space-12) 0; border-bottom: 1px solid var(--line); }

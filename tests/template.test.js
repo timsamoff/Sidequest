@@ -93,7 +93,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.9.6"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.9.7"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -616,7 +616,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.d.querySelector("#view textarea").value === "A small tool that could ship in a month", "the candidate page shows its Notes");
   ok(k.$("viewTitle").textContent === "Sample Browser Extension", "the candidate page shows its name as the title");
   ok(!k.$("renameBtn").hidden, "a candidate's page has the rename pencil like any other live quest");
-  ok(![...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Quest links"), "a candidate's page has no Quest links section");
+  ok([...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Quest links") && !!k.btn(k.$("view"), "Link quest"), "a candidate's page has a Quest links section with a Link quest button");
   ok(!!k.btn(k.$("view"), "Promote") && !!k.btn(k.$("view"), "Vault"), "a candidate's page offers Promote and Vault");
   ok(!k.btn(k.$("view"), "Mark complete") && !k.btn(k.$("view"), "Quest Giver Export"), "a candidate's page has no Mark complete or Quest Giver Export button");
   // Quest Giver fields live right on the page for a candidate, same as an active quest
@@ -635,7 +635,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!k.btn(k.$("view"), "Demote") && !!k.btn(k.$("view"), "Mark complete") && !!k.btn(k.$("view"), "Vault") && !!k.btn(k.$("view"), "Quest Giver Export"), "the now-active quest's page has the full active action row, including Demote");
   k.click(k.btn(k.$("view"), "Demote"));
   ok(k.saved().quests.find(p => p.id === "pExt").status === "candidate", "Demote sends it back to Candidates");
-  ok(![...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Quest links") && !!k.btn(k.$("view"), "Promote"), "after demotion the page shows the candidate layout again");
+  ok(!!k.btn(k.$("view"), "Promote") && !k.btn(k.$("view"), "Mark complete"), "after demotion the page shows the candidate layout again");
   k.click(k.btn(k.$("view"), "Vault"));
   ok(!!k.saved().quests.find(p => p.id === "pExt").vault, "Vault on the candidate page sends it to the Vault");
 }
@@ -648,7 +648,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.saved().quests.find(p => p.id === "pApp").status === "candidate" && links().indexOf("pSite") >= 0 && k.saved().quests.find(p => p.id === "pSite").linkedQuestIds.indexOf("pApp") >= 0, "demoting keeps the link on both sides");
   ok(k.saved().quests.find(p => p.id === "pApp").savedLinkIds === undefined, "there is no separate set-aside list any more");
   let sec = [...k.d.querySelectorAll("#view h2")].find(h => h.textContent === "Quest links");
-  ok(!!sec && !!k.d.querySelector("#view .qinert") && !k.btn(k.$("view"), "Link quest"), "a demoted quest's page shows its link read-only, with no way to add links");
+  ok(!!sec && !!k.d.querySelector("#view .qlink") && !k.d.querySelector("#view .qinert") && !!k.btn(k.$("view"), "Link quest"), "a demoted quest's page shows its link to a live quest as clickable and can still add links");
   ok(!!k.d.querySelector("#view .list button[disabled]") && !!k.btn(k.$("view"), "Unlink"), "its Launch critical toggle is disabled but Unlink still works");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Website"));
   const row = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample App"));
@@ -2482,6 +2482,52 @@ async function exportClick(k, projectName) {
   ok(k.$("giver-coin-pSite").value === "1,234.56", "switching back to US redisplays the same amount as 1,234.56");
   const raw = JSON.parse(k.w.localStorage.getItem("sidequest-template-v1")); raw.settings.coinFormat = "nonsense";
   const k2 = kit(await mk(raw)); ok(k2.saved().settings.coinFormat === "us", "an invalid saved Coin value falls back to US");
+}
+{
+  // The Field guide has a filter box that narrows and opens the sections that contain the text
+  const k = kit(await mk()); k.click(k.$("welcomeDismiss")); k.tab("help");
+  const f = k.$("helpFilter"), items = () => [...k.d.querySelectorAll("#view details.helpitem")];
+  ok(!!f && items().every(d => !d.hidden) && items().filter(d => d.open).length === 1, "the Field guide starts with every section listed and the first one open");
+  f.value = "backup"; k.fire(f, "input");
+  const shown = items().filter(d => !d.hidden);
+  ok(shown.length > 0 && shown.length < items().length && shown.every(d => d.open && d.textContent.toLowerCase().includes("backup")), "typing narrows the list to sections containing the text and opens them");
+  f.value = "zzzzqq"; k.fire(f, "input");
+  ok(items().every(d => d.hidden) && k.$("view").textContent.includes("No sections match"), "text that matches nothing says so");
+  f.value = ""; k.fire(f, "input");
+  ok(items().every(d => !d.hidden) && items().filter(d => d.open).length === 1, "clearing the box brings back the full list with only the first section open");
+}
+{
+  // Straight and curly apostrophes match each other, matches are highlighted, and bold text in the guide is blue
+  const k = kit(await mk()); k.click(k.$("welcomeDismiss")); k.tab("help");
+  const f = k.$("helpFilter");
+  f.value = "quest's"; k.fire(f, "input");
+  const opened = [...k.d.querySelectorAll("#view details.helpitem")].filter(d => !d.hidden);
+  ok(opened.length > 0 && opened.every(d => d.querySelector("mark")), "typing a straight apostrophe finds text with a curly one, and the matches are highlighted");
+  f.value = ""; k.fire(f, "input");
+  ok(!k.d.querySelector("#view mark"), "clearing the box removes the highlights");
+  const css = fs.readFileSync(path.join(__dirname, "..", "css", "styles.css"), "utf8");
+  ok(/\.hbody b, \.hbody strong \{ color: var\(--planned\); \}/.test(css) && !/\.helpitem > summary \{[^}]*--planned/.test(css), "bold text inside a Field guide section is the dark blue and the section headings are not");
+}
+{
+  // A Candidate can add links, but only to live quests; no quest can pick a Candidate
+  const k = kit(await mk()); k.click(k.$("welcomeDismiss"));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Command-Line Tool"));
+  ok(!!k.btn(k.$("view"), "Link quest"), "a Candidate's page offers Link quest");
+  k.click(k.btn(k.$("view"), "Link quest"));
+  const opts = [...k.d.querySelectorAll("#f-quest option")].map(o => o.textContent);
+  ok(opts.includes("Sample App") && !opts.includes("Sample Browser Extension") && !opts.includes("Sample Command-Line Tool"), "its picker offers live quests only, not other Candidates (" + opts.join(", ") + ")");
+  const sel = k.$("f-quest"); sel.value = [...sel.options].find(o => o.textContent === "Sample Newsletter").value;
+  k.click(k.btn(k.$("modalBody"), "Link quest"));
+  const q = id => k.saved().quests.find(x => x.id === id);
+  ok(q("pCli").linkedQuestIds.indexOf("pNews") >= 0 && q("pNews").linkedQuestIds.indexOf("pCli") >= 0, "the new link is stored on both quests");
+  k.click(k.$("modalBody") && (k.btn(k.$("modalBody"), "Close") || k.btn(k.$("modalBody"), "Cancel")) || k.$("modalBody"));
+  const row = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Newsletter"));
+  ok(!!row && !!row.querySelector(".qlink") && !!row.querySelector("button[disabled]") && !!k.btn(row, "Unlink"), "on the Candidate's page the live partner is clickable, Launch critical is off, and Unlink works");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Newsletter"));
+  const row2 = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Command-Line Tool"));
+  ok(!!row2 && !!row2.querySelector(".qinert") && row2.textContent.includes("Candidate"), "the live quest lists the Candidate as plain text labeled Candidate");
+  k.click(k.btn(k.$("view"), "Link quest"));
+  ok(![...k.d.querySelectorAll("#f-quest option")].some(o => o.textContent === "Sample Browser Extension"), "a live quest's picker never offers a Candidate");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

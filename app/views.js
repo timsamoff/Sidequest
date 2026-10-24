@@ -497,13 +497,15 @@ export function buildDetail(t, inline, readOnly) {
 
 // Bidirectional link, not a subtask hierarchy. Lists p's own direct links only, one hop.
 export function linksSection(root, p) {
-  // Only a live quest (not a Candidate, not vaulted) can add links or follow them.
+  // A live quest or a Candidate can add links (to live quests only); a vaulted quest keeps its links read-only.
+  // Only two live quests can toggle Launch critical.
   var ownerLive = !p.vault && p.status !== "candidate";
   var links = linkedQuests(p);
   var ul = el("ul", { "class": "list" });
   if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No quest links."));
   links.forEach(function (lp) {
-    var inert = !ownerLive || !!lp.vault || lp.status === "candidate";
+    var inert = !!lp.vault || lp.status === "candidate";
+    var toggleOff = inert || !ownerLive;
     var li = el("li"), row = el("div", { "class": "crow oneline" });
     if (inert) {
       row.appendChild(el("span", { "class": "qinert", style: "font-weight:600" }, lp.name));
@@ -518,7 +520,7 @@ export function linksSection(root, p) {
     if (!p.vault) {
       var acts = el("div", { "class": "li-actions" });
       // Toggles lp's own record -- visible from either side of the link; off for a quest that is not live.
-      var lc = el("button", { type: "button", "class": "small" + (lp.launchCritical ? " on" : ""), "aria-pressed": lp.launchCritical ? "true" : "false", disabled: inert ? true : undefined, title: inert ? "Only available while both quests are live" : (lp.launchCritical ? "Unmark this quest as launch critical" : "Mark this quest as launch critical") }, lp.launchCritical ? "Skip Launch" : "Launch critical");
+      var lc = el("button", { type: "button", "class": "small" + (lp.launchCritical ? " on" : ""), "aria-pressed": lp.launchCritical ? "true" : "false", disabled: toggleOff ? true : undefined, title: toggleOff ? "Only available while both quests are live" : (lp.launchCritical ? "Unmark this quest as launch critical" : "Mark this quest as launch critical") }, lp.launchCritical ? "Skip Launch" : "Launch critical");
       on(lc, "click", function () { lp.launchCritical = !lp.launchCritical; changed(); });
       acts.appendChild(lc);
       var rm = el("button", { type: "button", "class": "small danger", title: "Remove this link" }, "Unlink");
@@ -528,7 +530,7 @@ export function linksSection(root, p) {
     li.appendChild(row); ul.appendChild(li);
   });
   root.appendChild(ul);
-  if (!ownerLive) return;
+  if (p.vault) return;
   // A Candidate is not a link target, and neither is a vaulted quest.
   var candidates = liveQuests().filter(function (x) { return x.id !== p.id && x.status !== "candidate" && p.linkedQuestIds.indexOf(x.id) < 0; });
   if (candidates.length) {
@@ -706,11 +708,8 @@ export function renderQuestPage(root, id) {
 
   launchSection(root, p);
 
-  // A Candidate that was never linked has no section; one that kept links from before it was demoted shows them read-only.
-  if (p.status !== "candidate" || linkedQuests(p).length) {
-    root.appendChild(el("h2", null, "Quest links"));
-    linksSection(root, p);
-  }
+  root.appendChild(el("h2", null, "Quest links"));
+  linksSection(root, p);
 
   root.appendChild(el("h2", null, "Notes"));
   if (readOnly) {
@@ -1221,6 +1220,10 @@ export function helpTopics() {
   ];
 }
 export function renderHelp(root) {
+  // A filter box: typing narrows the sections to those that contain the text, and opens them.
+  var filterWrap = el("div", { "class": "field", style: "margin-top:0" });
+  var filt = el("input", { type: "search", id: "helpFilter", placeholder: "Filter the Field guide", "aria-label": "Filter the Field guide", autocomplete: "off" });
+  filterWrap.appendChild(filt); root.appendChild(filterWrap);
   var acts = el("div", { "class": "actions", style: "margin-top:10px" }), items = [];
   var openAll = el("button", { type: "button", "class": "small", id: "helpOpen" }, "Open all"), closeAll = el("button", { type: "button", "class": "small", id: "helpClose" }, "Close all");
   on(openAll, "click", function () { items.forEach(function (d) { d.open = true; }); });
@@ -1234,6 +1237,40 @@ export function renderHelp(root) {
     t[1].forEach(function (line) { var li = el("li"); li.appendChild(helpMarkup(line)); ul.appendChild(li); });
     body.appendChild(ul); d.appendChild(body); root.appendChild(d); items.push(d);
   });
+  var noMatch = el("p", { "class": "hint", role: "status", "aria-live": "polite" }); noMatch.hidden = true; root.appendChild(noMatch);
+  // Curly and straight quotes count as the same, so typing an apostrophe always matches.
+  function norm(s) { return s.toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"'); }
+  var texts = items.map(function (d) { return norm(d.textContent); });
+  var bodies = items.map(function (d) { return d.querySelector(".hbody"); }), originals = bodies.map(function (b) { return b.innerHTML; });
+  // Wraps each match in a <mark>; a phrase split across bold text still opens the section but is not marked.
+  function highlight(body, q) {
+    var walker = document.createTreeWalker(body, 4), nodes = [], n;
+    while ((n = walker.nextNode())) nodes.push(n);
+    nodes.forEach(function (node) {
+      var low = norm(node.data), at = low.indexOf(q);
+      if (at < 0) return;
+      var frag = document.createDocumentFragment(), pos = 0;
+      while (at >= 0) {
+        if (at > pos) frag.appendChild(document.createTextNode(node.data.slice(pos, at)));
+        frag.appendChild(el("mark", null, node.data.slice(at, at + q.length)));
+        pos = at + q.length; at = low.indexOf(q, pos);
+      }
+      if (pos < node.data.length) frag.appendChild(document.createTextNode(node.data.slice(pos)));
+      node.parentNode.replaceChild(frag, node);
+    });
+  }
+  on(filt, "input", function () {
+    var q = norm(filt.value.trim()), any = false;
+    items.forEach(function (d, i) {
+      var hit = !q || texts[i].indexOf(q) >= 0;
+      d.hidden = !hit;
+      bodies[i].innerHTML = originals[i];
+      if (q) { if (hit) { d.open = true; any = true; highlight(bodies[i], q); } } else d.open = i === 0;
+    });
+    noMatch.hidden = !q || any;
+    noMatch.textContent = q && !any ? "No sections match “" + filt.value.trim() + "”." : "";
+  });
+  on(filt, "keydown", function (e) { if (e.key === "Escape" && filt.value) { e.preventDefault(); filt.value = ""; filt.dispatchEvent(new Event("input")); } });
 }
 
 /* settings */
