@@ -12,6 +12,12 @@ export function on(node, ev, fn) { node.addEventListener(ev, fn); return node; }
 export function inClaude() {
   try { return !!(window.claude && typeof window.claude.use === "function"); } catch (e) { return false; }
 }
+// True when Sidequest runs as a hosted artifact: inside Claude (its tools are present) or in any
+// other host that sets window.sidequestHosted = true. Wording about where data lives, and the
+// web-only features (Install box, backup reminder), follow this. Claude-only abilities use inClaude().
+export function isHosted() {
+  try { return inClaude() || window.sidequestHosted === true; } catch (e) { return false; }
+}
 // Plays a short sound effect, silently giving up on any failure (autoplay
 // blocked, missing file) since a sound effect is never worth surfacing an error
 // over. `volume` is optional, 0 to 1.

@@ -32,7 +32,7 @@ let counter = 0;
 // well after that test has moved on to a different global.window) can be
 // cancelled before the next one boots.
 let lastAppModule = null;
-async function mk(saved, claude, stamp, audioStub, matchMediaStub) {
+async function mk(saved, claude, stamp, audioStub, matchMediaStub, beforeBoot) {
   if (lastAppModule) lastAppModule.cancelSplash();
   const dom = new JSDOM(html, { url: "https://example.test/", pretendToBeVisual: true });
   dom.window.scrollTo = () => {};
@@ -43,6 +43,7 @@ async function mk(saved, claude, stamp, audioStub, matchMediaStub) {
   // app.js reads matchMedia at module-eval time (isStandaloneApp), so this
   // must be stubbed before the import below, not after mk() returns.
   if (matchMediaStub) dom.window.matchMedia = matchMediaStub;
+  if (beforeBoot) beforeBoot(dom.window);
   // jsdom has no real canvas 2D context (confirmed: getContext("2d") returns
   // null without the optional native "canvas" package) -- a minimal no-op
   // stub lets confetti.js's real append/animate/cleanup code run in tests.
@@ -93,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.9.7"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.9.8"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2347,10 +2348,10 @@ async function exportClick(k, projectName) {
     return { options, dialog, restore, help: k.$("view").textContent };
   };
   const web = await readOptions(null), cl = await readOptions(claudeStub);
-  ok(web.options.includes("Your data is saved in this browser on this device.") && !web.options.includes("saved in Claude"), "web: the Backup and restore description says this browser on this device");
-  ok(cl.options.includes("Your data is saved in Claude.") && !cl.options.includes("this browser"), "Claude: the Backup and restore description says Claude, and Options never says this browser");
-  ok(web.options.includes("Erase all Sidequest data stored in this browser and start again (options are retained). You will receive a warning and have a chance to save a backup first.") && cl.options.includes("Erase all Sidequest data stored in Claude and start again (options are retained)."), "the Start fresh description names the right place in each version");
-  ok(web.dialog.includes("erases everything stored in this browser.") && cl.dialog.includes("erases everything stored in Claude.") && !cl.dialog.includes("this browser"), "and so does the Start fresh warning");
+  ok(web.options.includes("Your data is saved in this browser on this device.") && !web.options.includes("your account"), "web: the Backup and restore description says this browser on this device");
+  ok(cl.options.includes("Your data is saved in your account.") && !cl.options.includes("this browser") && !cl.options.includes("Claude"), "hosted: the Backup and restore description says your account, and Options never says this browser or names Claude");
+  ok(web.options.includes("Erase all Sidequest data stored in this browser and start again (options are retained). You will receive a warning and have a chance to save a backup first.") && cl.options.includes("Erase all Sidequest data stored in your account and start again (options are retained)."), "the Start fresh description names the right place in each version");
+  ok(web.dialog.includes("erases everything stored in this browser.") && cl.dialog.includes("erases everything stored in your account.") && !cl.dialog.includes("this browser"), "and so does the Start fresh warning");
   ok(web.restore.includes("everything in Sidequest on this device:") && cl.restore.includes("everything in Sidequest: all current") && !cl.restore.includes("on this device"), "the restore warning only says on this device in the web app");
   ok(web.help.includes("Everything lives in this browser only") && web.help.includes("Today will say so") && cl.help.includes("Your data is saved in Claude, so it follows you across devices") && !cl.help.includes("Today will say so"), "Help describes each version's own storage, and the two-week backup reminder only on the web");
 }
@@ -2528,6 +2529,17 @@ async function exportClick(k, projectName) {
   ok(!!row2 && !!row2.querySelector(".qinert") && row2.textContent.includes("Candidate"), "the live quest lists the Candidate as plain text labeled Candidate");
   k.click(k.btn(k.$("view"), "Link quest"));
   ok(![...k.d.querySelectorAll("#f-quest option")].some(o => o.textContent === "Sample Browser Extension"), "a live quest's picker never offers a Candidate");
+}
+{
+  // Any other host can ask for the hosted wording and behavior by setting window.sidequestHosted = true
+  const k = kit(await mk(undefined, undefined, undefined, undefined, undefined, w => { w.sidequestHosted = true; }));
+  k.click(k.$("welcomeDismiss")); k.tab("settings");
+  const t = k.$("view").textContent;
+  ok(t.includes("Your data is saved in your account.") && !t.includes("this browser") && !t.includes("Install Sidequest") && !t.includes("Claude"), "a host that sets window.sidequestHosted gets the account wording and no Install box");
+  k.tab("help");
+  ok(![...k.d.querySelectorAll("#view details.helpitem summary")].some(x => x.textContent === "Install Sidequest on this device"), "and the Field guide leaves out the install topic");
+  k.tab("projects");
+  ok(/main menu/.test(([...k.d.querySelectorAll("#view .pintoggle, .pintoggle")][0] || {}).title || ""), "and pin text says main menu");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

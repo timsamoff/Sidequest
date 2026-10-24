@@ -9,7 +9,7 @@ import {
   validPage, isPinned, pinPage, unpinPage, questMeta, fmtHours, fmtHoursLong, questEstimate, recordHist, checkpointStep, globalActual,
   findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask, questTasks
 } from "./model.js";
-import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx, moneyInput, formatMoney, inClaude } from "./dom.js";
+import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx, moneyInput, formatMoney, inClaude, isHosted } from "./dom.js";
 import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
 import { playConfetti } from "./confetti.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme, replaySplash } from "./app.js";
@@ -581,7 +581,7 @@ export function launchSection(root, p) {
 // Pin/Unpin for a quest, shared by In progress and the Quests list.
 function questPinButton(key, name) {
   var pinned = isPinned(key);
-  return on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + name, title: pinned ? "Unpin from the " + (inClaude() ? "main menu" : "sidebar") : "Pin to the " + (inClaude() ? "main menu" : "sidebar") }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
+  return on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + name, title: pinned ? "Unpin from the " + (isHosted() ? "main menu" : "sidebar") : "Pin to the " + (isHosted() ? "main menu" : "sidebar") }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
 }
 function dustChip() { return el("span", { "class": "chip dust", style: "margin-left:8px", title: "No activity for a while" }, "Gathering dust"); }
 function questRow(r) {
@@ -1230,7 +1230,7 @@ export function renderHelp(root) {
   on(closeAll, "click", function () { items.forEach(function (d) { d.open = false; }); });
   acts.appendChild(openAll); acts.appendChild(closeAll); root.appendChild(acts);
   // The install topic is about the web app, so a published Claude artifact skips it.
-  helpTopics().filter(function (t) { return !(inClaude() && t[0] === "Install Sidequest on this device"); }).forEach(function (t, i) {
+  helpTopics().filter(function (t) { return !(isHosted() && t[0] === "Install Sidequest on this device"); }).forEach(function (t, i) {
     var d = el("details", { "class": "helpitem" }); if (i === 0) d.open = true;
     d.appendChild(el("summary", null, t[0]));
     var body = el("div", { "class": "hbody" }), ul = el("ul");
@@ -1282,7 +1282,7 @@ export function blankState() {
 }
 export function startFreshDialog() {
   openModal("Start fresh", function (body) {
-    body.appendChild(el("p", { "class": "first" }, "Start fresh erases everything stored in " + (inClaude() ? "Claude" : "this browser") + ". This cannot be undone."));
+    body.appendChild(el("p", { "class": "first" }, "Start fresh erases everything stored in " + (isHosted() ? "your account" : "this browser") + ". This cannot be undone."));
     body.appendChild(el("p", { "class": "hint" }, "Save a backup first if you think you’ll want anything back."));
     var msg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
     backupControls(body, msg); body.appendChild(msg);
@@ -1487,7 +1487,7 @@ export function renderSettings(page) {
   if (state.settings.vaultPurgeDays) vaultBox.appendChild(el("p", { "class": "hint" }, "Checked each time Sidequest opens. An item older than this, counted from when it was vaulted, is deleted permanently with no further warning."));
   root.appendChild(vaultBox);
 
-  if (!inClaude()) {
+  if (!isHosted()) {
     root.appendChild(el("h2", null, "Install Sidequest"));
     // navigator.standalone is a non-standard flag some mobile browsers use instead of
     // the display-mode query; the two checks together cover every installed app.
@@ -1535,7 +1535,7 @@ export function renderSettings(page) {
 
   root.appendChild(el("h2", { id: "startFreshHeading", "class": "scrollhead", tabindex: "-1" }, "Start fresh"));
   var box = el("div", { "class": "dangerbox" });
-  box.appendChild(el("p", { "class": "hint first" }, "Erase all Sidequest data stored in " + (inClaude() ? "Claude" : "this browser") + " and start again (options are retained). You will receive a warning and have a chance to save a backup first."));
+  box.appendChild(el("p", { "class": "hint first" }, "Erase all Sidequest data stored in " + (isHosted() ? "your account" : "this browser") + " and start again (options are retained). You will receive a warning and have a chance to save a backup first."));
   box.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:12px", id: "startFresh", title: "Erase everything and start over" }, "Start fresh…"), "click", startFreshDialog));
   root.appendChild(box);
 
@@ -1574,7 +1574,7 @@ function daysSinceBackup() {
 }
 // The Claude version keeps its data in its own db, so only the web app nags.
 function backupReminderDue() {
-  return !inClaude() && daysSinceBackup() >= BACKUP_REMIND_DAYS;
+  return !isHosted() && daysSinceBackup() >= BACKUP_REMIND_DAYS;
 }
 function lastBackupText() {
   var lb = state.settings.lastBackup;
@@ -1824,7 +1824,7 @@ function restoreBackupFile(file, msg) {
     msg.textContent = "";
     var next = normalize(obj), np = next.quests.length, nt = next.tasks.length;
     confirmDialog("Restore this backup?",
-      "This backup holds " + np + (np === 1 ? " quest" : " quests") + " and " + nt + (nt === 1 ? " task" : " tasks") + ". Restoring replaces everything in Sidequest" + (inClaude() ? "" : " on this device") + ": all current quests, tasks, notes, history, and settings. You will have a few seconds to undo it.",
+      "This backup holds " + np + (np === 1 ? " quest" : " quests") + " and " + nt + (nt === 1 ? " task" : " tasks") + ". Restoring replaces everything in Sidequest" + (isHosted() ? "" : " on this device") + ": all current quests, tasks, notes, history, and settings. You will have a few seconds to undo it.",
       "Restore backup", function () {
         if (state.settings.audio) playSfx("assets/sfx/restoreBackup.mp3");
         var before = JSON.stringify(state);
@@ -1845,7 +1845,7 @@ export function backupControls(host, msg, onDone) {
 // `hintHost`, if given, is where the leading description sentence goes instead
 // of `root`, so a caller can keep it outside the card wrapping the rest.
 export function backupPanel(root, hintHost) {
-  (hintHost || root).appendChild(el("p", { "class": "hint" }, (inClaude() ? "Your data is saved in Claude." : "Your data is saved in this browser on this device.") + " Create a backup from time to time and keep the file somewhere safe. You can restore your data from a backup at any time."));
+  (hintHost || root).appendChild(el("p", { "class": "hint" }, (isHosted() ? "Your data is saved in your account." : "Your data is saved in this browser on this device.") + " Create a backup from time to time and keep the file somewhere safe. You can restore your data from a backup at any time."));
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   var last = el("p", { "class": "hint" }, lastBackupText());
   var acts = backupControls(root, msg, function () { last.textContent = lastBackupText(); });

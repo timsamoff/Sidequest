@@ -735,6 +735,12 @@ function on(node, ev, fn) { node.addEventListener(ev, fn); return node; }
 function inClaude() {
   try { return !!(window.claude && typeof window.claude.use === "function"); } catch (e) { return false; }
 }
+// True when Sidequest runs as a hosted artifact: inside Claude (its tools are present) or in any
+// other host that sets window.sidequestHosted = true. Wording about where data lives, and the
+// web-only features (Install box, backup reminder), follow this. Claude-only abilities use inClaude().
+function isHosted() {
+  try { return inClaude() || window.sidequestHosted === true; } catch (e) { return false; }
+}
 // Plays a short sound effect, silently giving up on any failure (autoplay
 // blocked, missing file) since a sound effect is never worth surfacing an error
 // over. `volume` is optional, 0 to 1.
@@ -1094,7 +1100,7 @@ function pageTitle(key) {
 }
 function isPinned(key) { return state.pins.indexOf(key) >= 0; }
 // The Claude version shows pinned quests in the Main menu, not a sidebar.
-function pinHome() { return inClaude() ? "main menu" : "sidebar"; }
+function pinHome() { return isHosted() ? "main menu" : "sidebar"; }
 function pinPage(key) { if (!isPinned(key)) state.pins.push(key); changed(); notify(pageTitle(key) + " pinned to the " + pinHome() + "."); }
 function unpinPage(key) { state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); notify(pageTitle(key) + " removed from the " + pinHome() + ". It is still listed under Quests."); }
 function questMeta(p) {
@@ -1166,7 +1172,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.9.7";
+var APP_VERSION = "0.9.8";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -3686,7 +3692,7 @@ function launchSection(root, p) {
 // Pin/Unpin for a quest, shared by In progress and the Quests list.
 function questPinButton(key, name) {
   var pinned = isPinned(key);
-  return on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + name, title: pinned ? "Unpin from the " + (inClaude() ? "main menu" : "sidebar") : "Pin to the " + (inClaude() ? "main menu" : "sidebar") }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
+  return on(el("button", { type: "button", "class": "small pintoggle" + (pinned ? " on" : ""), "aria-pressed": pinned ? "true" : "false", "aria-label": (pinned ? "Unpin " : "Pin ") + name, title: pinned ? "Unpin from the " + (isHosted() ? "main menu" : "sidebar") : "Pin to the " + (isHosted() ? "main menu" : "sidebar") }, pinned ? "Unpin" : "Pin"), "click", function () { if (pinned) unpinPage(key); else pinPage(key); });
 }
 function dustChip() { return el("span", { "class": "chip dust", style: "margin-left:8px", title: "No activity for a while" }, "Gathering dust"); }
 function questRow(r) {
@@ -4335,7 +4341,7 @@ function renderHelp(root) {
   on(closeAll, "click", function () { items.forEach(function (d) { d.open = false; }); });
   acts.appendChild(openAll); acts.appendChild(closeAll); root.appendChild(acts);
   // The install topic is about the web app, so a published Claude artifact skips it.
-  helpTopics().filter(function (t) { return !(inClaude() && t[0] === "Install Sidequest on this device"); }).forEach(function (t, i) {
+  helpTopics().filter(function (t) { return !(isHosted() && t[0] === "Install Sidequest on this device"); }).forEach(function (t, i) {
     var d = el("details", { "class": "helpitem" }); if (i === 0) d.open = true;
     d.appendChild(el("summary", null, t[0]));
     var body = el("div", { "class": "hbody" }), ul = el("ul");
@@ -4387,7 +4393,7 @@ function blankState() {
 }
 function startFreshDialog() {
   openModal("Start fresh", function (body) {
-    body.appendChild(el("p", { "class": "first" }, "Start fresh erases everything stored in " + (inClaude() ? "Claude" : "this browser") + ". This cannot be undone."));
+    body.appendChild(el("p", { "class": "first" }, "Start fresh erases everything stored in " + (isHosted() ? "your account" : "this browser") + ". This cannot be undone."));
     body.appendChild(el("p", { "class": "hint" }, "Save a backup first if you think you’ll want anything back."));
     var msg = el("p", { "class": "msg", role: "status", "aria-live": "polite" });
     backupControls(body, msg); body.appendChild(msg);
@@ -4592,7 +4598,7 @@ function renderSettings(page) {
   if (state.settings.vaultPurgeDays) vaultBox.appendChild(el("p", { "class": "hint" }, "Checked each time Sidequest opens. An item older than this, counted from when it was vaulted, is deleted permanently with no further warning."));
   root.appendChild(vaultBox);
 
-  if (!inClaude()) {
+  if (!isHosted()) {
     root.appendChild(el("h2", null, "Install Sidequest"));
     // navigator.standalone is a non-standard flag some mobile browsers use instead of
     // the display-mode query; the two checks together cover every installed app.
@@ -4640,7 +4646,7 @@ function renderSettings(page) {
 
   root.appendChild(el("h2", { id: "startFreshHeading", "class": "scrollhead", tabindex: "-1" }, "Start fresh"));
   var box = el("div", { "class": "dangerbox" });
-  box.appendChild(el("p", { "class": "hint first" }, "Erase all Sidequest data stored in " + (inClaude() ? "Claude" : "this browser") + " and start again (options are retained). You will receive a warning and have a chance to save a backup first."));
+  box.appendChild(el("p", { "class": "hint first" }, "Erase all Sidequest data stored in " + (isHosted() ? "your account" : "this browser") + " and start again (options are retained). You will receive a warning and have a chance to save a backup first."));
   box.appendChild(on(el("button", { type: "button", "class": "danger", style: "margin-top:12px", id: "startFresh", title: "Erase everything and start over" }, "Start fresh…"), "click", startFreshDialog));
   root.appendChild(box);
 
@@ -4679,7 +4685,7 @@ function daysSinceBackup() {
 }
 // The Claude version keeps its data in its own db, so only the web app nags.
 function backupReminderDue() {
-  return !inClaude() && daysSinceBackup() >= BACKUP_REMIND_DAYS;
+  return !isHosted() && daysSinceBackup() >= BACKUP_REMIND_DAYS;
 }
 function lastBackupText() {
   var lb = state.settings.lastBackup;
@@ -4929,7 +4935,7 @@ function restoreBackupFile(file, msg) {
     msg.textContent = "";
     var next = normalize(obj), np = next.quests.length, nt = next.tasks.length;
     confirmDialog("Restore this backup?",
-      "This backup holds " + np + (np === 1 ? " quest" : " quests") + " and " + nt + (nt === 1 ? " task" : " tasks") + ". Restoring replaces everything in Sidequest" + (inClaude() ? "" : " on this device") + ": all current quests, tasks, notes, history, and settings. You will have a few seconds to undo it.",
+      "This backup holds " + np + (np === 1 ? " quest" : " quests") + " and " + nt + (nt === 1 ? " task" : " tasks") + ". Restoring replaces everything in Sidequest" + (isHosted() ? "" : " on this device") + ": all current quests, tasks, notes, history, and settings. You will have a few seconds to undo it.",
       "Restore backup", function () {
         if (state.settings.audio) playSfx(SFX_RESTORE_BACKUP);
         var before = JSON.stringify(state);
@@ -4950,7 +4956,7 @@ function backupControls(host, msg, onDone) {
 // `hintHost`, if given, is where the leading description sentence goes instead
 // of `root`, so a caller can keep it outside the card wrapping the rest.
 function backupPanel(root, hintHost) {
-  (hintHost || root).appendChild(el("p", { "class": "hint" }, (inClaude() ? "Your data is saved in Claude." : "Your data is saved in this browser on this device.") + " Create a backup from time to time and keep the file somewhere safe. You can restore your data from a backup at any time."));
+  (hintHost || root).appendChild(el("p", { "class": "hint" }, (isHosted() ? "Your data is saved in your account." : "Your data is saved in this browser on this device.") + " Create a backup from time to time and keep the file somewhere safe. You can restore your data from a backup at any time."));
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
   var last = el("p", { "class": "hint" }, lastBackupText());
   var acts = backupControls(root, msg, function () { last.textContent = lastBackupText(); });
