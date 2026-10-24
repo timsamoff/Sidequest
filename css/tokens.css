@@ -58,9 +58,9 @@
   --chip-ink: #1A2733;
   --badge-attention: #4F3416; --badge-attention-bg: #DDC3A5;
   --badge-priority: #4A2E00; --badge-priority-bg: #F8C15A;
-  --badge-active: #6B4A0F; --badge-active-bg: #F6E3C4;
-  --badge-pending: #34475A; --badge-pending-bg: #CBD6E0;
-  --badge-done: #315C3C; --badge-done-bg: #CFE6D5;
+  --badge-active: #6B4A0F; --badge-active-bg: #F6E3C4; --bar-active: #C99A3E;
+  --badge-pending: #34475A; --badge-pending-bg: #CBD6E0; --bar-pending: #8AA3BF;
+  --badge-done: #315C3C; --badge-done-bg: #CFE6D5; --bar-done: #74AD85;
   --badge-neutral: #47433E; --badge-neutral-bg: #D4D1CD;
   --badge-info: #275568; --badge-info-bg: #CFE3EC;
   --est: #B9CCE0;
@@ -77,9 +77,9 @@
     --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
     --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
     --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
-    --badge-active: #F0D49A; --badge-active-bg: #4A3B22;
-    --badge-pending: #D5DEE6; --badge-pending-bg: #3A4754;
-    --badge-done: #B5DDBF; --badge-done-bg: #21402C;
+    --badge-active: #F0D49A; --badge-active-bg: #4A3B22; --bar-active: #A98232;
+    --badge-pending: #D5DEE6; --badge-pending-bg: #3A4754; --bar-pending: #6A8BAA;
+    --badge-done: #B5DDBF; --badge-done-bg: #21402C; --bar-done: #4E9A68;
     --badge-neutral: #D8D4CF; --badge-neutral-bg: #403C38;
     --badge-info: #C8DFE9; --badge-info-bg: #2F4E5C;
     --milestone: #D0B6E1; --milestone-bg: #382D43;
@@ -91,9 +91,9 @@
   --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
   --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
   --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
-  --badge-active: #F0D49A; --badge-active-bg: #4A3B22;
-  --badge-pending: #D5DEE6; --badge-pending-bg: #3A4754;
-  --badge-done: #B5DDBF; --badge-done-bg: #21402C;
+  --badge-active: #F0D49A; --badge-active-bg: #4A3B22; --bar-active: #A98232;
+  --badge-pending: #D5DEE6; --badge-pending-bg: #3A4754; --bar-pending: #6A8BAA;
+  --badge-done: #B5DDBF; --badge-done-bg: #21402C; --bar-done: #4E9A68;
   --badge-neutral: #D8D4CF; --badge-neutral-bg: #403C38;
   --badge-info: #C8DFE9; --badge-info-bg: #2F4E5C;
   --milestone: #D0B6E1; --milestone-bg: #382D43;
