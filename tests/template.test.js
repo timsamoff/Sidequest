@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.9.8"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.9.9"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -282,18 +282,17 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
-  ok(titles.length === 16 && titles.includes("Launch checklist and decisions"), "template Help has the Launch checklist topic (" + titles.length + " topics)");
-  ok(titles.includes("From idea to quest: the whole path"), "Help has a dedicated topic walking through the full idea-to-quest lifecycle");
-  ok(k.$("view").textContent.includes("beside any step") && k.$("view").textContent.includes("Add decision"), "and the topic explains the step pencil and adding a decision from a step");
+  const sections = ["How Sidequest works", "Finding your way around", "The quest lifecycle", "Today page", "Quests page", "Tasks page", "Timeline page", "Workshop page", "Vault page", "Options page"];
+  ok(titles.join() === sections.join(), "the Field guide has the ten sections of the rewrite, in order (" + titles.join(", ") + ")");
   const helpText = k.$("view").textContent;
+  ok(k.d.querySelectorAll("#view .hbody ul ul").length > 0 && k.d.querySelectorAll("#view .hbody ul ul ul").length > 0, "nested bullets in the guide render as nested lists, two levels deep");
   ok(!helpText.includes("Mark done") && !helpText.includes("archive completed tasks") && !helpText.includes("View beside its name") && !helpText.includes("with its circle"), "Help no longer describes buttons and settings that were removed");
-  const staleHelp = ["default start date", "Show backup text", "pasted text", "Restore from text", "copy your data as text", "Sprint 1", "Where things stand", "Next slot", "what used to be called", "used to be called a project"];
+  const staleHelp = ["default start date", "Show backup text", "pasted text", "Restore from text", "copy your data as text", "Sprint 1", "Where things stand", "Next slot", "what used to be called", "used to be called a project", "Completion FX", "Your contact info"];
   ok(staleHelp.every(ph => !helpText.includes(ph)), "Help does not describe things that were removed (" + staleHelp.filter(ph => helpText.includes(ph)).join(", ") + ")");
-  const coveredHelp = ["Save backup", "Restore backup", "Est. 12 hours remaining", "Added tag", "Not started", "In progress", "Completed", "its own section", "leave Tasks, the main Timeline, Today, and the main burndown", "orange line", "Slip schedule", "length of a", "Main menu"];
-  ok(coveredHelp.every(ph => helpText.includes(ph)), "Help covers the features that changed recently (missing: " + coveredHelp.filter(ph => !helpText.includes(ph)).join(", ") + ")");
-  ok(!/\u2014/.test(helpText) && !helpText.includes("--"), "Help has no em dashes, real or double-hyphen");
+  const coveredHelp = ["Quest details", "Quest Giver Export", "Bounty", "Slip schedule", "Forecast", "Ideal", "Actual", "Gathering dust", "Make milestone", "Launch critical", "Coin", "Completion effects", "Sound effects", "Refresh", "stretch of work", "Backup and restore", "Start fresh", "Link quest", "Make candidate", "Splash screen on open", "Main menu"];
+  ok(coveredHelp.every(ph => helpText.includes(ph)), "the guide covers the features it should (missing: " + coveredHelp.filter(ph => !helpText.includes(ph)).join(", ") + ")");
+  ok(!/—/.test(helpText) && !helpText.includes("--"), "Help has no em dashes, real or double-hyphen");
   ok(!/[A-Za-z]'[A-Za-z]/.test(helpText), "Help uses smart apostrophes, not straight ones, in contractions and possessives");
-  ok(["Finish or vault a quest", "Link quests", "Use the Workshop"].every(t => titles.includes(t)) && helpText.includes("Reopen") && helpText.includes("splash"), "Help covers Complete/Reopen, linking, the Workshop, and the splash setting");
   ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Workshop,Vault,Field guide,Options", "the Field guide sits between Vault and Options");
 }
 
@@ -2353,7 +2352,7 @@ async function exportClick(k, projectName) {
   ok(web.options.includes("Erase all Sidequest data stored in this browser and start again (options are retained). You will receive a warning and have a chance to save a backup first.") && cl.options.includes("Erase all Sidequest data stored in your account and start again (options are retained)."), "the Start fresh description names the right place in each version");
   ok(web.dialog.includes("erases everything stored in this browser.") && cl.dialog.includes("erases everything stored in your account.") && !cl.dialog.includes("this browser"), "and so does the Start fresh warning");
   ok(web.restore.includes("everything in Sidequest on this device:") && cl.restore.includes("everything in Sidequest: all current") && !cl.restore.includes("on this device"), "the restore warning only says on this device in the web app");
-  ok(web.help.includes("Everything lives in this browser only") && web.help.includes("Today will say so") && cl.help.includes("Your data is saved in Claude, so it follows you across devices") && !cl.help.includes("Today will say so"), "Help describes each version's own storage, and the two-week backup reminder only on the web");
+  ok(web.help.includes("Your quest data is stored in the browser") && cl.help.includes("Your quest data is stored in the browser") && web.help.includes("Artifact version") && cl.help.includes("Artifact version"), "the guide explains both the web and the Artifact storage, in either version");
 }
 {
   // The Muse prompt in the artifact README carries the app's Google Fonts link; the two must not drift apart
@@ -2427,10 +2426,10 @@ async function exportClick(k, projectName) {
   ok(!k2.d.querySelector("#view .chart line.forecast"), "with nothing finished there is no pace to project from");
 }
 {
-  // The web-app install topic is hidden inside a Claude artifact
-  const topics = async (claude) => { const k = kit(await mk(undefined, claude)); k.tab("help"); return [...k.d.querySelectorAll("#view .helpitem summary")].map(x => x.textContent); };
-  const web = await topics(), cl = await topics({ use: () => Promise.reject(new Error("no")) });
-  ok(web.includes("Install Sidequest on this device") && !cl.includes("Install Sidequest on this device") && cl.length === web.length - 1, "Help hides the install topic in a Claude artifact only");
+  // The web-app install line is hidden inside a hosted version
+  const installText = async (claude) => { const k = kit(await mk(undefined, claude)); k.tab("help"); return k.$("view").textContent; };
+  const web = await installText(), cl = await installText({ use: () => Promise.reject(new Error("no")) });
+  ok(web.includes("Install Sidequest:") && !cl.includes("Install Sidequest:"), "the Field guide's install line shows on the web and is hidden in a Claude artifact");
 }
 {
   // With nothing overdue the section keeps its Overdue heading

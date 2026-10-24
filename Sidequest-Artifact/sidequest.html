@@ -1172,7 +1172,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.9.8";
+var APP_VERSION = "0.9.9";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -4254,80 +4254,81 @@ function helpMarkup(text) {
   return frag;
 }
 function helpTopics() {
-  var w = wl();
   return [
-    ["Find your way around", [
-      "On a computer, use the sidebar on the left. On a phone, use the tabs along the bottom.",
-      "The **Main menu** (three lines, top right) lists every page, including the ones that don’t fit in the sidebar or the tab bar.",
-      "Use the **+** button to add a quest, task, step, decision, or idea. It opens a menu in that order, since quests and tasks are what you’ll reach for most.",
-      "Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **X** where the magnifier was to cancel."]],
-    ["From idea to quest: the whole path", [
-      "An idea starts in the **Workshop**, with nothing more than a line of text and an optional note. This is the place for something you’re not ready to commit to. It costs nothing to put there, and nothing to leave sitting.",
-      "When an idea is worth doing, select **Make candidate**. Its note becomes the candidate’s Notes, and it moves to **Quests**, under **Candidate quests**. This move only goes one way: a candidate can’t be sent back to the Workshop. If you change your mind, vault it instead.",
-      "A candidate has its own page, the same shape as an active quest’s: Tasks, Schedule, Notes, Quest Giver info. You can build the whole thing out, tasks and start date and all, before it’s running. A candidate’s tasks don’t count anywhere else (Today, Tasks, Timeline, the burndown) until you promote it. The only pieces missing are Quest links and the usual finish-line buttons, since neither one means anything until the quest is real.",
-      "**Promote** turns a candidate into an active quest. It’s the same record with the same id and the same tasks, only its status moves. From here it behaves like any other quest: it can be marked complete, sent to the Vault, or demoted back to a candidate if it turns out the timing was wrong.",
-      "**Demote**, on an active quest’s page, is the reverse of Promote. Its Quest links come off on both sides first, since a candidate isn’t a link target, but Sidequest remembers them, and promoting the quest again puts them back.",
-      "A quest finishes by **Mark complete**, or on its own once every task is done. From there, **Reopen** brings it back to active, or **Vault** sets it aside. Nothing is destroyed until you delete it from the Vault."]],
-    ["Work through your day (Today)", [
-      "**Next up** shows the task to do now. **Start** marks it in progress, and **Open task** takes you to it in Tasks.",
-      "Anything past its end date appears below it. If you’re running behind, open that quest’s own page and use **Slip schedule** there.",
-      "The burndown counts tasks, one each, against the plan. Sidequest records the count itself every time something changes, so there’s nothing to type in, and a day you don’t open the app just keeps the last count. An orange line tracks scope. It climbs when a task is added and drops when one is removed, so growing work doesn’t quietly look like progress. A task added after its quest started carries an Added tag with its date, on the quest’s page and in Tasks. A quest marked Complete takes its open tasks off this chart. Point at a day or week, tap it, or focus the chart and use the arrow keys, to see its counts and which tasks are behind them."]],
-    ["Add and schedule tasks", [
-      "Tap **+**, then **New task**. Enter the quest, what you’re doing, and how you’ll know it’s done.",
-      "Pick a due date and the task lands in whichever " + w + " contains it. Add a start date if it begins later than that " + w + " does, and an estimated time in hours if that’s useful to you. Leave the due date empty and the task goes to the Backlog instead. A start date can stand alone: it is kept even without a due date, and the task stays in the Backlog until it has one.",
-      "Open a task from **Tasks**, or select it right on its quest’s page where it expands in place, to change its status, add steps and notes, or edit its dates and estimate. A start date can’t fall after the due date. The pencil beside its name renames it.",
-      "A quest’s page shows the estimated time still open beside its task count, something like “Est. 12 hours remaining,” and that number drops as tasks get done.",
-      "A task is Not started, In progress, or Completed, shown as blue, yellow, and green everywhere it appears: the status menu, the task’s row, and its bar on a quest’s Timeline.",
-      "Finishing every step on a task marks it done. Add a new step to a finished task and it reopens, since there’s now something left to do."]],
-    ["Use the Backlog", [
-      "The Backlog holds work with no dates yet. Add a task from its quest’s own page and leave the due date empty, or clear an existing task’s due date to send it there.",
-      "To schedule a Backlog item, open it and set a due date. Nothing in the Backlog counts toward the burndown until it has one. Going the other way, clearing a due date moves the task back to the Backlog and keeps its start date and any estimate you set."]],
-    ["Use the Workshop", [
-      "The Workshop is where an idea lives before it’s worth a full quest record. **Add idea** needs nothing but a line of text and, if you want, a note.",
-      "Select an idea’s title to open it and change the text or note. **Make candidate** is the only way out. See “From idea to quest: the whole path” for where it goes from there."]],
-    ["Manage quests", [
-      "A quest is the same thing a project would be called anywhere else. Yours haven’t changed, only the word has.",
-      "Every quest has its own page. Open **Quests** and select its name. The pencil beside the title renames it; the Notes field below is yours to use however you like. Further down: Tasks, the Before you launch checklist, Notes, and Quest links, in that order, with its Schedule, Timeline, and Burndown running alongside (below, on a phone). Change the schedule and the Timeline and Burndown redraw to match. On the Timeline, a pale band behind each task’s bar marks the " + w + " it falls in. **Expand**, on a wide screen, makes all three large.",
-      "**In progress**, on the Quests page, lists each active quest with its next task. **Pin** keeps one in the sidebar for quick access. Unpinning only hides it there; it’s still listed on this page either way. A quest that’s Complete loses its pin automatically, since there’s nothing left to jump to, and Reopen brings the pin back along with everything else.",
-      "Below In progress, the Quests page lists anything not yet started under **Pending** and anything finished under **Completed**, each its own section, shown only when it actually has something in it.",
-      "**Quest Giver Export**, on an active or complete quest’s page, downloads one self-contained web page with that quest’s tasks, notes, and a working schedule and burndown, meant for sharing outside the app. A linked quest that’s also active or complete rides along with its own section. Fill in **Your contact info** in Settings and this quest’s own **Quest Giver** section, and both print at the top as Prepared by and Prepared for. **Add brandmark**, also in Settings, uploads a small image that prints above Prepared by. **Bounty** and **Per**, at the bottom of a quest’s own Quest Giver section, track a contract pay rate for your own reference. They never print on the export."]],
-    ["Finish or vault a quest", [
-      "**Mark complete** works even with tasks still open. A quest also completes on its own once every task actually is. Either way you’re offered the Vault right away, or you can leave it sitting in Quests.",
-      "A completed quest wears a **Complete** badge and drops out of In progress. Its tasks leave Tasks, the main Timeline, Today, and the main burndown too, though they’re still right there on the quest’s own page. **Reopen** undoes all of it: back to active, tasks back everywhere, pin restored if it had one.",
-      "**Vault** sends a quest and its open tasks to the Vault together. **Restore** brings all of it back, exactly as it was."]],
-    ["Link quests", [
-      "**Quest links**, on a quest’s page, tie it to related quests. **Link quest** creates one, and it runs both directions, so it shows up on the other quest’s page too.",
-      "**Launch critical**, beside a linked quest, flags it as something that has to finish first. **Skip Launch** undoes it. Completing or vaulting a quest with an unfinished launch-critical link only warns you, it doesn’t block you."]],
-    ["Read the Timeline", [
-      "Every quest gets a lane. The light bar is an estimate you set yourself on the quest’s page, not a promise.",
-      "A milestone is just a task flagged that way. **Make milestone**, from a scheduled task’s own detail, places a diamond on its due date and lists it below the timeline; **Remove milestone** takes it off. Select a diamond, or its text in that list, to open the task itself.",
-      "A quest’s own page has its own Timeline, one lane per scheduled task, and its own Burndown beneath it. Point at a week, tap it, or focus the chart and use the arrow keys, to see the count and which tasks finish or were completed that week. The counts come straight from your tasks and can’t be edited by hand.",
-      "On a quest’s own Timeline, a task’s bar takes its status color: blue for Not started, yellow for In progress, green for Completed."]],
-    ["Launch checklist and decisions", [
-      "A task joins its quest’s **Before you launch** checklist from its own detail: open the task and select **Launch critical**. It still lives wherever it was scheduled; the checklist just also shows it, and it’s done once the task itself is Completed. **Skip launch**, in that same spot, takes it back off.",
-      "A launch task carries a **Launch critical** badge next to its name, both in the Tasks list and in its own detail, so you can spot it at a glance.",
-      "A decision always belongs to exactly one step. The pencil beside any step lets you rename it or remove it; **Add decision** beside a step writes down what needs settling, and the decision tag opens it again to answer, change, or remove it. Answering it ticks the step, and clearing the answer unticks it again."]],
-    ["The Vault and undo", [
-      "Only **Quests** and **Ideas** go to the Vault, each with its own **Vault** button. A completed task just stays in its quest, marked done.",
-      "**Delete** on a task, or **Remove** on a decision, is immediate, with a short **Undo** right after in case that wasn’t what you meant.",
-      "In the Vault, select a quest’s name to see it read-only. **Restore** brings a quest or idea back, tasks included. **Delete forever** always asks first, and there’s no undo once you confirm it."]],
-    ["Slip a quest’s schedule", [
-      "On a quest’s own page, above the Timeline, **Slip schedule** pushes its still-incomplete tasks later by however many days you choose. Completed tasks and anything in the Backlog don’t move.",
-      "**Undo last slip**, in the same dialog, puts everything back where it was."]],
-    ["Options, backup, and starting over", [
-      "**Options** covers how Sidequest looks and schedules by default: the length of a " + w + " in days, what to call it (Block, Sprint, and so on), date format, theme, whether the splash plays on open, whether a burndown draws its lines in when it comes into view (**Animated burndown**), whether **Sound effects** play at all, and whether finishing a quest sets off a **Completion FX** confetti burst.",
-      (inClaude() ? "Your data is saved in Claude, so it follows you across devices, but **Backup and restore** is still worth knowing. " : "Everything lives in this browser only, so **Backup and restore** matters. ") + "**Save backup** writes a file wherever you choose. **Restore backup** reads one back in, after warning you it replaces everything currently here, with a few seconds to undo if you change your mind." + (inClaude() ? "" : " Go two weeks without a backup and Today will say so, quietly."),
-      "**Vault** items can delete themselves automatically, 7, 30, 60, or 90 days after being vaulted, or never, if you leave it there. Sidequest checks this once, each time it opens, with no second warning once the setting is on.",
-      "**Start fresh** erases everything, after one warning. Back it up first if there’s anything worth keeping. You can start completely empty, or with the sample quests back in place."]],
-    ["Import from Trello or Todoist", [
-      "Options has an **Import** section with two buttons, one for each tool. Either one turns a board or a project into a new quest here and never touches your existing quests or tasks.",
-      "**Import from Trello** needs the JSON file from Trello’s own board menu, Print, Export, and Share, then Export as JSON: a CSV export will not work. A card becomes a task, its description becomes the task note, and its checklist items become steps, already ticked if they were. Labels, members, comments, and attachments have no place in Sidequest, so they are left out rather than half-imported. A card with a due date is scheduled on it; a card with none goes to the Backlog, and a card you had archived in Trello is skipped.",
-      "**Import from Todoist** needs the CSV file from a project’s own Export option, and the new quest takes its name from that file. Todoist leaves finished work out of this file entirely, so only what is still open comes across, and a project with Todoist’s own 300-task limit may be missing some tasks from the file itself. A Todoist subtask comes in as its own task here, not nested under its parent, since Sidequest has no such nesting. A due date written as a real date, “today,” “tomorrow,” or “in a number of days” is understood; a repeating due date is left for the Backlog rather than guessed at.",
-      "Either import shows a dialog first, naming exactly what it found and what will be left out, before anything actually happens."]],
-    ["Install Sidequest on this device", [
-      "Options has an **Install Sidequest** section. On a computer running Chrome or Edge, or on Android, it shows a real **Install Sidequest** button. Selecting it puts Sidequest on this device with its own icon and its own window, separate from the browser, and it keeps working without a connection once you have opened it there at least once.",
-      "On an iPhone or iPad there is no such button anywhere, in Options or in the browser itself. Tap the Share icon in Safari, then **Add to Home Screen**, and it installs the same way.",
-      "This only applies to the version of Sidequest running in its own browser tab. It has no meaning inside a published Claude artifact, so the section does not appear there at all."]]
+    ["How Sidequest works", [
+      "**Web and installed version:** Your quest data is stored in the browser and on the device you’re using. This means your data is available on that device, including when you’re offline. Installing Sidequest does not create a separate set of quests from the browser version. If your browser’s local storage is cleared, you will lose all of your quest data, so it is recommended to back up your quests periodically.",
+      "**Artifact version:** The Artifact version currently works in Claude and Muse. When you use Sidequest as an Artifact, your quest data is stored with your account. You can access your quests from the web, the app, or a mobile device where you’re signed in. An internet connection is required. This version will also let you know when an update is available and how to install it without losing any data."
+    ]],
+    ["Finding your way around", [
+      "**Search:** Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **x** where the magnifier was to cancel.",
+      "**New (+) button:** Use the **+** button to add a candidate quest, task, step, decision, or idea.",
+      "**Main menu:** The main menu (hamburger menu) lists every page in the app.",
+      "**Tab bar (mobile):** The main page items on a mobile device. Find the other pages in the main menu."
+    ]],
+    ["The quest lifecycle", [
+      "Ideas live in the **Workshop** until you’re ready to consider pursuing them. Making an idea a candidate quest moves it to the **Candidate quests** section on the **Quests** page. A promoted quest lands in **In progress** only if it has incomplete scheduled tasks. Otherwise it goes to **Pending**. An active quest can later be completed, demoted back to a candidate, or vaulted.",
+      "You can also create a candidate quest directly by using the **+** button if you already know what you want to pursue.",
+      "Finishing the last step of a task completes the task, and completing the last task of a quest (including its backlog tasks) completes the quest. You can also mark a task or quest complete manually.",
+      "The **Vault** is where old ideas and quests can be stored, either permanently or for a specified period of time (see the **Options** section for more).",
+      "**Badges:** Badges use labels and colors to provide information about quests and tasks."
+    ]],
+    ["Today page", [
+      "The **Today** page shows your most pressing task, and any overdue tasks. The **Burndown** chart shows how many tasks remain in all open quests (see the **Timeline** page for more). The **Stats** section displays all remaining and backlogged tasks."
+    ]],
+    ["Quests page", [
+      "**In progress:** This section lists the quests you’re working on. Each quest appears as a row with its name, its next scheduled task and that task’s start date, and the number of incomplete scheduled tasks it has left. Rows are ordered by the start date of each quest’s next task, from earliest to latest. A quest appears here only if it has incomplete scheduled tasks. Backlog tasks aren’t counted.",
+      "**Quests**",
+      ">**Quest details:** Tapping on any quest title on the **Quests** page will open it for editing.",
+      ">**Tasks:** Tasks can be added with the **+** button or within a quest itself. Tasks can include start and due dates, and the estimated time the task might take. You can also specify the way that you’ll know it’s complete.",
+      ">>Tasks without due dates will automatically display a **Backlog** badge. Tasks can be closed even if there are still open steps and decisions.",
+      ">>Tasks with due dates can also be made into milestones by selecting **Make milestone**.",
+      ">>Tasks will be placed into their corresponding quest’s **stretch of work.** A stretch of work is the period of time used to divide a quest’s schedule. Stretches of work appear on the **Timeline** as gray bands. Tasks appear within each stretch of work and are color coded by status (gray-blue for not started, yellow for in progress, and green for completed).",
+      ">**Steps:** Steps can be added with the **+** button or within a task. Steps break a task into smaller actions. Completing all of the steps within a task will complete the task.",
+      ">**Decisions:** Every step within a task can require a decision. Answering an open decision will close the step.",
+      ">**Before you launch:** Tasks that must be completed before a quest can launch can be placed in this section. Selecting **Launch critical** adds a task to this section. This is only an organizational feature and does not otherwise change the task.",
+      ">**Notes:** Notes are for any additional information you want to document in the quest. Notes are brought over from ideas when they become candidate quests.",
+      ">**Quest Giver:** A quest’s client. You can also enter a **Bounty** (a monetary value), either as an hourly rate or a fixed payment for the quest.",
+      ">>Any information entered here (except the **Bounty**) is included in the **Quest Giver Export**. The **Quest Giver Export** creates a read-only, interactive web page that can be shared with the client. The **Quest Giver Export** button is at the bottom of the quest details on an in progress or complete quest, and not available on a candidate or vaulted quest.",
+      ">**Quest links:** Quests can be linked when a job requires more than one quest. Use **Link quest** to link a quest to any quest that is in progress, pending, or completed. A candidate quest can add links the same way, but a candidate quest can’t be linked to from another quest. Links to a candidate or vaulted quest show as plain text, and links to other quests can be followed. Vaulting or demoting a quest keeps its links, and promoting or restoring it makes them active again.",
+      ">**Schedule:** Quests can have start and due dates, and stretch of work durations (see the **Options** section for more). A quest’s start and due dates will automatically slice the quest’s total time by the duration of the stretch of work.",
+      ">**Timeline:** The **Timeline** for a quest shows that quest’s schedule as a simple Gantt chart, along with its burndown chart.",
+      ">>Use the **Slip schedule** button to push any incomplete tasks to a later date (there is an undo option when you use this function).",
+      ">>The Gantt chart displays milestones and all open tasks. A red line shows today’s date when it falls within the displayed schedule.",
+      ">>The **Burndown** shows how many tasks remain over time. The straight line shows the planned rate of progress, and the actual line shows your progress. The dotted line shows the projected trajectory for completing the remaining work. Hover over the dot at the end to see the projected completion date. The orange line shows changes in scope. You can tap or drag across the burndown to see dates and remaining tasks.",
+      "**Pending:** These are quests that have been promoted but have no incomplete scheduled tasks. This includes new quests with no tasks, and quests whose only open tasks are backloggged. A quest moves up to **In progress** when it has an incomplete task with a due date.",
+      "**Completed:** This section lists quests that have been completed.",
+      "**Candidate quests:** These are quests you’re considering but aren’t currently working on. Active quests can be demoted back to candidate quests in the **Quest details**. Tasks, steps, and decisions can be added to a candidate quest before promotion.",
+      ">A candidate quest keeps the links it had when it was demoted.",
+      "**Pinned quests:** In progress, pending, and completed quests (that are still on the **Quests** page) can be pinned. This will place a shortcut to that quest in the sidebar (or main menu in mobile). A completed quest will automatically be unpinned. Reopening a formerly pinned quest will restore the pin."
+    ]],
+    ["Tasks page", [
+      "**Tasks:** This section shows tasks from all open quests, excluding candidate quests. Tasks are sorted by stretch of work, from earliest to latest. Tasks within the same stretch remain in the order they were created, with completed tasks at the bottom. You can edit tasks here without returning to the **Quests** page.",
+      "**Backlog:** This section shows all open tasks without due dates."
+    ]],
+    ["Timeline page", [
+      "The **Timeline** page shows the schedules of all open quests. It includes a Gantt chart of open quests and milestones, plus the overall burndown and task counts. A red line shows today’s date when it falls within the displayed schedules.",
+      ">The **Burndown** chart shows how many tasks remain in all open quests. The straight **Ideal** line shows the planned rate of progress, and the **Actual** line shows your progress. Adding or removing work changes the amount remaining. The dotted **Forecast** line shows the projected trajectory for completing the remaining work. Hovering over the dot at the end will display the projected completion date. The orange line shows changes in scope. You can tap or drag across the burndown to see dates and remaining tasks.",
+      ">The **Stats** section displays all remaining and backlogged tasks. The **Task count** table shows how many tasks remain and tracks changes in scope. Adding a scheduled task raises the scope and deleting one lowers it. Each change shows in the **Scope change** column."
+    ]],
+    ["Workshop page", [
+      "This is where all ideas are stored. Ideas provide a simple interface for thinking about new quests or prospects. You can either select **Make candidate** to turn an idea into a candidate quest or **Vault** it."
+    ]],
+    ["Vault page", [
+      "The **Vault** is a place to store ideas and quests you’re no longer actively working with but may want to keep. Vaulted items can be restored or permanently deleted. You can also choose to have the **Vault** automatically delete old items after a set period."
+    ]],
+    ["Options page", [
+      "**Adventurer:** This is where you can add your contact information and brandmark or logo. Any information added here will be included in the **Quest Giver Export**.",
+      "**Schedule defaults:** Set the default length of a **stretch of work**. The stretch duration can be adjusted for individual quests.",
+      ">You can also choose what to call a stretch of work: Block, Sprint, Iteration, Phase, or Week.",
+      ">Set the number of active quests you want to allow at a time. You will be warned if you try to promote another candidate quest, but you can choose to bypass the warning.",
+      ">Set how long an active quest can go without progress before it displays a **Gathering dust** badge.",
+      "**Appearance and formats:** These settings include **Date format**, **Coin** (US/European), **Splash screen on open** (on/off), **Theme** (light and dark mode), **Animated burndown** (on/off), **Completion effects** (on/off), and **Sound effects** (on/off).",
+      "**Vault:** This is where you can set the **Vault** to auto-delete (never, and after 7, 30, 60, or 90 days).",
+      "**Install Sidequest:** If you’re using Sidequest on the web, you can install it to your device. iPhones and iPads don’t show this button: tap the **Share** icon in Safari, then **Add to Home Screen**, to install it. The installed version displays a **Refresh** button in the menu bar.",
+      "**Import:** Bring tasks from another application into Sidequest. Sidequest can import Trello JSON or Todoist CSV as a new quest.",
+      "**Backup and restore:** Download a backup of your Sidequest data as a JSON file. Because data in the web and installed versions is stored on your device, making occasional backups is recommended. You can upload a backup later to restore your data.",
+      "**Start fresh:** Erase all Sidequest data and start again (your options are retained). You can begin with an empty Sidequest or with the sample quests. You will receive a warning and have a chance to save a backup first. This cannot be undone, so save a backup first."
+    ]],
   ];
 }
 function renderHelp(root) {
@@ -4340,12 +4341,24 @@ function renderHelp(root) {
   on(openAll, "click", function () { items.forEach(function (d) { d.open = true; }); });
   on(closeAll, "click", function () { items.forEach(function (d) { d.open = false; }); });
   acts.appendChild(openAll); acts.appendChild(closeAll); root.appendChild(acts);
-  // The install topic is about the web app, so a published Claude artifact skips it.
-  helpTopics().filter(function (t) { return !(isHosted() && t[0] === "Install Sidequest on this device"); }).forEach(function (t, i) {
+  // A line that starts with ">" is nested one level under the line above it (">>" is two levels).
+  // The install line is about the web app, so a hosted version (Claude, or any host that sets the flag) skips it.
+  helpTopics().forEach(function (t, i) {
     var d = el("details", { "class": "helpitem" }); if (i === 0) d.open = true;
     d.appendChild(el("summary", null, t[0]));
-    var body = el("div", { "class": "hbody" }), ul = el("ul");
-    t[1].forEach(function (line) { var li = el("li"); li.appendChild(helpMarkup(line)); ul.appendChild(li); });
+    var body = el("div", { "class": "hbody" }), ul = el("ul"), stack = [ul];
+    t[1].forEach(function (line) {
+      var depth = 0; while (line.charAt(depth) === ">") depth++;
+      var text = line.slice(depth);
+      if (isHosted() && text.indexOf("**Install Sidequest:**") === 0) return;
+      while (stack.length > depth + 1) stack.pop();
+      while (stack.length < depth + 1) {
+        var parent = stack[stack.length - 1].lastChild, nested = el("ul");
+        if (!parent) { parent = el("li"); stack[stack.length - 1].appendChild(parent); }
+        parent.appendChild(nested); stack.push(nested);
+      }
+      var li = el("li"); li.appendChild(helpMarkup(text)); stack[stack.length - 1].appendChild(li);
+    });
     body.appendChild(ul); d.appendChild(body); root.appendChild(d); items.push(d);
   });
   var noMatch = el("p", { "class": "hint", role: "status", "aria-live": "polite" }); noMatch.hidden = true; root.appendChild(noMatch);

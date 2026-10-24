@@ -56,14 +56,14 @@ ok(/and 3 more/.test(gate.buildReminder(base({ diffs: many })) || ""), "a long l
 ok(/Non-blocking/.test(gate.buildReminder(base({ triggerHits: ["x"] })) || ""), "the reminder says plainly it is non-blocking and cannot check accuracy");
 
 /* ---- topics inside helpTopics(): where each is and which a diff touched ---- */
-const topicSrc = ["export function helpTopics() {", "  return [", '    ["Work through your day (Today)", [', '      "a",', '      "b"]],', '    ["Read the Timeline", [', '      "c"]],', "  ];", "}"].join("\n");
+const topicSrc = ["export function helpTopics() {", "  return [", '    ["Today page", [', '      "a",', '      "b"]],', '    ["Timeline page", [', '      "c"]],', "  ];", "}"].join("\n");
 const tr = gate.helpTopicRanges(topicSrc);
-ok(same(tr.map((t) => [t.title, t.start, t.end]), [["Work through your day (Today)", 3, 5], ["Read the Timeline", 6, 9]]), "each topic's title and line range are found (" + JSON.stringify(tr.map((t) => [t.start, t.end])) + ")");
+ok(same(tr.map((t) => [t.title, t.start, t.end]), [["Today page", 3, 5], ["Timeline page", 6, 9]]), "each topic's title and line range are found (" + JSON.stringify(tr.map((t) => [t.start, t.end])) + ")");
 ok(same(gate.helpTopicRanges("nothing here"), []), "no helpTopics() means no topics");
-ok(same(gate.topicsTouched("@@ -4 +4 @@\n", topicSrc), ["Work through your day (Today)"]), "a hunk inside a topic touches only that topic");
-ok(same(gate.topicsTouched("@@ -4 +4 @@\n@@ -7 +7 @@\n", topicSrc), ["Work through your day (Today)", "Read the Timeline"]), "hunks in two topics touch both");
+ok(same(gate.topicsTouched("@@ -4 +4 @@\n", topicSrc), ["Today page"]), "a hunk inside a topic touches only that topic");
+ok(same(gate.topicsTouched("@@ -4 +4 @@\n@@ -7 +7 @@\n", topicSrc), ["Today page", "Timeline page"]), "hunks in two topics touch both");
 ok(same(gate.topicsTouched("@@ -1 +1 @@\n", topicSrc), []), "a hunk on the function line touches no topic");
-ok(same(gate.topicsTouched("@@ -5,1 +4,0 @@\n", topicSrc), ["Work through your day (Today)"]), "a deletion inside a topic counts");
+ok(same(gate.topicsTouched("@@ -5,1 +4,0 @@\n", topicSrc), ["Today page"]), "a deletion inside a topic counts");
 
 /* ---- areas of the app that decide what Help says ---- */
 ok(/projectBurn/.test(gate.changedText("@@ -10 +10 @@ export function projectBurn(p) {\n+  x = 1;")), "the function named in a hunk header counts as changed code");
@@ -91,7 +91,7 @@ ok(gate.changedStructure("").length === 0 && gate.changedStructure(undefined).le
 const topicBase = (over) => Object.assign({ diffs: {}, triggerHits: [], viewsSource: topicSrc }, over);
 const burn = { "app/model.js": "+export function remainingUnits() { return 1; }" };
 ok(/burndown and task counting changed \(remainingUnits\)/.test(gate.buildReminder(topicBase({ diffs: burn })) || ""), "a counting change gives a reminder naming the area and the code");
-ok(/"Work through your day \(Today\)", "Read the Timeline"/.test(gate.buildReminder(topicBase({ diffs: burn })) || ""), "and the Help topics to check");
+ok(/"Today page", "Timeline page"/.test(gate.buildReminder(topicBase({ diffs: burn })) || ""), "and the Help topics to check");
 ok(gate.buildReminder(topicBase({ diffs: Object.assign({}, burn, { "app/views.js": "@@ -4 +4 @@\n" }) })) === null, "editing a topic that describes the area silences it");
 ok(/scheduling and dates/.test(gate.buildReminder(topicBase({ diffs: { "app/model.js": "+export function taskStart(t) { return 1; }", "app/views.js": "@@ -7 +7 @@\n" } })) || ""), "editing an unrelated topic does not silence an area");
 ok(!/helpTopics\(\) in app\/views.js was not changed/.test(gate.buildReminder(topicBase({ diffs: { "app/model.js": "+export function taskStart(t) { return 1; }", "app/views.js": "@@ -7 +7 @@\n" } })) || ""), "and the reminder does not claim Help was untouched when it was edited");
