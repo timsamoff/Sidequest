@@ -1,7 +1,7 @@
 node_modules/
 .DS_Store
-CLAUDE.md
-sentinel-notes/
+/CLAUDE.md
+Sentinel-Notes/
 scratch/
 Sentinel-Prompts/
 /*.png

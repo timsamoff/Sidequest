@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/Sentinel-Notes/HANDOFF.md\"; if [ -s \"$f\" ]; then echo 'A handoff from a previous session follows. In your first reply, whatever the user asks, start with one line saying a handoff exists and what it covers, then answer their question. If version control shows uncommitted changes the handoff does not mention, say in that same line that it may be out of date.'; cat \"$f\"; fi; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

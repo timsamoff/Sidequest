@@ -2,7 +2,7 @@
 // template.test.js's jsdom suite -- jsdom has no layout engine, so contrast/
 // focus/aria-in-context checks can't run there. Not part of `npm test` (needs
 // a live server + a real browser, too slow for the everyday loop); run via
-// `npm run test:a11y`. See sentinel-notes/TODO.md's `a11y-tooling` item.
+// `npm run test:a11y`. See Sentinel-Notes/TODO.md's `a11y-tooling` item.
 const http = require("http");
 const fs = require("fs");
 const path = require("path");

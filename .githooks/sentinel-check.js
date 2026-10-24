@@ -11,7 +11,7 @@
 //                                                 violation), not report-only.
 //                                                 Blocks only on violations NOT
 //                                                 already present in the Part 4
-//                                                 baseline (sentinel-notes/
+//                                                 baseline (Sentinel-Notes/
 //                                                 sentinel-baseline.json).
 //   node .githooks/sentinel-check.js --full --report-only
 //                                              -- whole-repo scan, prints findings,
@@ -27,8 +27,10 @@ const common = require("./lib/sentinel-common");
 const checks = require("./lib/check-pre-commit");
 const extCheck = require("./lib/check-new-extension");
 const helpDrift = require("./lib/check-help-drift");
+const { checkCommitMessage } = require("./lib/check-commit-msg");
+const { execSync } = require("child_process");
 
-const BASELINE_PATH = path.join("sentinel-notes", "sentinel-baseline.json");
+const BASELINE_PATH = path.join("Sentinel-Notes", "sentinel-baseline.json");
 
 function loadBaseline() {
   const raw = common.diskRead(BASELINE_PATH);
@@ -36,7 +38,7 @@ function loadBaseline() {
   try {
     return JSON.parse(raw);
   } catch (e) {
-    common.failLoud("sentinel-notes/sentinel-baseline.json is not valid JSON: " + e.message);
+    common.failLoud("Sentinel-Notes/sentinel-baseline.json is not valid JSON: " + e.message);
   }
 }
 
@@ -270,6 +272,22 @@ function runFullScan() {
   return violations;
 }
 
+// After-the-fact check of the latest commit message. A hook can stop a bad
+// message before it lands; this can only flag one that already did (for example
+// after a --no-verify), so it prints a notice and does not fail the command.
+function lastCommitNotice() {
+  let message;
+  try {
+    message = execSync("git log -1 --format=%B", { cwd: common.REPO_ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  } catch (e) {
+    return; // no commits yet, or git unavailable: nothing to inspect
+  }
+  const bad = checkCommitMessage(message).violations;
+  if (!bad.length) return;
+  console.log("[Sentinel] The latest commit message breaks the convention (checked after the fact, so this cannot undo it):");
+  bad.forEach((v) => console.log("  - " + v.rule + ": " + v.message));
+}
+
 // --- CLI ---
 
 function main() {
@@ -301,6 +319,7 @@ function main() {
     }
     const helpReminder = helpDrift.helpDriftReminder();
     if (helpReminder) console.log("[Sentinel] " + helpReminder);
+    lastCommitNotice();
     console.log("Sentinel: diff-scoped check passed, no violations.");
     process.exitCode = 0;
     return;
@@ -333,6 +352,7 @@ function main() {
     process.exitCode = 1;
     return;
   }
+  lastCommitNotice();
   console.log("Sentinel full scan: no new violations beyond the recorded baseline.");
   process.exitCode = 0;
 }

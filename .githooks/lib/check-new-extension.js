@@ -6,7 +6,7 @@
 // resolved without live user confirmation, per this run's non-interactive
 // override): the manifest lives in the TRACKED hook directory
 // (.githooks/sentinel-known-extensions.txt), not under the gitignored
-// sentinel-notes/. Reasoning: the manifest's CONTENT isn't sensitive (it's just a
+// Sentinel-Notes/. Reasoning: the manifest's CONTENT isn't sensitive (it's just a
 // list of file extensions like ".html" or ".png"), and a future clone or
 // contributor benefits from seeing what kinds of files this project expects --
 // unlike sentinel-exceptions.json, which can carry internal-detail reasons the
@@ -101,7 +101,7 @@ function runCheck() {
         `Before committing, consider: (1) What kind of file/asset is this, in plain terms? (2) Does it plausibly need ` +
         `design-quality treatment (2D art, 3D models/textures, audio, voice/video) -- if so, bring it up next time the ` +
         `Design & Code Quality Audit (01) runs, or run it now. (3) Does it plausibly need an integration touchpoint ` +
-        `(referenced by rendering, persistence, a registry, etc.) -- if so, log it to sentinel-notes/TODO.md as a ` +
+        `(referenced by rendering, persistence, a registry, etc.) -- if so, log it to Sentinel-Notes/TODO.md as a ` +
         `candidate for the next Integration Audit (02) run. If this is genuinely a one-off with no standing ` +
         `implication, that's fine -- re-run with SENTINEL_ACK_NEW_EXT=${n.ext} set (comma-separate multiple) to ` +
         `acknowledge and let this commit through; the manifest updates automatically so "${n.ext}" won't re-trigger.`

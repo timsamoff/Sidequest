@@ -63,7 +63,7 @@ function isStaged(filePath) {
 }
 
 // --- Gitignored-file access (mtime/disk, never git) ---
-// CLAUDE.md and everything under sentinel-notes/ are gitignored per this project's
+// CLAUDE.md and everything under Sentinel-Notes/ are gitignored per this project's
 // local-only decision. A git-based read (`git show :<path>`, `git diff --cached`)
 // structurally cannot see their content, staged or not, so any check needing their
 // current state must read the filesystem directly.
@@ -91,20 +91,20 @@ function headCommitTimeMs() {
   return Number(out) * 1000;
 }
 
-// --- Exceptions mechanism (sentinel-exceptions.json, local-only under sentinel-notes/) ---
+// --- Exceptions mechanism (sentinel-exceptions.json, local-only under Sentinel-Notes/) ---
 // Each entry: { rule, scope, reason, owner, reviewBy: "YYYY-MM-DD" }
 // An expired entry (reviewBy in the past) is treated as if it did not exist -- no grace period.
 
 function loadExceptions() {
-  const raw = diskRead(path.join("sentinel-notes", "sentinel-exceptions.json"));
+  const raw = diskRead(path.join("Sentinel-Notes", "sentinel-exceptions.json"));
   if (!raw) return [];
   let parsed;
   try {
     parsed = JSON.parse(raw);
   } catch (e) {
-    failLoud("sentinel-notes/sentinel-exceptions.json exists but is not valid JSON: " + e.message);
+    failLoud("Sentinel-Notes/sentinel-exceptions.json exists but is not valid JSON: " + e.message);
   }
-  if (!Array.isArray(parsed)) failLoud("sentinel-notes/sentinel-exceptions.json must be a JSON array of exception entries.");
+  if (!Array.isArray(parsed)) failLoud("Sentinel-Notes/sentinel-exceptions.json must be a JSON array of exception entries.");
   return parsed;
 }
 

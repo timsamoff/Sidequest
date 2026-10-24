@@ -1,6 +1,6 @@
 // Pre-commit content checks for Sidequest. Reads STAGED content (git index) for
 // anything tracked; reads the WORKING-TREE FILESYSTEM DIRECTLY (mtime/content) for
-// anything gitignored (CLAUDE.md, sentinel-notes/*), since git structurally cannot
+// anything gitignored (CLAUDE.md, Sentinel-Notes/*), since git structurally cannot
 // see a gitignored file's content, staged or not.
 //
 // Each check function returns a list of violation objects (possibly empty) and
@@ -169,9 +169,9 @@ function checkReadmeTouched() {
 // ---------------------------------------------------------------------------
 // Gate 4: TODO.md completion-sync
 // ---------------------------------------------------------------------------
-// Hard check: a commit modifying a sentinel-notes/[issue]-design-brief.md file
-// (in sentinel-notes/ or sentinel-notes/archive/) without a corresponding status
-// change in sentinel-notes/TODO.md in the same commit. Both files are gitignored,
+// Hard check: a commit modifying a Sentinel-Notes/[issue]-design-brief.md file
+// (in Sentinel-Notes/ or Sentinel-Notes/archive/) without a corresponding status
+// change in Sentinel-Notes/TODO.md in the same commit. Both files are gitignored,
 // so "was it touched in this commit" cannot be answered by git diff at all --
 // there is no staged git-index version of a gitignored file to compare. Since a
 // gitignored file is invisible to git regardless of hooks, this hard check instead
@@ -187,14 +187,14 @@ function listDesignBriefFiles() {
   const glob = require("child_process").execFileSync;
   let out;
   try {
-    out = glob("git", ["ls-files", "--others", "--exclude-standard", "--cached", "--", "sentinel-notes"], {
+    out = glob("git", ["ls-files", "--others", "--exclude-standard", "--cached", "--", "Sentinel-Notes"], {
       cwd: common.REPO_ROOT,
       encoding: "utf8",
     });
   } catch (e) {
     out = "";
   }
-  // sentinel-notes/ is gitignored so `git ls-files --cached` returns nothing for it;
+  // Sentinel-Notes/ is gitignored so `git ls-files --cached` returns nothing for it;
   // walk the filesystem directly instead.
   const fs = require("fs");
   const results = [];
@@ -211,7 +211,7 @@ function listDesignBriefFiles() {
       else if (/-design-brief\.md$/.test(ent.name)) results.push(full);
     });
   }
-  walk(common.repoPath("sentinel-notes"));
+  walk(common.repoPath("Sentinel-Notes"));
   return results;
 }
 
@@ -220,7 +220,7 @@ function checkTodoSync() {
   const exception = common.findException("todo-completion-sync");
   if (exception) return violations;
 
-  const todoPath = path.join("sentinel-notes", "TODO.md");
+  const todoPath = path.join("Sentinel-Notes", "TODO.md");
   const todoMtime = common.diskMTimeMs(todoPath);
   const briefs = listDesignBriefFiles();
 
@@ -241,7 +241,7 @@ function checkTodoSync() {
           "todo-completion-sync",
           relPath,
           null,
-          `${relPath} was modified since the last commit, but sentinel-notes/TODO.md was not updated at the same ` +
+          `${relPath} was modified since the last commit, but Sentinel-Notes/TODO.md was not updated at the same ` +
           `time (or was updated before it). This project's convention: a design-brief edit needs a matching status ` +
           `change in TODO.md's Open/Done sections in the same commit. (Both files are gitignored, so this is a ` +
           `filesystem-mtime comparison, not a git diff.)`
@@ -257,12 +257,12 @@ function checkTodoSync() {
 // to check a plain line against. Returns a reminder string or null; never a
 // blocking violation.
 function todoBacklogReminder() {
-  const raw = common.diskRead(path.join("sentinel-notes", "TODO.md"));
+  const raw = common.diskRead(path.join("Sentinel-Notes", "TODO.md"));
   if (!raw) return null;
   const openSection = raw.split(/^## Done/m)[0];
   const openItems = (openSection.match(/^-\s*\[ \]/gm) || []).length;
   if (!openItems) return null;
-  return `${openItems} open TODO item(s) in sentinel-notes/TODO.md untouched since before this session started. (Non-blocking reminder.)`;
+  return `${openItems} open TODO item(s) in Sentinel-Notes/TODO.md untouched since before this session started. (Non-blocking reminder.)`;
 }
 
 // ---------------------------------------------------------------------------
@@ -372,7 +372,7 @@ function checkNormalizeDefaultsPairing() {
 // ---------------------------------------------------------------------------
 // Hardcoded-hex-outside-token-block check
 // ---------------------------------------------------------------------------
-// Real precedent: the logo-color-tokenization fix (sentinel-notes/archive/
+// Real precedent: the logo-color-tokenization fix (Sentinel-Notes/archive/
 // logo-color-tokenization-design-brief.md) -- hex values that duplicated existing
 // tokens were hardcoded outside the :root block. This check flags a NEW hex color
 // literal added outside the :root/dark-theme token blocks, added by a `git diff`
@@ -625,7 +625,7 @@ function checkCssTokenValue() {
 // ---------------------------------------------------------------------------
 // Duplicated-icon/SVG-markup check
 // ---------------------------------------------------------------------------
-// Real precedent: the search-icon duplication fix (sentinel-notes/TODO.md Done
+// Real precedent: the search-icon duplication fix (Sentinel-Notes/TODO.md Done
 // section, search-icon-dedup) -- a static inline SVG duplicated markup that a JS
 // constant (ICON_SEARCH/ICON_CANCEL) already produced at render time. This check
 // flags a newly-added static inline <svg>...</svg> block in index.html's HTML body
@@ -680,7 +680,7 @@ function checkDuplicatedIconMarkup() {
             null,
             `A newly-added static <svg> block's path data exactly matches an existing ICON_* JS constant's path data ` +
             `("${d.slice(0, 40)}..."). This is the same shape as the search-icon duplication bug fixed on 2026-09-21 ` +
-            `(sentinel-notes/TODO.md, search-icon-dedup) -- render it from the JS constant at render time instead of ` +
+            `(Sentinel-Notes/TODO.md, search-icon-dedup) -- render it from the JS constant at render time instead of ` +
             `hardcoding a second static copy.`
           )
         );

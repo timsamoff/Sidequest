@@ -30,6 +30,37 @@ const ATTRIBUTION_PATTERNS = [
   /^Co-authored-by:/im, // generic co-author trailer, any tool -- house style is "no co-author notes" full stop
 ];
 
+// Trailers the project's convention defines. Co-author and attribution lines are
+// banned separately above, so they are not listed here.
+const ALLOWED_TRAILERS = ["Sentinel-Override", "Sentinel-Version-Skip"];
+const TRAILER_SHAPE_RE = /^[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)+:\s+\S/;
+
+// Phrases that describe the collaboration instead of the change. A phrase list
+// only: it misses other wordings, which is why the rule also lives in CLAUDE.md.
+const AGENT_VOICE_PHRASES = [
+  "the user's direction",
+  "the user's request",
+  "at the user",
+  "per the user",
+  "as requested by",
+  "claude code",
+];
+
+function findAgentVoice(message) {
+  const flat = message.replace(/[‘’]/g, "'").toLowerCase();
+  return AGENT_VOICE_PHRASES.filter((p) => flat.includes(p));
+}
+
+// Trailer-shaped lines in the last paragraph of a message that has a body.
+function trailerLines(lines) {
+  let end = lines.length;
+  while (end > 0 && lines[end - 1].trim() === "") end--;
+  let start = end;
+  while (start > 0 && lines[start - 1].trim() !== "") start--;
+  if (start === 0) return []; // only the subject paragraph: no trailers
+  return lines.slice(start, end).filter((l) => TRAILER_SHAPE_RE.test(l));
+}
+
 function findAttribution(message) {
   const hits = [];
   ATTRIBUTION_PATTERNS.forEach((re) => {
@@ -68,6 +99,16 @@ function checkCommitMessage(rawMessage) {
     });
   }
 
+  const voice = findAgentVoice(rawMessage);
+  if (voice.length) {
+    violations.push({
+      rule: "agent-voice",
+      message:
+        "Commit message uses wording that describes the collaboration instead of the change (" + voice.map((v) => '"' + v + '"').join(", ") +
+        "). Write it as the change itself, in the author's own voice. This check is a phrase list and will miss other wordings.",
+    });
+  }
+
   const lines = splitMessage(rawMessage);
   if (!lines.length || lines.every((l) => l.trim() === "")) {
     violations.push({ rule: "commit-msg-empty", message: "Commit message is empty." });
@@ -98,8 +139,18 @@ function checkCommitMessage(rawMessage) {
   // structural element, not narrative body prose or a bullet -- exclude them from
   // the bullet-structure scan before checking it, or a trailer with no "- " marker
   // would otherwise misreport as a narrative-body violation.
-  const TRAILER_RE = /^(Sentinel-Override|Sentinel-Version-Skip|Claude-Session|Co-Authored-By|Co-authored-by):/;
-  const contentLines = bodyContent.filter((l) => l.trim() !== "" && !TRAILER_RE.test(l.trim()));
+  const trailers = trailerLines(lines);
+  trailers.forEach((l) => {
+    const name = l.split(":")[0];
+    if (ATTRIBUTION_PATTERNS.some((re) => re.test(l))) return; // reported by attribution-stripped
+    if (!ALLOWED_TRAILERS.includes(name)) {
+      violations.push({
+        rule: "trailer-not-allowed",
+        message: `Trailer "${name}:" is not on this project's list (${ALLOWED_TRAILERS.join(", ")}). Remove it, or fold the point into the subject.`,
+      });
+    }
+  });
+  const contentLines = bodyContent.filter((l) => l.trim() !== "" && !trailers.includes(l));
   if (!contentLines.length) {
     return { violations }; // subject-only commit (plus maybe only trailers): the common, clean case.
   }
@@ -237,4 +288,4 @@ function checkVersionBump(rawMessage) {
   return violations;
 }
 
-module.exports = { checkCommitMessage, checkVersionBump, SUBJECT_MAX, BULLET_MAX_COUNT, BULLET_LINE_MAX, BULLET_WRAP_MAX, ATTRIBUTION_PATTERNS };
+module.exports = { checkCommitMessage, checkVersionBump, ALLOWED_TRAILERS, AGENT_VOICE_PHRASES, SUBJECT_MAX, BULLET_MAX_COUNT, BULLET_LINE_MAX, BULLET_WRAP_MAX, ATTRIBUTION_PATTERNS };
