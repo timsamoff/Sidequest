@@ -1172,7 +1172,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.9.10";
+var APP_VERSION = "0.9.11";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -4282,7 +4282,7 @@ function helpTopics() {
       ">**Tasks:** Tasks can be added with the **+** button or within a quest itself. Tasks can include start and due dates, and the estimated time the task might take. You can also specify the way that you’ll know it’s complete.",
       ">>Tasks without due dates will automatically display a **Backlog** badge. Tasks can be closed even if there are still open steps and decisions.",
       ">>Tasks with due dates can also be made into milestones by selecting **Make milestone**.",
-      ">>Tasks will be placed into their corresponding quest’s **stretch of work.** A stretch of work is the period of time used to divide a quest’s schedule. Stretches of work appear on the **Timeline** as gray bands. Tasks appear within each stretch of work and are color coded by status (gray-blue for not started, yellow for in progress, and green for completed).",
+      ">>Tasks will be placed into their corresponding quest’s **stretch of work.** A stretch of work is the period of time used to divide a quest’s schedule. Stretches of work appear on the **Timeline** as gray bands. Tasks appear within each stretch of work and are color coded by status (gray-blue for not started, gold for in progress, and green for completed).",
       ">**Steps:** Steps can be added with the **+** button or within a task. Steps break a task into smaller actions. Completing all of the steps within a task will complete the task.",
       ">**Decisions:** Every step within a task can require a decision. Answering an open decision will close the step.",
       ">**Before you launch:** Tasks that must be completed before a quest can launch can be placed in this section. Selecting **Launch critical** adds a task to this section. This is only an organizational feature and does not otherwise change the task.",
