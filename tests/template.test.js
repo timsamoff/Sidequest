@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.9.14"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.9.15"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -124,12 +124,25 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // Today content
   ok(k.$("view").textContent.includes("Next up") && k.d.querySelector("#view .chartbox svg") && /Remaining: \d+ of \d+ tasks/.test(k.$("view").textContent), "Today works with sample data");
   const next = k.d.querySelector("#view .panel .ptitle").textContent;
-  ok(next === "Write the page copy", "Next up is the lowest-block open sample task: " + next);
+  ok(next === "Build the sign-in flow", "Next up is the earliest-starting open sample task: " + next);
   ok(k.$("view").textContent.includes("Overdue") && !k.$("view").textContent.includes("Overdue tasks: 1") && k.$("view").textContent.includes("Build the sign-in flow") && /Remaining: 12 of 16 tasks/.test(k.$("view").textContent), "the samples include one overdue task, so the burndown sits above the plan");
-  const projLink = k.btn(k.d.querySelector("#view .panel"), "Sample Website");
+  const projLink = k.btn(k.d.querySelector("#view .panel"), "Sample App");
   ok(!!projLink && projLink.classList.contains("qlink"), "Next up names the quest as a link");
   k.click(projLink);
-  ok(k.$("viewTitle").textContent === "Sample Website", "clicking the quest link opens that quest's page");
+  ok(k.$("viewTitle").textContent === "Sample App", "clicking the quest link opens that quest's page");
+}
+
+/* ---- tasks order: start date across quests ---- */
+{
+  const k = kit(await mk()); k.click(k.$("welcomeDismiss")); k.tab("schedule");
+  const rows = [...k.d.querySelectorAll("#view .tlist li .item")].map(e => e.textContent.replace(/\s+/g, " ").trim());
+  const mons = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+  const open = rows.filter(r => !/Completed/.test(r) && !/Backlog/.test(r) && /[A-Z][a-z]{2} \d{1,2} to /.test(r));
+  let year = 2000, prev = -Infinity, ordered = true;
+  open.forEach(r => { const m = r.match(/([A-Z][a-z]{2}) (\d{1,2}) to /); let t = Date.UTC(year, mons[m[1]], +m[2]); if (t < prev - 180 * 86400000) { year++; t = Date.UTC(year, mons[m[1]], +m[2]); } if (t < prev) ordered = false; prev = t; });
+  ok(open.length > 5 && ordered, "the Tasks page lists open scheduled tasks by start date, across quests (" + open.length + " rows)");
+  const firstDone = rows.findIndex(r => /Completed/.test(r)), lastOpen = rows.reduce((a, r, i) => (/Completed/.test(r) || /Backlog/.test(r) ? a : i), -1);
+  ok(firstDone > lastOpen, "completed tasks stay at the bottom of the scheduled list");
 }
 
 /* ---- sample quests ---- */
