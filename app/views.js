@@ -1214,7 +1214,7 @@ export function helpTopics() {
       ">The **Burndown** works the same way as on the **Timeline** page, but counts only this quest’s tasks."
     ]],
     ["Tasks page", [
-      "**Tasks:** This section shows tasks from all open quests, excluding candidate quests. Tasks are grouped by stretch of work. All first stretches are listed before second stretches, and so on. Within each stretch, tasks remain in the order they were created, with completed tasks at the bottom. You can edit tasks here without returning to the **Quests** page.",
+      "**Tasks:** This section shows tasks from all open quests, excluding candidate quests. They are listed by start date, earliest first. Tasks with the same start date are ordered by due date, then by the order they were created. Completed tasks appear at the bottom. You can edit tasks here without returning to the **Quests** page.",
       "**Backlog:** This section shows all open tasks without due dates."
     ]],
     ["Timeline page", [
