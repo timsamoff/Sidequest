@@ -137,9 +137,15 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 /* Lets a heading be scrolled to without sliding under the sticky top bar. */
 .scrollhead { scroll-margin-top: 90px; }
 .scrollhead:focus { outline: none; }
-/* The update notice borrows the Overdue pill's colors so it stands out. */
-.updatebanner { background: var(--badge-priority-bg); border-color: color-mix(in srgb, var(--badge-priority) 45%, transparent); }
+/* The three Today notices (update, backup reminder, Welcome) each have their own --notice-* color in css/tokens.css. */
+.updatebanner { background: var(--notice-update); border-color: color-mix(in srgb, var(--badge-priority) 45%, transparent); }
 .updatebanner .hint { color: var(--ink); }
+/* The backup reminder is a calm blue notice, so it reads differently from the amber update banner and the plain Welcome box. */
+.backupreminder { background: var(--notice-backup); border-color: color-mix(in srgb, var(--planned) 45%, transparent); }
+.backupreminder .hint { color: var(--ink); }
+/* The Welcome box is a soft green, the friendly one of the three notices. */
+.welcomebox { background: var(--notice-welcome); border-color: color-mix(in srgb, var(--chip-ink) 20%, var(--notice-welcome)); }
+.welcomebox .hint { color: var(--ink); }
 .updateprompt { display: block; width: 100%; max-width: 100%; min-height: 0; margin-top: var(--space-10); resize: none; font-size: var(--text-sm); }
 /* Stacked, Progress follows the burndown and gets the same gap above it Burndown has. */
 .pgrid .progresshead { margin-top: var(--space-14); }

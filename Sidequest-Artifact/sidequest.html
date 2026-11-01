@@ -74,6 +74,7 @@
   --chip-ink: #1A2733;
   --badge-attention: #4F3416; --badge-attention-bg: #DDC3A5;
   --badge-priority: #4A2E00; --badge-priority-bg: #F8C15A;
+  --notice-update: #F8C15A; --notice-backup: #D3E3F6; --notice-welcome: #CFE6D5;
   --badge-active: #6B4A0F; --badge-active-bg: #F6E3C4; --bar-active: #C99A3E;
   --badge-pending: #34475A; --badge-pending-bg: #CBD6E0; --bar-pending: #8AA3BF;
   --badge-done: #315C3C; --badge-done-bg: #CFE6D5; --bar-done: #74AD85;
@@ -93,6 +94,7 @@
     --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
     --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
     --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
+    --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C;
     --badge-active: #F0D49A; --badge-active-bg: #4A3B22; --bar-active: #A98232;
     --badge-pending: #D5DEE6; --badge-pending-bg: #3A4754; --bar-pending: #6A8BAA;
     --badge-done: #B5DDBF; --badge-done-bg: #21402C; --bar-done: #4E9A68;
@@ -107,6 +109,7 @@
   --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
   --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
   --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
+  --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C;
   --badge-active: #F0D49A; --badge-active-bg: #4A3B22; --bar-active: #A98232;
   --badge-pending: #D5DEE6; --badge-pending-bg: #3A4754; --bar-pending: #6A8BAA;
   --badge-done: #B5DDBF; --badge-done-bg: #21402C; --bar-done: #4E9A68;
@@ -254,9 +257,15 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 /* Lets a heading be scrolled to without sliding under the sticky top bar. */
 .scrollhead { scroll-margin-top: 90px; }
 .scrollhead:focus { outline: none; }
-/* The update notice borrows the Overdue pill's colors so it stands out. */
-.updatebanner { background: var(--badge-priority-bg); border-color: color-mix(in srgb, var(--badge-priority) 45%, transparent); }
+/* The three Today notices (update, backup reminder, Welcome) each have their own --notice-* color in css/tokens.css. */
+.updatebanner { background: var(--notice-update); border-color: color-mix(in srgb, var(--badge-priority) 45%, transparent); }
 .updatebanner .hint { color: var(--ink); }
+/* The backup reminder is a calm blue notice, so it reads differently from the amber update banner and the plain Welcome box. */
+.backupreminder { background: var(--notice-backup); border-color: color-mix(in srgb, var(--planned) 45%, transparent); }
+.backupreminder .hint { color: var(--ink); }
+/* The Welcome box is a soft green, the friendly one of the three notices. */
+.welcomebox { background: var(--notice-welcome); border-color: color-mix(in srgb, var(--chip-ink) 20%, var(--notice-welcome)); }
+.welcomebox .hint { color: var(--ink); }
 .updateprompt { display: block; width: 100%; max-width: 100%; min-height: 0; margin-top: var(--space-10); resize: none; font-size: var(--text-sm); }
 /* Stacked, Progress follows the burndown and gets the same gap above it Burndown has. */
 .pgrid .progresshead { margin-top: var(--space-14); }
@@ -1178,7 +1187,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.9.15";
+var APP_VERSION = "0.9.16";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -3305,7 +3314,7 @@ function burnPanel(o) {
   return box;
 }
 function welcomeBox() {
-  var box = el("div", { "class": "box", style: "margin-bottom:22px" });
+  var box = el("div", { "class": "box welcomebox", style: "margin-bottom:22px" });
   box.appendChild(el("h2", { style: "margin-bottom:4px" }, "Welcome to Sidequest"));
   var welcomeHint = el("p", { "class": "hint first" });
   welcomeHint.appendChild(el("strong", null, "Your new adventure begins here!"));
@@ -3327,6 +3336,7 @@ function welcomeBox() {
 }
 function renderToday(root) {
   if (availableUpdateVersion && state.settings.dismissedUpdateVersion !== availableUpdateVersion) root.appendChild(updateBanner());
+  if (backupReminderDue()) root.appendChild(backupReminder());
   if (!state.settings.hideWelcome) root.appendChild(welcomeBox());
   var g = pgrid(), b = burnParts({});
   g.put(el("h2", null, "Next up"), 1, 1); g.put(nextUpPanel(), 1, 2); g.put(overduePanel(), 1, 3);
@@ -3334,7 +3344,6 @@ function renderToday(root) {
   progress.appendChild(el("h2", { "class": "progresshead" }, "Stats")); progress.appendChild(b.count);
   g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(progress, 2, 3);
   root.appendChild(g);
-  if (backupReminderDue()) root.appendChild(backupReminder());
 }
 // A newer version's db stamp was found (checkForAppUpdate() in state.js, set
 // by hand when a new sidequest.html is published) -- tells the user how to
@@ -3369,9 +3378,9 @@ function updateBanner() {
   box.appendChild(ar);
   return box;
 }
-// A quiet note once it has been two weeks without a backup, with the button right there.
+// A notice at the top of Today once it has been two weeks without a backup, with the button right there.
 function backupReminder() {
-  var n = daysSinceBackup(), box = el("div", { "class": "box", style: "margin-top:22px" });
+  var n = daysSinceBackup(), box = el("div", { "class": "box backupreminder", style: "margin-bottom:22px" });
   box.appendChild(el("p", { "class": "first" }, state.settings.lastBackup ? "It has been " + n + " days since your last backup." : "You have used Sidequest for " + n + " days without saving a backup."));
   box.appendChild(el("p", { "class": "hint" }, "Your data is stored in this browser on this device. A backup file protects it if the browser’s data is ever cleared."));
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });

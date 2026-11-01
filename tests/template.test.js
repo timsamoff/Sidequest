@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.9.15"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.9.16"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -130,6 +130,13 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!projLink && projLink.classList.contains("qlink"), "Next up names the quest as a link");
   k.click(projLink);
   ok(k.$("viewTitle").textContent === "Sample App", "clicking the quest link opens that quest's page");
+}
+
+/* ---- Today notices have their own color tokens ---- */
+{
+  const tokens = fs.readFileSync(path.join(__dirname, "..", "css", "tokens.css"), "utf8"), styles = fs.readFileSync(path.join(__dirname, "..", "css", "styles.css"), "utf8");
+  ok((tokens.match(/--notice-update:/g) || []).length === 3 && (tokens.match(/--notice-backup:/g) || []).length === 3 && (tokens.match(/--notice-welcome:/g) || []).length === 3, "the three notice colors are defined in the light, dark, and forced-dark blocks");
+  ok(/\.updatebanner \{ background: var\(--notice-update\)/.test(styles) && /\.backupreminder \{ background: var\(--notice-backup\)/.test(styles) && /\.welcomebox \{ background: var\(--notice-welcome\)/.test(styles), "each notice uses its own token");
 }
 
 /* ---- tasks order: start date across quests ---- */

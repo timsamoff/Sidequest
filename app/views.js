@@ -188,7 +188,7 @@ export function burnPanel(o) {
   return box;
 }
 export function welcomeBox() {
-  var box = el("div", { "class": "box", style: "margin-bottom:22px" });
+  var box = el("div", { "class": "box welcomebox", style: "margin-bottom:22px" });
   box.appendChild(el("h2", { style: "margin-bottom:4px" }, "Welcome to Sidequest"));
   var welcomeHint = el("p", { "class": "hint first" });
   welcomeHint.appendChild(el("strong", null, "Your new adventure begins here!"));
@@ -210,6 +210,7 @@ export function welcomeBox() {
 }
 export function renderToday(root) {
   if (availableUpdateVersion && state.settings.dismissedUpdateVersion !== availableUpdateVersion) root.appendChild(updateBanner());
+  if (backupReminderDue()) root.appendChild(backupReminder());
   if (!state.settings.hideWelcome) root.appendChild(welcomeBox());
   var g = pgrid(), b = burnParts({});
   g.put(el("h2", null, "Next up"), 1, 1); g.put(nextUpPanel(), 1, 2); g.put(overduePanel(), 1, 3);
@@ -217,7 +218,6 @@ export function renderToday(root) {
   progress.appendChild(el("h2", { "class": "progresshead" }, "Stats")); progress.appendChild(b.count);
   g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(progress, 2, 3);
   root.appendChild(g);
-  if (backupReminderDue()) root.appendChild(backupReminder());
 }
 // A newer version's db stamp was found (checkForAppUpdate() in state.js, set
 // by hand when a new sidequest.html is published) -- tells the user how to
@@ -252,9 +252,9 @@ function updateBanner() {
   box.appendChild(ar);
   return box;
 }
-// A quiet note once it has been two weeks without a backup, with the button right there.
+// A notice at the top of Today once it has been two weeks without a backup, with the button right there.
 function backupReminder() {
-  var n = daysSinceBackup(), box = el("div", { "class": "box", style: "margin-top:22px" });
+  var n = daysSinceBackup(), box = el("div", { "class": "box backupreminder", style: "margin-bottom:22px" });
   box.appendChild(el("p", { "class": "first" }, state.settings.lastBackup ? "It has been " + n + " days since your last backup." : "You have used Sidequest for " + n + " days without saving a backup."));
   box.appendChild(el("p", { "class": "hint" }, "Your data is stored in this browser on this device. A backup file protects it if the browser’s data is ever cleared."));
   var msg = el("p", { "class": "msg schedulesmsg", role: "status", "aria-live": "polite" });
