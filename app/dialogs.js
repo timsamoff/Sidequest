@@ -162,7 +162,7 @@ export function questDialog() {
   formDialog("New candidate quest", [
     { key: "name", label: "Quest name" },
     { key: "notes", label: "Notes", type: "textarea", rows: 5 },
-    { key: "giverHeading", label: "Quest Giver", type: "heading", hint: "The client or contact for this quest. If filled, this information will appear on the Quest Giver Export." },
+    { key: "giverHeading", label: "Quest Giver", type: "heading", hint: "The client or contact for this quest." },
     { key: "giverOrg", label: "Organization" },
     { key: "giverPoc", label: "POC" },
     { key: "giverPhone", label: "Phone", type: "tel" },

@@ -14,8 +14,8 @@ import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.
 import { playConfetti } from "./confetti.js";
 import { startTutorial } from "./tutorial.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme, replaySplash } from "./app.js";
-import { stepDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
-import { buildExportSnapshot, renderExportDocument, exportFileName } from "./export.js";
+import { formDialog, stepDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
+import { buildExportSnapshot, renderExportDocument, exportFileName, exportSides } from "./export.js";
 
 /* views */
 // Added to the plan after its quest started: a scope change, marked on the task itself.
@@ -115,10 +115,21 @@ export function vaultQuest(p) {
     state.tasks.forEach(function (t) { if (t.questId === p.id && !t.vault) t.vault = { at: iso(TODAY), why: "removed" }; });
   });
 }
+// Asks which letterhead sides to include, offering only the sides that have something to print. With neither, it exports at once.
+function askExportSides(p) {
+  var sides = exportSides(p);
+  if (!sides.by && !sides.forWhom) { exportQuestForClient(p); return; }
+  var fields = [];
+  if (sides.by) fields.push({ key: "by", label: "Include “Prepared by” (your contact info and brandmark from Options)", type: "checkbox", value: true });
+  if (sides.forWhom) fields.push({ key: "forWhom", label: "Include “Prepared for” (this quest’s Quest Giver)", type: "checkbox", value: true });
+  formDialog("Quest Giver Export", fields, "Export", function (v) {
+    exportQuestForClient(p, { preparedBy: !sides.by || v.by === "1", preparedFor: !sides.forWhom || v.forWhom === "1" });
+  }, "Choose what appears at the top of the export.");
+}
 // Builds the standalone read-only export and offers it for saving, same
 // fallback order as saveBackupFile(). Scoped to Active/Complete quests only.
-export function exportQuestForClient(p) {
-  var snapshot = buildExportSnapshot(p);
+export function exportQuestForClient(p, opts) {
+  var snapshot = buildExportSnapshot(p, opts);
   var html = renderExportDocument(snapshot);
   var name = exportFileName(p);
   downloadsReady.then(function (d) {
@@ -730,7 +741,7 @@ export function renderQuestPage(root, id) {
     root.appendChild(el("p", { "class": "hint notetext" }, glines.length ? glines.join("\n") : "No Quest Giver."));
   } else {
     root.appendChild(el("h2", null, "Quest Giver"));
-    root.appendChild(el("p", { "class": "hint" }, "The client or contact for this quest. If filled, this information will appear on the Quest Giver Export."));
+    root.appendChild(el("p", { "class": "hint" }, "The client or contact for this quest."));
     var giverBox = el("div");
     var gg = el("div", { "class": "setgrid" });
     function gfield(key, id, label, type, full) {
@@ -796,7 +807,7 @@ export function renderQuestPage(root, id) {
       vaultQuest(p);
     }));
     ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Export web page for client review" }, "Quest Giver Export"), "click", function () {
-      exportQuestForClient(p);
+      askExportSides(p);
     }));
   }
   // ar is a sibling of .questmain/.questcharts inside .questsplit, not nested
@@ -1178,7 +1189,7 @@ export function helpTopics() {
       "**Pinned quests:** You can pin in progress, pending, and completed quests that are still on the **Quests** page. Pinning places a shortcut to that quest in the sidebar (or main menu in mobile). Completing a quest unpins it automatically. Reopening a formerly pinned quest restores the pin."
     ]],
     ["Inside a quest", [
-      "**Quest details:** Tapping a quest title on the **Quests** page opens it for editing.",
+      "**Quest details:** Tapping a quest title on the **Quests** page opens the quest details for editing.",
       "**Tasks:** You can add tasks with the **+** button or from inside a quest. Tasks can have start and due dates and a time estimate. You can also describe how you’ll know a task is complete.",
       ">Tasks without due dates show a **Backlog** badge. Tasks added after a quest’s start date show an **Added** badge with the date. Even with open steps and decisions, you can close a task.",
       ">Select **Make milestone** to turn a task with a due date into a milestone.",
@@ -1190,7 +1201,7 @@ export function helpTopics() {
     ]],
     ["Quest Giver and Quest links", [
       "**Quest Giver:** The Quest Giver is the client for a quest. You can also enter a **Bounty** (a monetary value), either as an hourly rate or a fixed payment for the quest.",
-      ">The **Quest Giver Export** includes everything entered here except the **Bounty**. It creates a read-only, interactive web page you can share with the client. Its button is at the bottom of an in progress or complete quest’s details and doesn’t appear on a candidate or vaulted quest.",
+      ">The **Quest Giver Export** includes everything entered here except the **Bounty**. It creates a read-only, interactive web page you can share with the client. Before it exports, you choose whether to include **Prepared by** (your contact information and brandmark) and **Prepared for** (the Quest Giver). Its button is at the bottom of an in progress or complete quest’s details and doesn’t appear on a candidate or vaulted quest.",
       "**Quest links:** When a job requires more than one quest, link them. Use **Link quest** to link a quest to any quest that is in progress, pending, or completed.",
       ">A candidate quest can add links the same way, but other quests can’t link to a candidate quest. Links to a candidate or vaulted quest show as plain text, and you can follow links to other quests.",
       ">Vaulting or demoting a quest keeps its links, and promoting or restoring it makes them active again."
@@ -1210,7 +1221,7 @@ export function helpTopics() {
       "The **Timeline** page shows the schedules of all open quests. It includes a Gantt chart of open quests and milestones, plus the overall burndown and task counts. A red line shows today’s date when it falls within the displayed schedules.",
       ">The **Burndown** chart shows how many tasks remain in all open quests. The straight **Ideal** line shows the planned rate of progress, and the **Actual** line shows your progress. Adding or removing work changes the amount remaining.",
       ">The dotted **Forecast** line shows the projected trajectory for completing the remaining work. Hovering over the dot at the end shows the projected completion date. The orange line shows changes in scope. You can tap or drag across the burndown to see dates and remaining tasks.",
-      ">The **Stats** section displays all remaining and backlogged tasks. The **Task count** table shows how many tasks remain and tracks changes in scope. Adding a scheduled task raises the scope and deleting one lowers it. Each change shows in the **Scope change** column."
+      "The **Stats** section displays all remaining and backlogged tasks. The **Task count** table shows how many tasks remain and tracks changes in scope. Adding a scheduled task raises the scope and deleting one lowers it. Each change shows in the **Scope change** column."
     ]],
     ["Workshop page", [
       "All ideas live here. Use them to think through new quests or prospects. You can either select **Make candidate** to turn an idea into a candidate quest or **Vault** it."
@@ -1219,7 +1230,7 @@ export function helpTopics() {
       "The **Vault** is a place to store ideas and quests you’re no longer actively working with but may want to keep. You can restore or permanently delete vaulted items. You can also choose to have the **Vault** automatically delete old items after a set period."
     ]],
     ["Options page", [
-      "**Adventurer:** This is where you can add your contact information and brandmark or logo. The **Quest Giver Export** includes everything added here.",
+      "**Adventurer:** This is where you can add your contact information and brandmark or logo. You can choose whether or not to include it when creating a **Quest Giver Export**.",
       "**Schedule defaults:** Set the default length of a **stretch of work**. You can adjust the stretch duration for individual quests.",
       ">You can also choose what to call a stretch of work: Block, Sprint, Iteration, Phase, or Week.",
       ">**Warn when active quests exceed:** Set the number of active quests you want to allow at a time. If you try to promote another candidate quest past that number, Sidequest warns you, and you can bypass the warning.",
@@ -1242,7 +1253,7 @@ export function renderHelp(root) {
   var openAll = el("button", { type: "button", "class": "small", id: "helpOpen" }, "Open all"), closeAll = el("button", { type: "button", "class": "small", id: "helpClose" }, "Close all");
   on(openAll, "click", function () { items.forEach(function (d) { d.open = true; }); });
   on(closeAll, "click", function () { items.forEach(function (d) { d.open = false; }); });
-  var replay = el("button", { type: "button", "class": "small", id: "helpReplay", title: "Replay the first-run walkthrough" }, "Replay tutorial");
+  var replay = el("button", { type: "button", "class": "small primary", id: "helpReplay", style: "margin-left:auto", title: "Replay the first-run walkthrough" }, "Replay tutorial");
   on(replay, "click", function () { go("today"); startTutorial(); });
   acts.appendChild(openAll); acts.appendChild(closeAll); acts.appendChild(replay); root.appendChild(acts);
   // A line that starts with ">" is nested one level under the line above it (">>" is two levels).
@@ -1456,8 +1467,8 @@ export function renderSettings(page) {
   var wipSel = el("select", { id: "set-wip", "class": "plain" });
   [[0, "No limit"], [2, "2"], [3, "3"], [4, "4"], [5, "5"]].forEach(function (o) { var op = el("option", { value: String(o[0]) }, o[1]); if (o[0] === state.settings.wipLimit) op.selected = true; wipSel.appendChild(op); });
   on(wipSel, "change", function () { state.settings.wipLimit = parseInt(wipSel.value, 10); changed(); });
-  fieldOf("set-wip", "Warn when active quests exceed", wipSel, "Warns you when you promote a quest past this number. You can bypass this warning and add more.");
-  fieldOf("set-dust", "Quests begin gathering dust after", dustSel, "A quest that doesn’t show progress for this long shows a Gathering dust badge.");
+  fieldOf("set-wip", "Warn when active quests exceed", wipSel);
+  fieldOf("set-dust", "Quests begin gathering dust after", dustSel);
   scheduleBox.appendChild(grid); scheduleBox.appendChild(msg); root.appendChild(scheduleBox);
 
   root.appendChild(el("h2", null, "Appearance and formats"));
@@ -1483,7 +1494,7 @@ export function renderSettings(page) {
   var cs = el("select", { id: "set-coin", "class": "plain" });
   [["us", "1,234.56"], ["eu", "1.234,56"]].forEach(function (o) { var op = el("option", { value: o[0] }, o[1]); if (o[0] === state.settings.coinFormat) op.selected = true; cs.appendChild(op); });
   on(cs, "change", function () { state.settings.coinFormat = cs.value; changed(); });
-  cs.setAttribute("aria-describedby", "set-coin-hint"); cw.appendChild(cs); cw.appendChild(el("p", { "class": "hint", id: "set-coin-hint" }, "How Bounty amounts are written.")); ag.appendChild(cw);
+  cw.appendChild(cs); ag.appendChild(cw);
   appearanceBox.appendChild(ag);
   var sw = el("div", { "class": "field" }); sw.appendChild(el("label", { "for": "set-splash" }, "Splash screen on open"));
   var ss = el("select", { id: "set-splash", "class": "plain" });
@@ -1561,7 +1572,7 @@ export function renderSettings(page) {
 
   root.appendChild(el("h2", null, "Import"));
   var importBox = el("div", { "class": "box", style: "margin-top:10px" });
-  importBox.appendChild(el("p", { "class": "hint", style: "margin-bottom:12px" }, "Bring in tasks from Trello (JSON) or Todoist (CSV) as a new quest."));
+  importBox.appendChild(el("p", { "class": "hint", style: "margin-bottom:12px" }, "Import tasks from Trello (JSON) or Todoist (CSV) into a new quest."));
   importPanel(importBox);
   root.appendChild(importBox);
 

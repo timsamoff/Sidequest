@@ -156,14 +156,25 @@ function filledOrNull(fields) {
   return fields && Object.keys(fields).some(function (k) { return fields[k]; }) ? fields : null;
 }
 
-export function buildExportSnapshot(p) {
+// Which letterhead sides have anything to print for this quest: "Prepared by" (Options contact info or a brandmark) and "Prepared for" (the Quest Giver).
+export function exportSides(p) {
+  var cl = p.client;
+  return {
+    by: !!(filledOrNull(state.settings.contact) || state.settings.brandmark),
+    forWhom: !!filledOrNull({ org: cl.org, poc: cl.poc, phone: cl.phone, email: cl.email, address: cl.address, website: cl.website })
+  };
+}
+
+// opts.preparedBy and opts.preparedFor (both default true) leave a letterhead side out when false.
+export function buildExportSnapshot(p, opts) {
+  var includeBy = !opts || opts.preparedBy !== false, includeFor = !opts || opts.preparedFor !== false;
   var tree = buildExportTree(p);
   var sections = flattenSections(tree);
-  var contact = filledOrNull(state.settings.contact);
+  var contact = includeBy ? filledOrNull(state.settings.contact) : null;
   // coin/per (the pay rate) never print on the export -- excluded here so they
   // can't make filledOrNull treat an otherwise-empty Quest Giver as filled in.
-  var client = filledOrNull({ org: p.client.org, poc: p.client.poc, phone: p.client.phone, email: p.client.email, address: p.client.address, website: p.client.website });
-  return { exportedAt: fmtY(TODAY), root: tree, sections: sections, contact: contact, client: client, brandmark: state.settings.brandmark || "" };
+  var client = !includeFor ? null : filledOrNull({ org: p.client.org, poc: p.client.poc, phone: p.client.phone, email: p.client.email, address: p.client.address, website: p.client.website });
+  return { exportedAt: fmtY(TODAY), root: tree, sections: sections, contact: contact, client: client, brandmark: includeBy ? (state.settings.brandmark || "") : "" };
 }
 
 export var EXPORT_TEST_HOOKS = { buildExportTree: buildExportTree, flattenSections: flattenSections };

@@ -420,6 +420,8 @@ li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: va
   .tutorial { bottom: calc(env(safe-area-inset-bottom, 0px) + 76px); left: var(--space-12); right: var(--space-12); width: auto; padding: var(--space-10) var(--space-14); }
   body:has(.tutorial) #view { padding-bottom: 230px; }
   .tutorialcount { display: none; }
+  /* The card spans the bottom here, so confirmation toasts sit just above it (--tutorial-top is the card's top edge, measured from the bottom of the window). */
+  body:has(.tutorial) .toast { left: var(--space-12); right: var(--space-12); transform: none; width: auto; max-width: none; bottom: calc(var(--tutorial-top, 0px) + 12px); }
   /* The tab bar clips anything outside it, so the ring sits inside the tab. */
   .side .tutorialtarget { outline-offset: -3px; }
   body:has(.overlay:not([hidden])) .tutorial, body:has(.menu:not([hidden])) .tutorial { display: none; }

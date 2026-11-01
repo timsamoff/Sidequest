@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.10.0"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.10.1"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -1611,6 +1611,8 @@ async function exportClick(k, projectName) {
   k.w.showSaveFilePicker = (opts) => { downloadName = opts.suggestedName; return Promise.resolve({ createWritable: () => Promise.resolve({ write: (t) => { written = t; return Promise.resolve(); }, close: () => Promise.resolve() }) }); };
   k.tab("projects"); k.click(k.btn(k.$("view"), projectName));
   k.click(k.btn(k.$("view"), "Quest Giver Export"));
+  // A quest with something to print on the letterhead asks first; take the default, both sides included.
+  const go = k.btn(k.$("overlay"), "Export"); if (go) k.click(go);
   await new Promise((r) => setTimeout(r, 30));
   return { html: written || "", downloadName };
 }
@@ -2606,6 +2608,37 @@ async function exportClick(k, projectName) {
   ok(k.d.querySelector(".tutorial").textContent.includes("Add a quest") && !!k.$("tutorialSkip"), "Next moves to the first action step, which can be skipped");
   k.click(k.$("tutorialSkip"));
   ok(!k.d.querySelector(".tutorial"), "Skip tutorial removes the card");
+}
+// Quest Giver Export asks which letterhead sides to include.
+{
+  const quest = (client) => ({ id: "pQ", name: "Ask Quest", status: "active", start: "2026-08-03", days: 7, client: Object.assign({ org: "", poc: "", phone: "", email: "", address: "", website: "" }, client) });
+  const contact = { name: "Ada Lovelace", company: "", phone: "", email: "", address: "", website: "" };
+  async function run(saved, uncheck) {
+    const k = kit(await mk(saved));
+    let written = null;
+    k.w.showSaveFilePicker = () => Promise.resolve({ createWritable: () => Promise.resolve({ write: (t) => { written = t; return Promise.resolve(); }, close: () => Promise.resolve() }) });
+    k.tab("projects"); k.click(k.btn(k.$("view"), "Ask Quest"));
+    k.click(k.btn(k.$("view"), "Quest Giver Export"));
+    const dialog = k.d.querySelector("#overlay:not([hidden])");
+    const boxes = dialog ? [...dialog.querySelectorAll('input[type="checkbox"]')].map(c => c.id) : [];
+    (uncheck || []).forEach(id => { const c = k.$(id); c.checked = false; });
+    if (dialog) k.click(k.btn(k.$("overlay"), "Export"));
+    await new Promise((r) => setTimeout(r, 30));
+    return { html: written || "", boxes, open: !!k.d.querySelector("#overlay:not([hidden])") };
+  }
+  const both = { settings: { contact }, quests: [quest({ org: "Acme Co." })], tasks: [] };
+  let r = await run(both);
+  ok(r.boxes.join() === "f-by,f-forWhom" && r.html.includes("Prepared by") && r.html.includes("Prepared for") && !r.open, "with both sides filled in, the export asks and both are included by default");
+  r = await run(both, ["f-by"]);
+  ok(!r.html.includes("Prepared by") && !r.html.includes("Ada Lovelace") && r.html.includes("Prepared for"), "unchecking Prepared by leaves your contact info off the export");
+  r = await run(both, ["f-forWhom"]);
+  ok(r.html.includes("Prepared by") && !r.html.includes("Prepared for") && !r.html.includes("Acme Co."), "unchecking Prepared for leaves the Quest Giver off the export");
+  r = await run(both, ["f-by", "f-forWhom"]);
+  ok(r.html.includes("<!doctype html>") && !r.html.includes("Prepared by") && !r.html.includes("Prepared for"), "unchecking both still exports, with no letterhead");
+  r = await run({ settings: { contact }, quests: [quest({})], tasks: [] });
+  ok(r.boxes.join() === "f-by" && r.html.includes("Prepared by"), "a side with nothing to print is not offered");
+  r = await run({ quests: [quest({})], tasks: [] });
+  ok(r.boxes.length === 0 && r.html.includes("<!doctype html>"), "with nothing to print on either side, it exports without asking");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

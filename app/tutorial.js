@@ -51,7 +51,7 @@ var STEPS = [
         : "Open **Today** to see what to work on next across all your quests. Your task has no due date, so it sits in the quest’s Backlog and is not on **Timeline**. Give a task a due date to schedule it." };
     },
     done: function () { return ui.view === "today"; } },
-  { title: "Your quest has begun!", view: function () { return { text: "Everything else is in the Field guide. To run this walkthrough again, open the Field guide and select **Replay tutorial**." }; } }
+  { title: "Welcome to the adventure!", view: function () { return { text: "Everything else is in the Field guide. To run this walkthrough again, open the Field guide and select **Replay tutorial**." }; } }
 ];
 
 var panel = null, textHost = null, shownText = "", timer = null, startTimer = null, index = 0, ctx = null, lit = null;
@@ -67,6 +67,7 @@ export function stopTutorial() {
   if (startTimer) clearTimeout(startTimer);
   timer = startTimer = null;
   clearLit();
+  document.documentElement.style.removeProperty("--tutorial-top");
   if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
   panel = textHost = null;
 }
@@ -78,7 +79,7 @@ function draw() {
   panel.appendChild(el("h2", { "class": "tutorialtitle" }, step.title));
   textHost = el("p", { "class": "tutorialtext" }); panel.appendChild(textHost); shownText = "";
   var acts = el("div", { "class": "actions", style: "margin-top:10px" });
-  acts.appendChild(on(el("button", { type: "button", "class": "small", id: "tutorialNext" }, last ? "Finish" : step.done ? "Skip step" : "Next"), "click", function () { advance(); }));
+  acts.appendChild(on(el("button", { type: "button", "class": "small primary", id: "tutorialNext" }, last ? "Finish" : step.done ? "Skip step" : "Next"), "click", function () { advance(); }));
   if (!last) acts.appendChild(on(el("button", { type: "button", "class": "small", id: "tutorialSkip" }, "Skip tutorial"), "click", stopTutorial));
   panel.appendChild(acts);
 }
@@ -95,6 +96,9 @@ function tick() {
   if (step.done && step.done(ctx)) { advance(); return; }
   var w = step.view(ctx);
   if (w.text !== shownText) { textHost.innerHTML = ""; richText(textHost, w.text); shownText = w.text; }
+  // Toasts read this to stay above the card, whatever its height or visibility.
+  var box = panel.getBoundingClientRect();
+  document.documentElement.style.setProperty("--tutorial-top", (box.height ? Math.round(window.innerHeight - box.top) : 0) + "px");
   var target = w.target || null;
   if (target !== lit) { clearLit(); if (target) { target.classList.add("tutorialtarget"); lit = target; if (target.closest("#view")) { try { target.scrollIntoView({ block: "center" }); } catch (e) { /* ignore */ } } } }
 }
