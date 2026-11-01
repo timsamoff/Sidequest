@@ -1211,7 +1211,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.10.2";
+var APP_VERSION = "0.10.3";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -3430,23 +3430,9 @@ function exportQuestForClient(p, opts) {
   var snapshot = buildExportSnapshot(p, opts);
   var html = renderExportDocument(snapshot);
   var name = exportFileName(p);
-  downloadsReady.then(function (d) {
-    if (d) return d.save({ filename: name, data: html }).then(function () { notify("Exported " + p.name + "."); });
-    var framed = false;
-    try { framed = !!(window.claude && window.top !== window.self); } catch (e) { framed = true; }
-    if (framed) { notify("This published copy was not given permission to save files. Publish it again with the downloads capability turned on."); return; }
-    if (typeof window.showSaveFilePicker === "function") {
-      return window.showSaveFilePicker({ suggestedName: name, types: [{ description: "Sidequest export", accept: { "text/html": [".html"] } }] })
-        .then(function (h) { return h.createWritable(); })
-        .then(function (w) { return w.write(html).then(function () { return w.close(); }); })
-        .then(function () { notify("Exported " + p.name + "."); });
-    }
-    var blob = new Blob([html], { type: "text/html" });
-    var url = URL.createObjectURL(blob);
-    var a = el("a", { href: url, download: name });
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-    notify("Exported " + p.name + ".");
+  saveFile(name, html, "text/html", "Sidequest export", ".html").then(function (r) {
+    if (r === "denied") notify(NO_SAVE_PERMISSION);
+    else if (r !== "manual") notify("Exported " + p.name + ".");
   }).catch(function (err) {
     notify(err && (err.code === "declined" || err.name === "AbortError") ? "Export canceled." : "The export could not be saved.");
   });
@@ -4909,6 +4895,69 @@ try {
     downloadsReady = window.claude.use("downloads").then(function (d) { downloads = d; return d; }).catch(function () { return null; });
   }
 } catch (e) { /* unavailable */ }
+var NO_SAVE_PERMISSION = "This published copy was not given permission to save files. Publish it again with the downloads capability turned on.";
+function isFramed() {
+  try { return window.parent !== window.self; } catch (e) { return true; }
+}
+function cancelled(err) { return !!err && (err.code === "declined" || err.name === "AbortError"); }
+// Shows the file's text with a Copy button, for a frame where nothing else can hand over a file.
+function manualSaveDialog(name, text) {
+  openModal("Save " + name, function (body) {
+    body.appendChild(el("p", { "class": "hint first" }, "This page can't save files directly. Copy the text below, paste it into a new text file, and save it as " + name + "."));
+    var box = el("textarea", { readonly: "readonly", rows: "10", "aria-label": name });
+    box.value = text; body.appendChild(box);
+    var note = el("p", { "class": "hint" }, "");
+    var acts = el("div", { "class": "actions" });
+    acts.appendChild(on(el("button", { type: "button", "class": "primary" }, "Copy"), "click", function () {
+      function done(ok) { note.textContent = ok ? "Copied." : "Select the text and copy it."; }
+      box.focus(); box.select();
+      try {
+        if (window.navigator.clipboard && window.navigator.clipboard.writeText) { window.navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); }); return; }
+        done(document.execCommand("copy"));
+      } catch (e) { done(false); }
+    }));
+    body.appendChild(acts); body.appendChild(note);
+  });
+}
+// Hands the viewer a file. Resolves "saved" (a verified save), "downloaded" (a top-level
+// download, which the browser gives no way to confirm), "manual" (a dialog now shows the text
+// to copy; nothing was saved yet) or "denied" (a Claude copy without the downloads capability).
+// Rejects on cancel or failure. A frame can't use a plain download, so it tries the file
+// picker, then the share sheet (phones), then the copy dialog.
+function saveFile(name, text, mime, desc, ext) {
+  return downloadsReady.then(function (d) {
+    if (d) return d.save({ filename: name, data: text }).then(function () { return "saved"; });
+    var framed = isFramed();
+    if (inClaude() && framed) return "denied";
+    function viaShare() {
+      var file;
+      try { file = new window.File([text], name, { type: mime }); } catch (e) { file = null; }
+      if (framed && file && window.navigator.share && window.navigator.canShare && window.navigator.canShare({ files: [file] })) {
+        return window.navigator.share({ files: [file] }).then(function () { return "saved"; }, function (err) {
+          if (cancelled(err)) throw err;
+          manualSaveDialog(name, text); return "manual";
+        });
+      }
+      if (framed) { manualSaveDialog(name, text); return "manual"; }
+      var blob = new Blob([text], { type: mime }), url = URL.createObjectURL(blob);
+      var a = el("a", { href: url, download: name });
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      return "downloaded";
+    }
+    if (typeof window.showSaveFilePicker === "function") {
+      var accept = {}; accept[mime] = [ext];
+      return window.showSaveFilePicker({ suggestedName: name, types: [{ description: desc, accept: accept }] })
+        .then(function (h) { return h.createWritable(); })
+        .then(function (w) { return w.write(text).then(function () { return w.close(); }); })
+        .then(function () { return "saved"; }, function (err) {
+          if (cancelled(err) || !framed) throw err;
+          return viaShare();
+        });
+    }
+    return viaShare();
+  });
+}
 // The file records today as its own backup date, so restoring from it starts the reminder fresh.
 function backupJSON() {
   return JSON.stringify(Object.assign({}, state, { settings: Object.assign({}, state.settings, { lastBackup: iso(TODAY) }) }), null, 2);
@@ -4931,22 +4980,10 @@ function lastBackupText() {
 function saveBackupFile(msg, onDone) {
   var name = "sidequest-backup-" + iso(TODAY) + ".json", text = backupJSON();
   function saved(note) { state.settings.lastBackup = iso(TODAY); save(); msg.textContent = note; if (onDone) onDone(); }
-  downloadsReady.then(function (d) {
-    if (d) return d.save({ filename: name, data: text }).then(function () { saved("Backup saved."); });
-    // Inside a published page's frame a plain download is blocked, so without the capability there is no way to save.
-    var framed = false;
-    try { framed = !!(window.claude && window.top !== window.self); } catch (e) { framed = true; }
-    if (framed) { msg.textContent = "This published copy was not given permission to save files. Publish it again with the downloads capability turned on."; return; }
-    if (typeof window.showSaveFilePicker === "function") {
-      return window.showSaveFilePicker({ suggestedName: name, types: [{ description: "Sidequest backup", accept: { "application/json": [".json"] } }] })
-        .then(function (h) { return h.createWritable(); })
-        .then(function (w) { return w.write(text).then(function () { return w.close(); }); })
-        .then(function () { saved("Backup saved."); });
-    }
-    var a = document.createElement("a"), url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
-    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-    saved("Backup downloaded.");
+  saveFile(name, text, "application/json", "Sidequest backup", ".json").then(function (r) {
+    if (r === "denied") msg.textContent = NO_SAVE_PERMISSION;
+    else if (r === "manual") msg.textContent = "Copy the backup from the box and save it as " + name + ". It is not counted as saved until you do.";
+    else saved(r === "downloaded" ? "Backup downloaded." : "Backup saved.");
   }).catch(function (err) {
     msg.textContent = err && (err.code === "declined" || err.name === "AbortError") ? "Save canceled." : "The backup could not be saved.";
   });

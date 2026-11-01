@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.10.2"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.10.3"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -1601,6 +1601,43 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(by("n1").block === 40, "a saved block above 12 survives a reload");
   ok(by("n2").start === "" && by("n2").due === "2026-08-11", "a start after its due date is dropped on load");
   ok(by("n3").start === "2026-08-11" && by("n3").due === "", "a Backlog task keeps its start date on load, but has no due date");
+}
+
+{
+  // saving inside a frame: only a verified save counts, and a frame with no way to save shows the text to copy
+  const wait = () => new Promise(r => setTimeout(r, 30));
+  const frame = (k) => Object.defineProperty(k.w, "parent", { value: {}, configurable: true });
+  {
+    const k = kit(await mk({ settings: { hideWelcome: true } }));
+    try { frame(k); } catch (e) { /* checked next */ }
+    ok(k.w.parent !== k.w, "the test can simulate a framed page");
+    if (k.w.parent !== k.w) {
+      k.tab("settings"); k.click(k.$("saveFile")); await wait();
+      const box = k.$("overlay").querySelector("textarea");
+      ok(!k.$("overlay").hidden && !!box && JSON.parse(box.value).tasks.length === 24, "in a frame with no way to save, a dialog shows the backup text to copy");
+      ok(k.saved().settings.lastBackup === "" && !k.$("view").textContent.includes("Backup saved.") && k.$("view").textContent.includes("not counted as saved"), "and nothing is reported or recorded as saved");
+    }
+  }
+  {
+    const k = kit(await mk({ settings: { hideWelcome: true } }));
+    try { frame(k); } catch (e) { /* checked next */ }
+    ok(k.w.parent !== k.w, "the test can simulate a framed page");
+    if (k.w.parent !== k.w) {
+      let shared = null;
+      k.w.navigator.canShare = () => true; k.w.navigator.share = (d) => { shared = d; return Promise.resolve(); };
+      k.tab("settings"); k.click(k.$("saveFile")); await wait();
+      ok(!!shared && /^sidequest-backup-.*\.json$/.test(shared.files[0].name) && k.saved().settings.lastBackup !== "", "in a frame the share sheet is used when it exists, and counts as saved");
+    }
+  }
+  {
+    const k = kit(await mk({ settings: { hideWelcome: true } }, { use: () => Promise.resolve(null) }));
+    try { frame(k); } catch (e) { /* checked next */ }
+    ok(k.w.parent !== k.w, "the test can simulate a framed page");
+    if (k.w.parent !== k.w) {
+      k.tab("settings"); k.click(k.$("saveFile")); await wait();
+      ok(k.$("view").textContent.includes("not given permission to save files") && k.saved().settings.lastBackup === "", "a Claude copy without the downloads capability says so and records nothing");
+    }
+  }
 }
 
 // Quest Giver Export writes through the same Save As dialog stub as Save backup's
