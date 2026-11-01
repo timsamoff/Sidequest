@@ -46,6 +46,7 @@ button.pencil[hidden] { display: none; }
 button { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control); padding: var(--space-8) var(--space-14); min-height: var(--control-height); cursor: pointer; }
 button:hover { border-color: var(--muted); }
 button.primary { background: var(--planned); border-color: var(--planned); color: var(--on-planned); font-weight: 600; }
+button.primary:hover { border-color: var(--planned); filter: brightness(1.15); }
 button.small { min-height: 34px; padding: var(--space-4) var(--space-10); font-size: var(--text-sm); }
 /* Fixed width so the button doesn't resize when its label swaps Pin/Unpin. */
 button.pintoggle { min-width: 64px; }
@@ -408,6 +409,9 @@ svg.chart.nofocusring { outline: none; }
 /* splash screen: viewport-relative sizing so the ~75% panel works in either orientation. */
 .splash { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity .5s ease; }
 .splash.fading { opacity: 0; }
+/* No page scroll while the splash is up; releases itself when it is hidden. */
+html:has(.splash:not([hidden])) { overflow: hidden; }
+.splash { overscroll-behavior: none; touch-action: none; }
 /* No transition here -- backdropBlurred is present from first paint, must never ramp up. */
 .splashbackdrop { position: absolute; inset: 0; backdrop-filter: blur(0px); }
 .splash.backdropBlurred .splashbackdrop { backdrop-filter: blur(10px); }

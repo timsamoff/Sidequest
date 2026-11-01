@@ -188,6 +188,9 @@ export function replaySplash() {
 
 // Deferred one microtask so the whole import cycle (state.js etc.) finishes evaluating first.
 Promise.resolve().then(function () {
+  // A reload starts at the top, not wherever the browser last scrolled.
+  try { window.history.scrollRestoration = "manual"; } catch (e) { /* ignore */ }
+  scrollTop();
   $("brand").textContent = APP_NAME;
   applyTheme();
   autoVault(); purgeOldVault(); save();

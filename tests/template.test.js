@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.9.16"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.9.17"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2257,13 +2257,13 @@ async function exportClick(k, projectName) {
   ok(!k.saved().tasks.some(x => x.what === "Bad order") && note().includes("You can’t begin after you finish!"), "a start after the due date is still refused");
 }
 {
-  // The Welcome box's Go to Options button lands on Start fresh
+  // The Welcome box's Open Options button lands on Start fresh
   const k = kit(await mk());
   let scrolled = 0;
   k.w.HTMLElement.prototype.scrollIntoView = function () { scrolled++; this.setAttribute("data-scrolled", "1"); };
   k.click(k.$("welcomeSettings"));
   const h = k.$("startFreshHeading");
-  ok(k.d.querySelector('.tab[data-view="settings"][aria-current="page"]') && !!h && h.textContent === "Start fresh", "Go to Options opens Options, which has a Start fresh heading");
+  ok(k.d.querySelector('.tab[data-view="settings"][aria-current="page"]') && !!h && h.textContent === "Start fresh", "Open Options opens Options, which has a Start fresh heading");
   ok(h.getAttribute("data-scrolled") === "1" && k.d.activeElement === h, "and scrolls to it and moves focus there");
 }
 

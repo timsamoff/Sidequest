@@ -198,7 +198,7 @@ export function welcomeBox() {
     : " These sample quests are here for you to explore. Look around, make changes, and press / to search. You can edit the existing quests or, when you’re ready to start your own, open Options and choose Start fresh."));
   box.appendChild(welcomeHint);
   var acts = el("div", { "class": "actions" });
-  if (!blank) acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Go to Options" }, "Go to Options"), "click", function () {
+  if (!blank) acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Open Options" }, "Open Options"), "click", function () {
     go("settings");
     // The welcome text sends people here for Start fresh, so land on it.
     var h = $("startFreshHeading");
