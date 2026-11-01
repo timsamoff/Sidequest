@@ -232,10 +232,10 @@ function renderCharts(node) {
   var id = sectionId(node.id);
   var html = '<div class="echarts" data-chart="' + escAttr(id) + '">';
   if (node.charts.lanes.length) {
-    html += '<h3 class="efirst">Timeline</h3><div class="echartbox"><div class="etimeline" id="' + id + '-tl"></div></div>';
+    html += '<h3 class="efirst">Timeline</h3><div class="echartbox"><div class="etimeline" id="' + id + '-tl">' + bakedChart(exportDrawTimeline, node.charts) + '</div></div>';
   }
   html += '<h3' + (node.charts.lanes.length ? "" : ' class="efirst"') + '>Burndown</h3>';
-  html += '<div class="echartbox"><div id="' + id + '-burn"></div><div class="elegend"><span><i class="p"></i>Ideal</span><span><i></i>Actual</span><span><i class="s"></i>Scope</span></div></div>';
+  html += '<div class="echartbox"><div id="' + id + '-burn">' + bakedChart(exportDrawBurn, node.charts) + '</div><div class="elegend"><span><i class="p"></i>Ideal</span><span><i></i>Actual</span><span><i class="s"></i>Scope</span></div></div>';
   html += '<p class="hint">' + node.charts.total + " tasks total.</p>";
   html += "</div>";
   return html;
@@ -343,101 +343,136 @@ svg.echart { display: block; width: 100%; height: auto; }\
 .efoot { margin-top: 30px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }\
 ";
 
-// A second, standalone reimplementation of renderBurn()/timelineNode()'s
-// drawing and tooltip interaction, since chart.js reads live state directly.
-var RUNTIME_JS = "\
-(function(){\
-function svgEl(t,a){var e=document.createElementNS('http://www.w3.org/2000/svg',t);for(var k in a)e.setAttribute(k,a[k]);return e;}\
-function drawBurn(host,cfg){\
-var cps=cfg.points,n=cps.length,pl=cps.map(function(p){return p.planned;}),acts=cps.map(function(p){return p.actual;});\
-var ymax=Math.max(cfg.total,1);acts.forEach(function(a){if(a!==null&&a>ymax)ymax=a;});(cfg.scopeSteps||[]).forEach(function(s){if(s.v>ymax)ymax=s.v;});\
-var tick=Math.max(1,Math.ceil(ymax/8));\
-var W=960,H=320,L=40,R=18,T=16,B=44;\
-var svg=svgEl('svg',{'class':'echart',viewBox:'0 0 '+W+' '+H,role:'group',tabindex:'0','aria-label':'Burndown chart. Use the left and right arrow keys to move between points.'});\
-function x(i){return L+(W-L-R)*i/(n-1);}\
-function y(v){return T+(H-T-B)*(1-v/ymax);}\
-for(var v=0;v<=ymax;v+=tick){svg.appendChild(svgEl('line',{'class':'grid',x1:L,x2:W-R,y1:y(v),y2:y(v)}));var tx=svgEl('text',{'class':'axis',x:L-10,y:y(v)+4,'text-anchor':'end'});tx.textContent=String(v);svg.appendChild(tx);}\
-var every=Math.max(1,Math.ceil(n/Math.max(2,Math.floor((W-L-R)/70))));\
-cps.forEach(function(p,i){if(i%every===0||i===n-1){var tx=svgEl('text',{'class':'axis',x:x(i),y:H-16,'text-anchor':i===n-1?'end':'middle'});tx.textContent=p.date;svg.appendChild(tx);}});\
-svg.appendChild(svgEl('polyline',{'class':'planned',points:pl.map(function(p,i){return x(i)+','+y(p);}).join(' ')}));\
-var seg=[];function flush(){if(seg.length>1)svg.appendChild(svgEl('polyline',{'class':'actual',points:seg.join(' ')}));seg=[];}\
-acts.forEach(function(a,i){if(a===null){flush();return;}seg.push(x(i)+','+y(a));});flush();\
-acts.forEach(function(a,i){if(a!==null)svg.appendChild(svgEl('circle',{'class':'dot',cx:x(i),cy:y(a),r:5.5}));});\
-var ss=cfg.scopeSteps,c0=cfg.cps[0],cN=cfg.cps[n-1];\
-function px(ms){return L+(W-L-R)*Math.max(0,Math.min(1,(ms-c0)/(cN-c0)));}\
-if(ss&&(ss.length>1||(ss.length===1&&cfg.scopeEnd>ss[0].ms))){var sp=[],pv=null,pms=null,ramp=(cN-c0)/(n-1);\
-ss.forEach(function(st){if(pv!==null)sp.push(px(Math.max(pms,st.ms-ramp))+','+y(pv));sp.push(px(st.ms)+','+y(st.v));pv=st.v;pms=st.ms;});\
-sp.push(px(cfg.scopeEnd)+','+y(pv));svg.appendChild(svgEl('polyline',{'class':'scope',points:sp.join(' ')}));}\
-var guide=svgEl('line',{'class':'guide',x1:0,x2:0,y1:T,y2:H-B});guide.style.display='none';svg.appendChild(guide);\
-var stops=[];\
-cps.forEach(function(p,i){\
-var x0=i===0?L:(x(i-1)+x(i))/2,x1=i===n-1?W-R:(x(i)+x(i+1))/2;\
-var hit=svgEl('rect',{'class':'hit',x:x0,y:T,width:Math.max(1,x1-x0),height:H-B-T});svg.appendChild(hit);\
-var ys=[y(p.planned)];if(p.actual!==null)ys.push(y(p.actual));\
-stops.push({x:x(i),y:Math.min.apply(null,ys),text:p.tip,el:hit,i:i,order:0});\
-});\
-(cfg.milestones||[]).forEach(function(m){if(m.ms<c0||m.ms>cN)return;\
-var cx=px(m.ms),cy=y(0),r=6;svg.appendChild(svgEl('polygon',{'class':'mark',points:cx+','+(cy-r)+' '+(cx+r)+','+cy+' '+cx+','+(cy+r)+' '+(cx-r)+','+cy}));\
-var mh=svgEl('circle',{'class':'hit',cx:cx,cy:cy,r:11});svg.appendChild(mh);stops.push({x:cx,y:cy,text:m.text+', '+m.date,el:mh,i:-1,order:1});});\
-stops.sort(function(p,q){return p.x-q.x||p.order-q.order;});\
-var tip=document.createElement('div');tip.className='echarttip';tip.setAttribute('role','status');tip.setAttribute('aria-live','polite');tip.hidden=true;\
-host.appendChild(svg);host.appendChild(tip);\
-var cur=-1,pinned=false;\
-function hide(){cur=-1;tip.hidden=true;guide.style.display='none';}\
-function show(k){cur=k;var s=stops[k];tip.textContent=s.text;tip.hidden=false;guide.setAttribute('x1',s.x);guide.setAttribute('x2',s.x);guide.style.display='';\
-var r=svg.getBoundingClientRect(),hr=host.getBoundingClientRect(),sc=r.width/W;\
-var px=(r.left-hr.left)+s.x*sc,py=(r.top-hr.top)+s.y*sc,w=tip.offsetWidth,h=tip.offsetHeight;\
-tip.style.left=Math.max(0,Math.min(px-w/2,hr.width-w))+'px';tip.style.top=(py-h-12<0?py+14:py-h-12)+'px';}\
-function startStop(){var best=0;stops.forEach(function(s,k){if(s.i>=0&&acts[s.i]!==null)best=k;});return best;}\
-stops.forEach(function(s,k){\
-s.el.addEventListener('mouseenter',function(){show(k);});\
-s.el.addEventListener('mouseleave',function(){if(!pinned)hide();});\
-s.el.addEventListener('click',function(){pinned=true;show(k);});\
-});\
-svg.addEventListener('focus',function(){pinned=true;if(cur<0)show(startStop());});\
-svg.addEventListener('blur',function(){pinned=false;hide();});\
-svg.addEventListener('pointerdown',function(){svg.classList.add('nofocusring');});\
-svg.addEventListener('keydown',function(e){\
-svg.classList.remove('nofocusring');var nk=cur;\
-if(e.key==='ArrowRight')nk=cur<0?0:Math.min(stops.length-1,cur+1);\
-else if(e.key==='ArrowLeft')nk=cur<0?stops.length-1:Math.max(0,cur-1);\
-else if(e.key==='Home')nk=0;\
-else if(e.key==='End')nk=stops.length-1;\
-else if(e.key==='Escape'){if(cur>=0){e.preventDefault();e.stopPropagation();pinned=false;hide();}return;}\
-else return;\
-e.preventDefault();pinned=true;show(nk);\
-});\
-}\
-function drawTimeline(host,charts){\
-if(!charts.lanes.length)return;\
-var wrap=document.createElement('div');wrap.className='etimeline';\
-charts.lanes.forEach(function(ln){\
-var lane=document.createElement('div');lane.className='elane';\
-var nm=document.createElement('div');nm.className='elname';nm.textContent=ln.name;\
-var sp=document.createElement('span');sp.textContent=ln.dates;nm.appendChild(sp);lane.appendChild(nm);\
-var tr=document.createElement('div');tr.className='etrack';\
-var blk=document.createElement('div');blk.className='eblk';blk.style.left=ln.blkLeft+'%';blk.style.width=ln.blkWidth+'%';tr.appendChild(blk);\
-var bar=document.createElement('div');bar.className='ebar '+ln.status;bar.style.left=ln.left+'%';bar.style.width=ln.width+'%';tr.appendChild(bar);\
-lane.appendChild(tr);wrap.appendChild(lane);\
-});\
-if(charts.laneMilestones&&charts.laneMilestones.length){\
-var msl=document.createElement('div');msl.className='elane';var mnm=document.createElement('div');mnm.className='elname';mnm.textContent='Milestones';msl.appendChild(mnm);var msr=document.createElement('div');msr.className='etrack';\
-charts.laneMilestones.forEach(function(m){\
-var d=document.createElement('span');d.className='ems';d.style.left=m.left+'%';d.title=m.text+', '+m.date;d.setAttribute('aria-label',m.text+', '+m.date);msr.appendChild(d);\
-});\
-msl.appendChild(msr);wrap.appendChild(msl);\
-}\
-host.appendChild(wrap);\
-}\
+// The chart drawing is written as real functions so it can run twice: at export time to
+// bake static markup into the file (what a no-script preview such as iOS Quick Look shows),
+// and again inside the file, where the script redraws with the hover and tap tooltips.
+// The functions are copied into the file's script by source text (see runtimeSource()), so
+// they can't use anything outside themselves; each is renamed there.
+function exportSvgEl(t, a) {
+  var e = document.createElementNS("http://www.w3.org/2000/svg", t);
+  for (var k in a) e.setAttribute(k, a[k]);
+  return e;
+}
+function exportDrawBurn(host, cfg, interactive) {
+  var cps = cfg.points, n = cps.length, pl = cps.map(function (p) { return p.planned; }), acts = cps.map(function (p) { return p.actual; });
+  var ymax = Math.max(cfg.total, 1); acts.forEach(function (a) { if (a !== null && a > ymax) ymax = a; }); (cfg.scopeSteps || []).forEach(function (s) { if (s.v > ymax) ymax = s.v; });
+  var tick = Math.max(1, Math.ceil(ymax / 8));
+  var W = 960, H = 320, L = 40, R = 18, T = 16, B = 44;
+  var svg = exportSvgEl("svg", { "class": "echart", viewBox: "0 0 " + W + " " + H, role: "group", tabindex: "0", "aria-label": "Burndown chart. Use the left and right arrow keys to move between points." });
+  function x(i) { return L + (W - L - R) * i / (n - 1); }
+  function y(v) { return T + (H - T - B) * (1 - v / ymax); }
+  for (var v = 0; v <= ymax; v += tick) {
+    svg.appendChild(exportSvgEl("line", { "class": "grid", x1: L, x2: W - R, y1: y(v), y2: y(v) }));
+    var tx = exportSvgEl("text", { "class": "axis", x: L - 10, y: y(v) + 4, "text-anchor": "end" }); tx.textContent = String(v); svg.appendChild(tx);
+  }
+  var every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 70))));
+  cps.forEach(function (p, i) {
+    if (i % every === 0 || i === n - 1) {
+      var tx = exportSvgEl("text", { "class": "axis", x: x(i), y: H - 16, "text-anchor": i === n - 1 ? "end" : "middle" }); tx.textContent = p.date; svg.appendChild(tx);
+    }
+  });
+  svg.appendChild(exportSvgEl("polyline", { "class": "planned", points: pl.map(function (p, i) { return x(i) + "," + y(p); }).join(" ") }));
+  var seg = []; function flush() { if (seg.length > 1) svg.appendChild(exportSvgEl("polyline", { "class": "actual", points: seg.join(" ") })); seg = []; }
+  acts.forEach(function (a, i) { if (a === null) { flush(); return; } seg.push(x(i) + "," + y(a)); }); flush();
+  acts.forEach(function (a, i) { if (a !== null) svg.appendChild(exportSvgEl("circle", { "class": "dot", cx: x(i), cy: y(a), r: 5.5 })); });
+  var ss = cfg.scopeSteps, c0 = cfg.cps[0], cN = cfg.cps[n - 1];
+  function px(ms) { return L + (W - L - R) * Math.max(0, Math.min(1, (ms - c0) / (cN - c0))); }
+  if (ss && (ss.length > 1 || (ss.length === 1 && cfg.scopeEnd > ss[0].ms))) {
+    var sp = [], pv = null, pms = null, ramp = (cN - c0) / (n - 1);
+    ss.forEach(function (st) { if (pv !== null) sp.push(px(Math.max(pms, st.ms - ramp)) + "," + y(pv)); sp.push(px(st.ms) + "," + y(st.v)); pv = st.v; pms = st.ms; });
+    sp.push(px(cfg.scopeEnd) + "," + y(pv)); svg.appendChild(exportSvgEl("polyline", { "class": "scope", points: sp.join(" ") }));
+  }
+  var guide = exportSvgEl("line", { "class": "guide", x1: 0, x2: 0, y1: T, y2: H - B }); guide.style.display = "none";
+  var stops = [];
+  if (interactive) svg.appendChild(guide);
+  cps.forEach(function (p, i) {
+    if (!interactive) return;
+    var x0 = i === 0 ? L : (x(i - 1) + x(i)) / 2, x1 = i === n - 1 ? W - R : (x(i) + x(i + 1)) / 2;
+    var hit = exportSvgEl("rect", { "class": "hit", x: x0, y: T, width: Math.max(1, x1 - x0), height: H - B - T }); svg.appendChild(hit);
+    var ys = [y(p.planned)]; if (p.actual !== null) ys.push(y(p.actual));
+    stops.push({ x: x(i), y: Math.min.apply(null, ys), text: p.tip, el: hit, i: i, order: 0 });
+  });
+  (cfg.milestones || []).forEach(function (m) {
+    if (m.ms < c0 || m.ms > cN) return;
+    var cx = px(m.ms), cy = y(0), r = 6;
+    svg.appendChild(exportSvgEl("polygon", { "class": "mark", points: cx + "," + (cy - r) + " " + (cx + r) + "," + cy + " " + cx + "," + (cy + r) + " " + (cx - r) + "," + cy }));
+    if (!interactive) return;
+    var mh = exportSvgEl("circle", { "class": "hit", cx: cx, cy: cy, r: 11 }); svg.appendChild(mh);
+    stops.push({ x: cx, y: cy, text: m.text + ", " + m.date, el: mh, i: -1, order: 1 });
+  });
+  if (!interactive) { host.appendChild(svg); return; }
+  stops.sort(function (p, q) { return p.x - q.x || p.order - q.order; });
+  var tip = document.createElement("div"); tip.className = "echarttip"; tip.setAttribute("role", "status"); tip.setAttribute("aria-live", "polite"); tip.hidden = true;
+  host.appendChild(svg); host.appendChild(tip);
+  var cur = -1, pinned = false;
+  function hide() { cur = -1; tip.hidden = true; guide.style.display = "none"; }
+  function show(k) {
+    cur = k; var s = stops[k]; tip.textContent = s.text; tip.hidden = false; guide.setAttribute("x1", s.x); guide.setAttribute("x2", s.x); guide.style.display = "";
+    var r = svg.getBoundingClientRect(), hr = host.getBoundingClientRect(), sc = r.width / W;
+    var tx = (r.left - hr.left) + s.x * sc, ty = (r.top - hr.top) + s.y * sc, w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.max(0, Math.min(tx - w / 2, hr.width - w)) + "px"; tip.style.top = (ty - h - 12 < 0 ? ty + 14 : ty - h - 12) + "px";
+  }
+  function startStop() { var best = 0; stops.forEach(function (s, k) { if (s.i >= 0 && acts[s.i] !== null) best = k; }); return best; }
+  stops.forEach(function (s, k) {
+    s.el.addEventListener("mouseenter", function () { show(k); });
+    s.el.addEventListener("mouseleave", function () { if (!pinned) hide(); });
+    s.el.addEventListener("click", function () { pinned = true; show(k); });
+  });
+  svg.addEventListener("focus", function () { pinned = true; if (cur < 0) show(startStop()); });
+  svg.addEventListener("blur", function () { pinned = false; hide(); });
+  svg.addEventListener("pointerdown", function () { svg.classList.add("nofocusring"); });
+  svg.addEventListener("keydown", function (e) {
+    svg.classList.remove("nofocusring"); var nk = cur;
+    if (e.key === "ArrowRight") nk = cur < 0 ? 0 : Math.min(stops.length - 1, cur + 1);
+    else if (e.key === "ArrowLeft") nk = cur < 0 ? stops.length - 1 : Math.max(0, cur - 1);
+    else if (e.key === "Home") nk = 0;
+    else if (e.key === "End") nk = stops.length - 1;
+    else if (e.key === "Escape") { if (cur >= 0) { e.preventDefault(); e.stopPropagation(); pinned = false; hide(); } return; }
+    else return;
+    e.preventDefault(); pinned = true; show(nk);
+  });
+}
+function exportDrawTimeline(host, charts) {
+  if (!charts.lanes.length) return;
+  var wrap = document.createElement("div"); wrap.className = "etimeline";
+  charts.lanes.forEach(function (ln) {
+    var lane = document.createElement("div"); lane.className = "elane";
+    var nm = document.createElement("div"); nm.className = "elname"; nm.textContent = ln.name;
+    var sp = document.createElement("span"); sp.textContent = ln.dates; nm.appendChild(sp); lane.appendChild(nm);
+    var tr = document.createElement("div"); tr.className = "etrack";
+    var blk = document.createElement("div"); blk.className = "eblk"; blk.style.left = ln.blkLeft + "%"; blk.style.width = ln.blkWidth + "%"; tr.appendChild(blk);
+    var bar = document.createElement("div"); bar.className = "ebar " + ln.status; bar.style.left = ln.left + "%"; bar.style.width = ln.width + "%"; tr.appendChild(bar);
+    lane.appendChild(tr); wrap.appendChild(lane);
+  });
+  if (charts.laneMilestones && charts.laneMilestones.length) {
+    var msl = document.createElement("div"); msl.className = "elane"; var mnm = document.createElement("div"); mnm.className = "elname"; mnm.textContent = "Milestones"; msl.appendChild(mnm); var msr = document.createElement("div"); msr.className = "etrack";
+    charts.laneMilestones.forEach(function (m) {
+      var d = document.createElement("span"); d.className = "ems"; d.style.left = m.left + "%"; d.title = m.text + ", " + m.date; d.setAttribute("aria-label", m.text + ", " + m.date); msr.appendChild(d);
+    });
+    msl.appendChild(msr); wrap.appendChild(msl);
+  }
+  host.appendChild(wrap);
+}
+function runtimeSource(fn) {
+  return fn.toString().replace(/exportSvgEl/g, "svgEl").replace(/exportDrawBurn/g, "drawBurn").replace(/exportDrawTimeline/g, "drawTimeline");
+}
+// Runs inside the exported file: redraws every chart with its tooltips, replacing the baked-in static copy.
+var RUNTIME_JS = "(function(){" + runtimeSource(exportSvgEl) + runtimeSource(exportDrawBurn) + runtimeSource(exportDrawTimeline) + "\
 document.querySelectorAll('[data-chart]').forEach(function(host){\
 var id=host.getAttribute('data-chart');\
 var charts=(window.__sqExport.charts||{})[id];\
 if(!charts)return;\
-var tlHost=document.getElementById(id+'-tl');if(tlHost)drawTimeline(tlHost,charts);\
-var burnHost=document.getElementById(id+'-burn');if(burnHost)drawBurn(burnHost,charts);\
+var tlHost=document.getElementById(id+'-tl');if(tlHost){tlHost.innerHTML='';drawTimeline(tlHost,charts);}\
+var burnHost=document.getElementById(id+'-burn');if(burnHost){burnHost.innerHTML='';drawBurn(burnHost,charts,true);}\
 });\
 })();\
 ";
+// The static markup baked into the file before its script runs.
+function bakedChart(draw, charts) {
+  var tmp = document.createElement("div");
+  draw(tmp, charts, false);
+  return tmp.innerHTML;
+}
 
 // The real icon's own path data (assets/sidequest-icon.svg), not invented
 // geometry, using the export's own CSS tokens so it follows light/dark mode.

@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.10.5"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.10.6"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2253,12 +2253,21 @@ async function exportClick(k, projectName) {
   // Export charts: milestones get their own Gantt lane with no text label, and the burndown
   // carries the live chart's Scope line, milestone marks, and legend.
   const { html } = await exportClick(kit(await mk()), "Sample App");
-  ok(html.includes("mnm.textContent='Milestones'"), "the Gantt draws milestones in their own Milestones lane");
+  ok(html.includes('mnm.textContent = "Milestones"'), "the Gantt draws milestones in their own Milestones lane");
   ok(!html.includes("data-label"), "milestone diamonds carry no text label (the tooltip stays as a title)");
-  ok(html.includes("d.title=m.text+', '+m.date"), "milestone diamonds keep their tooltip");
+  ok(html.includes('d.title = m.text + ", " + m.date'), "milestone diamonds keep their tooltip");
   ok(html.includes('class="elegend"') && html.includes("<i class=\"s\"></i>Scope"), "the export's burndown has the Ideal / Actual / Scope legend");
   ok(html.includes('"scopeSteps":[') && html.includes('"cps":['), "the burndown data carries scope steps and checkpoint dates");
-  ok(html.includes("svgEl('polygon',{'class':'mark'"), "the burndown draws milestone marks");
+  {
+    // charts are baked into the file so a no-script preview (iOS Quick Look) still shows them
+    const staticPart = html.slice(0, html.indexOf("<script>"));
+    ok(/<svg[^>]*class="echart"/.test(staticPart) && staticPart.includes("<polyline") && staticPart.includes('class="ebar '), "the Gantt and burndown are drawn into the file itself, before any script runs");
+    ok(!staticPart.includes('class="hit"'), "the baked-in copy carries no hover areas");
+    const live = new JSDOM(html, { runScripts: "dangerously" }).window.document;
+    const hosts = live.querySelectorAll("[data-chart]").length;
+    ok(hosts > 0 && live.querySelectorAll("svg.echart").length === hosts && live.querySelectorAll(".echarttip").length === hosts && live.querySelectorAll("svg.echart .hit").length > 0, "with scripts on, each chart is redrawn once with its tooltips, not stacked on the baked-in copy");
+  }
+  ok(html.includes('svgEl("polygon", { "class": "mark"'), "the burndown draws milestone marks");
   ok(html.includes(".etimeline .ebar.new, .etimeline .ebar.work, .etimeline .ebar.done { box-shadow: inset 0 0 0 1px"), "Gantt status bars get the live app's outline, so block bands never show a sliver around them");
 }
 
