@@ -1154,7 +1154,7 @@ export function helpTopics() {
       "**Search:** Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **x** where the magnifier was to cancel.",
       "**New (+) button:** Use the **+** button to add a candidate quest, task, step, decision, or idea.",
       "**Main menu:** The main menu (hamburger menu) lists every page in the app.",
-      "**Tab bar (mobile):** The main page items on a mobile device. Find the other pages in the main menu.",
+      "**Tab bar (mobile):** On a mobile device, the tab bar holds the main pages. Find the other pages in the main menu.",
       "**Undo:** Removing an item or sending it to the **Vault** shows an **Undo** button for a few seconds."
     ]],
     ["The quest lifecycle", [
@@ -1170,16 +1170,16 @@ export function helpTopics() {
     ["Quests page", [
       "**In progress:** This section lists the quests you’re working on. Each quest appears as a row with its name, its next scheduled task and that task’s start date, and the number of incomplete scheduled tasks it has left.",
       ">Rows are ordered by the start date of each quest’s next task, from earliest to latest. A quest appears here only if it has incomplete scheduled tasks. Backlog tasks don’t count.",
-      "**Pending:** These are promoted quests with no incomplete scheduled tasks. This includes new quests with no tasks, and quests whose only open tasks are backlogged. A quest moves up to **In progress** when it has an incomplete task with a due date.",
+      "**Pending:** These are promoted quests with no incomplete scheduled tasks. This includes new quests with no tasks, and quests whose only open tasks are backlogged. When it has an incomplete task with a due date, a quest moves up to **In progress**.",
       "**Completed:** This section lists completed quests.",
-      "**Candidate quests:** These are quests you’re considering but aren’t working on. You can demote an active quest back to a candidate quest in the **Quest details**. You can add tasks, steps, and decisions to a candidate quest before promoting it.",
+      "**Candidate quests:** These are quests you’re considering but aren’t working on. You can demote an active quest back to a candidate quest in the **Quest details**. Before promoting a candidate quest, you can add tasks, steps, and decisions to it.",
       ">A candidate quest keeps the links it had when it was demoted.",
       "**Pinned quests:** You can pin in progress, pending, and completed quests that are still on the **Quests** page. Pinning places a shortcut to that quest in the sidebar (or main menu in mobile). Completing a quest unpins it automatically. Reopening a formerly pinned quest restores the pin."
     ]],
     ["Inside a quest", [
       "**Quest details:** Tapping a quest title on the **Quests** page opens it for editing.",
       "**Tasks:** You can add tasks with the **+** button or from inside a quest. Tasks can have start and due dates and a time estimate. You can also describe how you’ll know a task is complete.",
-      ">Tasks without due dates show a **Backlog** badge. Tasks added after a quest’s start date show an **Added** badge with the date. You can close a task even if it still has open steps and decisions.",
+      ">Tasks without due dates show a **Backlog** badge. Tasks added after a quest’s start date show an **Added** badge with the date. Even with open steps and decisions, you can close a task.",
       ">Select **Make milestone** to turn a task with a due date into a milestone.",
       ">Each task goes into its quest’s **stretch of work.** A stretch of work is a period that divides a quest’s schedule. Stretches of work appear on the **Timeline** as gray bands. Tasks appear within each stretch of work and their color shows status: gray-blue for not started, gold for in progress, and green for completed.",
       "**Steps:** You can add steps with the **+** button or from inside a task. Steps break a task into smaller actions. Completing all of a task’s steps completes the task.",
@@ -1188,9 +1188,9 @@ export function helpTopics() {
       "**Notes:** Use **Notes** for any additional information about the quest. An idea’s note carries over when the idea becomes a candidate quest."
     ]],
     ["Quest Giver and Quest links", [
-      "**Quest Giver:** A quest’s client. You can also enter a **Bounty** (a monetary value), either as an hourly rate or a fixed payment for the quest.",
+      "**Quest Giver:** The Quest Giver is the client for a quest. You can also enter a **Bounty** (a monetary value), either as an hourly rate or a fixed payment for the quest.",
       ">The **Quest Giver Export** includes everything entered here except the **Bounty**. It creates a read-only, interactive web page you can share with the client. Its button is at the bottom of an in progress or complete quest’s details and doesn’t appear on a candidate or vaulted quest.",
-      "**Quest links:** Link quests when a job requires more than one. Use **Link quest** to link a quest to any quest that is in progress, pending, or completed.",
+      "**Quest links:** When a job requires more than one quest, link them. Use **Link quest** to link a quest to any quest that is in progress, pending, or completed.",
       ">A candidate quest can add links the same way, but other quests can’t link to a candidate quest. Links to a candidate or vaulted quest show as plain text, and you can follow links to other quests.",
       ">Vaulting or demoting a quest keeps its links, and promoting or restoring it makes them active again."
     ]],
@@ -1221,7 +1221,7 @@ export function helpTopics() {
       "**Adventurer:** This is where you can add your contact information and brandmark or logo. The **Quest Giver Export** includes everything added here.",
       "**Schedule defaults:** Set the default length of a **stretch of work**. You can adjust the stretch duration for individual quests.",
       ">You can also choose what to call a stretch of work: Block, Sprint, Iteration, Phase, or Week.",
-      ">**Warn when active quests exceed:** Set the number of active quests you want to allow at a time. Sidequest warns you if you try to promote another candidate quest past that number, and you can bypass the warning.",
+      ">**Warn when active quests exceed:** Set the number of active quests you want to allow at a time. If you try to promote another candidate quest past that number, Sidequest warns you, and you can bypass the warning.",
       ">**Quests begin gathering dust after:** Set how long an active quest can go without progress before it displays a **Gathering dust** badge.",
       "**Appearance and formats:** These settings include **Date format**, **Coin format** (1,234.56 or 1.234,56), **Splash screen on open** (on/off), **Theme** (light and dark mode), **Animated burndown** (on/off), **Completion effects** (on/off), and **Sound effects** (on/off).",
       "**Vault:** Set how long the **Vault** keeps items before it deletes them: never, or after 7, 30, 60, or 90 days.",

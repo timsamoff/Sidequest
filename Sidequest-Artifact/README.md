@@ -6,7 +6,7 @@
 
 Sidequest itself has no account. These versions do need an account with the builder you choose, because building the app and storing its data both happen there. The plain web version (`index.html`) needs no account of any kind.
 
-The raw link to the file, used in the prompts below:
+The prompts in this README use this raw link to the file:
 
 ```
 https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html
@@ -23,9 +23,9 @@ The artifact needs two capabilities. Without `db`, nothing saves. Without `downl
 
    > Please fetch this file and publish it as an artifact: https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html. It needs the `db` capability for storage and the `downloads` capability so Save backup works.
 
-3. Open the artifact Claude gives you. That link is yours. Bookmark it or pin it, since it's how you get back to your data.
+3. Open the artifact Claude gives you.
 
-Claude fetches the file itself, so there's nothing to download or upload.
+That link is yours. Bookmark it or pin it, since it's how you get back to your data. Claude fetches the file itself, so there's nothing to download or upload.
 
 If fetching doesn't work, or you'd rather upload: download `sidequest.html` from this folder, upload it to a new conversation, and ask Claude to publish it as an artifact with the `db` and `downloads` capabilities.
 

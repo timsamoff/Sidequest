@@ -2,7 +2,7 @@
 
 # Sidequest
 
-Sidequest is a lightweight project planner that runs entirely in your browser, with no account, no backend, and no build step. The web app keeps your quests on the device you use. To carry your quests across devices, use the Artifact version, which keeps them in your own account.
+Sidequest is a lightweight project planner that runs entirely in your browser, with no account, no backend, and no build step. The web app keeps your quests on the device you use. To carry your quests across devices, use the Artifact version, which keeps them in your own account. It needs an account with the builder you choose.
 
 It is built for someone juggling several quests at once: a few tasks in each, a rough timeline, and a place to workshop the ideas that are not ready yet.
 
@@ -10,7 +10,7 @@ It is built for someone juggling several quests at once: a few tasks in each, a 
 
 - **Today:** the one task to work on next, anything overdue, and a burndown chart.
 - **Quests:** **In progress** lists each active quest with open scheduled tasks and what's next up. **Pending** lists quests with nothing scheduled yet, and **Completed** lists finished ones. A candidate has its own page, like any quest, where you add its tasks, notes, and schedule, then **Promote** it with one click when it's ready.
-- **Quest page:** Each active quest has its own page where you can rename it and edit its notes and schedule. Its **Timeline** and **Burndown** sit right under the **Schedule** that drives them. Running behind? **Slip schedule**, above the **Timeline**, moves that quest's unfinished tasks later by the number of days you pick. Completed tasks and the **Backlog** stay put, and you can undo it. **Pin** any quest to the sidebar. Link related quests to each other, and mark a link **Launch critical** if one can't ship without the other.
+- **Quest page:** Each active quest has its own page where you can rename it and edit its notes and schedule. Its **Timeline** and **Burndown** sit right under the **Schedule** that drives them. If a quest runs behind, **Slip schedule** moves its unfinished tasks later by the number of days you pick. Completed tasks and the **Backlog** stay put, and you can undo it. **Pin** any quest to the sidebar. Link related quests to each other, and mark a link **Launch critical** if one can't ship without the other.
 - **Finishing a quest:** Mark a quest complete at any time, or it will complete automatically once every task is done. Either way, you can send it to the **Vault** right then or leave it in **Quests**. If you need to **Reopen** it, you can.
 - **Quest Giver Export:** Send a client a read-only copy of any active or complete quest.
 - **Tasks:** every task with steps, notes, and a status. Give a task a start date, a due date, and an estimated time in hours (a quest's page shows how much estimated time is left, and a task opens right there), or move it to the **Backlog** until you are ready. Rename a task, step, or quest with the pencil beside it. Add a decision to any step, and answering it checks the step off.
