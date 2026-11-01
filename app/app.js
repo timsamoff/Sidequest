@@ -11,6 +11,8 @@ import {
   taskDialog, questDialog, ideaDialog, decisionDialog, stepDialog
 } from "./dialogs.js";
 import { playSplash } from "./splash.js";
+import { noteBurnView } from "./chart.js";
+import { maybeStartTutorial, stopTutorial } from "./tutorial.js";
 
 /* navigation */
 export function leaveSearch() { if (ui.view === "search") { ui.query = ""; var b = $("searchBox"); if (b) b.value = ""; } }
@@ -129,6 +131,7 @@ if (!isStandaloneApp && typeof window.matchMedia === "function") {
 export function renderView() {
   var root = $("view"); root.innerHTML = "";
   if (ui.view.indexOf("quest:") === 0 && !validPage(ui.view)) ui.view = "projects";
+  noteBurnView(ui.view);
   root.className = "content";
   if (ui.view === "today") renderToday(root);
   else if (ui.view === "schedule") renderSchedule(root);
@@ -179,6 +182,7 @@ export function wireMenu(btnId, menuId) {
 
 // Exposed so a test can cancel the splash's own pending timers after itself.
 export var cancelSplash = function () {};
+export var cancelTutorial = stopTutorial;
 
 // Plays the launch sequence again on demand (after a backup restore).
 export function replaySplash() {
@@ -199,6 +203,7 @@ Promise.resolve().then(function () {
   // Decorative only -- the app has already rendered above.
   // The quote bucket is saved to local storage only, never the db or sync stamp.
   cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio, nextAffirmationIndex) || cancelSplash;
+  maybeStartTutorial();
 
   // Checked after first paint -- no-op on the web app, real on a published artifact with db.
   loadFromDbIfAvailable().then(function (swapped) {

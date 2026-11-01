@@ -19,6 +19,11 @@ if (typeof document !== "undefined") document.addEventListener("pointerdown", fu
 
 // Draws a burndown. cfg: { cps, planned[], actual[], total, label, marks[], tip(i) }.
 // One keyboard stop; arrows/Home/End/Esc navigate. Tooltip works on hover, tap, and focus.
+// Which charts have already drawn in on the current page visit. A repaint of the same page leaves them still;
+// moving to another page clears the list, so coming back animates again.
+var burnShown = {}, burnView = null;
+export function noteBurnView(view) { if (view !== burnView) { burnShown = {}; burnView = view; } }
+
 function renderBurn(host, wide, cfg) {
   host.innerHTML = ""; delete host.dataset.forecast;
   host.style.position = "relative";
@@ -40,7 +45,7 @@ function renderBurn(host, wide, cfg) {
   cps.forEach(function (ms, i) { if (i % every === 0 || i === n - 1) svg.appendChild(svgEl("text", { "class": "axis", x: x(i), y: H - 16, "text-anchor": "middle" }, fmt(ms))); });
   // Each line reveals left to right via its own clipped group (a clip-rect,
   // not stroke-dasharray, which would fight Ideal's own dash pattern).
-  var animate = state.settings.animatedBurndown;
+  var animate = state.settings.animatedBurndown && !burnShown[cfg.key];
   var revealGroups = [];
   // x0 and w limit the reveal to part of the chart, so a line that starts partway across draws from its own start.
   function revealGroup(clipId, x0, w) {
@@ -130,7 +135,7 @@ function renderBurn(host, wide, cfg) {
     var fullW = W - R - L, stepMs = 525, started = false;
     function splashGone() { var s = document.getElementById("splash"); return !s || s.hidden; }
     function fire() {
-      if (started) return; started = true;
+      if (started) return; started = true; burnShown[cfg.key] = true;
       revealGroups.forEach(function (rect, i) {
         rect.style.transition = "width " + stepMs + "ms ease";
         setTimeout(function () { rect.setAttribute("width", rect.revealTo || fullW); }, 20 + i * stepMs);
@@ -229,6 +234,7 @@ export function drawChart(host, wide) {
   var total = totalUnits(), cps = checkpoints(), n = cps.length, ga = globalActual(cps);
   var pl = cps.map(planned), tasks = burnTasks(), span = checkpointStep() * 86400000, sc = scopeSteps(cps, state.hist, total);
   renderBurn(host, wide, {
+    key: "global",
     forecast: velocityForecast(tasks, state.days, cps[0]),
     cps: cps, planned: pl, actual: ga.actual, total: total, scopeSteps: sc.steps, scopeEnd: sc.end,
     label: "Burndown chart. Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". An orange line shows the tasks in scope.",
@@ -244,6 +250,7 @@ export function drawQuestChart(host, p, wide) {
   var marks = milestoneTasks(p.id).map(function (t) { return { ms: taskEnd(t), text: t.what }; });
   var sc = scopeSteps(cps, p.hist, bd.total);
   renderBurn(host, wide, {
+    key: "quest:" + p.id + (wide ? ":wide" : ""),
     forecast: velocityForecast(bd.tasks, pset(p.id).days, cps[0]),
     cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks, scopeSteps: sc.steps, scopeEnd: sc.end,
     label: "Burndown chart for " + p.name + ". Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". An orange line shows the tasks in scope.",

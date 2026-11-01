@@ -33,7 +33,7 @@ let counter = 0;
 // cancelled before the next one boots.
 let lastAppModule = null;
 async function mk(saved, claude, stamp, audioStub, matchMediaStub, beforeBoot) {
-  if (lastAppModule) lastAppModule.cancelSplash();
+  if (lastAppModule) { lastAppModule.cancelSplash(); lastAppModule.cancelTutorial(); }
   const dom = new JSDOM(html, { url: "https://example.test/", pretendToBeVisual: true });
   dom.window.scrollTo = () => {};
   if (claude) dom.window.claude = claude;
@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.9.17"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.10.0"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -1899,6 +1899,16 @@ async function exportClick(k, projectName) {
   ok(!!k.d.querySelector("rect.burnreveal"), "Today's burndown has reveal rects when Animated burndown is on (default)");
 }
 {
+  // The draw-in plays once per page visit: a repaint of the same page leaves the lines still, leaving and coming back plays it again.
+  const k = kit(await mk());
+  k.$("splash").hidden = true;
+  await new Promise(r => setTimeout(r, 300));
+  k.click(k.$("welcomeDismiss"));
+  ok(!k.d.querySelector("rect.burnreveal"), "a repaint of the same page does not draw the burndown in again");
+  k.tab("projects"); k.tab("today");
+  ok(!!k.d.querySelector("rect.burnreveal"), "coming back to the page draws the burndown in again");
+}
+{
   // Completion FX gates the confetti burst on quest completion. The canvas
   // element appears synchronously (before the animation itself runs on
   // requestAnimationFrame), so checking for it right after Mark complete is
@@ -2579,6 +2589,23 @@ async function exportClick(k, projectName) {
   ok(![...k.d.querySelectorAll("#view details.helpitem summary")].some(x => x.textContent === "Install Sidequest on this device"), "and the Field guide leaves out the install topic");
   k.tab("projects");
   ok(/main menu/.test(([...k.d.querySelectorAll("#view .pintoggle, .pintoggle")][0] || {}).title || ""), "and pin text says main menu");
+}
+// First-run tutorial
+{
+  const old = kit(await mk({ settings: { hideWelcome: true } }));
+  ok(old.saved().settings.tutorialDone === true, "a save from before the tutorial counts as already started");
+  const fresh = kit(await mk({ settings: { hideWelcome: true, tutorialDone: false } }));
+  ok(fresh.saved().settings.tutorialDone === false, "a stored false is kept, so a first run can still show it");
+  const k = kit(await mk({ settings: { hideWelcome: true } }));
+  k.tab("help");
+  ok(!!k.$("helpReplay") && !k.d.querySelector(".tutorial"), "the Field guide offers Replay tutorial, and no card shows until it is used");
+  k.click(k.$("helpReplay"));
+  const card = k.d.querySelector(".tutorial");
+  ok(!!card && card.textContent.includes("Step 1 of 7") && card.textContent.includes("Welcome to Sidequest"), "Replay tutorial opens the card on step 1");
+  k.click(k.$("tutorialNext"));
+  ok(k.d.querySelector(".tutorial").textContent.includes("Add a quest") && !!k.$("tutorialSkip"), "Next moves to the first action step, which can be skipped");
+  k.click(k.$("tutorialSkip"));
+  ok(!k.d.querySelector(".tutorial"), "Skip tutorial removes the card");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

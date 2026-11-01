@@ -12,6 +12,7 @@ import {
 import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx, moneyInput, formatMoney, inClaude, isHosted } from "./dom.js";
 import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
 import { playConfetti } from "./confetti.js";
+import { startTutorial } from "./tutorial.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme, replaySplash } from "./app.js";
 import { stepDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
 import { buildExportSnapshot, renderExportDocument, exportFileName } from "./export.js";
@@ -1241,7 +1242,9 @@ export function renderHelp(root) {
   var openAll = el("button", { type: "button", "class": "small", id: "helpOpen" }, "Open all"), closeAll = el("button", { type: "button", "class": "small", id: "helpClose" }, "Close all");
   on(openAll, "click", function () { items.forEach(function (d) { d.open = true; }); });
   on(closeAll, "click", function () { items.forEach(function (d) { d.open = false; }); });
-  acts.appendChild(openAll); acts.appendChild(closeAll); root.appendChild(acts);
+  var replay = el("button", { type: "button", "class": "small", id: "helpReplay", title: "Replay the first-run walkthrough" }, "Replay tutorial");
+  on(replay, "click", function () { go("today"); startTutorial(); });
+  acts.appendChild(openAll); acts.appendChild(closeAll); acts.appendChild(replay); root.appendChild(acts);
   // A line that starts with ">" is nested one level under the line above it (">>" is two levels).
   // The install line is about the web app, so a hosted version (Claude, or any host that sets the flag) skips it.
   helpTopics().forEach(function (t, i) {

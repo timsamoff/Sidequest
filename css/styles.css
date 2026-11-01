@@ -406,6 +406,24 @@ svg.chart.nofocusring { outline: none; }
 /* Confetti sits above everything, including an open modal, but never blocks clicks. */
 .confettiFx { position: fixed; inset: 0; z-index: 80; pointer-events: none; }
 
+/* first-run tutorial card: bottom right on a wide screen, under the top bar on a phone */
+.tutorial { position: fixed; right: var(--space-16); bottom: var(--space-16); width: min(340px, calc(100vw - 32px)); z-index: 55; padding: var(--space-14) var(--space-16); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-menu); outline: 3px solid var(--tutorial); outline-offset: 3px; }
+.tutorialcount { font-size: var(--text-sm); color: var(--muted); }
+.tutorial .tutorialtitle { margin: var(--space-4) 0 var(--space-6); font-size: var(--text-100); }
+.tutorial .tutorialtext { margin: 0; font-size: var(--text-sm); line-height: 1.45; }
+/* Lifted above its neighbors so a selected tab next to it cannot paint over the ring. */
+.tutorialtarget { position: relative; z-index: 1; outline: 3px solid var(--tutorial); outline-offset: 3px; }
+/* A highlighted candidate row: rounded like the other highlights, with its title underlined in the same weight. */
+li.tutorialtarget { border-radius: var(--radius-control); }
+li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: var(--tutorial); text-decoration-thickness: 3px; text-underline-offset: 4px; }
+@media (max-width: 899px) {
+  .tutorial { bottom: calc(env(safe-area-inset-bottom, 0px) + 76px); left: var(--space-12); right: var(--space-12); width: auto; padding: var(--space-10) var(--space-14); }
+  body:has(.tutorial) #view { padding-bottom: 230px; }
+  .tutorialcount { display: none; }
+  /* The tab bar clips anything outside it, so the ring sits inside the tab. */
+  .side .tutorialtarget { outline-offset: -3px; }
+  body:has(.overlay:not([hidden])) .tutorial, body:has(.menu:not([hidden])) .tutorial { display: none; }
+}
 /* splash screen: viewport-relative sizing so the ~75% panel works in either orientation. */
 .splash { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity .5s ease; }
 .splash.fading { opacity: 0; }

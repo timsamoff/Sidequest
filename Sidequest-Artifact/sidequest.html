@@ -74,7 +74,7 @@
   --chip-ink: #1A2733;
   --badge-attention: #4F3416; --badge-attention-bg: #DDC3A5;
   --badge-priority: #4A2E00; --badge-priority-bg: #F8C15A;
-  --notice-update: #F8C15A; --notice-backup: #D3E3F6; --notice-welcome: #CFE6D5;
+  --notice-update: #F8C15A; --notice-backup: #D3E3F6; --notice-welcome: #CFE6D5; --tutorial: #DD6200;
   --badge-active: #6B4A0F; --badge-active-bg: #F6E3C4; --bar-active: #C99A3E;
   --badge-pending: #34475A; --badge-pending-bg: #CBD6E0; --bar-pending: #8AA3BF;
   --badge-done: #315C3C; --badge-done-bg: #CFE6D5; --bar-done: #74AD85;
@@ -94,7 +94,7 @@
     --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
     --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
     --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
-    --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C;
+    --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C; --tutorial: #FFAC1C;
     --badge-active: #F0D49A; --badge-active-bg: #4A3B22; --bar-active: #A98232;
     --badge-pending: #D5DEE6; --badge-pending-bg: #3A4754; --bar-pending: #6A8BAA;
     --badge-done: #B5DDBF; --badge-done-bg: #21402C; --bar-done: #4E9A68;
@@ -109,7 +109,7 @@
   --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
   --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
   --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
-  --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C;
+  --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C; --tutorial: #FFAC1C;
   --badge-active: #F0D49A; --badge-active-bg: #4A3B22; --bar-active: #A98232;
   --badge-pending: #D5DEE6; --badge-pending-bg: #3A4754; --bar-pending: #6A8BAA;
   --badge-done: #B5DDBF; --badge-done-bg: #21402C; --bar-done: #4E9A68;
@@ -526,6 +526,24 @@ svg.chart.nofocusring { outline: none; }
 /* Confetti sits above everything, including an open modal, but never blocks clicks. */
 .confettiFx { position: fixed; inset: 0; z-index: 80; pointer-events: none; }
 
+/* first-run tutorial card: bottom right on a wide screen, under the top bar on a phone */
+.tutorial { position: fixed; right: var(--space-16); bottom: var(--space-16); width: min(340px, calc(100vw - 32px)); z-index: 55; padding: var(--space-14) var(--space-16); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-menu); outline: 3px solid var(--tutorial); outline-offset: 3px; }
+.tutorialcount { font-size: var(--text-sm); color: var(--muted); }
+.tutorial .tutorialtitle { margin: var(--space-4) 0 var(--space-6); font-size: var(--text-100); }
+.tutorial .tutorialtext { margin: 0; font-size: var(--text-sm); line-height: 1.45; }
+/* Lifted above its neighbors so a selected tab next to it cannot paint over the ring. */
+.tutorialtarget { position: relative; z-index: 1; outline: 3px solid var(--tutorial); outline-offset: 3px; }
+/* A highlighted candidate row: rounded like the other highlights, with its title underlined in the same weight. */
+li.tutorialtarget { border-radius: var(--radius-control); }
+li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: var(--tutorial); text-decoration-thickness: 3px; text-underline-offset: 4px; }
+@media (max-width: 899px) {
+  .tutorial { bottom: calc(env(safe-area-inset-bottom, 0px) + 76px); left: var(--space-12); right: var(--space-12); width: auto; padding: var(--space-10) var(--space-14); }
+  body:has(.tutorial) #view { padding-bottom: 230px; }
+  .tutorialcount { display: none; }
+  /* The tab bar clips anything outside it, so the ring sits inside the tab. */
+  .side .tutorialtarget { outline-offset: -3px; }
+  body:has(.overlay:not([hidden])) .tutorial, body:has(.menu:not([hidden])) .tutorial { display: none; }
+}
 /* splash screen: viewport-relative sizing so the ~75% panel works in either orientation. */
 .splash { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity .5s ease; }
 .splash.fading { opacity: 0; }
@@ -1191,7 +1209,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.9.17";
+var APP_VERSION = "0.10.0";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -1318,7 +1336,7 @@ function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop,
     pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", coinFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, dustDays: 30, wipLimit: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "" }
+    settings: { theme: "auto", dateFormat: "us", coinFormat: "us", blockWord: "Sprint", hideWelcome: false, tutorialDone: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, dustDays: 30, wipLimit: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "" }
   };
 }
 
@@ -1450,6 +1468,8 @@ function normalize(s) {
     if (s.settings.coinFormat === "us" || s.settings.coinFormat === "eu") d.settings.coinFormat = s.settings.coinFormat;
     if (["Block", "Sprint", "Iteration", "Phase", "Week"].indexOf(s.settings.blockWord) >= 0) d.settings.blockWord = s.settings.blockWord;
     if (typeof s.settings.hideWelcome === "boolean") d.settings.hideWelcome = s.settings.hideWelcome;
+    // A save from before the tutorial existed belongs to someone who has already started, so it stays done.
+    d.settings.tutorialDone = typeof s.settings.tutorialDone === "boolean" ? s.settings.tutorialDone : true;
     if (typeof s.settings.showSplash === "boolean") d.settings.showSplash = s.settings.showSplash;
     if (typeof s.settings.animatedBurndown === "boolean") d.settings.animatedBurndown = s.settings.animatedBurndown;
     if (isISO(s.settings.lastBackup)) d.settings.lastBackup = s.settings.lastBackup;
@@ -1686,6 +1706,11 @@ if (typeof document !== "undefined") document.addEventListener("pointerdown", fu
 
 // Draws a burndown. cfg: { cps, planned[], actual[], total, label, marks[], tip(i) }.
 // One keyboard stop; arrows/Home/End/Esc navigate. Tooltip works on hover, tap, and focus.
+// Which charts have already drawn in on the current page visit. A repaint of the same page leaves them still;
+// moving to another page clears the list, so coming back animates again.
+var burnShown = {}, burnView = null;
+function noteBurnView(view) { if (view !== burnView) { burnShown = {}; burnView = view; } }
+
 function renderBurn(host, wide, cfg) {
   host.innerHTML = ""; delete host.dataset.forecast;
   host.style.position = "relative";
@@ -1707,7 +1732,7 @@ function renderBurn(host, wide, cfg) {
   cps.forEach(function (ms, i) { if (i % every === 0 || i === n - 1) svg.appendChild(svgEl("text", { "class": "axis", x: x(i), y: H - 16, "text-anchor": "middle" }, fmt(ms))); });
   // Each line reveals left to right via its own clipped group (a clip-rect,
   // not stroke-dasharray, which would fight Ideal's own dash pattern).
-  var animate = state.settings.animatedBurndown;
+  var animate = state.settings.animatedBurndown && !burnShown[cfg.key];
   var revealGroups = [];
   // x0 and w limit the reveal to part of the chart, so a line that starts partway across draws from its own start.
   function revealGroup(clipId, x0, w) {
@@ -1797,7 +1822,7 @@ function renderBurn(host, wide, cfg) {
     var fullW = W - R - L, stepMs = 525, started = false;
     function splashGone() { var s = document.getElementById("splash"); return !s || s.hidden; }
     function fire() {
-      if (started) return; started = true;
+      if (started) return; started = true; burnShown[cfg.key] = true;
       revealGroups.forEach(function (rect, i) {
         rect.style.transition = "width " + stepMs + "ms ease";
         setTimeout(function () { rect.setAttribute("width", rect.revealTo || fullW); }, 20 + i * stepMs);
@@ -1896,6 +1921,7 @@ function drawChart(host, wide) {
   var total = totalUnits(), cps = checkpoints(), n = cps.length, ga = globalActual(cps);
   var pl = cps.map(planned), tasks = burnTasks(), span = checkpointStep() * 86400000, sc = scopeSteps(cps, state.hist, total);
   renderBurn(host, wide, {
+    key: "global",
     forecast: velocityForecast(tasks, state.days, cps[0]),
     cps: cps, planned: pl, actual: ga.actual, total: total, scopeSteps: sc.steps, scopeEnd: sc.end,
     label: "Burndown chart. Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". An orange line shows the tasks in scope.",
@@ -1911,6 +1937,7 @@ function drawQuestChart(host, p, wide) {
   var marks = milestoneTasks(p.id).map(function (t) { return { ms: taskEnd(t), text: t.what }; });
   var sc = scopeSteps(cps, p.hist, bd.total);
   renderBurn(host, wide, {
+    key: "quest:" + p.id + (wide ? ":wide" : ""),
     forecast: velocityForecast(bd.tasks, pset(p.id).days, cps[0]),
     cps: cps, planned: pl, actual: bd.actual, total: bd.total, marks: marks, scopeSteps: sc.steps, scopeEnd: sc.end,
     label: "Burndown chart for " + p.name + ". Planned tasks remaining fall from " + pl[0] + " to " + pl[n - 1] + " between " + fmt(cps[0]) + " and " + fmt(cps[n - 1]) + ". An orange line shows the tasks in scope.",
@@ -3136,7 +3163,132 @@ function playConfetti() {
 }
 
 
+// ---- tutorial.js ----
+// First-run walkthrough: a small card that points at real controls and moves on when the action is done.
+
+
+function questOf(c) { return state.quests.filter(function (p) { return p.id === c.questId; })[0]; }
+function hasTask(c) { return !!c.questId && state.tasks.some(function (t) { return t.questId === c.questId; }); }
+function promoted(c) { return state.quests.some(function (p) { return p.status === "active" && c.baseActive.indexOf(p.id) < 0; }); }
+function onQuestPage(c) { return !!c.questId && ui.view === "quest:" + c.questId; }
+function tab(view) { return document.querySelector('.tab[data-view="' + view + '"]'); }
+// The new quest's row in Candidate quests, when the Quests page is showing.
+function candidateRow(c) {
+  var q = questOf(c); if (!q || ui.view !== "projects") return null;
+  var names = document.querySelectorAll("#view button.qlink");
+  for (var i = 0; i < names.length; i++) if (names[i].textContent === q.name && names[i].closest(".crow")) return names[i].closest(".crow");
+  return null;
+}
+// Points at the quest wherever the reader is: its row on Quests, else the Quests tab.
+function toQuest(c) {
+  var row = candidateRow(c);
+  return row ? { target: row.closest("li"), text: "Select your new quest under **Candidate quests**." }
+    : { target: tab("projects"), text: "Open **Quests**, then select your new quest under **Candidate quests**." };
+}
+
+// Each step: a title, a done() check, and view(), which gives the highlighted element and the text for where the reader is now.
+// **bold** in text marks an on-screen label.
+var STEPS = [
+  { title: "Welcome to Sidequest", view: function () { return { text: "This takes about a minute. You will add a quest, give it a task, and start it. Skip any time, and replay it from the Field guide." }; } },
+  { title: "Add a quest", view: function () { return { target: document.getElementById("newBtn"), text: "Select the **+** button and choose **New candidate quest**. Give it a name and select **Add candidate quest**." }; },
+    done: function (c) { var q = state.quests.filter(function (p) { return c.baseIds.indexOf(p.id) < 0; })[0]; if (q) c.questId = q.id; return !!q; } },
+  { title: "Open your quest", view: toQuest, done: function (c) { return onQuestPage(c) || hasTask(c) || promoted(c); } },
+  { title: "Add a task",
+    view: function (c) {
+      if (!onQuestPage(c)) { var w = toQuest(c); w.text = candidateRow(c) ? "Open your quest from **Candidate quests**, then add a task there." : "Open **Quests**, then open your quest under **Candidate quests**."; return w; }
+      return { target: document.querySelector('#view button[title="Add a task"]'), text: "Select **Add task**. Give the task a name and a due date, then select **Add task**. A task without a due date goes to the quest’s Backlog and is not scheduled." };
+    },
+    done: function (c) { return hasTask(c) || promoted(c); } },
+  { title: "Start the quest",
+    view: function (c) {
+      var btn = 'button[title="Promote to quest"]';
+      if (onQuestPage(c)) return { target: document.querySelector("#view " + btn), text: "Find the **Promote** button at the bottom of the Quest details." };
+      var row = candidateRow(c);
+      if (row) return { target: row.querySelector(btn), text: "Select **Promote** next to your quest under **Candidate quests**." };
+      return { target: tab("projects"), text: "Open **Quests**, then select **Promote** next to your quest under **Candidate quests**." };
+    },
+    done: promoted },
+  { title: "See your plan",
+    view: function (c) {
+      var dated = state.tasks.some(function (t) { return t.questId === c.questId && t.block > 0; });
+      return { target: tab("today"), text: dated
+        ? "Open **Today** to see what to work on next across all your quests. **Timeline** draws your task on a calendar."
+        : "Open **Today** to see what to work on next across all your quests. Your task has no due date, so it sits in the quest’s Backlog and is not on **Timeline**. Give a task a due date to schedule it." };
+    },
+    done: function () { return ui.view === "today"; } },
+  { title: "Your quest has begun!", view: function () { return { text: "Everything else is in the Field guide. To run this walkthrough again, open the Field guide and select **Replay tutorial**." }; } }
+];
+
+var panel = null, textHost = null, shownText = "", timer = null, startTimer = null, index = 0, ctx = null, lit = null;
+
+function richText(host, text) {
+  text.split("**").forEach(function (part, i) { host.appendChild(i % 2 ? el("strong", null, part) : document.createTextNode(part)); });
+}
+
+function clearLit() { if (lit) lit.classList.remove("tutorialtarget"); lit = null; }
+
+function stopTutorial() {
+  if (timer) clearInterval(timer);
+  if (startTimer) clearTimeout(startTimer);
+  timer = startTimer = null;
+  clearLit();
+  if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+  panel = textHost = null;
+}
+
+function draw() {
+  var step = STEPS[index], last = index === STEPS.length - 1;
+  panel.innerHTML = "";
+  panel.appendChild(el("div", { "class": "tutorialcount" }, "Step " + (index + 1) + " of " + STEPS.length));
+  panel.appendChild(el("h2", { "class": "tutorialtitle" }, step.title));
+  textHost = el("p", { "class": "tutorialtext" }); panel.appendChild(textHost); shownText = "";
+  var acts = el("div", { "class": "actions", style: "margin-top:10px" });
+  acts.appendChild(on(el("button", { type: "button", "class": "small", id: "tutorialNext" }, last ? "Finish" : step.done ? "Skip step" : "Next"), "click", function () { advance(); }));
+  if (!last) acts.appendChild(on(el("button", { type: "button", "class": "small", id: "tutorialSkip" }, "Skip tutorial"), "click", stopTutorial));
+  panel.appendChild(acts);
+}
+
+function advance() {
+  if (index >= STEPS.length - 1) { stopTutorial(); return; }
+  index++; draw(); tick();
+}
+
+// Views rebuild their DOM often, so the highlight and the text are re-read on every tick.
+function tick() {
+  if (!panel) return;
+  var step = STEPS[index];
+  if (step.done && step.done(ctx)) { advance(); return; }
+  var w = step.view(ctx);
+  if (w.text !== shownText) { textHost.innerHTML = ""; richText(textHost, w.text); shownText = w.text; }
+  var target = w.target || null;
+  if (target !== lit) { clearLit(); if (target) { target.classList.add("tutorialtarget"); lit = target; if (target.closest("#view")) { try { target.scrollIntoView({ block: "center" }); } catch (e) { /* ignore */ } } } }
+}
+
+// Starts the walkthrough now. A replay begins from the current state, so it adds a second quest.
+function startTutorial() {
+  stopTutorial();
+  index = 0; ctx = { baseIds: state.quests.map(function (p) { return p.id; }), baseActive: state.quests.filter(function (p) { return p.status === "active"; }).map(function (p) { return p.id; }), questId: null };
+  panel = el("section", { "class": "tutorial", role: "region", "aria-label": "Tutorial", "aria-live": "polite" });
+  document.body.appendChild(panel);
+  draw(); tick();
+  timer = setInterval(tick, 300);
+}
+
+// First launch only: waits for the splash to finish, then marks the tutorial seen so it never returns on its own.
+function maybeStartTutorial() {
+  if (state.settings.tutorialDone) return;
+  function wait() {
+    var splash = $("splash");
+    if (splash && !splash.hidden) { startTimer = setTimeout(wait, 250); return; }
+    state.settings.tutorialDone = true; save();
+    startTutorial();
+  }
+  wait();
+}
+
+
 // ---- views.js ----
+
 
 
 
@@ -4371,7 +4523,9 @@ function renderHelp(root) {
   var openAll = el("button", { type: "button", "class": "small", id: "helpOpen" }, "Open all"), closeAll = el("button", { type: "button", "class": "small", id: "helpClose" }, "Close all");
   on(openAll, "click", function () { items.forEach(function (d) { d.open = true; }); });
   on(closeAll, "click", function () { items.forEach(function (d) { d.open = false; }); });
-  acts.appendChild(openAll); acts.appendChild(closeAll); root.appendChild(acts);
+  var replay = el("button", { type: "button", "class": "small", id: "helpReplay", title: "Replay the first-run walkthrough" }, "Replay tutorial");
+  on(replay, "click", function () { go("today"); startTutorial(); });
+  acts.appendChild(openAll); acts.appendChild(closeAll); acts.appendChild(replay); root.appendChild(acts);
   // A line that starts with ">" is nested one level under the line above it (">>" is two levels).
   // The install line is about the web app, so a hosted version (Claude, or any host that sets the flag) skips it.
   helpTopics().forEach(function (t, i) {
@@ -5291,6 +5445,8 @@ function playSplash(showSplash, done, audio, pickIndex) {
 
 
 
+
+
 /* navigation */
 function leaveSearch() { if (ui.view === "search") { ui.query = ""; var b = $("searchBox"); if (b) b.value = ""; } }
 function go(view) { leaveSearch(); ui.view = view; ui.detail = false; saveUI(); renderAll(); scrollTop(); }
@@ -5408,6 +5564,7 @@ if (!isStandaloneApp && typeof window.matchMedia === "function") {
 function renderView() {
   var root = $("view"); root.innerHTML = "";
   if (ui.view.indexOf("quest:") === 0 && !validPage(ui.view)) ui.view = "projects";
+  noteBurnView(ui.view);
   root.className = "content";
   if (ui.view === "today") renderToday(root);
   else if (ui.view === "schedule") renderSchedule(root);
@@ -5458,6 +5615,7 @@ function wireMenu(btnId, menuId) {
 
 // Exposed so a test can cancel the splash's own pending timers after itself.
 var cancelSplash = function () {};
+var cancelTutorial = stopTutorial;
 
 // Plays the launch sequence again on demand (after a backup restore).
 function replaySplash() {
@@ -5478,6 +5636,7 @@ Promise.resolve().then(function () {
   // Decorative only -- the app has already rendered above.
   // The quote bucket is saved to local storage only, never the db or sync stamp.
   cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio, nextAffirmationIndex) || cancelSplash;
+  maybeStartTutorial();
 
   // Checked after first paint -- no-op on the web app, real on a published artifact with db.
   loadFromDbIfAvailable().then(function (swapped) {
