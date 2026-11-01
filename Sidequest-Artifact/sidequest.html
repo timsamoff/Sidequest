@@ -1211,7 +1211,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.10.3";
+var APP_VERSION = "0.10.4";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -3292,15 +3292,18 @@ function startTutorial() {
 }
 
 // First launch only: waits for the splash to finish, then marks the tutorial seen so it never returns on its own.
-function maybeStartTutorial() {
-  if (state.settings.tutorialDone) return;
+function maybeStartTutorial(ready) {
+  Promise.resolve(ready).then(check, check);
+  function check() {
+    if (state.settings.tutorialDone) return;
+    wait();
+  }
   function wait() {
     var splash = $("splash");
     if (splash && !splash.hidden) { startTimer = setTimeout(wait, 250); return; }
     state.settings.tutorialDone = true; save();
     startTutorial();
   }
-  wait();
 }
 
 
@@ -5701,14 +5704,15 @@ Promise.resolve().then(function () {
   // Decorative only -- the app has already rendered above.
   // The quote bucket is saved to local storage only, never the db or sync stamp.
   cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio, nextAffirmationIndex) || cancelSplash;
-  maybeStartTutorial();
-
   // Checked after first paint -- no-op on the web app, real on a published artifact with db.
-  loadFromDbIfAvailable().then(function (swapped) {
+  var dbLoaded = loadFromDbIfAvailable();
+  dbLoaded.then(function (swapped) {
     if (!swapped) return;
     autoVault(); purgeOldVault(); save();
     renderAll();
   });
+  // Decided after the db read, so a copy with empty local storage doesn't replay a tutorial the db says is done.
+  maybeStartTutorial(dbLoaded);
 
   // No-op on the web app, since checkForAppUpdate() resolves null with no db.
   // The stamp read here is set by hand when a new sidequest.html is published,

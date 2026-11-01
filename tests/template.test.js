@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.10.3"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.10.4"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2645,6 +2645,25 @@ async function exportClick(k, projectName) {
   ok(k.d.querySelector(".tutorial").textContent.includes("Add a quest") && !!k.$("tutorialSkip"), "Next moves to the first action step, which can be skipped");
   k.click(k.$("tutorialSkip"));
   ok(!k.d.querySelector(".tutorial"), "Skip tutorial removes the card");
+}
+{
+  // the tutorial waits for the db read: a copy with empty local storage must not replay what the db says is done
+  const wait = (ms) => new Promise(r => setTimeout(r, ms || 150));
+  const fakeDb = (store) => ({ claude: { use: (n) => Promise.resolve(n === "db" ? { doc: (p) => ({
+    get: () => new Promise(r => setTimeout(() => r({ exists: p in store, data: () => store[p], id: "main", metadata: {} }), 4)),
+    set: (d) => new Promise(r => setTimeout(() => { store[p] = JSON.parse(JSON.stringify(d)); r(); }, 4)) }) } : null) } });
+  const seedKit = kit(await mk({ settings: { hideWelcome: true, showSplash: false } }));
+  const doneState = seedKit.saved(); doneState.settings.tutorialDone = true; doneState.settings.showSplash = false;
+  {
+    const f = fakeDb({ "state/main": { json: JSON.stringify(doneState) } });
+    const k = kit(await mk({ settings: { hideWelcome: true, tutorialDone: false, showSplash: false } }, f.claude)); await wait();
+    ok(!k.d.querySelector(".tutorial") && k.saved().settings.tutorialDone === true, "a fresh copy whose db says the tutorial is done does not show it");
+  }
+  {
+    const f = fakeDb({});
+    const k = kit(await mk({ settings: { hideWelcome: true, tutorialDone: false, showSplash: false } }, f.claude)); await wait();
+    ok(!!k.d.querySelector(".tutorial"), "a truly new user with an empty db still gets the tutorial");
+  }
 }
 // Quest Giver Export asks which letterhead sides to include.
 {

@@ -203,14 +203,15 @@ Promise.resolve().then(function () {
   // Decorative only -- the app has already rendered above.
   // The quote bucket is saved to local storage only, never the db or sync stamp.
   cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio, nextAffirmationIndex) || cancelSplash;
-  maybeStartTutorial();
-
   // Checked after first paint -- no-op on the web app, real on a published artifact with db.
-  loadFromDbIfAvailable().then(function (swapped) {
+  var dbLoaded = loadFromDbIfAvailable();
+  dbLoaded.then(function (swapped) {
     if (!swapped) return;
     autoVault(); purgeOldVault(); save();
     renderAll();
   });
+  // Decided after the db read, so a copy with empty local storage doesn't replay a tutorial the db says is done.
+  maybeStartTutorial(dbLoaded);
 
   // No-op on the web app, since checkForAppUpdate() resolves null with no db.
   // The stamp read here is set by hand when a new sidequest.html is published,

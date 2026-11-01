@@ -114,13 +114,16 @@ export function startTutorial() {
 }
 
 // First launch only: waits for the splash to finish, then marks the tutorial seen so it never returns on its own.
-export function maybeStartTutorial() {
-  if (state.settings.tutorialDone) return;
+export function maybeStartTutorial(ready) {
+  Promise.resolve(ready).then(check, check);
+  function check() {
+    if (state.settings.tutorialDone) return;
+    wait();
+  }
   function wait() {
     var splash = $("splash");
     if (splash && !splash.hidden) { startTimer = setTimeout(wait, 250); return; }
     state.settings.tutorialDone = true; save();
     startTutorial();
   }
-  wait();
 }
