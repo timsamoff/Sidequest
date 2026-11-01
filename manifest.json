@@ -7,6 +7,7 @@
   "display": "standalone",
   "background_color": "#F2F4F1",
   "theme_color": "#2F5D8A",
+  "related_applications": [{ "platform": "webapp", "url": "manifest.json" }],
   "icons": [
     { "src": "assets/favicon-32.png", "sizes": "32x32", "type": "image/png" },
     { "src": "assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },

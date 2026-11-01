@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.9.11"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.9.12"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -282,14 +282,14 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
-  const sections = ["How Sidequest works", "Finding your way around", "The quest lifecycle", "Today page", "Quests page", "Tasks page", "Timeline page", "Workshop page", "Vault page", "Options page"];
-  ok(titles.join() === sections.join(), "the Field guide has the ten sections of the rewrite, in order (" + titles.join(", ") + ")");
+  const sections = ["How Sidequest works", "Finding your way around", "The quest lifecycle", "Today page", "Quests page", "Inside a quest", "Quest Giver and Quest links", "A quest’s Schedule and Timeline", "Tasks page", "Timeline page", "Workshop page", "Vault page", "Options page"];
+  ok(titles.join() === sections.join(), "the Field guide has the thirteen sections of the rewrite, in order (" + titles.join(", ") + ")");
   const helpText = k.$("view").textContent;
-  ok(k.d.querySelectorAll("#view .hbody ul ul").length > 0 && k.d.querySelectorAll("#view .hbody ul ul ul").length > 0, "nested bullets in the guide render as nested lists, two levels deep");
+  ok(k.d.querySelectorAll("#view .hbody ul ul").length > 0 && k.d.querySelectorAll("#view .hbody ul ul ul").length === 0, "nested bullets in the guide render as nested lists, no deeper than two levels");
   ok(!helpText.includes("Mark done") && !helpText.includes("archive completed tasks") && !helpText.includes("View beside its name") && !helpText.includes("with its circle"), "Help no longer describes buttons and settings that were removed");
   const staleHelp = ["default start date", "Show backup text", "pasted text", "Restore from text", "copy your data as text", "Sprint 1", "Where things stand", "Next slot", "what used to be called", "used to be called a project", "Completion FX", "Your contact info"];
   ok(staleHelp.every(ph => !helpText.includes(ph)), "Help does not describe things that were removed (" + staleHelp.filter(ph => helpText.includes(ph)).join(", ") + ")");
-  const coveredHelp = ["Quest details", "Quest Giver Export", "Bounty", "Slip schedule", "Forecast", "Ideal", "Actual", "Gathering dust", "Make milestone", "Launch critical", "Coin", "Completion effects", "Sound effects", "Refresh", "stretch of work", "Backup and restore", "Start fresh", "Link quest", "Make candidate", "Splash screen on open", "Main menu"];
+  const coveredHelp = ["Quest details", "Quest Giver Export", "Bounty", "Slip schedule", "Forecast", "Ideal", "Actual", "Gathering dust", "Make milestone", "Launch critical", "Coin format", "Completion effects", "Sound effects", "Refresh", "stretch of work", "Backup and restore", "Start fresh", "Link quest", "Make candidate", "Splash screen on open", "Main menu"];
   ok(coveredHelp.every(ph => helpText.includes(ph)), "the guide covers the features it should (missing: " + coveredHelp.filter(ph => !helpText.includes(ph)).join(", ") + ")");
   ok(!/—/.test(helpText) && !helpText.includes("--"), "Help has no em dashes, real or double-hyphen");
   ok(!/[A-Za-z]'[A-Za-z]/.test(helpText), "Help uses smart apostrophes, not straight ones, in contractions and possessives");
@@ -331,7 +331,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("view").textContent.includes("No tasks yet") && k.saved().tasks.length === 0 && k.saved().settings.hideWelcome === false && k.$("view").textContent.includes("Your new adventure begins here!"), "empty planner: nothing left, and the welcome message comes back");
   ok(k.saved().quests.length === 0 && k.saved().pins.length === 0, "no quests and no pins after a fresh start");
   // add own quest from scratch: a task needs an active quest to attach to
-  k.menuAct("newBtn", "newQuest"); k.setField("name", "My App"); k.click(k.btn(k.$("modalBody"), "Add quest"));
+  k.menuAct("newBtn", "newQuest"); k.setField("name", "My App"); k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Promote"));
   k.menuAct("newBtn", "newTask"); k.setField("what", "First task"); k.setField("due", new Date().toISOString().slice(0, 10)); k.click(k.btn(k.$("modalBody"), "Add task"));
   k.tab("today"); ok(k.$("view").textContent.includes("First task"), "can start working right away, once a quest exists");
@@ -510,7 +510,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   ok([...k.d.querySelectorAll("#view .list li")].some(li => li.textContent.includes("Sample Website") && li.textContent.includes("Launch critical")), "Linked Quests shows a Launch critical badge for Sample Website");
-  ok(!!k.btn(k.$("view"), "Skip Launch"), "the toggle button reflects Sample Website's launch-critical state from Sample App's own page");
+  ok(!!k.btn(k.$("view"), "Skip launch"), "the toggle button reflects Sample Website's launch-critical state from Sample App's own page");
   // sending Sample App to the Vault warns (soft gate) since Sample Website (launch-critical) is not complete/vaulted, but does not block
   k.click(k.btn(k.$("view"), "Vault"));
   ok(k.saved().quests.find(p => p.id === "pApp").vault, "sending to the Vault proceeds even with an incomplete launch-critical link (soft gate only, never a hard block)");
@@ -580,7 +580,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!k.btn(row(), "Edit"), "an idea row has no separate Edit button, the title is the link");
   k.click(k.btn(row(), "Try a new game engine"));
   ok(k.$("modalTitle").textContent === "Edit idea", "selecting an idea's title opens the idea dialog in edit mode");
-  ok(k.$("f-text").value === "Try a new game engine" && k.$("f-note").value === "Not competing for the next slot", "Edit pre-fills the idea's text and note");
+  ok(k.$("f-text").value === "Try a new game engine" && k.$("f-note").value === "Not urgent, but worth trying someday", "Edit pre-fills the idea's text and note");
   ok(k.$("f-note").tagName === "TEXTAREA", "the note field is a multiline textarea");
   k.setField("text", "Try Godot"); k.setField("note", "Line one\nLine two");
   k.click(k.btn(k.$("modalBody"), "Save idea"));
@@ -691,7 +691,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.menuAct("newBtn", "newQuest");
   ok(!!k.$("f-giverOrg") && !!k.$("f-giverAddress"), "the New quest dialog has Quest Giver fields too");
   k.setField("name", "Brand New Quest"); k.setField("giverOrg", "New Client LLC");
-  k.click(k.btn(k.$("modalBody"), "Add quest"));
+  k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
   const nq = k.saved().quests.find(p => p.name === "Brand New Quest");
   ok(nq.client.org === "New Client LLC" && nq.client.poc === "", "a quest created with Quest Giver info saves it from the start");
 }
@@ -2051,6 +2051,23 @@ async function exportClick(k, projectName) {
   k.tab("settings");
   const box = k.$("view");
   ok(box.textContent.includes("already installed as an app, or your browser does not show an Install button") && !/iPhone|iPad/.test(box.textContent) && box.textContent.includes("Add to Home Screen"), "a normal (non-standalone) browser tab shows generic install copy that names no phone");
+  // A Chromium browser that reports an installed copy gets the installed message; no answer or an error keeps the generic one
+  {
+    const realNav0 = Object.getOwnPropertyDescriptor(global, "navigator");
+    const tick = () => new Promise(r => setTimeout(r, 0));
+    const withNav = async (fn) => {
+      Object.defineProperty(global, "navigator", { value: { userAgent: "Mozilla/5.0 (Windows NT 10.0) Chrome/140", getInstalledRelatedApps: fn }, configurable: true, writable: true });
+      const kk = kit(await mk(null, null, null, null, notStandaloneMM)); kk.tab("settings"); await tick(); await tick();
+      return kk.$("view").textContent;
+    };
+    const yes = await withNav(() => Promise.resolve([{ platform: "webapp" }]));
+    const none = await withNav(() => Promise.resolve([]));
+    const boom = await withNav(() => Promise.reject(new Error("blocked")));
+    if (realNav0) Object.defineProperty(global, "navigator", realNav0); else delete global.navigator;
+    ok(yes.includes("Sidequest is installed. Open it from your apps or desktop.") && !yes.includes("does not show an Install button"), "a browser that reports an installed copy says Sidequest is installed");
+    ok(none.includes("does not show an Install button") && boom.includes("does not show an Install button"), "an empty answer or an error keeps the generic install message");
+    ok(JSON.parse(fs.readFileSync(path.join(__dirname, "..", "manifest.json"), "utf8")).related_applications.some(a => a.platform === "webapp" && a.url === "manifest.json"), "the manifest lists the web app so detection can work");
+  }
   // iPhone and iPad have no Install button, so they alone get their own steps
   const realNav = Object.getOwnPropertyDescriptor(global, "navigator");
   Object.defineProperty(global, "navigator", { value: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)" }, configurable: true, writable: true });
@@ -2171,7 +2188,7 @@ async function exportClick(k, projectName) {
   k.menuAct("newBtn", "newTask"); ok(k.$("toast").textContent === "Tasks can only be added to a quest.", "adding a task with no quests explains the rule");
   k.menuAct("newBtn", "newStep"); ok(k.$("toast").textContent === "Steps can only be added to a task.", "adding a step with no tasks explains the rule");
   k.menuAct("newBtn", "newDecision"); ok(k.$("toast").textContent === "A decision can only be added to a step.", "adding a decision with no steps explains the rule");
-  k.menuAct("newBtn", "newQuest"); k.setField("name", "Test Quest"); k.click(k.btn(k.$("modalBody"), "Add quest"));
+  k.menuAct("newBtn", "newQuest"); k.setField("name", "Test Quest"); k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
   ok(k.$("toast").textContent === "Test Quest has been added as a candidate quest on the Quests page. Promote the candidate to open it.", "the new-quest confirmation says it is a candidate and how to open it");
   k.tab("projects");
   ok(JSON.stringify(heads()) === JSON.stringify(["Candidate quests"]) && k.$("view").textContent.includes("Test Quest") && !k.$("view").textContent.includes("No candidate quests yet."), "with only a candidate quest, only Candidate quests shows, listing it");
@@ -2196,23 +2213,26 @@ async function exportClick(k, projectName) {
 
 {
   // New Task dialog: a start date alone is allowed, and the dialog says where the task will go
+  // Dates are built from this week's Monday, which is where the sample Website quest starts.
+  const nowD = new Date(), mon = Date.UTC(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() - ((nowD.getDay() + 6) % 7));
+  const iso = (k) => new Date(mon + k * 86400000).toISOString().slice(0, 10);
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.menuAct("newBtn", "newTask");
   k.setField("quest", "pSite"); k.setField("what", "Start only");
-  k.setField("start", "2026-10-20"); k.fire(k.$("f-start"), "input");
+  k.setField("start", iso(1)); k.fire(k.$("f-start"), "input");
   const note = () => k.$("modalBody").querySelector("p.msg").textContent;
   ok(note() === "A task with no due date goes to the quest’s backlog.", "entering a start date with no due date shows the backlog message right away (" + note() + ")");
-  k.setField("due", "2026-10-27"); k.fire(k.$("f-due"), "input");
+  k.setField("due", iso(8)); k.fire(k.$("f-due"), "input");
   ok(note() === "", "the message goes away on its own once a due date is added");
   k.setField("due", ""); k.fire(k.$("f-due"), "input");
   ok(note() === "A task with no due date goes to the quest’s backlog.", "and comes back if the due date is cleared again");
   k.click(k.btn(k.$("modalBody"), "Add task"));
   const made = k.saved().tasks.find(x => x.what === "Start only");
-  ok(!!made && made.block === 0 && made.due === "" && made.start === "2026-10-20", "the task is still created, in the Backlog, with its start date kept");
+  ok(!!made && made.block === 0 && made.due === "" && made.start === iso(1), "the task is still created, in the Backlog, with its start date kept");
   ok(k.$("toast").textContent === "Start only added as a task to Sample Website’s backlog.", "and the confirmation says it went to the backlog");
   k.menuAct("newBtn", "newTask");
-  k.setField("quest", "pSite"); k.setField("what", "Bad order"); k.setField("start", "2026-10-30"); k.setField("due", "2026-10-27");
+  k.setField("quest", "pSite"); k.setField("what", "Bad order"); k.setField("start", iso(5)); k.setField("due", iso(2));
   k.click(k.btn(k.$("modalBody"), "Add task"));
   ok(!k.saved().tasks.some(x => x.what === "Bad order") && note().includes("You can’t begin after you finish!"), "a start after the due date is still refused");
 }
@@ -2264,9 +2284,9 @@ async function exportClick(k, projectName) {
   // Bounty in the New Quest dialog, and old whole-number values on load
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
-  k.menuAct("newBtn", "newQuest"); k.setField("name", "Money Quest"); k.setField("giverCoin", "1,234.5"); k.click(k.btn(k.$("modalBody"), "Add quest"));
+  k.menuAct("newBtn", "newQuest"); k.setField("name", "Money Quest"); k.setField("giverCoin", "1,234.5"); k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
   ok(k.saved().quests.find(q => q.name === "Money Quest").client.coin === 1234.5, "the New Quest dialog reads a typed amount with a comma and a decimal point");
-  k.menuAct("newBtn", "newQuest"); k.setField("name", "Bad Money"); k.setField("giverCoin", "abc"); k.click(k.btn(k.$("modalBody"), "Add quest"));
+  k.menuAct("newBtn", "newQuest"); k.setField("name", "Bad Money"); k.setField("giverCoin", "abc"); k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
   ok(k.saved().quests.find(q => q.name === "Bad Money").client.coin === "", "and treats non-numeric text as no bounty");
   const old = kit(await mk({ quests: [{ id: "q1", name: "Old", status: "active", start: "2026-08-03", days: 7, client: { coin: 1500, per: "Hour" } }, { id: "q2", name: "Zero", status: "active", start: "2026-08-03", days: 7, client: { coin: 0, per: "Hour" } }, { id: "q3", name: "Huge", status: "active", start: "2026-08-03", days: 7, client: { coin: 5000000, per: "Hour" } }], tasks: [] }));
   const qs = old.saved().quests;
@@ -2464,13 +2484,13 @@ async function exportClick(k, projectName) {
   ok(/sidebar/.test(webTitle) && /main menu/.test(clTitle) && !/sidebar/.test(clTitle), "the pin button says sidebar on the web and main menu in a Claude artifact (" + webTitle + " / " + clTitle + ")");
 }
 {
-  // Coin setting: US 1,234.56 or European 1.234,56 for money fields
+  // Coin setting: 1,234.56 or 1.234,56 for money fields
   const k = kit(await mk()); k.click(k.$("welcomeDismiss"));
   k.tab("settings");
   const sel = k.$("set-coin");
-  ok(!!sel && sel.value === "us" && [...sel.options].map(o => o.textContent).join() === "US (1,234.56),European (1.234,56)", "Options has a Coin setting that defaults to US");
+  ok(!!sel && sel.value === "us" && [...sel.options].map(o => o.textContent).join() === "1,234.56,1.234,56", "Options has a Coin format setting that defaults to US");
   const order = [...k.d.querySelectorAll("#view .setgrid label")].map(l => l.textContent);
-  ok(order.slice(order.indexOf("Date format"), order.indexOf("Date format") + 7).join() === "Date format,Coin,Splash screen on open,Theme,Animated burndown,Completion effects,Sound effects", "the Appearance settings read Date format, Coin, Splash screen on open, Theme, Animated burndown, Completion effects, Sound effects");
+  ok(order.slice(order.indexOf("Date format"), order.indexOf("Date format") + 7).join() === "Date format,Coin format,Splash screen on open,Theme,Animated burndown,Completion effects,Sound effects", "the Appearance settings read Date format, Coin, Splash screen on open, Theme, Animated burndown, Completion effects, Sound effects");
   sel.value = "eu"; k.fire(sel);
   ok(k.saved().settings.coinFormat === "eu", "choosing European saves");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Website"));

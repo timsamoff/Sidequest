@@ -64,7 +64,7 @@ export function updateSearchResults() {
   var box = $("searchResults"); if (!box) return;
   box.innerHTML = ""; searchFlat.length = 0;
   var status = $("searchStatus"), q = ui.query.trim();
-  if (!q) { if (status) status.textContent = ""; box.appendChild(el("p", { "class": "hint" }, "Type to search tasks, steps, notes, projects, ideas, decisions, and milestones. Enter opens the first result.")); return; }
+  if (!q) { if (status) status.textContent = ""; box.appendChild(el("p", { "class": "hint" }, "Type to search tasks, steps, notes, quests, ideas, and decisions. Enter opens the first result.")); return; }
   var res = searchAll(q, ui.searchVault), total = 0;
   SEARCH_ORDER.forEach(function (k) { total += res.groups[k].length; });
   if (status) status.textContent = total + (total === 1 ? " result" : " results");

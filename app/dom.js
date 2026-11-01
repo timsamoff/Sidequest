@@ -31,7 +31,7 @@ export function playSfx(src, volume) {
 }
 // Money fields work like a cash register: digits fill in from the cents, and the
 // separators are added as you type. The cap is 999,999.99. `style` is "us"
-// (1,234.56) or "eu" (1.234,56); it is the Options "Coin" setting.
+// (1,234.56) or "eu" (1.234,56); it is the Options "Coin format" setting.
 function moneySeps(style) { return style === "eu" ? { group: ".", dec: "," } : { group: ",", dec: "." }; }
 export function formatMoney(n, style) {
   if (typeof n !== "number" || isNaN(n) || n <= 0) return "";

@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.9.11";
+export var APP_VERSION = "0.9.12";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -113,7 +113,7 @@ export function sampleData() {
     tasks: tasks,
     quests: quests,
     workshop: [
-      { id: "p1", text: "Try a new game engine", note: "Not competing for the next slot" },
+      { id: "p1", text: "Try a new game engine", note: "Not urgent, but worth trying someday" },
       { id: "p2", text: "Write up lessons learned", note: "After the website launches" },
       { id: "p3", text: "Redesign the logo", note: "", vault: { at: yest, why: "removed" } }
     ],

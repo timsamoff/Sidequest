@@ -147,7 +147,7 @@ export function taskDialog(prefillQuestId) {
     var t = task("c" + uid(), blk, v.quest, v.what.slice(0, 400), v.done.slice(0, 200) || "It’s finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
     state.tasks.push(t); ui.sel = t.id; changed();
     return { msg: blk === 0 ? t.what + " added as a task to " + dispQuest(t) + "’s backlog." : t.what + " added as a task to " + wd() + " " + blk + " in " + dispQuest(t) + ". (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ".)" };
-  }, (fixedQuest ? "Assign a new task to this quest." : "Assign a new task to any open quest.") + " Adding start and due dates will automatically place the task within the quest’s corresponding " + wl() + ". Leaving the due date blank will place it in the quest’s backlog.");
+  }, (fixedQuest ? "Assign a new task to this quest." : "Assign a new task to any open quest.") + " Adding start and due dates will automatically place the task within the quest’s corresponding " + wl() + ".");
   // A start date with no due date is allowed; say right away where the task will go.
   var NO_DUE = "A task with no due date goes to the quest’s backlog.";
   var sIn = $("f-start"), dIn = $("f-due"), noteLine = $("modalBody") && $("modalBody").querySelector("p.msg");
@@ -171,7 +171,7 @@ export function questDialog() {
     { key: "giverAddress", label: "Address", type: "textarea", rows: 3 },
     { key: "giverCoin", label: "Bounty", type: "money" },
     { key: "giverPer", label: "Per", type: "select", options: [{ value: "Hour", label: "Hour" }, { value: "Quest", label: "Quest" }] }
-  ], "Add quest", function (v) {
+  ], "Add candidate quest", function (v) {
     if (!v.name) return "Enter a title for the candidate quest.";
     var coin = parseMoney(v.giverCoin, state.settings.coinFormat);
     var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200), coin: coin, per: v.giverPer === "Quest" ? "Quest" : "Hour" };
@@ -301,7 +301,7 @@ export function stepDialog(prefillQuestId) {
     if (!t) return "Choose a task.";
     t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false }); syncFromSteps(t); changed();
     return { msg: v.text + " added as a step to " + t.what + " in " + dispQuest(t) + "." };
-  }, "Steps can be added to any tasks within a quest.");
+  }, "Steps can be added to any task within a quest.");
   var questSel = $("f-quest"), taskSel = $("f-task");
   if (questSel && taskSel) {
     on(questSel, "change", function () {

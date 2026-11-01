@@ -248,8 +248,6 @@ export function questMeta(p) {
     var bk = ts.filter(function (t) { return t.block === 0; }).length;
     var dn = ts.filter(function (t) { return t.status === "Completed"; }).length;
     parts.push("Complete: " + dn + " of " + ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " | Backlog: " + bk + " unscheduled " + (bk === 1 ? "task" : "tasks") : ""));
-  } else if (p.status === "candidate") {
-    parts.push("Candidate for the next slot.");
   }
   return parts.length ? parts.join(" ") : "No tasks yet";
 }

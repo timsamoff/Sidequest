@@ -4,7 +4,7 @@
 
 `sidequest.html` is a single self-contained file. Hand it to an AI app builder and you get your own copy of Sidequest that saves your data to your account instead of your browser, so it works the same across your devices. This folder covers two builders: Claude and Muse.
 
-Sidequest itself has no account and never will. These versions do need an account with the builder you choose, because building the app and storing its data both happen there. The plain web version (`index.html`) needs no account of any kind.
+Sidequest itself has no account. These versions do need an account with the builder you choose, because building the app and storing its data both happen there. The plain web version (`index.html`) needs no account of any kind.
 
 The raw link to the file, used in the prompts below:
 
@@ -13,6 +13,8 @@ https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/si
 ```
 
 ## Claude
+
+The artifact needs two capabilities. Without `db`, nothing saves. Without `downloads`, the **Save backup** button can't give you a file.
 
 ### First-time setup
 
@@ -27,16 +29,14 @@ Claude fetches the file itself, so there's nothing to download or upload.
 
 If fetching doesn't work, or you'd rather upload: download `sidequest.html` from this folder, upload it to a new conversation, and ask Claude to publish it as an artifact with the `db` and `downloads` capabilities.
 
-Both capabilities matter. Without `db`, nothing saves. Without `downloads`, the Save backup button can't give you a file.
-
 ## Muse
 
-Muse can't provision a database for a shared artifact on its own, so you ask your own Muse to build the app from the repo. You end up with your own private copy and your own private Muse database. Nothing is shared with anyone.
+Muse builds Sidequest from the source file on GitHub and runs it on its own hosted runtime. Muse stores your quests, tasks, and settings in a database tied to your account, so they sync across devices and the app opens with everything in place wherever you're signed in. When you update, Muse rebuilds the app from the latest file and leaves the database as it is.
 
 ### First-time setup
 
 1. Start a new chat with your own Muse.
-2. Paste this prompt. Muse fetches the file from the repo itself, so there's nothing to download or attach:
+2. Paste this prompt. It asks Muse to build the app from the repo and keep your data in your Muse database:
 
 ```
 Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty.
@@ -49,22 +49,26 @@ Keep this Google Fonts stylesheet in the <head> of the client's index.html, and 
 When it's built, launch the app several times to confirm every launch quote fits its two-line box, and click-test every button, dialog, and import before handing it over.
 ```
 
-Muse builds the app in the background and hands you a card to open it. Your data lives only in your Muse environment.
+Muse fetches the file from the repo itself, so there's nothing to download or attach. It builds the app in the background and hands you a card to open it. Your data lives only in your Muse environment.
 
 If fetching doesn't work, you can attach the file instead. Save `sidequest.html` from this folder (or from the repo: https://github.com/timsamoff/Sidequest/blob/main/Sidequest-Artifact/sidequest.html, using the Raw button), attach it to the chat, and paste the same prompt with the link in its first sentence replaced by "the attached sidequest.html".
 
-The first time you open the app, it asks for permission to check for updates online. Choose "Always allow" so the version check runs without asking again.
+The first time you open the app, it asks for permission to check for updates online. Choose **Always allow** so the version check runs without asking again.
 
 ## Updating to a new version
 
-When a new version is released, a banner on the Today page says so. It holds a prompt you can copy, and the same prompt works in both builders:
+When a new version is released, a banner on the **Today** page says so. It holds a prompt you can copy, and the same prompt works in both builders:
 
 > Please update my Sidequest artifact with the latest version, keeping all of my existing data.
 > https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html
 
-Paste it into the conversation where you built your app, or give the builder the link to your artifact. The banner adds ?v= and the new version number to the end of the link, so a builder that cached an older copy of the file fetches the new one instead. If you type the prompt yourself, you can add the same suffix. Your data lives with your account, not in the file, so an update keeps it.
+1. Copy the prompt from the banner.
+2. Paste it into the conversation where you built your app, or give the builder the link to your artifact.
+3. Open the updated artifact. Your data lives with your account, not in the file, so an update keeps it.
 
-On Claude, update your **existing** artifact. Publishing the file as a brand-new artifact creates an empty database with no path back to your old data. If you do it by accident, your old artifact and its data are still there; go back to that one.
+The banner adds ?v= and the new version number to the end of the link, so a builder that cached an older copy of the file fetches the new one instead. If you type the prompt yourself, you can add the same suffix.
+
+On Claude, update your **existing** artifact. Publishing the file as a brand-new artifact creates an empty database with no path back to your old data. If you do it by accident, your old artifact and its data are still there. Go back to that one.
 
 ## Sharing
 
@@ -76,4 +80,4 @@ If you do grant edit access, there is no conflict handling. If two people change
 
 - **Where your data lives.** The web version keeps it in your browser, on one device. These versions keep it in your Claude or Muse account.
 - **No AI branding in the file.** That's on purpose, so the file stays portable. This README is the one place that explains the builder-specific setup.
-- **The installable app and its Refresh button** are part of the web version only.
+- **The installable app and its **Refresh** button** are part of the web version only.
