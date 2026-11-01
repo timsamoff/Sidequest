@@ -1601,6 +1601,14 @@ var NO_SAVE_PERMISSION = "This published copy was not given permission to save f
 function isFramed() {
   try { return window.parent !== window.self; } catch (e) { return true; }
 }
+// Phones and tablets: a webview there swallows a scripted download without saying so, and
+// nothing reports the difference, so the plain download can't be trusted on them.
+function isMobileDevice() {
+  try {
+    var ua = window.navigator.userAgent || "";
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && window.navigator.maxTouchPoints > 1);
+  } catch (e) { return false; }
+}
 function cancelled(err) { return !!err && (err.code === "declined" || err.name === "AbortError"); }
 // Shows the file's text with a Copy button, for a frame where nothing else can hand over a file.
 function manualSaveDialog(name, text) {
@@ -1624,23 +1632,23 @@ function manualSaveDialog(name, text) {
 // Hands the viewer a file. Resolves "saved" (a verified save), "downloaded" (a top-level
 // download, which the browser gives no way to confirm), "manual" (a dialog now shows the text
 // to copy; nothing was saved yet) or "denied" (a Claude copy without the downloads capability).
-// Rejects on cancel or failure. A frame can't use a plain download, so it tries the file
-// picker, then the share sheet (phones), then the copy dialog.
+// Rejects on cancel or failure. A frame or a phone can't be trusted with a plain download, so
+// it tries the file picker, then the share sheet, then the copy dialog.
 function saveFile(name, text, mime, desc, ext) {
   return downloadsReady.then(function (d) {
     if (d) return d.save({ filename: name, data: text }).then(function () { return "saved"; });
-    var framed = isFramed();
+    var framed = isFramed(), unreliable = framed || isMobileDevice();
     if (inClaude() && framed) return "denied";
     function viaShare() {
       var file;
       try { file = new window.File([text], name, { type: mime }); } catch (e) { file = null; }
-      if (framed && file && window.navigator.share && window.navigator.canShare && window.navigator.canShare({ files: [file] })) {
+      if (unreliable && file && window.navigator.share && window.navigator.canShare && window.navigator.canShare({ files: [file] })) {
         return window.navigator.share({ files: [file] }).then(function () { return "saved"; }, function (err) {
           if (cancelled(err)) throw err;
           manualSaveDialog(name, text); return "manual";
         });
       }
-      if (framed) { manualSaveDialog(name, text); return "manual"; }
+      if (unreliable) { manualSaveDialog(name, text); return "manual"; }
       var blob = new Blob([text], { type: mime }), url = URL.createObjectURL(blob);
       var a = el("a", { href: url, download: name });
       document.body.appendChild(a); a.click(); a.remove();
@@ -1653,7 +1661,7 @@ function saveFile(name, text, mime, desc, ext) {
         .then(function (h) { return h.createWritable(); })
         .then(function (w) { return w.write(text).then(function () { return w.close(); }); })
         .then(function () { return "saved"; }, function (err) {
-          if (cancelled(err) || !framed) throw err;
+          if (cancelled(err) || !unreliable) throw err;
           return viaShare();
         });
     }

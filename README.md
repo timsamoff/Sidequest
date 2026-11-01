@@ -37,7 +37,7 @@ Everything is saved in your own browser with `localStorage`. Nothing is sent any
 
 - Data does not sync between devices or browsers.
 - Clearing your browser data clears your planner.
-- **Options, Backup and restore:** **Save backup** writes your data to a file wherever you choose, and **Restore backup** loads one back after a warning that it replaces everything. If the app can't save a file directly (some embedded views), it shows the text to copy instead, and the backup isn't counted until you save it. After two weeks without a backup, Today reminds you.
+- **Options, Backup and restore:** **Save backup** writes your data to a file wherever you choose, and **Restore backup** loads one back after a warning that it replaces everything. If the app can't save a file directly (some embedded views), it offers your device's share sheet or shows the text to copy instead, and the backup isn't counted until you save it. After two weeks without a backup, Today reminds you.
 - The Artifact version keeps its own data in your account. It doesn't read the web version's data.
 
 ## Tests

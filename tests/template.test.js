@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.10.4"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.10.5"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -1628,6 +1628,22 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
       k.tab("settings"); k.click(k.$("saveFile")); await wait();
       ok(!!shared && /^sidequest-backup-.*\.json$/.test(shared.files[0].name) && k.saved().settings.lastBackup !== "", "in a frame the share sheet is used when it exists, and counts as saved");
     }
+  }
+  const phone = (k) => Object.defineProperty(k.w.navigator, "userAgent", { value: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148", configurable: true });
+  {
+    // a phone reports itself as top-level but can't be trusted with a scripted download
+    const k = kit(await mk({ settings: { hideWelcome: true } }));
+    phone(k);
+    k.tab("settings"); k.click(k.$("saveFile")); await wait();
+    ok(!k.$("overlay").hidden && !!k.$("overlay").querySelector("textarea") && k.saved().settings.lastBackup === "" && !k.$("view").textContent.includes("Backup downloaded."), "on a phone with no share sheet, a top-level page shows the copy dialog instead of claiming a download");
+  }
+  {
+    const k = kit(await mk({ settings: { hideWelcome: true } }));
+    phone(k);
+    let shared = null;
+    k.w.navigator.canShare = () => true; k.w.navigator.share = (d) => { shared = d; return Promise.resolve(); };
+    k.tab("settings"); k.click(k.$("saveFile")); await wait();
+    ok(!!shared && k.saved().settings.lastBackup !== "", "on a phone the share sheet is used, and finishing it counts as saved");
   }
   {
     const k = kit(await mk({ settings: { hideWelcome: true } }, { use: () => Promise.resolve(null) }));
