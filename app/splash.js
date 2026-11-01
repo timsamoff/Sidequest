@@ -30,7 +30,7 @@ export var AFFIRMATIONS = [
   "Let thy aim be true.",
   "Make no room for excuses.",
   "Enter now the realm of deep work.",
-  "Strengthen thy momentum.",
+  "Strengthen thy\u00a0momentum.",
   "Consistency is thy hidden strength.",
   "Strike it from the list and be done with it.",
   "Thou art a tireless finisher.",
