@@ -132,8 +132,9 @@ export function exportQuestForClient(p, opts) {
   var snapshot = buildExportSnapshot(p, opts);
   var html = renderExportDocument(snapshot);
   var name = exportFileName(p);
-  saveFile(name, html, "text/html", "Sidequest export", ".html").then(function (r) {
-    if (r !== "manual") notify("Exported " + p.name + ".");
+  function exported() { notify("Exported " + p.name + "."); }
+  saveFile(name, html, "text/html", "Sidequest export", ".html", exported).then(function (r) {
+    if (r !== "manual") exported();
   }).catch(function (err) {
     notify(err && (err.code === "declined" || err.name === "AbortError") ? "Export canceled." : "The export could not be saved.");
   });
@@ -1609,21 +1610,32 @@ function isMobileDevice() {
 }
 function cancelled(err) { return !!err && (err.code === "declined" || err.name === "AbortError"); }
 // Shows the file's text with a Copy button, for a frame where nothing else can hand over a file.
-function manualSaveDialog(name, text, mime) {
+function manualSaveDialog(name, text, mime, onSaved) {
   openModal("Save " + name, function (body) {
-    body.appendChild(el("p", { "class": "hint first" }, "Choose Download to save " + name + ". If nothing downloads, open the copy option below."));
+    var file = null;
+    try { file = new window.File([text], name, { type: mime }); } catch (e) { file = null; }
+    var canShare = !!(isMobileDevice() && file && window.navigator.share && window.navigator.canShare && window.navigator.canShare({ files: [file] }));
+    var label = canShare ? "Save file" : "Download file";
+    body.appendChild(el("p", { "class": "hint first" }, "Choose " + label + " to save " + name + ". If nothing happens, open the copy option below."));
     var note = el("p", { "class": "hint" }, "");
-    var dl = on(el("button", { type: "button", "class": "primary" }, "Download file"), "click", function () {
+    function copyInstead(why) { note.textContent = why + " Copy the text below instead."; }
+    var main = on(el("button", { type: "button", "class": "primary" }, label), "click", function () {
+      if (canShare) {
+        window.navigator.share({ files: [file] }).then(function () { closeModal(); if (onSaved) onSaved(); }, function (err) {
+          if (!cancelled(err)) copyInstead("Saving isn't available here.");
+        });
+        return;
+      }
       try {
         var url = URL.createObjectURL(new Blob([text], { type: mime })), a = el("a", { href: url, download: name });
         document.body.appendChild(a); a.click(); a.remove();
         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-        note.textContent = "If nothing downloaded, copy the text below instead.";
-      } catch (e) { note.textContent = "Download isn't available here. Copy the text below instead."; }
+        copyInstead("If nothing downloaded,");
+      } catch (e) { copyInstead("Download isn't available here."); }
     });
-    var acts = el("div", { "class": "actions" }); acts.appendChild(dl); body.appendChild(acts); body.appendChild(note);
+    var acts = el("div", { "class": "actions" }); acts.appendChild(main); body.appendChild(acts); body.appendChild(note);
     var more = el("details", { style: "margin-top:var(--space-16)" });
-    more.appendChild(el("summary", null, "Download didn't work? Copy the text instead"));
+    more.appendChild(el("summary", null, "Didn't work? Copy the text instead"));
     more.appendChild(el("p", { "class": "hint" }, "Copy the text, paste it into a new text file, and save it as " + name + "."));
     var box = el("textarea", { readonly: "readonly", rows: "8", "aria-label": name, style: "margin-top:var(--space-10)" });
     box.value = text; more.appendChild(box);
@@ -1644,21 +1656,15 @@ function manualSaveDialog(name, text, mime) {
 // download, which the browser gives no way to confirm), "manual" (a dialog now shows the text
 // to copy; nothing was saved yet).
 // Rejects on cancel or failure. A frame or a phone can't be trusted with a plain download, so
-// it tries the file picker, then the share sheet, then the copy dialog.
-function saveFile(name, text, mime, desc, ext) {
+// after the file picker it shows the save box: a Save button (the share sheet on a phone, a
+// download elsewhere) with the copy option folded under it. `onSaved` runs if that button's
+// share sheet completes.
+function saveFile(name, text, mime, desc, ext, onSaved) {
   return downloadsReady.then(function (d) {
     if (d) return d.save({ filename: name, data: text }).then(function () { return "saved"; });
-    var framed = isFramed(), unreliable = framed || isMobileDevice();
-    function viaShare() {
-      var file;
-      try { file = new window.File([text], name, { type: mime }); } catch (e) { file = null; }
-      if (unreliable && file && window.navigator.share && window.navigator.canShare && window.navigator.canShare({ files: [file] })) {
-        return window.navigator.share({ files: [file] }).then(function () { return "saved"; }, function (err) {
-          if (cancelled(err)) throw err;
-          manualSaveDialog(name, text, mime); return "manual";
-        });
-      }
-      if (unreliable) { manualSaveDialog(name, text, mime); return "manual"; }
+    var unreliable = isFramed() || isMobileDevice();
+    function fallback() {
+      if (unreliable) { manualSaveDialog(name, text, mime, onSaved); return "manual"; }
       var blob = new Blob([text], { type: mime }), url = URL.createObjectURL(blob);
       var a = el("a", { href: url, download: name });
       document.body.appendChild(a); a.click(); a.remove();
@@ -1672,10 +1678,10 @@ function saveFile(name, text, mime, desc, ext) {
         .then(function (w) { return w.write(text).then(function () { return w.close(); }); })
         .then(function () { return "saved"; }, function (err) {
           if (cancelled(err) || !unreliable) throw err;
-          return viaShare();
+          return fallback();
         });
     }
-    return viaShare();
+    return fallback();
   });
 }
 // The file records today as its own backup date, so restoring from it starts the reminder fresh.
@@ -1700,8 +1706,8 @@ function lastBackupText() {
 function saveBackupFile(msg, onDone) {
   var name = "sidequest-backup-" + iso(TODAY) + ".json", text = backupJSON();
   function saved(note) { state.settings.lastBackup = iso(TODAY); save(); msg.textContent = note; if (onDone) onDone(); }
-  saveFile(name, text, "application/json", "Sidequest backup", ".json").then(function (r) {
-    if (r === "manual") msg.textContent = "Use Download or Copy in the box to save " + name + ". It is not counted as saved here.";
+  saveFile(name, text, "application/json", "Sidequest backup", ".json", function () { saved("Backup saved."); }).then(function (r) {
+    if (r === "manual") msg.textContent = "Use Save or Copy in the box to save " + name + ". It is not counted as saved until you do.";
     else saved(r === "downloaded" ? "Backup downloaded." : "Backup saved.");
   }).catch(function (err) {
     msg.textContent = err && (err.code === "declined" || err.name === "AbortError") ? "Save canceled." : "The backup could not be saved.";

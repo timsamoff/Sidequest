@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.10.8"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.10.9"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -1627,7 +1627,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
       let shared = null;
       k.w.navigator.canShare = () => true; k.w.navigator.share = (d) => { shared = d; return Promise.resolve(); };
       k.tab("settings"); k.click(k.$("saveFile")); await wait();
-      ok(!!shared && /^sidequest-backup-.*\.json$/.test(shared.files[0].name) && k.saved().settings.lastBackup !== "", "in a frame the share sheet is used when it exists, and counts as saved");
+      ok(!shared && !!k.btn(k.$("overlay"), "Download file") && !k.btn(k.$("overlay"), "Save file") && k.saved().settings.lastBackup === "", "a desktop frame shows the save box with Download file, even if a share sheet exists");
     }
   }
   const phone = (k) => Object.defineProperty(k.w.navigator, "userAgent", { value: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148", configurable: true });
@@ -1644,7 +1644,9 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     let shared = null;
     k.w.navigator.canShare = () => true; k.w.navigator.share = (d) => { shared = d; return Promise.resolve(); };
     k.tab("settings"); k.click(k.$("saveFile")); await wait();
-    ok(!!shared && k.saved().settings.lastBackup !== "", "on a phone the share sheet is used, and finishing it counts as saved");
+    ok(!shared && !!k.btn(k.$("overlay"), "Save file") && k.saved().settings.lastBackup === "", "on a phone the same save box shows first, with Save file, and nothing is stamped yet");
+    k.click(k.btn(k.$("overlay"), "Save file")); await wait();
+    ok(!!shared && /^sidequest-backup-.*\.json$/.test(shared.files[0].name) && k.$("overlay").hidden && k.saved().settings.lastBackup !== "" && k.$("view").textContent.includes("Backup saved."), "Save file opens the share sheet, and finishing it closes the box and counts as saved");
   }
   {
     const k = kit(await mk({ settings: { hideWelcome: true } }, { use: () => Promise.resolve(null) }));
@@ -2294,7 +2296,7 @@ async function exportClick(k, projectName) {
   // Confirmations name where each new item went
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
-  k.menuAct("newBtn", "newTask"); k.setField("quest", "pSite"); k.setField("what", "Scheduled task"); k.setField("due", "2026-10-27"); k.click(k.btn(k.$("modalBody"), "Add task"));
+  k.menuAct("newBtn", "newTask"); k.setField("quest", "pSite"); k.setField("what", "Scheduled task"); k.setField("due", (() => { const d = new Date(); return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) + 3 * 86400000).toISOString().slice(0, 10); })()); k.click(k.btn(k.$("modalBody"), "Add task"));
   ok(/^Scheduled task added as a task to \w+ \d+ in Sample Website\. \(.+ to .+\.\)$/.test(k.$("toast").textContent), "a scheduled task's confirmation names its block and quest, with the date range (" + k.$("toast").textContent + ")");
   k.menuAct("newBtn", "newTask"); k.setField("quest", "pSite"); k.setField("what", "Unscheduled task"); k.click(k.btn(k.$("modalBody"), "Add task"));
   ok(k.$("toast").textContent === "Unscheduled task added as a task to Sample Website’s backlog.", "a task with no due date says it went to the quest's backlog");
