@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.10.9"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.10.10"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -1273,6 +1273,9 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     ok(named(f.store) === "REAL DB DATA" && [...k.d.querySelectorAll("#nav .tab")].some(t => t.textContent === "REAL DB DATA"), "a fresh device shows the db's data and leaves it intact in the db");
     const n = f.log.filter(x => x === "set:state/main").length;
     k.tab("settings"); k.click(k.$("saveFile")); await wait();
+    ok(f.saves.length === 0 && !!k.btn(k.$("overlay"), "Save file") && !!k.$("overlay").querySelector("details"), "with the downloads capability the same save box shows first, Save file with the copy option folded under it, and nothing is saved yet");
+    k.click(k.btn(k.$("overlay"), "Save file")); await wait();
+    ok(k.$("overlay").hidden, "finishing the platform's save closes the box");
     ok(f.log.filter(x => x === "set:state/main").length > n && JSON.parse(f.store["state/main"].json).settings.lastBackup, "after loading, a change is written to the db");
     ok(f.saves.length === 1 && /^sidequest-backup-\d{4}-\d{2}-\d{2}\.json$/.test(f.saves[0].filename) && JSON.parse(f.saves[0].data).tasks.length === 24, "Save backup hands the viewer a dated .json file through the downloads capability");
     ok(k.$("view").textContent.includes("Backup saved.") && k.$("view").textContent.includes("(today)"), "and says it saved");
@@ -1292,7 +1295,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     const f = fake({ "state/main": { json: realJson } }, { decline: true });
     const k = kit(await mk(null, f.claude)); await wait();
     k.tab("settings"); k.click(k.$("saveFile")); await wait();
-    ok(k.$("view").textContent.includes("Save canceled.") && k.$("view").textContent.includes("No backup saved yet."), "if the viewer declines, nothing is recorded as saved");
+    k.click(k.btn(k.$("overlay"), "Save file")); await wait();
+    ok(k.$("overlay").textContent.includes("Save canceled.") && !k.$("overlay").hidden && k.$("view").textContent.includes("No backup saved yet."), "if the viewer declines, the box stays open for another try and nothing is recorded as saved");
   }
   // newest save wins when the db and this device disagree
   const T1 = "2026-10-01T10:00:00.000Z", T2 = "2026-10-01T12:00:00.000Z";
@@ -1321,6 +1325,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     const f = fake({ "state/main": { json: JSON.stringify(withName("DB EDIT")), savedAt: T1 } });
     const k = kit(await mk(null, f.claude)); await wait();
     k.tab("settings"); k.click(k.$("saveFile")); await wait();
+    k.click(k.btn(k.$("overlay"), "Save file")); await wait();
     ok(f.store["state/main"].savedAt > T1 && JSON.parse(f.store["state/main"].json).settings.lastBackup, "an edit after loading is written with a newer stamp");
   }
   {

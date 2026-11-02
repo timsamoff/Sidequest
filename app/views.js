@@ -1610,16 +1610,23 @@ function isMobileDevice() {
 }
 function cancelled(err) { return !!err && (err.code === "declined" || err.name === "AbortError"); }
 // Shows the file's text with a Copy button, for a frame where nothing else can hand over a file.
-function manualSaveDialog(name, text, mime, onSaved) {
+function manualSaveDialog(name, text, mime, onSaved, capability) {
   openModal("Save " + name, function (body) {
     var file = null;
     try { file = new window.File([text], name, { type: mime }); } catch (e) { file = null; }
     var canShare = !!(isMobileDevice() && file && window.navigator.share && window.navigator.canShare && window.navigator.canShare({ files: [file] }));
-    var label = canShare ? "Save file" : "Download file";
+    var label = canShare || capability ? "Save file" : "Download file";
     body.appendChild(el("p", { "class": "hint first" }, "Choose " + label + " to save " + name + ". If nothing happens, open the copy option below."));
     var note = el("p", { "class": "hint" }, "");
     function copyInstead(why) { note.textContent = why + " Copy the text below instead."; }
     var main = on(el("button", { type: "button", "class": "primary" }, label), "click", function () {
+      if (capability) {
+        capability.save({ filename: name, data: text }).then(function () { closeModal(); if (onSaved) onSaved(); }, function (err) {
+          if (cancelled(err)) note.textContent = "Save canceled.";
+          else copyInstead("Saving isn't available here.");
+        });
+        return;
+      }
       if (canShare) {
         window.navigator.share({ files: [file] }).then(function () { closeModal(); if (onSaved) onSaved(); }, function (err) {
           if (!cancelled(err)) copyInstead("Saving isn't available here.");
@@ -1657,11 +1664,12 @@ function manualSaveDialog(name, text, mime, onSaved) {
 // to copy; nothing was saved yet).
 // Rejects on cancel or failure. A frame or a phone can't be trusted with a plain download, so
 // after the file picker it shows the save box: a Save button (the share sheet on a phone, a
-// download elsewhere) with the copy option folded under it. `onSaved` runs if that button's
-// share sheet completes.
+// download elsewhere) with the copy option folded under it. With the Claude downloads
+// capability the same box shows, and its Save button calls the capability. `onSaved` runs
+// when that save completes.
 function saveFile(name, text, mime, desc, ext, onSaved) {
   return downloadsReady.then(function (d) {
-    if (d) return d.save({ filename: name, data: text }).then(function () { return "saved"; });
+    if (d) { manualSaveDialog(name, text, mime, onSaved, d); return "manual"; }
     var unreliable = isFramed() || isMobileDevice();
     function fallback() {
       if (unreliable) { manualSaveDialog(name, text, mime, onSaved); return "manual"; }
