@@ -1211,7 +1211,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.10.6";
+var APP_VERSION = "0.10.7";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -3469,8 +3469,7 @@ function exportQuestForClient(p, opts) {
   var html = renderExportDocument(snapshot);
   var name = exportFileName(p);
   saveFile(name, html, "text/html", "Sidequest export", ".html").then(function (r) {
-    if (r === "denied") notify(NO_SAVE_PERMISSION);
-    else if (r !== "manual") notify("Exported " + p.name + ".");
+    if (r !== "manual") notify("Exported " + p.name + ".");
   }).catch(function (err) {
     notify(err && (err.code === "declined" || err.name === "AbortError") ? "Export canceled." : "The export could not be saved.");
   });
@@ -4933,7 +4932,6 @@ try {
     downloadsReady = window.claude.use("downloads").then(function (d) { downloads = d; return d; }).catch(function () { return null; });
   }
 } catch (e) { /* unavailable */ }
-var NO_SAVE_PERMISSION = "This published copy was not given permission to save files. Publish it again with the downloads capability turned on.";
 function isFramed() {
   try { return window.parent !== window.self; } catch (e) { return true; }
 }
@@ -4967,14 +4965,13 @@ function manualSaveDialog(name, text) {
 }
 // Hands the viewer a file. Resolves "saved" (a verified save), "downloaded" (a top-level
 // download, which the browser gives no way to confirm), "manual" (a dialog now shows the text
-// to copy; nothing was saved yet) or "denied" (a Claude copy without the downloads capability).
+// to copy; nothing was saved yet).
 // Rejects on cancel or failure. A frame or a phone can't be trusted with a plain download, so
 // it tries the file picker, then the share sheet, then the copy dialog.
 function saveFile(name, text, mime, desc, ext) {
   return downloadsReady.then(function (d) {
     if (d) return d.save({ filename: name, data: text }).then(function () { return "saved"; });
     var framed = isFramed(), unreliable = framed || isMobileDevice();
-    if (inClaude() && framed) return "denied";
     function viaShare() {
       var file;
       try { file = new window.File([text], name, { type: mime }); } catch (e) { file = null; }
@@ -5027,8 +5024,7 @@ function saveBackupFile(msg, onDone) {
   var name = "sidequest-backup-" + iso(TODAY) + ".json", text = backupJSON();
   function saved(note) { state.settings.lastBackup = iso(TODAY); save(); msg.textContent = note; if (onDone) onDone(); }
   saveFile(name, text, "application/json", "Sidequest backup", ".json").then(function (r) {
-    if (r === "denied") msg.textContent = NO_SAVE_PERMISSION;
-    else if (r === "manual") msg.textContent = "Copy the backup from the box and save it as " + name + ". It is not counted as saved until you do.";
+    if (r === "manual") msg.textContent = "Copy the backup from the box and save it as " + name + ". It is not counted as saved until you do.";
     else saved(r === "downloaded" ? "Backup downloaded." : "Backup saved.");
   }).catch(function (err) {
     msg.textContent = err && (err.code === "declined" || err.name === "AbortError") ? "Save canceled." : "The backup could not be saved.";

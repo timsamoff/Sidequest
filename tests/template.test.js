@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.10.6"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.10.7"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -1651,7 +1651,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     ok(k.w.parent !== k.w, "the test can simulate a framed page");
     if (k.w.parent !== k.w) {
       k.tab("settings"); k.click(k.$("saveFile")); await wait();
-      ok(k.$("view").textContent.includes("not given permission to save files") && k.saved().settings.lastBackup === "", "a Claude copy without the downloads capability says so and records nothing");
+      ok(!!k.$("overlay").querySelector("textarea") && !k.$("view").textContent.includes("not given permission") && k.saved().settings.lastBackup === "", "a host with a claude object but no downloads capability gets the copy dialog and records nothing");
     }
   }
 }
