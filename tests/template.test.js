@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.10.7"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.10.8"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -1615,6 +1615,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
       k.tab("settings"); k.click(k.$("saveFile")); await wait();
       const box = k.$("overlay").querySelector("textarea");
       ok(!k.$("overlay").hidden && !!box && JSON.parse(box.value).tasks.length === 24, "in a frame with no way to save, a dialog shows the backup text to copy");
+      ok(!!k.btn(k.$("overlay"), "Download file") && !!k.$("overlay").querySelector("details") && !k.$("overlay").querySelector("details").open, "the dialog leads with a Download file button and keeps the copy option folded away");
       ok(k.saved().settings.lastBackup === "" && !k.$("view").textContent.includes("Backup saved.") && k.$("view").textContent.includes("not counted as saved"), "and nothing is reported or recorded as saved");
     }
   }

@@ -86,7 +86,7 @@ export var AFFIRMATIONS = [
   "Be ever a student.",
   "Seek what thou dost not yet know.",
   "Bend with the wind.",
-  "Welcome the changing tide",
+  "Welcome the changing tide.",
   "Welcome counsel.",
   "Let good feedback sharpen thy blade.",
   "Set thy tasks in their rightful order.",

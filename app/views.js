@@ -1609,22 +1609,35 @@ function isMobileDevice() {
 }
 function cancelled(err) { return !!err && (err.code === "declined" || err.name === "AbortError"); }
 // Shows the file's text with a Copy button, for a frame where nothing else can hand over a file.
-function manualSaveDialog(name, text) {
+function manualSaveDialog(name, text, mime) {
   openModal("Save " + name, function (body) {
-    body.appendChild(el("p", { "class": "hint first" }, "This page can't save files directly. Copy the text below, paste it into a new text file, and save it as " + name + "."));
-    var box = el("textarea", { readonly: "readonly", rows: "10", "aria-label": name });
-    box.value = text; body.appendChild(box);
+    body.appendChild(el("p", { "class": "hint first" }, "Choose Download to save " + name + ". If nothing downloads, open the copy option below."));
     var note = el("p", { "class": "hint" }, "");
-    var acts = el("div", { "class": "actions" });
-    acts.appendChild(on(el("button", { type: "button", "class": "primary" }, "Copy"), "click", function () {
-      function done(ok) { note.textContent = ok ? "Copied." : "Select the text and copy it."; }
+    var dl = on(el("button", { type: "button", "class": "primary" }, "Download file"), "click", function () {
+      try {
+        var url = URL.createObjectURL(new Blob([text], { type: mime })), a = el("a", { href: url, download: name });
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        note.textContent = "If nothing downloaded, copy the text below instead.";
+      } catch (e) { note.textContent = "Download isn't available here. Copy the text below instead."; }
+    });
+    var acts = el("div", { "class": "actions" }); acts.appendChild(dl); body.appendChild(acts); body.appendChild(note);
+    var more = el("details", { style: "margin-top:var(--space-16)" });
+    more.appendChild(el("summary", null, "Download didn't work? Copy the text instead"));
+    more.appendChild(el("p", { "class": "hint" }, "Copy the text, paste it into a new text file, and save it as " + name + "."));
+    var box = el("textarea", { readonly: "readonly", rows: "8", "aria-label": name, style: "margin-top:var(--space-10)" });
+    box.value = text; more.appendChild(box);
+    var copyNote = el("p", { "class": "hint" }, "");
+    var copyActs = el("div", { "class": "actions" });
+    copyActs.appendChild(on(el("button", { type: "button" }, "Copy"), "click", function () {
+      function done(ok) { copyNote.textContent = ok ? "Copied." : "Select the text and copy it."; }
       box.focus(); box.select();
       try {
         if (window.navigator.clipboard && window.navigator.clipboard.writeText) { window.navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); }); return; }
         done(document.execCommand("copy"));
       } catch (e) { done(false); }
     }));
-    body.appendChild(acts); body.appendChild(note);
+    more.appendChild(copyActs); more.appendChild(copyNote); body.appendChild(more);
   });
 }
 // Hands the viewer a file. Resolves "saved" (a verified save), "downloaded" (a top-level
@@ -1642,10 +1655,10 @@ function saveFile(name, text, mime, desc, ext) {
       if (unreliable && file && window.navigator.share && window.navigator.canShare && window.navigator.canShare({ files: [file] })) {
         return window.navigator.share({ files: [file] }).then(function () { return "saved"; }, function (err) {
           if (cancelled(err)) throw err;
-          manualSaveDialog(name, text); return "manual";
+          manualSaveDialog(name, text, mime); return "manual";
         });
       }
-      if (unreliable) { manualSaveDialog(name, text); return "manual"; }
+      if (unreliable) { manualSaveDialog(name, text, mime); return "manual"; }
       var blob = new Blob([text], { type: mime }), url = URL.createObjectURL(blob);
       var a = el("a", { href: url, download: name });
       document.body.appendChild(a); a.click(); a.remove();
@@ -1688,7 +1701,7 @@ function saveBackupFile(msg, onDone) {
   var name = "sidequest-backup-" + iso(TODAY) + ".json", text = backupJSON();
   function saved(note) { state.settings.lastBackup = iso(TODAY); save(); msg.textContent = note; if (onDone) onDone(); }
   saveFile(name, text, "application/json", "Sidequest backup", ".json").then(function (r) {
-    if (r === "manual") msg.textContent = "Copy the backup from the box and save it as " + name + ". It is not counted as saved until you do.";
+    if (r === "manual") msg.textContent = "Use Download or Copy in the box to save " + name + ". It is not counted as saved here.";
     else saved(r === "downloaded" ? "Backup downloaded." : "Backup saved.");
   }).catch(function (err) {
     msg.textContent = err && (err.code === "declined" || err.name === "AbortError") ? "Save canceled." : "The backup could not be saved.";
