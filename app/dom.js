@@ -134,8 +134,17 @@ export function notify(msg, undo) {
   }
   toastTimer = setTimeout(function () { t.innerHTML = ""; }, undo ? 7000 : 4200);
 }
-// scrollIntoView also moves a host page around a frame, where scrollTo inside the frame does nothing.
+// Navigation only. A framed copy scrolls the host page, not this window, so every
+// scroller is zeroed, the app's top is scrolled into view, and it repeats after paint.
 export function scrollTop() {
-  try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
-  try { if (document.body && typeof document.body.scrollIntoView === "function") document.body.scrollIntoView(true); } catch (e) { /* ignore */ }
+  function reset() {
+    try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
+    try { document.documentElement.scrollTop = 0; if (document.body) document.body.scrollTop = 0; } catch (e) { /* ignore */ }
+    try {
+      var top = document.querySelector(".app") || document.body;
+      if (top && typeof top.scrollIntoView === "function") top.scrollIntoView(true);
+    } catch (e) { /* ignore */ }
+  }
+  reset();
+  try { if (typeof window.requestAnimationFrame === "function") window.requestAnimationFrame(reset); } catch (e) { /* ignore */ }
 }

@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.10.12";
+export var APP_VERSION = "0.10.13";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -463,6 +463,35 @@ export function nextAffirmationIndex(count) {
   // reload with no edits re-reads the old bucket and pops the same quote again.
   try { window.localStorage.setItem(KEY2, JSON.stringify(state)); } catch (e) { /* ignore */ }
   return next;
+}
+// Hosted copies keep the bucket in its own db document, outside state/main, so a draw
+// never moves the sync stamp and survives a relaunch where local storage does not.
+// Resolves a quote index; with no db (or a slow one) it is the plain local draw above.
+export function pickAffirmation(count) {
+  return new Promise(function (resolve) {
+    var settled = false, timer = null, home = window;
+    // A page that was swapped out (a test harness) must not draw into the new page's storage.
+    function draw() { return window === home ? nextAffirmationIndex(count) : 0; }
+    function finish(n) { if (settled) return; settled = true; if (timer) clearTimeout(timer); resolve(n); }
+    timer = setTimeout(function () { if (!settled) finish(draw()); }, 1500);
+    getDb().then(function (db) {
+      if (settled) return;
+      if (!db) { finish(draw()); return; }
+      return db.doc("meta/quotes").get().then(function (snap) {
+        if (settled || window !== home) return;
+        var data = snap.exists ? snap.data() : null;
+        if (data && Array.isArray(data.bucket)) {
+          var seen = {};
+          state.settings.affirmationBucket = data.bucket.filter(function (n) {
+            if (typeof n !== "number" || n % 1 !== 0 || n < 0 || n >= count || seen[n]) return false;
+            seen[n] = true; return true;
+          });
+        }
+        finish(draw());
+        try { db.doc("meta/quotes").set({ bucket: state.settings.affirmationBucket }).catch(function () { /* ignore */ }); } catch (e) { /* ignore */ }
+      });
+    }).catch(function () { finish(draw()); });
+  });
 }
 // Stamps a quest as touched today when its own record or its tasks differ from the last saved copy (history and slip-undo data do not count).
 function touchQuests() {

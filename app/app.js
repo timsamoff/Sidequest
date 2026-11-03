@@ -1,4 +1,4 @@
-import { state, ui, save, saveUI, changed, autoVault, purgeOldVault, APP_NAME, loadFromDbIfAvailable, checkForAppUpdate, nextAffirmationIndex } from "./state.js";
+import { state, ui, save, saveUI, changed, autoVault, purgeOldVault, APP_NAME, loadFromDbIfAvailable, checkForAppUpdate, pickAffirmation } from "./state.js";
 import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest } from "./model.js";
 import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline, playSfx } from "./dom.js";
 import { lateTasks } from "./model.js";
@@ -187,7 +187,7 @@ export var cancelTutorial = stopTutorial;
 // Plays the launch sequence again on demand (after a backup restore).
 export function replaySplash() {
   cancelSplash();
-  cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio, nextAffirmationIndex) || cancelSplash;
+  cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio, pickAffirmation) || cancelSplash;
 }
 
 // Deferred one microtask so the whole import cycle (state.js etc.) finishes evaluating first.
@@ -202,7 +202,7 @@ Promise.resolve().then(function () {
 
   // Decorative only -- the app has already rendered above.
   // The quote bucket is saved to local storage only, never the db or sync stamp.
-  cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio, nextAffirmationIndex) || cancelSplash;
+  cancelSplash = playSplash(state.settings.showSplash, undefined, state.settings.audio, pickAffirmation) || cancelSplash;
   // Checked after first paint -- no-op on the web app, real on a published artifact with db.
   var dbLoaded = loadFromDbIfAvailable();
   dbLoaded.then(function (swapped) {

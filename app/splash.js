@@ -206,7 +206,7 @@ function schedule(pairs) {
 // Plays the splash sequence, then hides the overlay and calls done() once the
 // fade-out finishes. No-op if showSplash is off or the element isn't present.
 // `pickIndex`, given AFFIRMATIONS.length, returns which quote to show -- callers
-// pass a shuffled-bucket picker (see state.js's nextAffirmationIndex) so quotes
+// pass a shuffled-bucket picker (state.js's pickAffirmation, which may return a promise) so quotes
 // don't repeat until the whole list has shown; defaults to plain random.
 export function playSplash(showSplash, done, audio, pickIndex) {
   var root = $("splash");
@@ -221,7 +221,9 @@ export function playSplash(showSplash, done, audio, pickIndex) {
 
   var textEl = $("splashText");
   var pick = typeof pickIndex === "function" ? pickIndex : function (n) { return Math.floor(Math.random() * n); };
-  textEl.textContent = AFFIRMATIONS[pick(AFFIRMATIONS.length)];
+  var picked = pick(AFFIRMATIONS.length);
+  if (picked && typeof picked.then === "function") { textEl.textContent = ""; picked.then(function (i) { textEl.textContent = AFFIRMATIONS[i]; }); }
+  else textEl.textContent = AFFIRMATIONS[picked];
 
   // Forces a layout so the "undrawn" state paints before "drawn" is added.
   // eslint-disable-next-line no-unused-expressions

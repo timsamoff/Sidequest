@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.10.12"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.10.13"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2697,6 +2697,34 @@ async function exportClick(k, projectName) {
     const k = kit(await mk({ settings: { hideWelcome: true, tutorialDone: false, showSplash: false } }, f.claude)); await wait();
     ok(!!k.d.querySelector(".tutorial"), "a truly new user with an empty db still gets the tutorial");
   }
+}
+// Hosted launch quotes: the shuffled bucket lives in its own db document, so it survives a relaunch with cleared local storage and never moves the sync stamp.
+{
+  const wait = (ms) => new Promise(r => setTimeout(r, ms || 90));
+  const store = {};
+  const claude = { use: (n) => Promise.resolve(n === "db" ? { doc: (p) => ({
+    get: () => new Promise(r => setTimeout(() => r({ exists: p in store, data: () => store[p] }), 4)),
+    set: (d) => new Promise(r => setTimeout(() => { store[p] = JSON.parse(JSON.stringify(d)); r(); }, 4)) }) } : null) };
+  const { AFFIRMATIONS } = await import("../app/splash.js");
+  store["meta/quotes"] = { bucket: [3, 5] };
+  const launch = async () => { const k = kit(await mk({ settings: { showSplash: true } }, claude)); await wait(); return k.$("splashText").textContent; };
+  const first = await launch(), afterFirst = JSON.stringify(store["meta/quotes"].bucket);
+  const second = await launch(), afterSecond = JSON.stringify(store["meta/quotes"].bucket);
+  ok(first === AFFIRMATIONS[5] && afterFirst === "[3]", "a hosted launch draws from the db's bucket, not local storage, and saves what is left (" + afterFirst + ")");
+  ok(second === AFFIRMATIONS[3] && afterSecond === "[]", "the next launch, with local storage cleared, takes the next quote in the same cycle");
+  await launch();
+  ok(store["meta/quotes"].bucket.length === AFFIRMATIONS.length - 1, "then a fresh shuffled cycle starts");
+  ok(Object.keys(store["meta/quotes"]).join() === "bucket", "the quote document holds only the bucket, no sync stamp");
+}
+// scrollTop zeroes every scroller, scrolls the app's top into view, and repeats after paint.
+{
+  const k = kit(await mk());
+  const calls = [];
+  k.w.scrollTo = () => calls.push("scrollTo");
+  const app = k.d.querySelector(".app"); app.scrollIntoView = () => calls.push("into-view");
+  k.tab("projects"); await new Promise(r => setTimeout(r, 60));
+  ok(calls.includes("scrollTo") && calls.includes("into-view"), "switching pages scrolls the window and the app's top into view");
+  ok(calls.filter(c => c === "scrollTo").length >= 2, "and repeats the reset after the page has painted");
 }
 // Quest Giver Export asks which letterhead sides to include.
 {
