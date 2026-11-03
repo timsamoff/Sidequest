@@ -76,6 +76,7 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
   border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface);
 }
 .helpitem { margin-top: var(--space-10); }
+.helpitem > summary .helpcount { font-weight: 400; color: var(--muted); font-size: var(--text-sm); }
 .helpitem > summary { padding: var(--space-12) var(--space-14); font-weight: 600; cursor: pointer; color: var(--ink); font-size: var(--text-100); }
 .hbody { padding: 0 var(--space-14) var(--space-12); }
 .hbody ul { margin: 0; padding-left: 1.2rem; }

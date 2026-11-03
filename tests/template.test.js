@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.10.14"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.10.15"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -302,8 +302,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
-  const sections = ["How Sidequest works", "Finding your way around", "The quest lifecycle", "Today page", "Quests page", "Inside a quest", "Quest Giver and Quest links", "A quest’s Schedule and Timeline", "Tasks page", "Timeline page", "Workshop page", "Vault page", "Options page"];
-  ok(titles.join() === sections.join(), "the Field guide has the thirteen sections of the rewrite, in order (" + titles.join(", ") + ")");
+  const sections = ["How Sidequest works", "Terms", "Finding your way around", "The quest lifecycle", "Today page", "Quests page", "Inside a quest", "Quest Giver and Quest links", "A quest’s Schedule and Timeline", "Tasks page", "Timeline page", "Workshop page", "Vault page", "Options page"];
+  ok(titles.join() === sections.join(), "the Field guide has the thirteen sections of the rewrite plus Terms, in order (" + titles.join(", ") + ")");
   const helpText = k.$("view").textContent;
   ok(k.d.querySelectorAll("#view .hbody ul ul").length > 0 && k.d.querySelectorAll("#view .hbody ul ul ul").length === 0, "nested bullets in the guide render as nested lists, no deeper than two levels");
   ok(!helpText.includes("Mark done") && !helpText.includes("archive completed tasks") && !helpText.includes("View beside its name") && !helpText.includes("with its circle"), "Help no longer describes buttons and settings that were removed");
@@ -2612,11 +2612,35 @@ async function exportClick(k, projectName) {
   ok(!!f && items().every(d => !d.hidden) && items().filter(d => d.open).length === 1, "the Field guide starts with every section listed and the first one open");
   f.value = "backup"; k.fire(f, "input");
   const shown = items().filter(d => !d.hidden);
-  ok(shown.length > 0 && shown.length < items().length && shown.every(d => d.open && d.textContent.toLowerCase().includes("backup")), "typing narrows the list to sections containing the text and opens them");
+  ok(shown.length > 0 && shown.length < items().length && shown.every(d => d.textContent.toLowerCase().includes("backup")) && shown.some(d => d.open), "typing narrows the list to sections containing the text and opens the strong matches");
   f.value = "zzzzqq"; k.fire(f, "input");
   ok(items().every(d => d.hidden) && k.$("view").textContent.includes("No sections match"), "text that matches nothing says so");
   f.value = ""; k.fire(f, "input");
   ok(items().every(d => !d.hidden) && items().filter(d => d.open).length === 1, "clearing the box brings back the full list with only the first section open");
+}
+{
+  // Terms topic and ranked Field guide search
+  const k = kit(await mk()); k.click(k.$("welcomeDismiss")); k.tab("help");
+  const f = k.$("helpFilter"), items = () => [...k.d.querySelectorAll("#view details.helpitem")];
+  const titlesOf = () => items().map(d => d.querySelector("summary").firstChild.textContent);
+  ok(titlesOf()[1] === "Terms", "the Field guide has a Terms topic, second after How Sidequest works");
+  const { helpTopics } = await import("../app/views.js?run=" + counter);
+  const topics = helpTopics(), titles = topics.map(t => t[0]);
+  const termLines = topics.find(t => t[0] === "Terms")[1];
+  ok(termLines.length === 29 && termLines.every(l => /^\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 29 Terms entries read as a bold term, a definition, and a pointer");
+  ok(termLines.every(l => titles.includes(l.match(/See “([^”]+)”\.$/)[1])), "every Terms pointer names a topic that exists");
+  f.value = "decision"; k.fire(f, "input");
+  ok(titlesOf()[0] === "Terms" && items()[0].open, "a word that is a term puts the Terms topic first and opens it");
+  ok([...items()[0].querySelectorAll("li")].filter(li => !li.hidden).length === 1 && [...items()[0].querySelectorAll("li")].filter(li => !li.hidden)[0].textContent.startsWith("Decision:"), "while searching, the Terms topic shows only the matching entry");
+  ok(!!items()[0].querySelector("summary .helpcount") && items().filter(d => !d.hidden).length > 1, "each match shows a count, and other sections that mention it stay listed");
+  f.value = "quest giver export"; k.fire(f, "input");
+  ok(!items().filter(d => !d.hidden)[0].hidden && titlesOf()[0] === "Terms", "several words match a term that starts with all of them");
+  f.value = "tasks page"; k.fire(f, "input");
+  ok(titlesOf()[0] === "Tasks page" && items()[0].open, "a title match ranks above the Terms topic");
+  f.value = "ideal"; k.fire(f, "input");
+  ok(titlesOf()[0] === "Terms" && items()[0].open && items()[0].querySelector("mark"), "Ideal finds its definition first, opened and highlighted");
+  f.value = ""; k.fire(f, "input");
+  ok(JSON.stringify(titlesOf()) === JSON.stringify(titles) && !k.d.querySelector("#view .helpcount"), "clearing the box restores the authored order and removes the counts");
 }
 {
   // Straight and curly apostrophes match each other, matches are highlighted, and bold text in the guide is blue

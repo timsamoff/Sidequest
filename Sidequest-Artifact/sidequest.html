@@ -196,6 +196,7 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
   border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface);
 }
 .helpitem { margin-top: var(--space-10); }
+.helpitem > summary .helpcount { font-weight: 400; color: var(--muted); font-size: var(--text-sm); }
 .helpitem > summary { padding: var(--space-12) var(--space-14); font-weight: 600; cursor: pointer; color: var(--ink); font-size: var(--text-100); }
 .hbody { padding: 0 var(--space-14) var(--space-12); }
 .hbody ul { margin: 0; padding-left: 1.2rem; }
@@ -1224,7 +1225,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.10.14";
+var APP_VERSION = "0.10.15";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -4526,6 +4527,37 @@ function helpTopics() {
       "**Artifact version:** The Artifact version works in Claude and Muse. When you use Sidequest as an Artifact, your quest data is stored with your account. You can access your quests from the web, the app, or a mobile device where you’re signed in. You need an internet connection.",
       "**Artifact updates:** The Artifact version tells you when an update is available and how to install it without losing any data."
     ]],
+    ["Terms", [
+      "**Active quest:** A promoted quest. Scheduled tasks put it in In progress, otherwise Pending. See “Quests page”.",
+      "**Actual:** Burndown line for tasks you’ve finished. See “Timeline page”.",
+      "**Added badge:** Marks a task added after the quest started. See “Inside a quest”.",
+      "**Adventurer:** Contact information and brandmark for your exports, in Options. See “Options page”.",
+      "**Backlog:** Open tasks with no due date. See “Tasks page”.",
+      "**Bounty:** What a quest pays. It never prints on an export. See “Quest Giver and Quest links”.",
+      "**Candidate quest:** A quest you’re considering but haven’t started. See “Quests page”.",
+      "**Decision:** A question on a step. Answering it closes the step. See “Inside a quest”.",
+      "**Forecast:** Dotted burndown line projecting your finish. See “Timeline page”.",
+      "**Gathering dust:** Badge for an active quest with no recent progress. See “Options page”.",
+      "**Ideal:** Burndown line for the planned pace. See “Timeline page”.",
+      "**Idea:** A Workshop note that isn’t a quest yet. See “Workshop page”.",
+      "**Launch critical:** A task that must finish before launch. These collect under Before you launch. See “Inside a quest”.",
+      "**Make candidate:** Turns an idea into a candidate quest. See “The quest lifecycle”.",
+      "**Milestone:** A dated task marked on the Timeline. See “Inside a quest”.",
+      "**Pin:** Puts a quest shortcut in the sidebar. See “Quests page”.",
+      "**Prepared by and Prepared for:** An export’s letterhead: you, then the Quest Giver. See “Quest Giver and Quest links”.",
+      "**Promote and Demote:** Promote makes a candidate active. Demote reverses it. See “The quest lifecycle”.",
+      "**Quest:** Your project, from idea to finish. See “The quest lifecycle”.",
+      "**Quest Giver:** The client a quest is for. See “Quest Giver and Quest links”.",
+      "**Quest Giver Export:** A read-only page to share with the client. See “Quest Giver and Quest links”.",
+      "**Quest links:** Connections between quests in the same job. See “Quest Giver and Quest links”.",
+      "**Scope:** The amount of work in a quest. The orange line tracks changes. See “Timeline page”.",
+      "**Slip schedule:** Pushes a quest’s incomplete tasks later. You can undo it. See “A quest’s Schedule and Timeline”.",
+      "**Step:** A smaller action within a task. See “Inside a quest”.",
+      "**Stretch of work:** A slice of a quest’s schedule, named Block, Sprint, Iteration, Phase, or Week. See “Options page”.",
+      "**Task:** A piece of work in a quest. See “Inside a quest”.",
+      "**Vault:** Where old ideas and quests are kept. See “Vault page”.",
+      "**Workshop:** Where ideas live. See “Workshop page”."
+    ]],
     ["Finding your way around", [
       "**Search:** Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **x** where the magnifier was to cancel.",
       "**New (+) button:** Use the **+** button to add a candidate quest, task, step, decision, or idea.",
@@ -4644,32 +4676,69 @@ function renderHelp(root) {
   // Curly and straight quotes count as the same, so typing an apostrophe always matches.
   function norm(s) { return s.toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"'); }
   var texts = items.map(function (d) { return norm(d.textContent); });
+  var titles = items.map(function (d) { return norm(d.querySelector("summary").textContent); });
+  var labels = items.map(function (d) { return [].map.call(d.querySelectorAll(".hbody b"), function (b) { return norm(b.textContent); }); });
+  var sums = items.map(function (d) { return d.querySelector("summary"); }), sumOriginals = sums.map(function (x) { return x.textContent; });
   var bodies = items.map(function (d) { return d.querySelector(".hbody"); }), originals = bodies.map(function (b) { return b.innerHTML; });
-  // Wraps each match in a <mark>; a phrase split across bold text still opens the section but is not marked.
-  function highlight(body, q) {
+  function esc(w) { return w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+  // Wraps each matching word in a <mark>; a phrase split across bold text still opens the section but is not marked.
+  function highlight(body, words) {
+    var re = new RegExp(words.slice().sort(function (x, y) { return y.length - x.length; }).map(esc).join("|"), "g");
     var walker = document.createTreeWalker(body, 4), nodes = [], n;
     while ((n = walker.nextNode())) nodes.push(n);
     nodes.forEach(function (node) {
-      var low = norm(node.data), at = low.indexOf(q);
-      if (at < 0) return;
-      var frag = document.createDocumentFragment(), pos = 0;
-      while (at >= 0) {
-        if (at > pos) frag.appendChild(document.createTextNode(node.data.slice(pos, at)));
-        frag.appendChild(el("mark", null, node.data.slice(at, at + q.length)));
-        pos = at + q.length; at = low.indexOf(q, pos);
+      var low = norm(node.data), m, pos = 0, frag = document.createDocumentFragment(), found = false;
+      re.lastIndex = 0;
+      while ((m = re.exec(low))) {
+        if (!m[0]) { re.lastIndex++; continue; }
+        found = true;
+        if (m.index > pos) frag.appendChild(document.createTextNode(node.data.slice(pos, m.index)));
+        frag.appendChild(el("mark", null, node.data.slice(m.index, m.index + m[0].length)));
+        pos = m.index + m[0].length;
       }
+      if (!found) return;
       if (pos < node.data.length) frag.appendChild(document.createTextNode(node.data.slice(pos)));
       node.parentNode.replaceChild(frag, node);
     });
   }
+  function place(order) { order.forEach(function (i) { root.insertBefore(items[i], noMatch); }); }
+  // Every word must appear in a topic. A Terms entry that starts with the whole query ranks first, then a title hit,
+  // then a bold label hit, then the body; only topics with one of the first three open on their own.
+  function score(i, q, words) {
+    var all = words.every(function (w) { return texts[i].indexOf(w) >= 0; });
+    if (!all) return null;
+    var sc = 0, strong = false;
+    if (titles[i] === "terms" && labels[i].some(function (l) { return l === q || l.indexOf(q) === 0; })) { sc += 1000; strong = true; }
+    if (words.every(function (w) { return titles[i].indexOf(w) >= 0; })) { sc += 100; strong = true; }
+    var lab = labels[i].filter(function (l) { return words.every(function (w) { return l.indexOf(w) >= 0; }); }).length;
+    if (lab) { sc += 50 * Math.min(lab, 3); strong = true; }
+    var count = 0, at = texts[i].indexOf(words[0]);
+    while (at >= 0) { count++; at = texts[i].indexOf(words[0], at + words[0].length); }
+    sc += Math.min(count, 20);
+    return { score: sc, strong: strong, count: count };
+  }
   on(filt, "input", function () {
-    var q = norm(filt.value.trim()), any = false;
+    var q = norm(filt.value.trim()), words = q ? q.split(/\s+/) : [], any = false, ranked = [];
     items.forEach(function (d, i) {
-      var hit = !q || texts[i].indexOf(q) >= 0;
-      d.hidden = !hit;
-      bodies[i].innerHTML = originals[i];
-      if (q) { if (hit) { d.open = true; any = true; highlight(bodies[i], q); } } else d.open = i === 0;
+      bodies[i].innerHTML = originals[i]; sums[i].textContent = sumOriginals[i];
+      var r = q ? score(i, q, words) : null;
+      d.hidden = !!q && !r;
+      if (q && r) ranked.push({ i: i, r: r });
     });
+    if (!q) { place(items.map(function (d, i) { return i; })); items.forEach(function (d, i) { d.open = i === 0; }); }
+    else {
+      ranked.sort(function (x, y) { return y.r.score - x.r.score || x.i - y.i; });
+      any = ranked.length > 0;
+      var anyStrong = ranked.some(function (x) { return x.r.strong; });
+      place(ranked.map(function (x) { return x.i; }).concat(items.map(function (d, i) { return i; }).filter(function (i) { return items[i].hidden; })));
+      ranked.forEach(function (x, k) {
+        items[x.i].open = x.r.strong || (!anyStrong && k === 0);
+        highlight(bodies[x.i], words);
+        // The Terms list is long, so only its matching entries stay while searching.
+        if (titles[x.i] === "terms") [].forEach.call(bodies[x.i].querySelectorAll("li"), function (li) { var t = norm(li.textContent); li.hidden = !words.every(function (w) { return t.indexOf(w) >= 0; }); });
+        sums[x.i].appendChild(el("span", { "class": "helpcount" }, " (" + x.r.count + (x.r.count === 1 ? " match)" : " matches)")));
+      });
+    }
     noMatch.hidden = !q || any;
     noMatch.textContent = q && !any ? "No sections match “" + filt.value.trim() + "”." : "";
   });
