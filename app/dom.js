@@ -134,4 +134,8 @@ export function notify(msg, undo) {
   }
   toastTimer = setTimeout(function () { t.innerHTML = ""; }, undo ? 7000 : 4200);
 }
-export function scrollTop() { try { window.scrollTo(0, 0); } catch (e) { /* ignore */ } }
+// scrollIntoView also moves a host page around a frame, where scrollTo inside the frame does nothing.
+export function scrollTop() {
+  try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
+  try { if (document.body && typeof document.body.scrollIntoView === "function") document.body.scrollIntoView(true); } catch (e) { /* ignore */ }
+}

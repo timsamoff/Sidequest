@@ -103,7 +103,7 @@ export function openSearch(focusMain) {
   if (ui.view !== "search") { ui.prev = ui.view; ui.view = "search"; ui.detail = false; renderAll(); scrollTop(); }
   if (focusMain) { var m = $("searchMain"); if (m) m.focus(); }
 }
-export function closeSearch() { setQuery("", ""); ui.view = ui.prev || "today"; if (ui.view === "search") ui.view = "today"; renderAll(); }
+export function closeSearch() { setQuery("", ""); ui.view = ui.prev || "today"; if (ui.view === "search") ui.view = "today"; renderAll(); scrollTop(); }
 export function firstResult() { return searchFlat[0] || null; }
 export function wireSearchInput(inp, from) {
   on(inp, "input", function () {

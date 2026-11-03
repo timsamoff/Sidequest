@@ -893,7 +893,11 @@ function notify(msg, undo) {
   }
   toastTimer = setTimeout(function () { t.innerHTML = ""; }, undo ? 7000 : 4200);
 }
-function scrollTop() { try { window.scrollTo(0, 0); } catch (e) { /* ignore */ } }
+// scrollIntoView also moves a host page around a frame, where scrollTo inside the frame does nothing.
+function scrollTop() {
+  try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
+  try { if (document.body && typeof document.body.scrollIntoView === "function") document.body.scrollIntoView(true); } catch (e) { /* ignore */ }
+}
 
 
 // ---- model.js ----
@@ -1211,7 +1215,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.10.11";
+var APP_VERSION = "0.10.12";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -2721,7 +2725,7 @@ function openSearch(focusMain) {
   if (ui.view !== "search") { ui.prev = ui.view; ui.view = "search"; ui.detail = false; renderAll(); scrollTop(); }
   if (focusMain) { var m = $("searchMain"); if (m) m.focus(); }
 }
-function closeSearch() { setQuery("", ""); ui.view = ui.prev || "today"; if (ui.view === "search") ui.view = "today"; renderAll(); }
+function closeSearch() { setQuery("", ""); ui.view = ui.prev || "today"; if (ui.view === "search") ui.view = "today"; renderAll(); scrollTop(); }
 function firstResult() { return searchFlat[0] || null; }
 function wireSearchInput(inp, from) {
   on(inp, "input", function () {
