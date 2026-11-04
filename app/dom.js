@@ -98,7 +98,8 @@ export function pencilButton(label, title, onClick) {
 export function editInline(display, opts) {
   var input = el("input", { type: "text", "class": "inlineedit", "aria-label": opts.label, maxlength: String(opts.max || 200), autocomplete: "off" });
   input.value = opts.value();
-  input.style.font = window.getComputedStyle(display).font;
+  var cs = window.getComputedStyle(display);
+  ["fontFamily", "fontSize", "fontWeight", "fontStyle", "lineHeight", "letterSpacing"].forEach(function (k) { input.style[k] = cs[k]; });
   var finished = false;
   function finish(save) {
     if (finished) return; finished = true;

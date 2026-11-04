@@ -79,6 +79,7 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
         if (f.min !== undefined) inp.setAttribute("min", f.min);
         if (f.max !== undefined) inp.setAttribute("max", f.max);
         if (f.step !== undefined) inp.setAttribute("step", f.step);
+        if (f.type === "number") inp.setAttribute("inputmode", String(f.step).indexOf(".") >= 0 ? "decimal" : "numeric");
       }
       if (f.placeholder) inp.setAttribute("placeholder", f.placeholder);
       if (f.value !== undefined) inp.value = f.value;
@@ -317,7 +318,7 @@ export function slipDialog(p) {
   openModal("Slip " + p.name + "'s schedule", function (body) {
     body.appendChild(el("p", { "class": "hint first" }, "This moves incomplete tasks later by the same number of days. Completed tasks and the Backlog are not affected."));
     var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": "slipDays" }, "Days to slip (1 to 90)"));
-    var inp = el("input", { type: "number", id: "slipDays", min: "1", max: "90", step: "1" }); inp.value = "7"; w.appendChild(inp); body.appendChild(w);
+    var inp = el("input", { type: "number", id: "slipDays", min: "1", max: "90", step: "1", inputmode: "numeric" }); inp.value = "7"; w.appendChild(inp); body.appendChild(w);
     var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push dates later" }, "Push dates later"), "click", function () {

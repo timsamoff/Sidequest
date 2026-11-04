@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.11.2"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.11.3"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -367,7 +367,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk());
   k.tab("schedule"); const sel = k.d.querySelector(".detailpane select.status");
   ok(sel && sel.value === "In progress", "schedule shows the selected sample task");
-  k.tab("settings"); ok(k.d.getElementById("set-word").value === "Sprint" && k.$("view").textContent.includes("days per Sprint"), "Settings show the Sprint vocabulary");
+  k.tab("settings"); ok(k.d.getElementById("set-word").value === "Sprint" && k.$("view").textContent.includes("days per sprint"), "Settings show the Sprint vocabulary");
   ok(!k.d.getElementById("set-start"), "Settings no longer has a default-start-date field");
   ok(k.d.querySelector("#view .about").textContent.includes("© Tim Samoff"), "About keeps the credit");
   // completing a sample task marks it Completed but keeps it visible (no archiving)
@@ -2627,7 +2627,7 @@ async function exportClick(k, projectName) {
   const { helpTopics } = await import("../app/views.js?run=" + counter);
   const topics = helpTopics(), titles = topics.map(t => t[0]);
   const termLines = topics.find(t => t[0] === "Terms")[1];
-  ok(termLines.length === 32 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 32 Terms entries read as a bold term, a definition, and a pointer");
+  ok(termLines.length === 33 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 33 Terms entries read as a bold term, a definition, and a pointer");
   ok(termLines.every(l => titles.includes(l.match(/See “([^”]+)”\.$/)[1])), "every Terms pointer names a topic that exists");
   f.value = "decision"; k.fire(f, "input");
   ok(titlesOf()[0] === "Terms" && items()[0].open, "a word that is a term puts the Terms topic first and opens it");
@@ -2671,7 +2671,7 @@ async function exportClick(k, projectName) {
   k.tab("timeline");
   ok(!!k.d.querySelector("#view .helpq[data-term='task-counts']") && !k.d.querySelector("#view .legend .helpq"), "the Timeline page has a ? beside Task counts and none in the burndown legend");
   k.tab("projects"); k.click([...k.d.querySelectorAll("#view .qlink")].find(b => b.textContent === "Sample App"));
-  ok(["launch-critical", "bounty"].every(id => !!k.d.querySelector("#view .helpq[data-term='" + id + "']")), "a quest page has a ? for Launch critical and Bounty");
+  ok(["before-you-launch", "bounty"].every(id => !!k.d.querySelector("#view .helpq[data-term='" + id + "']")), "a quest page has a ? for Before you launch and Bounty");
 }
 {
   // Straight and curly apostrophes match each other, matches are highlighted, and bold text in the guide is blue

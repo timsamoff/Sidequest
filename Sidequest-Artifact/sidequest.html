@@ -367,7 +367,7 @@ input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin:
 /* prefers-reduced-motion's blanket `animation: none !important` rule already
    covers this -- the icon just jumps straight to reloading instead of spinning. */
 #refreshBtn.spinning svg { animation: spin .6s linear infinite; }
-.toast .toastbtn { margin-left: var(--space-12); background: transparent; border: 1px solid currentColor; color: inherit; min-height: 32px; padding: var(--space-2) var(--space-12); }
+.toast .toastbtn { background: transparent; border: 1px solid currentColor; color: inherit; min-height: 32px; padding: var(--space-2) var(--space-12); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-12); }
 .chipbtn { border-radius: var(--radius-pill); min-height: 36px; padding: var(--space-4) var(--space-14); }
 .chipbtn[aria-pressed="true"] { background: var(--sel); border-color: var(--planned); color: var(--planned); font-weight: 600; }
@@ -521,7 +521,7 @@ svg.chart.nofocusring { outline: none; }
 .modal { width: 100%; max-width: 520px; max-height: calc(100vh - 32px); overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: var(--space-18) var(--space-20) var(--space-20); }
 .mhead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-bottom: var(--space-4); }
 .mhead h2 { margin: 0; }
-.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); background: var(--ink); color: var(--bg); padding: var(--space-10) var(--space-16); border-radius: var(--radius-card); z-index: 60; font-size: var(--text-sm); }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); background: var(--ink); color: var(--bg); padding: var(--space-10) var(--space-16); border-radius: var(--radius-card); z-index: 60; font-size: var(--text-sm); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-12); text-align: left; }
 .toast:empty { display: none; }
 
 /* Confetti sits above everything, including an open modal, but never blocks clicks. */
@@ -867,7 +867,8 @@ function pencilButton(label, title, onClick) {
 function editInline(display, opts) {
   var input = el("input", { type: "text", "class": "inlineedit", "aria-label": opts.label, maxlength: String(opts.max || 200), autocomplete: "off" });
   input.value = opts.value();
-  input.style.font = window.getComputedStyle(display).font;
+  var cs = window.getComputedStyle(display);
+  ["fontFamily", "fontSize", "fontWeight", "fontStyle", "lineHeight", "letterSpacing"].forEach(function (k) { input.style[k] = cs[k]; });
   var finished = false;
   function finish(save) {
     if (finished) return; finished = true;
@@ -1242,7 +1243,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.11.2";
+var APP_VERSION = "0.11.3";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -2890,6 +2891,7 @@ function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
         if (f.min !== undefined) inp.setAttribute("min", f.min);
         if (f.max !== undefined) inp.setAttribute("max", f.max);
         if (f.step !== undefined) inp.setAttribute("step", f.step);
+        if (f.type === "number") inp.setAttribute("inputmode", String(f.step).indexOf(".") >= 0 ? "decimal" : "numeric");
       }
       if (f.placeholder) inp.setAttribute("placeholder", f.placeholder);
       if (f.value !== undefined) inp.value = f.value;
@@ -3128,7 +3130,7 @@ function slipDialog(p) {
   openModal("Slip " + p.name + "'s schedule", function (body) {
     body.appendChild(el("p", { "class": "hint first" }, "This moves incomplete tasks later by the same number of days. Completed tasks and the Backlog are not affected."));
     var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": "slipDays" }, "Days to slip (1 to 90)"));
-    var inp = el("input", { type: "number", id: "slipDays", min: "1", max: "90", step: "1" }); inp.value = "7"; w.appendChild(inp); body.appendChild(w);
+    var inp = el("input", { type: "number", id: "slipDays", min: "1", max: "90", step: "1", inputmode: "numeric" }); inp.value = "7"; w.appendChild(inp); body.appendChild(w);
     var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push dates later" }, "Push dates later"), "click", function () {
@@ -3764,7 +3766,7 @@ function buildDetail(t, inline, readOnly) {
     function shownStart() { return t.start ? t.start : (t.block === 0 ? "" : iso(taskStart(t))); }
     function shownDue() { return t.block === 0 ? "" : iso(taskEnd(t)); }
     var sd = el("input", { type: "date", id: "task-start" }), bd = el("input", { type: "date", id: "task-due" });
-    var ei = el("input", { type: "number", id: "task-est", min: "0", max: "9999", step: "0.25" });
+    var ei = el("input", { type: "number", id: "task-est", min: "0", max: "9999", step: "0.25", inputmode: "decimal" });
     sd.value = shownStart(); bd.value = shownDue(); ei.value = t.est > 0 ? t.est : "";
     function resetDates() { sd.value = shownStart(); bd.value = shownDue(); }
     var questFirst = parseISO(pset(projKey(t)).start);
@@ -3938,7 +3940,7 @@ function linksSection(root, p) {
 // to that quest's tasks -- there's no separate standalone Launch page.
 function launchSection(root, p) {
   var readOnly = !!p.vault;
-  var ha = el("div", { "class": "sechead" }); ha.appendChild(withHelp(el("h2", { "class": "sechead-h", id: "h-checks" }, "Before you launch"), "launch-critical", "Launch critical"));
+  var ha = el("div", { "class": "sechead" }); ha.appendChild(withHelp(el("h2", { "class": "sechead-h", id: "h-checks" }, "Before you launch"), "before-you-launch", "Before you launch"));
   root.appendChild(ha);
   var items = launchItems(p.id);
   var n = items.filter(function (t) { return t.status === "Completed"; }).length;
@@ -4220,7 +4222,7 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
     function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
     var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
     var pd = el("input", { type: "date", id: "proj-due" }); pd.value = p.due;
-    var pl = el("input", { type: "number", id: "proj-days", min: "1", max: "90", step: "1" }); pl.value = eff.days;
+    var pl = el("input", { type: "number", id: "proj-days", min: "1", max: "90", step: "1", inputmode: "numeric" }); pl.value = eff.days;
     function applyOwn() {
       var sv = ps.value, lv = parseInt(pl.value, 10);
       if (!isISO(sv)) { ps.value = eff.start; smsg.textContent = "Enter a valid start date."; return; }
@@ -4230,7 +4232,7 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
     // "blur", not "change" -- a date input fires "change" per segment while typing.
     on(ps, "blur", applyOwn); on(pl, "blur", applyOwn);
     on(pd, "blur", function () { p.due = isISO(pd.value) ? pd.value : ""; changed(); notify(p.due ? "Due date saved." : "Due date cleared."); });
-    sfield("proj-start", "Start date", ps); sfield("proj-due", "Due date", pd); sfield("proj-days", "Days per " + wd(), pl);
+    sfield("proj-start", "Start date", ps); sfield("proj-due", "Due date", pd); sfield("proj-days", "Days per " + wd().toLowerCase(), pl);
     host.appendChild(sg); host.appendChild(smsg);
   }
 }
@@ -4479,7 +4481,8 @@ function restoreEntry(e) {
   if (e.kind === "quest") {
     state.tasks.forEach(function (t) { if (t.questId === e.item.id && t.vault) t.vault = null; });
   }
-  changed(); notify(KIND_LABEL[e.kind] + " restored.");
+  var where = e.kind === "idea" ? "the Workshop" : e.item.status === "candidate" ? "Candidate quests" : "the Quests page";
+  changed(); notify(KIND_LABEL[e.kind] + " restored to " + where + ".");
 }
 function deleteForever(e) {
   var extra = e.kind === "task" ? " Its steps also stop counting in the burndown and on the launch checklist." : "";
@@ -4552,7 +4555,7 @@ function helpTerm(id) {
 function openTermHelp(id) {
   var t = helpTerm(id); if (!t) return;
   openModal(t.name, function (body) {
-    body.appendChild(el("p", { "class": "first" }, t.text));
+    var tp = el("p", { "class": "first" }); tp.appendChild(helpMarkup(t.text)); body.appendChild(tp);
     var acts = el("div", { "class": "actions" });
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "termMore", title: "Open “" + t.topic + "” in the Field guide" }, "Read more in the Field guide"), "click", function () { closeModal(); ui.helpTopic = t.topic; go("help"); }));
     body.appendChild(acts);
@@ -4568,7 +4571,7 @@ function helpTopics() {
       "**Artifact updates:** The Artifact version tells you when an update is available and how to install it without losing any data."
     ]],
     ["Terms", [
-      "{#active-quest}**Active quest:** A quest that has been promoted from a candidate. If it has scheduled tasks, it appears in In progress. Otherwise, it appears in Pending. See “Quests page”.",
+      "{#active-quest}**Active quest:** A quest that has been promoted from a candidate. If it has scheduled tasks, it appears in the **In progress** section. Otherwise, it appears in the **Pending** section. See “Quests page”.",
       "{#actual}**Actual:** The burndown line showing the tasks you have left. See “Timeline page”.",
       "{#badge-added}**Added badge:** Marks a task added after the quest started. See “Inside a quest”.",
       "{#adventurer}**Adventurer:** Your contact information and brandmark, used on exports. See “Options page”.",
@@ -4579,15 +4582,16 @@ function helpTopics() {
       "{#forecast}**Forecast:** The dotted burndown line estimating when you’ll finish. See “Timeline page”.",
       "{#gathering-dust}**Gathering dust:** A badge for an active quest nobody has changed for a while. See “Options page”.",
       "{#ideal}**Ideal:** The burndown line showing your planned pace. See “Timeline page”.",
-      "{#idea}**Idea:** A note in the Workshop that hasn’t become a quest. See “Workshop page”.",
+      "{#idea}**Idea:** A note in the **Workshop** that hasn’t become a quest. See “Workshop page”.",
       "{#in-progress}**In progress:** An active quest with at least one incomplete task that has a due date. See “Quests page”.",
-      "{#launch-critical}**Launch critical:** A task that must be completed before launch. These tasks are grouped under Before you launch. See “Inside a quest”.",
+      "{#launch-critical}**Launch critical:** A task that must be completed before launch. These tasks are grouped in the **Before you launch** section. See “Inside a quest”.",
+      "{#before-you-launch}**Before you launch:** The section that lists a quest’s launch critical tasks, the ones that must be completed before launch. See “Inside a quest”.",
       "{#make-candidate}**Make candidate:** Turns an idea into a candidate quest. See “The quest lifecycle”.",
-      "{#milestone}**Milestone:** A task with a date that appears on the Timeline. See “Inside a quest”.",
+      "{#milestone}**Milestone:** A task with a date that appears on the **Timeline**. See “Inside a quest”.",
       "{#pending}**Pending:** An active quest with no incomplete tasks that have due dates. See “Quests page”.",
       "{#pin}**Pin:** Adds a shortcut to a quest in the sidebar. See “Quests page”.",
       "{#prepared}**Prepared by and Prepared for:** The export’s letterhead, showing your information first and the Quest Giver’s second. See “Quest Giver and Quest links”.",
-      "{#promote-demote}**Promote and Demote:** Promote moves a candidate quest to active. Demote moves it back to candidate. See “The quest lifecycle”.",
+      "{#promote-demote}**Promote and Demote:** **Promote** moves a candidate quest to active. **Demote** moves it back to candidate. See “The quest lifecycle”.",
       "{#quest}**Quest:** A project, from the initial idea through completion. See “The quest lifecycle”.",
       "{#quest-giver}**Quest Giver:** The client a quest is for. See “Quest Giver and Quest links”.",
       "{#quest-giver-export}**Quest Giver Export:** A read-only page you can share with a client. See “Quest Giver and Quest links”.",
@@ -4604,8 +4608,8 @@ function helpTopics() {
     ["Finding your way around", [
       "**Search:** Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **x** where the magnifier was to cancel.",
       "**New (+) button:** Use the **+** button to add a candidate quest, task, step, decision, or idea.",
-      "**Main menu:** The main menu (hamburger menu) lists every page in the app.",
-      "**Tab bar (mobile):** On a mobile device, the tab bar holds the main pages. Find the other pages in the main menu.",
+      "**Main menu:** The **Main menu** (hamburger menu) lists every page in the app.",
+      "**Tab bar (mobile):** On a mobile device, the tab bar holds the main pages. Find the other pages in the **Main menu**.",
       "**Undo:** Removing an item or sending it to the **Vault** shows an **Undo** button for a few seconds."
     ]],
     ["The quest lifecycle", [
@@ -4625,14 +4629,14 @@ function helpTopics() {
       "**Completed:** This section lists completed quests.",
       "**Candidate quests:** These are quests you’re considering but aren’t working on. You can demote an active quest back to a candidate quest in the **Quest details**. Before promoting a candidate quest, you can add tasks, steps, and decisions to it.",
       ">A candidate quest keeps the links it had when it was demoted.",
-      "**Pinned quests:** You can pin in progress, pending, and completed quests that are still on the **Quests** page. Pinning places a shortcut to that quest in the sidebar (or main menu in mobile). Completing a quest unpins it automatically. Reopening a formerly pinned quest restores the pin."
+      "**Pinned quests:** You can pin in progress, pending, and completed quests that are still on the **Quests** page. Pinning places a shortcut to that quest in the sidebar (or the **Main menu** on mobile). Completing a quest unpins it automatically. Reopening a formerly pinned quest restores the pin."
     ]],
     ["Inside a quest", [
       "**Quest details:** Tapping a quest title on the **Quests** page opens the quest details for editing.",
       "**Tasks:** You can add tasks with the **+** button or from inside a quest. Tasks can have start and due dates and a time estimate. You can also describe how you’ll know a task is complete.",
       ">Tasks without due dates show a **Backlog** badge. Tasks added after a quest’s start date show an **Added** badge with the date. Even with open steps and decisions, you can close a task.",
       ">Select **Make milestone** to turn a task with a due date into a milestone.",
-      ">Each task goes into its quest’s **stretch of work.** A stretch of work is a period that divides a quest’s schedule. Stretches of work appear on the **Timeline** as gray bands. Tasks appear within each stretch of work and their color shows status: gray-blue for not started, gold for in progress, and green for completed.",
+      ">Each task goes into its quest’s **stretch of work**. A stretch of work is a period that divides a quest’s schedule. Stretches of work appear on the **Timeline** as gray bands. Tasks appear within each stretch of work and their color shows status: gray-blue for not started, gold for in progress, and green for completed.",
       "**Steps:** You can add steps with the **+** button or from inside a task. Steps break a task into smaller actions. Completing all of a task’s steps completes the task.",
       "**Decisions:** Every step within a task can require a decision. Answering an open decision closes the step.",
       "**Before you launch:** Tasks that must be done before a quest can launch go in this section. Selecting **Launch critical** adds a task to this section. This is only an organizational feature and does not otherwise change the task.",
@@ -4659,14 +4663,14 @@ function helpTopics() {
     ["Timeline page", [
       "The **Timeline** page shows the schedules of all open quests. It includes a Gantt chart of open quests and milestones, plus the overall burndown and task counts. A red line shows today’s date when it falls within the displayed schedules.",
       ">The **Burndown** chart shows how many tasks remain in all open quests. The straight **Ideal** line shows the planned rate of progress, and the **Actual** line shows your progress. Adding or removing work changes the amount remaining.",
-      ">The dotted **Forecast** line shows the projected trajectory for completing the remaining work. Hovering over the dot at the end shows the projected completion date. The orange line shows changes in scope. You can tap or drag across the burndown to see dates and remaining tasks.",
+      ">The dotted **Forecast** line shows the projected trajectory for completing the remaining work. Hovering over the dot at the end shows the projected completion date. The orange **Scope** line shows changes in scope. You can tap or drag across the burndown to see dates and remaining tasks.",
       "The **Stats** section displays all remaining and backlogged tasks. The **Task counts** table shows how many tasks remain and tracks changes in scope. Adding a scheduled task raises the scope and deleting one lowers it. Each change shows in the **Scope change** column."
     ]],
     ["Workshop page", [
       "All ideas live here. Use them to think through new quests or prospects. You can either select **Make candidate** to turn an idea into a candidate quest or **Vault** it."
     ]],
     ["Vault page", [
-      "The **Vault** is a place to store ideas and quests you’re no longer actively working with but may want to keep. You can restore or permanently delete vaulted items. You can also choose to have the **Vault** automatically delete old items after a set period."
+      "The **Vault** is a place to store ideas and quests you’re no longer actively working with but may want to keep. You can use **Restore** or **Delete forever** on vaulted items. You can also choose to have the **Vault** automatically delete old items after a set period."
     ]],
     ["Options page", [
       "**Adventurer:** This is where you can add your contact information and brandmark or logo. You can choose whether or not to include it when creating a **Quest Giver Export**.",
@@ -4940,9 +4944,9 @@ function renderSettings(page) {
   var scheduleBox = el("div", { "class": "box", style: "margin-top:10px" });
   var grid = el("div", { "class": "setgrid hinted" });
   function fieldOf(id, label, input, hint, term) { var w = el("div", { "class": "field" }), lab = el("label", { "for": id }, label); if (term) { var lr = el("div", { "class": "labelrow" }); lr.appendChild(lab); lr.appendChild(helpLink(term[0], term[1])); w.appendChild(lr); } else w.appendChild(lab); w.appendChild(input); if (hint) { input.setAttribute("aria-describedby", id + "-hint"); w.appendChild(el("p", { "class": "hint", id: id + "-hint" }, hint)); } grid.appendChild(w); }
-  var da = el("input", { type: "number", id: "set-days", min: "1", max: "30", step: "1" }); da.value = state.days;
+  var da = el("input", { type: "number", id: "set-days", min: "1", max: "30", step: "1", inputmode: "numeric" }); da.value = state.days;
   on(da, "change", function () { var v = parseInt(da.value, 10); if (isNaN(v) || v < 1 || v > 30) { da.value = state.days; msg.textContent = wd() + " length must be from 1 to 30 days."; return; } state.days = v; changed(); notify(wd() + " length saved."); });
-  fieldOf("set-days", "Default days per " + wd(), da);
+  fieldOf("set-days", "Default days per " + wd().toLowerCase(), da);
   var bwSel = el("select", { id: "set-word", "class": "plain" });
   Object.keys(WORDS).forEach(function (k) { var op = el("option", { value: k }, k); if (k === wd()) op.selected = true; bwSel.appendChild(op); });
   on(bwSel, "change", function () { state.settings.blockWord = bwSel.value; changed(); });
@@ -5010,7 +5014,7 @@ function renderSettings(page) {
   root.appendChild(el("h2", null, "Vault"));
   var vaultBox = el("div", { "class": "box", style: "margin-top:10px" });
   var pg = el("div", { "class": "setgrid" });
-  var pw = el("div", { "class": "field" }); pw.appendChild(el("label", { "for": "set-purge" }, "Auto-delete Vaulted items after"));
+  var pw = el("div", { "class": "field" }); pw.appendChild(el("label", { "for": "set-purge" }, "Auto-delete vaulted items after"));
   var ps = el("select", { id: "set-purge", "class": "plain" });
   [[0, "Never"], [7, "7 days"], [30, "30 days"], [60, "60 days"], [90, "90 days"]].forEach(function (o) { var op = el("option", { value: String(o[0]) }, o[1]); if (o[0] === state.settings.vaultPurgeDays) op.selected = true; ps.appendChild(op); });
   on(ps, "change", function () { state.settings.vaultPurgeDays = parseInt(ps.value, 10); changed(); });

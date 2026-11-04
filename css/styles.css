@@ -247,7 +247,7 @@ input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin:
 /* prefers-reduced-motion's blanket `animation: none !important` rule already
    covers this -- the icon just jumps straight to reloading instead of spinning. */
 #refreshBtn.spinning svg { animation: spin .6s linear infinite; }
-.toast .toastbtn { margin-left: var(--space-12); background: transparent; border: 1px solid currentColor; color: inherit; min-height: 32px; padding: var(--space-2) var(--space-12); }
+.toast .toastbtn { background: transparent; border: 1px solid currentColor; color: inherit; min-height: 32px; padding: var(--space-2) var(--space-12); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-12); }
 .chipbtn { border-radius: var(--radius-pill); min-height: 36px; padding: var(--space-4) var(--space-14); }
 .chipbtn[aria-pressed="true"] { background: var(--sel); border-color: var(--planned); color: var(--planned); font-weight: 600; }
@@ -401,7 +401,7 @@ svg.chart.nofocusring { outline: none; }
 .modal { width: 100%; max-width: 520px; max-height: calc(100vh - 32px); overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: var(--space-18) var(--space-20) var(--space-20); }
 .mhead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-bottom: var(--space-4); }
 .mhead h2 { margin: 0; }
-.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); background: var(--ink); color: var(--bg); padding: var(--space-10) var(--space-16); border-radius: var(--radius-card); z-index: 60; font-size: var(--text-sm); }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); background: var(--ink); color: var(--bg); padding: var(--space-10) var(--space-16); border-radius: var(--radius-card); z-index: 60; font-size: var(--text-sm); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-12); text-align: left; }
 .toast:empty { display: none; }
 
 /* Confetti sits above everything, including an open modal, but never blocks clicks. */
