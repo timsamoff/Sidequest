@@ -8,6 +8,14 @@ export function el(tag, attrs, text) {
   return e;
 }
 export function on(node, ev, fn) { node.addEventListener(ev, fn); return node; }
+// A small "?" button (the mark is drawn in CSS, so it never joins its parent's text) that explains one Terms entry. views.js registers what it opens.
+var helpOpener = null;
+export function setHelpOpener(fn) { helpOpener = fn; }
+export function helpLink(id, name) {
+  var b = el("button", { type: "button", "class": "helpq", "data-term": id, "aria-label": "What is " + name + "?", title: "What is " + name + "?" });
+  b.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); if (helpOpener) helpOpener(id); });
+  return b;
+}
 // True when the page is running as a Claude artifact (Claude's own capabilities are present).
 export function inClaude() {
   try { return !!(window.claude && typeof window.claude.use === "function"); } catch (e) { return false; }

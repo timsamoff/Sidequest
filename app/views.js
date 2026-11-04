@@ -9,7 +9,7 @@ import {
   validPage, isPinned, pinPage, unpinPage, questMeta, fmtHours, fmtHoursLong, questEstimate, recordHist, checkpointStep, globalActual,
   findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask, questTasks
 } from "./model.js";
-import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx, moneyInput, formatMoney, inClaude, isHosted } from "./dom.js";
+import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx, moneyInput, formatMoney, inClaude, isHosted, helpLink, setHelpOpener } from "./dom.js";
 import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
 import { playConfetti } from "./confetti.js";
 import { startTutorial } from "./tutorial.js";
@@ -304,7 +304,7 @@ export function renderSchedule(root) {
   o.forEach(function (t) { ul.appendChild(taskRow(t)); });
   lp.appendChild(ul);
   if (bl.length) {
-    lp.appendChild(el("h2", null, "Backlog (" + bl.length + ")"));
+    lp.appendChild(withHelp(el("h2", null, "Backlog (" + bl.length + ")"), "backlog", "Backlog"));
     lp.appendChild(el("p", { "class": "hint" }, "All tasks that don’t have a due date yet."));
     var bul = el("ul", { "class": "tlist", style: "margin-top:10px" });
     bl.forEach(function (t) { bul.appendChild(taskRow(t)); });
@@ -542,7 +542,7 @@ export function linksSection(root, p) {
 // to that quest's tasks -- there's no separate standalone Launch page.
 export function launchSection(root, p) {
   var readOnly = !!p.vault;
-  var ha = el("div", { "class": "sechead" }); ha.appendChild(el("h2", { "class": "sechead-h", id: "h-checks" }, "Before you launch"));
+  var ha = el("div", { "class": "sechead" }); ha.appendChild(withHelp(el("h2", { "class": "sechead-h", id: "h-checks" }, "Before you launch"), "launch-critical", "Launch critical"));
   root.appendChild(ha);
   var items = launchItems(p.id);
   var n = items.filter(function (t) { return t.status === "Completed"; }).length;
@@ -603,15 +603,17 @@ function questRow(r) {
 export function questRowsOutsideProgress(excludeIds) {
   return liveQuests().filter(function (p) { return p.status !== "candidate" && (!excludeIds || excludeIds.indexOf(p.id) < 0); }).map(function (p) { return { id: p.id, key: "quest:" + p.id, name: p.name, meta: questMeta(p), complete: p.status === "complete" }; });
 }
-function questListSection(title, rows, first) {
-  var sec = el("div");
-  sec.appendChild(el("h2", first ? { "class": "first" } : null, title));
+// Puts a "?" button inside a heading, after its text.
+function withHelp(h, id, name) { h.className = (h.className ? h.className + " " : "") + "hasq"; h.appendChild(helpLink(id, name)); return h; }
+function questListSection(title, rows, first, term) {
+  var sec = el("div"), h = el("h2", first ? { "class": "first" } : null, title);
+  sec.appendChild(term ? withHelp(h, term[0], term[1]) : h);
   var ul = el("ul", { "class": "list" });
   rows.forEach(function (r) { ul.appendChild(questRow(r)); });
   sec.appendChild(ul);
   return sec;
 }
-export function pendingSection(rows, first) { return questListSection("Pending", rows, first); }
+export function pendingSection(rows, first) { return questListSection("Pending", rows, first, ["pending", "Pending"]); }
 export function completedSection(rows, first) { return questListSection("Completed", rows, first); }
 // A quest's own lifecycle status decides how much of the page renders.
 // Promotion is in-place -- the same record and id carry through, never a second record.
@@ -748,7 +750,8 @@ export function renderQuestPage(root, id) {
     on(gaddr, "input", function () { p.client.address = gaddr.value.slice(0, 500); save(); });
     gaw.appendChild(gaddr); giverBox.appendChild(gaw);
     var gg2 = el("div", { "class": "setgrid", style: "margin-top:10px" });
-    var gcw = el("div", { "class": "field" }); gcw.appendChild(el("label", { "for": "giver-coin-" + p.id }, "Bounty"));
+    var gcw = el("div", { "class": "field" }), gcl = el("div", { "class": "labelrow" });
+    gcl.appendChild(el("label", { "for": "giver-coin-" + p.id }, "Bounty")); gcl.appendChild(helpLink("bounty", "Bounty")); gcw.appendChild(gcl);
     var gcoin = moneyInput(el("input", { type: "text", id: "giver-coin-" + p.id }), function (n) { p.client.coin = n; save(); }, state.settings.coinFormat);
     gcoin.value = formatMoney(p.client.coin, state.settings.coinFormat);
     gcw.appendChild(gcoin); gg2.appendChild(gcw);
@@ -913,7 +916,7 @@ export function standingBlock() {
   var questIds = order.map(function (g) { return g.questId; });
   if (!order.length) return { node: null, questIds: questIds };
   var wrap = el("div");
-  wrap.appendChild(el("h2", { "class": "first" }, "In progress"));
+  wrap.appendChild(withHelp(el("h2", { "class": "first" }, "In progress"), "in-progress", "In progress"));
   var box = el("div", { "class": "box", style: "margin-top:10px" });
   var ul = el("ul", { "class": "standing" });
   order.forEach(function (g) {
@@ -936,7 +939,7 @@ export function standingBlock() {
 }
 export function candidatesSection(first) {
   var sec = el("div");
-  sec.appendChild(el("h2", first ? { "class": "first" } : null, "Candidate quests"));
+  sec.appendChild(withHelp(el("h2", first ? { "class": "first" } : null, "Candidate quests"), "candidate-quest", "Candidate quest"));
   if (state.settings.wipLimit && activeQuests().length > state.settings.wipLimit) sec.appendChild(el("p", { "class": "hint" }, "You have " + activeQuests().length + " active quests. Your limit is " + state.settings.wipLimit + "."));
   var list = el("ul", { "class": "list" });
   var cs = candidateQuests();
@@ -1022,7 +1025,7 @@ export function renderTimeline(root) {
   });
   mbox.appendChild(ul); root.appendChild(mbox);
   root.appendChild(burnPanel({ wide: true, level: "h2" }));
-  root.appendChild(el("h2", null, "Task counts"));
+  root.appendChild(withHelp(el("h2", null, "Task counts"), "task-counts", "Task counts"));
   var wrap = el("div", { "class": "tablewrap weekly" }); var table = el("table");
   var cps = checkpoints(), ga = globalActual(cps), stepMs = checkpointStep() * DAY;
   var thead = el("thead"); var hr = el("tr"); [stepMs === 7 * DAY ? "Week starting" : "Date", "Planned remaining", "Actual remaining", "Tasks in scope", "Scope change"].forEach(function (h) { hr.appendChild(el("th", null, h)); }); thead.appendChild(hr); table.appendChild(thead);
@@ -1132,7 +1135,7 @@ export function renderVault(root) {
 /* help */
 export function helpMarkup(text) {
   var frag = document.createDocumentFragment();
-  text.split(/(\*\*[^*]+\*\*|\[\[[^\]]+\]\])/).forEach(function (part) {
+  text.replace(/^\{#[a-z-]+\}/, "").split(/(\*\*[^*]+\*\*|\[\[[^\]]+\]\])/).forEach(function (part) {
     if (!part) return;
     if (part.indexOf("**") === 0) frag.appendChild(el("b", null, part.slice(2, -2)));
     else if (part.indexOf("[[") === 0) frag.appendChild(el("kbd", null, part.slice(2, -2)));
@@ -1140,6 +1143,26 @@ export function helpMarkup(text) {
   });
   return frag;
 }
+// A Terms line is "{#id}**Name:** Definition. See “Topic”." The id is what a "?" button points at.
+export function helpTerm(id) {
+  var lines = helpTopics().filter(function (t) { return t[0] === "Terms"; })[0][1], found = null;
+  lines.forEach(function (l) {
+    var m = l.match(/^\{#([a-z-]+)\}\*\*([^*]+):\*\* (.+?) See “([^”]+)”\.$/);
+    if (m && m[1] === id) found = { id: m[1], name: m[2], text: m[3], topic: m[4] };
+  });
+  return found;
+}
+// The "?" modal: the definition, plus a button that opens the Field guide at the topic that explains more.
+function openTermHelp(id) {
+  var t = helpTerm(id); if (!t) return;
+  openModal(t.name, function (body) {
+    body.appendChild(el("p", { "class": "first" }, t.text));
+    var acts = el("div", { "class": "actions" });
+    acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "termMore", title: "Open “" + t.topic + "” in the Field guide" }, "Read more in the Field guide"), "click", function () { closeModal(); ui.helpTopic = t.topic; go("help"); }));
+    body.appendChild(acts);
+  });
+}
+setHelpOpener(openTermHelp);
 export function helpTopics() {
   return [
     ["How Sidequest works", [
@@ -1149,35 +1172,38 @@ export function helpTopics() {
       "**Artifact updates:** The Artifact version tells you when an update is available and how to install it without losing any data."
     ]],
     ["Terms", [
-      "**Active quest:** A promoted quest. Scheduled tasks put it in In progress, otherwise Pending. See “Quests page”.",
-      "**Actual:** Burndown line for tasks you’ve finished. See “Timeline page”.",
-      "**Added badge:** Marks a task added after the quest started. See “Inside a quest”.",
-      "**Adventurer:** Contact information and brandmark for your exports, in Options. See “Options page”.",
-      "**Backlog:** Open tasks with no due date. See “Tasks page”.",
-      "**Bounty:** What a quest pays. It never prints on an export. See “Quest Giver and Quest links”.",
-      "**Candidate quest:** A quest you’re considering but haven’t started. See “Quests page”.",
-      "**Decision:** A question on a step. Answering it closes the step. See “Inside a quest”.",
-      "**Forecast:** Dotted burndown line projecting your finish. See “Timeline page”.",
-      "**Gathering dust:** Badge for an active quest with no recent progress. See “Options page”.",
-      "**Ideal:** Burndown line for the planned pace. See “Timeline page”.",
-      "**Idea:** A Workshop note that isn’t a quest yet. See “Workshop page”.",
-      "**Launch critical:** A task that must finish before launch. These collect under Before you launch. See “Inside a quest”.",
-      "**Make candidate:** Turns an idea into a candidate quest. See “The quest lifecycle”.",
-      "**Milestone:** A dated task marked on the Timeline. See “Inside a quest”.",
-      "**Pin:** Puts a quest shortcut in the sidebar. See “Quests page”.",
-      "**Prepared by and Prepared for:** An export’s letterhead: you, then the Quest Giver. See “Quest Giver and Quest links”.",
-      "**Promote and Demote:** Promote makes a candidate active. Demote reverses it. See “The quest lifecycle”.",
-      "**Quest:** Your project, from idea to finish. See “The quest lifecycle”.",
-      "**Quest Giver:** The client a quest is for. See “Quest Giver and Quest links”.",
-      "**Quest Giver Export:** A read-only page to share with the client. See “Quest Giver and Quest links”.",
-      "**Quest links:** Connections between quests in the same job. See “Quest Giver and Quest links”.",
-      "**Scope:** The amount of work in a quest. The orange line tracks changes. See “Timeline page”.",
-      "**Slip schedule:** Pushes a quest’s incomplete tasks later. You can undo it. See “A quest’s Schedule and Timeline”.",
-      "**Step:** A smaller action within a task. See “Inside a quest”.",
-      "**Stretch of work:** A slice of a quest’s schedule, named Block, Sprint, Iteration, Phase, or Week. See “Options page”.",
-      "**Task:** A piece of work in a quest. See “Inside a quest”.",
-      "**Vault:** Where old ideas and quests are kept. See “Vault page”.",
-      "**Workshop:** Where ideas live. See “Workshop page”."
+      "{#active-quest}**Active quest:** A quest that has been promoted from a candidate. If it has scheduled tasks, it appears in In progress. Otherwise, it appears in Pending. See “Quests page”.",
+      "{#actual}**Actual:** The burndown line showing the tasks you have left. See “Timeline page”.",
+      "{#badge-added}**Added badge:** Marks a task added after the quest started. See “Inside a quest”.",
+      "{#adventurer}**Adventurer:** Your contact information and brandmark, used on exports. See “Options page”.",
+      "{#backlog}**Backlog:** Open tasks without a due date. See “Tasks page”.",
+      "{#bounty}**Bounty:** The amount a quest pays. This does not appear on exports. See “Quest Giver and Quest links”.",
+      "{#candidate-quest}**Candidate quest:** A quest you’re considering but haven’t started. See “Quests page”.",
+      "{#decision}**Decision:** A question attached to a step. Answering it completes the step. See “Inside a quest”.",
+      "{#forecast}**Forecast:** The dotted burndown line estimating when you’ll finish. See “Timeline page”.",
+      "{#gathering-dust}**Gathering dust:** A badge for an active quest nobody has changed for a while. See “Options page”.",
+      "{#ideal}**Ideal:** The burndown line showing your planned pace. See “Timeline page”.",
+      "{#idea}**Idea:** A note in the Workshop that hasn’t become a quest. See “Workshop page”.",
+      "{#in-progress}**In progress:** An active quest with at least one incomplete task that has a due date. See “Quests page”.",
+      "{#launch-critical}**Launch critical:** A task that must be completed before launch. These tasks are grouped under Before you launch. See “Inside a quest”.",
+      "{#make-candidate}**Make candidate:** Turns an idea into a candidate quest. See “The quest lifecycle”.",
+      "{#milestone}**Milestone:** A task with a date that appears on the Timeline. See “Inside a quest”.",
+      "{#pending}**Pending:** An active quest with no incomplete tasks that have due dates. See “Quests page”.",
+      "{#pin}**Pin:** Adds a shortcut to a quest in the sidebar. See “Quests page”.",
+      "{#prepared}**Prepared by and Prepared for:** The export’s letterhead, showing your information first and the Quest Giver’s second. See “Quest Giver and Quest links”.",
+      "{#promote-demote}**Promote and Demote:** Promote moves a candidate quest to active. Demote moves it back to candidate. See “The quest lifecycle”.",
+      "{#quest}**Quest:** A project, from the initial idea through completion. See “The quest lifecycle”.",
+      "{#quest-giver}**Quest Giver:** The client a quest is for. See “Quest Giver and Quest links”.",
+      "{#quest-giver-export}**Quest Giver Export:** A read-only page you can share with a client. See “Quest Giver and Quest links”.",
+      "{#quest-links}**Quest links:** Connections between quests that belong to the same job. See “Quest Giver and Quest links”.",
+      "{#scope}**Scope:** The total amount of work in a quest. The orange line shows when that amount changes. See “Timeline page”.",
+      "{#slip-schedule}**Slip schedule:** Moves a quest’s incomplete tasks to later dates. You can undo this change. See “A quest’s Schedule and Timeline”.",
+      "{#step}**Step:** A smaller action that makes up a task. See “Inside a quest”.",
+      "{#stretch-of-work}**Stretch of work:** A period in a quest’s schedule, labeled Block, Sprint, Iteration, Phase, or Week. See “Options page”.",
+      "{#task}**Task:** A piece of work within a quest. See “Inside a quest”.",
+      "{#task-counts}**Task counts:** A weekly table of tasks in scope, how many remain against the plan, and tasks added or removed. See “Timeline page”.",
+      "{#vault}**Vault:** Where you keep ideas and quests you’re no longer working on. See “Vault page”.",
+      "{#workshop}**Workshop:** Where you keep and develop ideas before turning them into quests. See “Workshop page”."
     ]],
     ["Finding your way around", [
       "**Search:** Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **x** where the magnifier was to cancel.",
@@ -1289,11 +1315,21 @@ export function renderHelp(root) {
         if (!parent) { parent = el("li"); stack[stack.length - 1].appendChild(parent); }
         parent.appendChild(nested); stack.push(nested);
       }
-      var li = el("li"); li.appendChild(helpMarkup(text)); stack[stack.length - 1].appendChild(li);
+      var li = el("li"), tm = text.match(/^\{#([a-z-]+)\}/); if (tm) li.setAttribute("data-term", tm[1]);
+      li.appendChild(helpMarkup(text)); stack[stack.length - 1].appendChild(li);
     });
     body.appendChild(ul); d.appendChild(body); root.appendChild(d); items.push(d);
   });
   var noMatch = el("p", { "class": "hint", role: "status", "aria-live": "polite" }); noMatch.hidden = true; root.appendChild(noMatch);
+  // Arriving from a "?" button: open that one topic and bring it into view.
+  if (ui.helpTopic) {
+    var target = ui.helpTopic; ui.helpTopic = null;
+    items.forEach(function (d) {
+      var hit = d.querySelector("summary").textContent === target;
+      d.open = hit;
+      if (hit) { var sm = d.querySelector("summary"); sm.setAttribute("tabindex", "-1"); window.setTimeout(function () { try { d.scrollIntoView(); sm.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }, 50); }
+    });
+  }
   // Curly and straight quotes count as the same, so typing an apostrophe always matches.
   function norm(s) { return s.toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"'); }
   var texts = items.map(function (d) { return norm(d.textContent); });
@@ -1480,7 +1516,7 @@ export function renderSettings(page) {
   var side = el("aside", { "class": "setside" });
   var root = el("div", { "class": "setmain" });
   split.appendChild(side); split.appendChild(root); page.appendChild(split);
-  side.appendChild(el("h2", { "class": "first" }, "Adventurer"));
+  side.appendChild(withHelp(el("h2", { "class": "first" }, "Adventurer"), "adventurer", "Adventurer"));
   var contactBox = el("div");
   var cg = el("div", { "class": "setgrid" });
   function cfield(key, id, label, type, full) {
@@ -1507,14 +1543,14 @@ export function renderSettings(page) {
   root.appendChild(el("h2", { "class": "setmain-head" }, "Schedule defaults"));
   var scheduleBox = el("div", { "class": "box", style: "margin-top:10px" });
   var grid = el("div", { "class": "setgrid hinted" });
-  function fieldOf(id, label, input, hint) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id }, label)); w.appendChild(input); if (hint) { input.setAttribute("aria-describedby", id + "-hint"); w.appendChild(el("p", { "class": "hint", id: id + "-hint" }, hint)); } grid.appendChild(w); }
+  function fieldOf(id, label, input, hint, term) { var w = el("div", { "class": "field" }), lab = el("label", { "for": id }, label); if (term) { var lr = el("div", { "class": "labelrow" }); lr.appendChild(lab); lr.appendChild(helpLink(term[0], term[1])); w.appendChild(lr); } else w.appendChild(lab); w.appendChild(input); if (hint) { input.setAttribute("aria-describedby", id + "-hint"); w.appendChild(el("p", { "class": "hint", id: id + "-hint" }, hint)); } grid.appendChild(w); }
   var da = el("input", { type: "number", id: "set-days", min: "1", max: "30", step: "1" }); da.value = state.days;
   on(da, "change", function () { var v = parseInt(da.value, 10); if (isNaN(v) || v < 1 || v > 30) { da.value = state.days; msg.textContent = wd() + " length must be from 1 to 30 days."; return; } state.days = v; changed(); notify(wd() + " length saved."); });
   fieldOf("set-days", "Default days per " + wd(), da);
   var bwSel = el("select", { id: "set-word", "class": "plain" });
   Object.keys(WORDS).forEach(function (k) { var op = el("option", { value: k }, k); if (k === wd()) op.selected = true; bwSel.appendChild(op); });
   on(bwSel, "change", function () { state.settings.blockWord = bwSel.value; changed(); });
-  fieldOf("set-word", "Name for each stretch of work", bwSel);
+  fieldOf("set-word", "Name for each stretch of work", bwSel, undefined, ["stretch-of-work", "Stretch of work"]);
   var dustSel = el("select", { id: "set-dust", "class": "plain" });
   [[0, "Never"], [7, "7 days"], [14, "14 days"], [30, "30 days"], [60, "60 days"]].forEach(function (o) { var op = el("option", { value: String(o[0]) }, o[1]); if (o[0] === state.settings.dustDays) op.selected = true; dustSel.appendChild(op); });
   on(dustSel, "change", function () { state.settings.dustDays = parseInt(dustSel.value, 10); changed(); });

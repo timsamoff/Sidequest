@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.10.15"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.11.0"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -307,7 +307,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const helpText = k.$("view").textContent;
   ok(k.d.querySelectorAll("#view .hbody ul ul").length > 0 && k.d.querySelectorAll("#view .hbody ul ul ul").length === 0, "nested bullets in the guide render as nested lists, no deeper than two levels");
   ok(!helpText.includes("Mark done") && !helpText.includes("archive completed tasks") && !helpText.includes("View beside its name") && !helpText.includes("with its circle"), "Help no longer describes buttons and settings that were removed");
-  const staleHelp = ["default start date", "Show backup text", "pasted text", "Restore from text", "copy your data as text", "Sprint 1", "Where things stand", "Next slot", "what used to be called", "used to be called a project", "Completion FX", "Your contact info"];
+  const staleHelp = ["default start date", "Show backup text", "pasted text", "Restore from text", "copy your data as text", "Sprint 1", "Where things stand", "Next slot", "what used to be called", "used to be called a project", "Completion FX"];
   ok(staleHelp.every(ph => !helpText.includes(ph)), "Help does not describe things that were removed (" + staleHelp.filter(ph => helpText.includes(ph)).join(", ") + ")");
   const coveredHelp = ["Quest details", "Quest Giver Export", "Bounty", "Slip schedule", "Forecast", "Ideal", "Actual", "Gathering dust", "Make milestone", "Launch critical", "Coin format", "Completion effects", "Sound effects", "Refresh", "stretch of work", "Backup and restore", "Start fresh", "Link quest", "Make candidate", "Splash screen on open", "Main menu"];
   ok(coveredHelp.every(ph => helpText.includes(ph)), "the guide covers the features it should (missing: " + coveredHelp.filter(ph => !helpText.includes(ph)).join(", ") + ")");
@@ -2627,7 +2627,7 @@ async function exportClick(k, projectName) {
   const { helpTopics } = await import("../app/views.js?run=" + counter);
   const topics = helpTopics(), titles = topics.map(t => t[0]);
   const termLines = topics.find(t => t[0] === "Terms")[1];
-  ok(termLines.length === 29 && termLines.every(l => /^\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 29 Terms entries read as a bold term, a definition, and a pointer");
+  ok(termLines.length === 32 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 32 Terms entries read as a bold term, a definition, and a pointer");
   ok(termLines.every(l => titles.includes(l.match(/See “([^”]+)”\.$/)[1])), "every Terms pointer names a topic that exists");
   f.value = "decision"; k.fire(f, "input");
   ok(titlesOf()[0] === "Terms" && items()[0].open, "a word that is a term puts the Terms topic first and opens it");
@@ -2641,6 +2641,37 @@ async function exportClick(k, projectName) {
   ok(titlesOf()[0] === "Terms" && items()[0].open && items()[0].querySelector("mark"), "Ideal finds its definition first, opened and highlighted");
   f.value = ""; k.fire(f, "input");
   ok(JSON.stringify(titlesOf()) === JSON.stringify(titles) && !k.d.querySelector("#view .helpcount"), "clearing the box restores the authored order and removes the counts");
+}
+{
+  // "?" buttons open a Terms entry in a modal, and lead to the Field guide topic that explains more
+  const k = kit(await mk()); k.click(k.$("welcomeDismiss"));
+  const { helpTopics, helpTerm } = await import("../app/views.js?run=" + counter);
+  const ids = helpTopics().find(t => t[0] === "Terms")[1].map(l => l.match(/^\{#([a-z-]+)\}/)[1]);
+  ok(new Set(ids).size === ids.length, "every Terms entry has its own id");
+  ok(!!helpTerm("pending") && helpTerm("pending").name === "Pending" && helpTerm("nope") === null, "an id finds its Terms entry, and an unknown id finds nothing");
+  k.tab("help");
+  ok(!k.d.querySelector("#view .hbody b").textContent.includes("{#") && !k.d.querySelector("#view details.helpitem:nth-of-type(2)").textContent.includes("{#"), "the ids never show in the Field guide");
+  ok(k.d.querySelector("#view li[data-term='bounty']") !== null, "each Terms line carries its id for linking");
+  k.tab("projects");
+  const qs = [...k.d.querySelectorAll("#view .helpq")].map(b => b.getAttribute("data-term"));
+  ok(qs.includes("in-progress") && qs.includes("candidate-quest"), "the Quests page has a ? beside In progress and Candidate quests (" + qs.join() + ")");
+  ok(qs.every(id => !!helpTerm(id)), "every ? on the page points at a real Terms entry");
+  const q = k.d.querySelector("#view .helpq[data-term='candidate-quest']");
+  ok(q.getAttribute("aria-label") === "What is Candidate quest?" && q.textContent === "", "a ? is named for its term, and carries no text of its own");
+  k.click(q);
+  ok(!k.$("overlay").hidden && k.$("modalTitle").textContent === "Candidate quest" && k.$("modalBody").textContent.includes("A quest you’re considering"), "tapping a ? opens the definition in a modal");
+  k.click(k.$("termMore"));
+  const open = [...k.d.querySelectorAll("#view details.helpitem")].filter(d => d.open);
+  ok(k.$("overlay").hidden && open.length === 1 && open[0].querySelector("summary").textContent === "Quests page", "Read more closes the modal and opens the Field guide at the Quests page topic");
+  k.tab("settings");
+  ok(!!k.d.querySelector("#view .labelrow .helpq[data-term='stretch-of-work']"), "Options has a ? beside the name for each stretch of work");
+  ok(!!k.d.querySelector("#view .helpq[data-term='adventurer']"), "Options has a ? beside Adventurer");
+  k.tab("schedule");
+  ok(!!k.d.querySelector("#view .helpq[data-term='backlog']"), "the Tasks page has a ? beside Backlog");
+  k.tab("timeline");
+  ok(!!k.d.querySelector("#view .helpq[data-term='task-counts']") && !k.d.querySelector("#view .legend .helpq"), "the Timeline page has a ? beside Task counts and none in the burndown legend");
+  k.tab("projects"); k.click([...k.d.querySelectorAll("#view .qlink")].find(b => b.textContent === "Sample App"));
+  ok(["launch-critical", "bounty"].every(id => !!k.d.querySelector("#view .helpq[data-term='" + id + "']")), "a quest page has a ? for Launch critical and Bounty");
 }
 {
   // Straight and curly apostrophes match each other, matches are highlighted, and bold text in the guide is blue
