@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.11.4";
+export var APP_VERSION = "0.12.0";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -108,9 +108,17 @@ export function sampleData() {
   tasks.forEach(function (t) { if (t.id === "g4") t.start = day(40); });
   // Sample App's last task joined the plan after the quest started: a scope change.
   tasks.forEach(function (t) { if (t.id === "a5") t.added = day(9); });
+  var soon = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() + 3)).toISOString().slice(0, 10);
   return {
     tasks: tasks,
     quests: quests,
+    // Odd jobs: one overdue, one dated, one undated, one completed.
+    jobs: [
+      { id: "j1", text: "Renew the domain name", done: false, due: yest },
+      { id: "j2", text: "Back up the photos folder", done: false, due: soon },
+      { id: "j3", text: "Reply to the print shop", done: false, due: "" },
+      { id: "j4", text: "Update the email signature", done: true, due: "" }
+    ],
     workshop: [
       { id: "p1", text: "Try a new game engine", note: "Not urgent, but worth trying someday" },
       { id: "p2", text: "Write up lessons learned", note: "After the website launches" },
@@ -131,7 +139,7 @@ export function defaults() {
   return {
     v: 5, start: d.start, days: 7,
     tasks: d.tasks, hist: d.hist,
-    decisions: d.decisions, quests: d.quests, workshop: d.workshop,
+    decisions: d.decisions, quests: d.quests, workshop: d.workshop, jobs: d.jobs,
     pins: ["quest:pApp"],
     settings: { theme: "auto", dateFormat: "us", coinFormat: "us", blockWord: "Sprint", hideWelcome: false, tutorialDone: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, dustDays: 30, wipLimit: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "" }
   };
@@ -259,6 +267,8 @@ export function normalize(s) {
   // The Workshop array used to be called `parked`; read whichever is present.
   var rawWorkshop = Array.isArray(s.workshop) ? s.workshop : s.parked;
   if (Array.isArray(rawWorkshop)) d.workshop = rawWorkshop.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 5000), vault: validVault(x.vault || x.arch) }; });
+  // A save from before Odd jobs existed gets an empty list, not the sample jobs.
+  d.jobs = Array.isArray(s.jobs) ? s.jobs.filter(function (x) { return x && typeof x.id === "string"; }).slice(0, 2000).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), done: x.done === true, due: isISO(x.due) ? x.due : "" }; }) : [];
   if (s.settings && typeof s.settings === "object") {
     if (["auto", "light", "dark"].indexOf(s.settings.theme) >= 0) d.settings.theme = s.settings.theme;
     if (["us", "intl", "mdy", "dmy", "iso"].indexOf(s.settings.dateFormat) >= 0) d.settings.dateFormat = s.settings.dateFormat;

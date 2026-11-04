@@ -288,6 +288,7 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
 .cfields .field { margin-top: var(--space-4); }
 .cfields input { width: 10rem; }
 .linkwho { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6) var(--space-10); min-width: 0; }
+.jobs li.done .jobtext { color: var(--muted); text-decoration: line-through; }
 .li-actions { display: flex; gap: var(--space-8); align-items: center; }
 .dq { font-weight: 500; }
 .dstate { font-size: var(--text-sm); color: var(--muted); margin-left: var(--space-8); }

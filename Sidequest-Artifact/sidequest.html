@@ -408,6 +408,7 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
 .cfields .field { margin-top: var(--space-4); }
 .cfields input { width: 10rem; }
 .linkwho { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6) var(--space-10); min-width: 0; }
+.jobs li.done .jobtext { color: var(--muted); text-decoration: line-through; }
 .li-actions { display: flex; gap: var(--space-8); align-items: center; }
 .dq { font-weight: 500; }
 .dstate { font-size: var(--text-sm); color: var(--muted); margin-left: var(--space-8); }
@@ -680,6 +681,7 @@ html:has(.splash:not([hidden])) { overflow: hidden; }
             <button type="button" role="menuitem" data-act="newStep" title="Add a new step">New step</button>
             <button type="button" role="menuitem" data-act="newDecision" title="Add a new decision">New decision</button>
             <button type="button" role="menuitem" data-act="newIdea" title="Add a new idea to the Workshop">New idea</button>
+            <button type="button" role="menuitem" data-act="newJob" title="Add a job to Odd jobs">New job</button>
           </div>
         </div>
         <div class="menuwrap">
@@ -933,7 +935,7 @@ function scrollTop() {
 
 
 
-var CORE = [["today", "Today"], ["projects", "Quests"], ["schedule", "Tasks"], ["timeline", "Timeline"]];
+var CORE = [["today", "Today"], ["projects", "Quests"], ["schedule", "Tasks"], ["timeline", "Timeline"], ["jobs", "Odd jobs"]];
 var BOTTOM = [["workshop", "Workshop"], ["vault", "Vault"], ["help", "Field guide"], ["settings", "Options"]];
 var WORDS = { Block: ["block", "blocks"], Sprint: ["sprint", "sprints"], Iteration: ["iteration", "iterations"], Phase: ["phase", "phases"], Week: ["week", "weeks"] };
 function wd() { return state.settings.blockWord in WORDS ? state.settings.blockWord : "Block"; }
@@ -947,6 +949,17 @@ function isDusty(q) {
 /* quest helpers -- Quest is the top-tier entity every task/decision/milestone
    attaches to by id, promoted in place from candidate to active. */
 function live(a) { return a.filter(function (x) { return !x.vault; }); }
+// Odd jobs: dated jobs first (earliest due first), then undated in the order added.
+function openJobs() {
+  var open = state.jobs.filter(function (j) { return !j.done; });
+  return open.map(function (j, i) { return { j: j, i: i }; }).sort(function (a, b) {
+    if (a.j.due && b.j.due) return a.j.due < b.j.due ? -1 : a.j.due > b.j.due ? 1 : a.i - b.i;
+    if (a.j.due) return -1;
+    if (b.j.due) return 1;
+    return a.i - b.i;
+  }).map(function (x) { return x.j; });
+}
+function isJobLate(j) { return !j.done && !!j.due && parseISO(j.due) < TODAY; }
 function liveQuests() { return live(state.quests); }
 function activeQuests() { return liveQuests().filter(function (p) { return p.status === "active"; }); }
 function candidateQuests() { return liveQuests().filter(function (p) { return p.status === "candidate"; }); }
@@ -1244,7 +1257,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.11.4";
+var APP_VERSION = "0.12.0";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -1345,9 +1358,17 @@ function sampleData() {
   tasks.forEach(function (t) { if (t.id === "g4") t.start = day(40); });
   // Sample App's last task joined the plan after the quest started: a scope change.
   tasks.forEach(function (t) { if (t.id === "a5") t.added = day(9); });
+  var soon = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() + 3)).toISOString().slice(0, 10);
   return {
     tasks: tasks,
     quests: quests,
+    // Odd jobs: one overdue, one dated, one undated, one completed.
+    jobs: [
+      { id: "j1", text: "Renew the domain name", done: false, due: yest },
+      { id: "j2", text: "Back up the photos folder", done: false, due: soon },
+      { id: "j3", text: "Reply to the print shop", done: false, due: "" },
+      { id: "j4", text: "Update the email signature", done: true, due: "" }
+    ],
     workshop: [
       { id: "p1", text: "Try a new game engine", note: "Not urgent, but worth trying someday" },
       { id: "p2", text: "Write up lessons learned", note: "After the website launches" },
@@ -1368,7 +1389,7 @@ function defaults() {
   return {
     v: 5, start: d.start, days: 7,
     tasks: d.tasks, hist: d.hist,
-    decisions: d.decisions, quests: d.quests, workshop: d.workshop,
+    decisions: d.decisions, quests: d.quests, workshop: d.workshop, jobs: d.jobs,
     pins: ["quest:pApp"],
     settings: { theme: "auto", dateFormat: "us", coinFormat: "us", blockWord: "Sprint", hideWelcome: false, tutorialDone: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, dustDays: 30, wipLimit: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "" }
   };
@@ -1496,6 +1517,8 @@ function normalize(s) {
   // The Workshop array used to be called `parked`; read whichever is present.
   var rawWorkshop = Array.isArray(s.workshop) ? s.workshop : s.parked;
   if (Array.isArray(rawWorkshop)) d.workshop = rawWorkshop.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 5000), vault: validVault(x.vault || x.arch) }; });
+  // A save from before Odd jobs existed gets an empty list, not the sample jobs.
+  d.jobs = Array.isArray(s.jobs) ? s.jobs.filter(function (x) { return x && typeof x.id === "string"; }).slice(0, 2000).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), done: x.done === true, due: isISO(x.due) ? x.due : "" }; }) : [];
   if (s.settings && typeof s.settings === "object") {
     if (["auto", "light", "dark"].indexOf(s.settings.theme) >= 0) d.settings.theme = s.settings.theme;
     if (["us", "intl", "mdy", "dmy", "iso"].indexOf(s.settings.dateFormat) >= 0) d.settings.dateFormat = s.settings.dateFormat;
@@ -2684,8 +2707,8 @@ function exportFileName(p) {
 
 
 /* search */
-var SEARCH_LABELS = { task: "Tasks", step: "Steps", quest: "Quests", idea: "Ideas", decision: "Decisions" };
-var SEARCH_ORDER = ["task", "step", "quest", "idea", "decision"];
+var SEARCH_LABELS = { task: "Tasks", step: "Steps", quest: "Quests", idea: "Ideas", job: "Jobs", decision: "Decisions" };
+var SEARCH_ORDER = ["task", "step", "quest", "idea", "job", "decision"];
 var searchFlat = [];
 function escRe(t) { return t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function searchTerms(q) { return q.toLowerCase().split(/\s+/).filter(Boolean); }
@@ -2731,6 +2754,7 @@ function searchAll(q, includeVault) {
   });
   state.quests.forEach(function (p) { if (p.vault) consider("quest", p.name, [p.notes], "Vaulted quest", function () { go("vault"); }, true, ["Notes"]); });
   state.workshop.forEach(function (p) { consider("idea", p.text, [p.note], "Workshop", function () { go(p.vault ? "vault" : "workshop"); }, !!p.vault, ["Note"]); });
+  state.jobs.forEach(function (j) { consider("job", j.text, [], j.done ? "Odd jobs · completed" : "Odd jobs" + (j.due ? " · due " + fmt(parseISO(j.due)) : ""), function () { go("jobs"); }, false); });
   // Quest comes from following Decision -> Step -> Task -> Quest.
   state.decisions.forEach(function (d) {
     var ls = findStep(d.step);
@@ -2743,7 +2767,7 @@ function updateSearchResults() {
   var box = $("searchResults"); if (!box) return;
   box.innerHTML = ""; searchFlat.length = 0;
   var status = $("searchStatus"), q = ui.query.trim();
-  if (!q) { if (status) status.textContent = ""; box.appendChild(el("p", { "class": "hint" }, "Type to search tasks, steps, notes, quests, ideas, and decisions. Enter opens the first result.")); return; }
+  if (!q) { if (status) status.textContent = ""; box.appendChild(el("p", { "class": "hint" }, "Type to search tasks, steps, notes, quests, ideas, jobs, and decisions. Enter opens the first result.")); return; }
   var res = searchAll(q, ui.searchVault), total = 0;
   SEARCH_ORDER.forEach(function (k) { total += res.groups[k].length; });
   if (status) status.textContent = total + (total === 1 ? " result" : " results");
@@ -3015,6 +3039,16 @@ function ideaDialog(idea) {
     state.workshop.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000) }); changed();
     return { msg: v.text + " added to the Workshop." };
   }, idea ? undefined : "New ideas live in the Workshop. When ready, ideas can be made into candidate quests.");
+}
+function jobDialog() {
+  formDialog("New job", [
+    { key: "text", label: "Job" },
+    { key: "due", label: "Due date (optional)", type: "date" }
+  ], "Add job", function (v) {
+    if (!v.text) return "Enter the job.";
+    state.jobs.push({ id: uid(), text: v.text.slice(0, 200), done: false, due: isISO(v.due) ? v.due : "" }); changed();
+    return { msg: "Job added to Odd jobs." };
+  }, "Small jobs that aren’t worth a quest go on the Odd jobs list.");
 }
 // Steps with no decision yet, for one task -- shared by the cascade below.
 function openStepOptions(taskId) {
@@ -4382,6 +4416,63 @@ function renderWorkshop(root) {
   root.appendChild(pl);
 }
 
+function renderJobs(root) {
+  var bar = el("div", { "class": "crow oneline", style: "gap:10px" });
+  var txt = el("input", { type: "text", id: "job-new", maxlength: "200", placeholder: "New job", "aria-label": "New job", autocomplete: "off", style: "flex:1 1 220px;width:auto" });
+  var due = el("input", { type: "date", id: "job-new-due", "aria-label": "Due date (optional)", style: "width:auto;flex:0 0 auto" });
+  var msg = el("p", { "class": "msg", role: "alert" });
+  function add() {
+    var v = txt.value.trim();
+    if (!v) { msg.textContent = "Enter the job."; txt.focus(); return; }
+    state.jobs.push({ id: uid(), text: v.slice(0, 200), done: false, due: isISO(due.value) ? due.value : "" });
+    setFocusKey("job-new"); changed();
+  }
+  txt.setAttribute("data-focus", "job-new");
+  on(txt, "keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); add(); } });
+  bar.appendChild(txt); bar.appendChild(due);
+  bar.appendChild(on(el("button", { type: "button", "class": "small", title: "Add this job" }, "Add job"), "click", add));
+  root.appendChild(bar); root.appendChild(msg);
+  var open = openJobs(), done = state.jobs.filter(function (j) { return j.done; });
+  var ul = el("ul", { "class": "list jobs", style: "margin-top:12px" });
+  if (!open.length) ul.appendChild(el("li", { "class": "hint" }, "No open jobs. Add one with the Add job button."));
+  open.forEach(function (j) { ul.appendChild(jobRow(j)); });
+  root.appendChild(ul);
+  if (done.length) {
+    root.appendChild(el("h2", null, "Completed"));
+    var dl = el("ul", { "class": "list jobs" });
+    done.forEach(function (j) { dl.appendChild(jobRow(j)); });
+    root.appendChild(dl);
+  }
+}
+function jobRow(j) {
+  var li = el("li", { "class": j.done ? "done" : "" }), row = el("div", { "class": "crow oneline" });
+  var lab = el("label", { style: "font-weight:400" });
+  var cb = el("input", { type: "checkbox", "aria-label": (j.done ? "Restore job: " : "Complete job: ") + j.text }); cb.checked = j.done;
+  on(cb, "change", function () { j.done = cb.checked; changed(); });
+  var text = el("span", { "class": "jobtext" }, j.text);
+  lab.appendChild(cb); lab.appendChild(text); row.appendChild(lab);
+  var acts = el("div", { "class": "li-actions" });
+  if (j.due) acts.appendChild(el("span", { "class": "chip" }, "Due " + fmtY(parseISO(j.due))));
+  if (isJobLate(j)) acts.appendChild(el("span", { "class": "badge" }, "Overdue"));
+  if (j.done) {
+    acts.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this job permanently" }, "Delete forever"), "click", function () { removeNow(j, "jobs", "Job"); }));
+  } else {
+    var pen = pencilButton("Rename this job", "Rename this job");
+    on(pen, "click", function () {
+      pen.hidden = true;
+      editInline(text, {
+        label: "Job", max: 200, value: function () { return j.text; },
+        onSave: function (v) { j.text = v.slice(0, 200); changed(); },
+        onEmpty: function () { notify("A job needs some text."); },
+        onDone: function () { pen.hidden = false; }
+      });
+    });
+    acts.appendChild(pen);
+  }
+  row.appendChild(acts); li.appendChild(row);
+  return li;
+}
+
 // A milestone diamond opens the task it's flagged on, same as any other task.
 function wireMilestoneDiamonds(node) {
   Array.prototype.forEach.call(node.querySelectorAll(".ms[data-ms-id]"), function (d) {
@@ -4567,11 +4658,13 @@ function helpTopics() {
       "{#ideal}**Ideal:** The burndown line showing your planned pace. See “Timeline page”.",
       "{#idea}**Idea:** A note in the **Workshop** that hasn’t become a quest. See “Workshop page”.",
       "{#in-progress}**In progress:** An active quest with at least one incomplete task that has a due date. See “Quests page”.",
+      "{#job}**Job:** One item on the Odd jobs list. See “Odd jobs page”.",
       "{#launch-critical}**Launch critical:** A task that must be completed before launch. These tasks are grouped in the **Before you launch** section. See “Inside a quest”.",
       "{#before-you-launch}**Before you launch:** The section that lists a quest’s **Launch critical** tasks. These tasks must be completed before launch. See “Inside a quest”.",
       "{#make-candidate}**Make candidate:** Turns an idea into a candidate quest. See “The quest lifecycle”.",
       "{#milestone}**Milestone:** A task with a date that appears on the **Timeline**. See “Inside a quest”.",
       "{#next-up}**Next up:** The earliest-starting incomplete task across all open quests. See “Today page”.",
+      "{#odd-jobs}**Odd jobs:** A simple list of small jobs that aren’t worth a quest. Jobs never appear on the Timeline or in the burndown. See “Odd jobs page”.",
       "{#pending}**Pending:** An active quest with no incomplete tasks that have due dates. See “Quests page”.",
       "{#pin}**Pin:** Adds a shortcut to a quest in the sidebar. See “Quests page”.",
       "{#prepared}**Prepared by and Prepared for:** The export’s letterhead, showing your information first and the Quest Giver’s second. See “Quest Giver and Quest links”.",
@@ -4591,7 +4684,7 @@ function helpTopics() {
     ]],
     ["Finding your way around", [
       "**Search:** Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **x** where the magnifier was to cancel.",
-      "**New (+) button:** Use the **+** button to add a candidate quest, task, step, decision, or idea.",
+      "**New (+) button:** Use the **+** button to add a candidate quest, task, step, decision, idea, or job.",
       "**Main menu:** The **Main menu** (hamburger menu) lists every page in the app.",
       "**Tab bar (mobile):** On a mobile device, the tab bar holds the main pages. Find the other pages in the **Main menu**.",
       "**Undo:** Removing an item or sending it to the **Vault** shows an **Undo** button for a few seconds."
@@ -4649,6 +4742,14 @@ function helpTopics() {
       ">The **Burndown** chart shows how many tasks remain in all open quests. The straight **Ideal** line shows the planned rate of progress, and the **Actual** line shows your progress. Adding or removing work changes the amount remaining.",
       ">The dotted **Forecast** line shows the projected trajectory for completing the remaining work. Hovering over the dot at the end shows the projected completion date. The orange **Scope** line shows changes in scope. You can tap or drag across the burndown to see dates and remaining tasks.",
       "The **Stats** section displays all remaining and backlogged tasks. The **Task counts** table shows how many tasks remain and tracks changes in scope. Adding a scheduled task raises the scope and deleting one lowers it. Each change shows in the **Scope change** column."
+    ]],
+    ["Odd jobs page", [
+      "**Odd jobs:** A simple list for small jobs that don’t need a quest. Jobs don’t appear on the **Timeline**, the **Burndown**, or the **Tasks** page, and they don’t change any counts.",
+      "**Add job:** Type a job and select **Add job**. You can also give it a due date. Select the pencil to rename a job.",
+      ">Jobs with due dates appear first, earliest due date first. Jobs without a date follow, in the order you added them. A job past its due date shows an **Overdue** badge.",
+      "**Complete job:** Check a job to complete it. It moves to the **Completed** section.",
+      "**Restore job:** Uncheck a completed job to move it back to the list.",
+      "**Delete forever:** Deletes a job at once. Select **Undo** right away if you change your mind."
     ]],
     ["Workshop page", [
       "All ideas live here. Use them to think through new quests or prospects. You can either select **Make candidate** to turn an idea into a candidate quest or **Vault** it."
@@ -4789,7 +4890,7 @@ function renderHelp(root) {
 /* settings */
 function blankState() {
   var d = defaults();
-  d.tasks = []; d.decisions = []; d.quests = []; d.workshop = []; d.pins = []; d.lastSlip = null;
+  d.tasks = []; d.decisions = []; d.quests = []; d.workshop = []; d.jobs = []; d.pins = []; d.lastSlip = null;
   d.start = iso(TODAY); d.days = state.days; d.settings = state.settings;
   return d;
 }
@@ -5862,6 +5963,7 @@ function renderView() {
   else if (ui.view === "schedule") renderSchedule(root);
   else if (ui.view === "projects") renderQuests(root);
   else if (ui.view === "workshop") renderWorkshop(root);
+  else if (ui.view === "jobs") renderJobs(root);
   else if (ui.view === "search") renderSearch(root);
   else if (ui.view === "vault") renderVault(root);
   else if (ui.view === "settings") renderSettings(root);
@@ -5896,7 +5998,7 @@ function wireMenu(btnId, menuId) {
     closeMenus(false);
     if (t.getAttribute("data-view")) { go(t.getAttribute("data-view")); return; }
     var act = t.getAttribute("data-act");
-    ({ newTask: taskDialog, newStep: function () { stepDialog(); }, newQuest: questDialog, newIdea: ideaDialog, newDecision: decisionDialog, vault: function () { go("vault"); }, settings: function () { go("settings"); } })[act]();
+    ({ newTask: taskDialog, newStep: function () { stepDialog(); }, newQuest: questDialog, newIdea: ideaDialog, newJob: jobDialog, newDecision: decisionDialog, vault: function () { go("vault"); }, settings: function () { go("settings"); } })[act]();
   });
   on(m, "keydown", function (e) {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;

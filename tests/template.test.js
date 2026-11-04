@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.11.4"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.12.0"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -118,7 +118,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("viewTitle").textContent === "Today" && k.d.title.includes("Sidequest"), "opens on Today");
   ok(k.$("view").textContent.includes("Welcome to Sidequest") && k.$("view").textContent.includes("sample quests") && !!k.$("welcomeSettings") && !!k.$("welcomeDismiss"), "welcome box explains the samples");
   ok(k.d.querySelector('.tab[data-view="quest:pApp"]').textContent.trim() === "Sample App" && k.d.querySelector("#nav").textContent.includes("Pinned"), "Sample App is the pinned quest");
-  ok([...k.d.querySelectorAll("#nav .tab")].map(t => t.dataset.view).join() === "today,projects,schedule,timeline,quest:pApp", "sidebar: core pages + one pinned quest");
+  ok([...k.d.querySelectorAll("#nav .tab")].map(t => t.dataset.view).join() === "today,projects,schedule,timeline,jobs,quest:pApp", "sidebar: core pages + one pinned quest");
   // dismiss
   k.click(k.$("welcomeDismiss")); ok(!k.$("view").textContent.includes("Welcome to Sidequest") && k.saved().settings.hideWelcome === true, "dismissing hides it and remembers");
   // Today content
@@ -302,7 +302,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
-  const sections = ["How Sidequest works", "Terms", "Finding your way around", "The quest lifecycle", "Today page", "Quests page", "Inside a quest", "Quest Giver and Quest links", "A quest’s Schedule and Timeline", "Tasks page", "Timeline page", "Workshop page", "Vault page", "Options page"];
+  const sections = ["How Sidequest works", "Terms", "Finding your way around", "The quest lifecycle", "Today page", "Quests page", "Inside a quest", "Quest Giver and Quest links", "A quest’s Schedule and Timeline", "Tasks page", "Timeline page", "Odd jobs page", "Workshop page", "Vault page", "Options page"];
   ok(titles.join() === sections.join(), "the Field guide has the thirteen sections of the rewrite plus Terms, in order (" + titles.join(", ") + ")");
   const helpText = k.$("view").textContent;
   ok(k.d.querySelectorAll("#view .hbody ul ul").length > 0 && k.d.querySelectorAll("#view .hbody ul ul ul").length === 0, "nested bullets in the guide render as nested lists, no deeper than two levels");
@@ -2625,7 +2625,7 @@ async function exportClick(k, projectName) {
   const { helpTopics } = await import("../app/views.js?run=" + counter);
   const topics = helpTopics(), titles = topics.map(t => t[0]);
   const termLines = topics.find(t => t[0] === "Terms")[1];
-  ok(termLines.length === 34 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 34 Terms entries read as a bold term, a definition, and a pointer");
+  ok(termLines.length === 36 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 36 Terms entries read as a bold term, a definition, and a pointer");
   ok(termLines.every(l => titles.includes(l.match(/See “([^”]+)”\.$/)[1])), "every Terms pointer names a topic that exists");
   f.value = "decision"; k.fire(f, "input");
   ok(titlesOf()[0] === "Terms" && items()[0].open, "a word that is a term puts the Terms topic first and opens it");
@@ -2810,6 +2810,61 @@ async function exportClick(k, projectName) {
   ok(r.boxes.join() === "f-by" && r.html.includes("Prepared by"), "a side with nothing to print is not offered");
   r = await run({ quests: [quest({})], tasks: [] });
   ok(r.boxes.length === 0 && r.html.includes("<!doctype html>"), "with nothing to print on either side, it exports without asking");
+}
+/* ---- odd jobs ---- */
+{
+  const k = kit(await mk()); k.tab("jobs");
+  const names = () => [...k.d.querySelectorAll("#view ul.jobs li")].map(li => li.textContent);
+  ok(k.$("viewTitle").textContent === "Odd jobs", "the Odd jobs page has its title");
+  const open = [...k.d.querySelectorAll("#view ul.jobs")][0].textContent;
+  ok(open.indexOf("Renew the domain name") < open.indexOf("Back up the photos folder") && open.indexOf("Back up the photos folder") < open.indexOf("Reply to the print shop"), "dated jobs sort first, earliest first, then undated jobs");
+  ok(k.d.querySelectorAll("#view .badge").length === 1 && k.d.querySelector("#view .badge").textContent === "Overdue", "only the past-due job shows an Overdue badge");
+  ok(k.$("view").textContent.includes("Completed") && [...k.d.querySelectorAll("#view ul.jobs")][1].textContent.includes("Update the email signature"), "a completed job is in the Completed section");
+  // add
+  k.$("job-new").value = "Water the plants"; k.click(k.btn(k.$("view"), "Add job"));
+  ok(k.saved().jobs.some(j => j.text === "Water the plants" && !j.done && j.due === ""), "Add job saves a new undated job");
+  ok(k.$("job-new").value === "", "the field is cleared after adding");
+  k.click(k.btn(k.$("view"), "Add job"));
+  ok(k.$("view").textContent.includes("Enter the job."), "an empty job is refused");
+  // complete and restore
+  const row = t => [...k.d.querySelectorAll("#view ul.jobs li")].find(li => li.textContent.includes(t));
+  const flip = t => { const c = row(t).querySelector("input[type=checkbox]"); c.checked = !c.checked; k.fire(c); };
+  flip("Water the plants");
+  ok(k.saved().jobs.find(j => j.text === "Water the plants").done === true, "checking a job completes it");
+  flip("Water the plants");
+  ok(k.saved().jobs.find(j => j.text === "Water the plants").done === false, "unchecking a completed job restores it");
+  // rename
+  k.click(row("Water the plants").querySelector("button.pencil"));
+  const i = k.d.querySelector(".inlineedit"); i.value = "Water the ferns";
+  i.dispatchEvent(new k.w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  ok(k.saved().jobs.some(j => j.text === "Water the ferns") && !k.saved().jobs.some(j => j.text === "Water the plants"), "the pencil renames a job in place");
+  // delete forever, with undo
+  k.click(k.btn(row("Update the email signature"), "Delete forever"));
+  ok(!k.saved().jobs.some(j => j.text === "Update the email signature"), "Delete forever removes the job");
+  k.click(k.d.querySelector("#toast .toastbtn"));
+  ok(k.saved().jobs.some(j => j.text === "Update the email signature"), "Undo brings a deleted job back");
+  // not counted anywhere
+  k.tab("schedule");
+  ok(!k.$("view").textContent.includes("Renew the domain name"), "jobs are not on the Tasks page");
+  k.tab("timeline");
+  ok(!k.$("view").textContent.includes("Renew the domain name"), "jobs are not on the Timeline");
+  k.tab("today");
+  ok(!k.$("view").textContent.includes("Renew the domain name"), "an overdue job is not in Today's Overdue panel");
+}
+{
+  const k = kit(await mk()); k.menuAct("newBtn", "newJob");
+  k.setField("text", "Call the dentist"); k.setField("due", "2031-05-04");
+  k.click(k.btn(k.d.querySelector(".modal"), "Add job"));
+  ok(k.saved().jobs.some(j => j.text === "Call the dentist" && j.due === "2031-05-04"), "the + menu's New job adds a dated job");
+  k.type("dentist");
+  ok(k.d.querySelector('#searchResults .sgroup[data-kind="job"]') && k.d.querySelector('#searchResults .sgroup[data-kind="job"]').textContent.includes("Call the dentist"), "search has a Jobs group");
+}
+{
+  const k = kit(await mk({ quests: [], tasks: [] }));
+  ok(Array.isArray(k.saved().jobs) && k.saved().jobs.length === 0, "a save from before Odd jobs loads with an empty list, not the samples");
+  const k2 = kit(await mk({ quests: [], tasks: [], jobs: [{ id: "x", text: "Keep", done: true, due: "nope" }, { text: "no id" }, null] }));
+  const j = k2.saved().jobs;
+  ok(j.length === 1 && j[0].text === "Keep" && j[0].done === true && j[0].due === "", "normalize keeps valid jobs, drops bad ones, and blanks a bad date");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

@@ -7,7 +7,7 @@ import {
   totalUnits, remainingUnits, planned, ordered, backlogTasks, sortTasks,
   isLate, lateTasks, setStatus, syncFromSteps, nextTask, questTasksAllDone, questTotalUnits, questRemainingUnits,
   validPage, isPinned, pinPage, unpinPage, questMeta, fmtHours, fmtHoursLong, questEstimate, recordHist, checkpointStep, globalActual,
-  findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask, questTasks
+  findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask, questTasks, openJobs, isJobLate
 } from "./model.js";
 import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx, moneyInput, formatMoney, inClaude, isHosted, helpLink, setHelpOpener } from "./dom.js";
 import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
@@ -984,6 +984,63 @@ export function renderWorkshop(root) {
   root.appendChild(pl);
 }
 
+export function renderJobs(root) {
+  var bar = el("div", { "class": "crow oneline", style: "gap:10px" });
+  var txt = el("input", { type: "text", id: "job-new", maxlength: "200", placeholder: "New job", "aria-label": "New job", autocomplete: "off", style: "flex:1 1 220px;width:auto" });
+  var due = el("input", { type: "date", id: "job-new-due", "aria-label": "Due date (optional)", style: "width:auto;flex:0 0 auto" });
+  var msg = el("p", { "class": "msg", role: "alert" });
+  function add() {
+    var v = txt.value.trim();
+    if (!v) { msg.textContent = "Enter the job."; txt.focus(); return; }
+    state.jobs.push({ id: uid(), text: v.slice(0, 200), done: false, due: isISO(due.value) ? due.value : "" });
+    setFocusKey("job-new"); changed();
+  }
+  txt.setAttribute("data-focus", "job-new");
+  on(txt, "keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); add(); } });
+  bar.appendChild(txt); bar.appendChild(due);
+  bar.appendChild(on(el("button", { type: "button", "class": "small", title: "Add this job" }, "Add job"), "click", add));
+  root.appendChild(bar); root.appendChild(msg);
+  var open = openJobs(), done = state.jobs.filter(function (j) { return j.done; });
+  var ul = el("ul", { "class": "list jobs", style: "margin-top:12px" });
+  if (!open.length) ul.appendChild(el("li", { "class": "hint" }, "No open jobs. Add one with the Add job button."));
+  open.forEach(function (j) { ul.appendChild(jobRow(j)); });
+  root.appendChild(ul);
+  if (done.length) {
+    root.appendChild(el("h2", null, "Completed"));
+    var dl = el("ul", { "class": "list jobs" });
+    done.forEach(function (j) { dl.appendChild(jobRow(j)); });
+    root.appendChild(dl);
+  }
+}
+function jobRow(j) {
+  var li = el("li", { "class": j.done ? "done" : "" }), row = el("div", { "class": "crow oneline" });
+  var lab = el("label", { style: "font-weight:400" });
+  var cb = el("input", { type: "checkbox", "aria-label": (j.done ? "Restore job: " : "Complete job: ") + j.text }); cb.checked = j.done;
+  on(cb, "change", function () { j.done = cb.checked; changed(); });
+  var text = el("span", { "class": "jobtext" }, j.text);
+  lab.appendChild(cb); lab.appendChild(text); row.appendChild(lab);
+  var acts = el("div", { "class": "li-actions" });
+  if (j.due) acts.appendChild(el("span", { "class": "chip" }, "Due " + fmtY(parseISO(j.due))));
+  if (isJobLate(j)) acts.appendChild(el("span", { "class": "badge" }, "Overdue"));
+  if (j.done) {
+    acts.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this job permanently" }, "Delete forever"), "click", function () { removeNow(j, "jobs", "Job"); }));
+  } else {
+    var pen = pencilButton("Rename this job", "Rename this job");
+    on(pen, "click", function () {
+      pen.hidden = true;
+      editInline(text, {
+        label: "Job", max: 200, value: function () { return j.text; },
+        onSave: function (v) { j.text = v.slice(0, 200); changed(); },
+        onEmpty: function () { notify("A job needs some text."); },
+        onDone: function () { pen.hidden = false; }
+      });
+    });
+    acts.appendChild(pen);
+  }
+  row.appendChild(acts); li.appendChild(row);
+  return li;
+}
+
 // A milestone diamond opens the task it's flagged on, same as any other task.
 function wireMilestoneDiamonds(node) {
   Array.prototype.forEach.call(node.querySelectorAll(".ms[data-ms-id]"), function (d) {
@@ -1169,11 +1226,13 @@ export function helpTopics() {
       "{#ideal}**Ideal:** The burndown line showing your planned pace. See “Timeline page”.",
       "{#idea}**Idea:** A note in the **Workshop** that hasn’t become a quest. See “Workshop page”.",
       "{#in-progress}**In progress:** An active quest with at least one incomplete task that has a due date. See “Quests page”.",
+      "{#job}**Job:** One item on the Odd jobs list. See “Odd jobs page”.",
       "{#launch-critical}**Launch critical:** A task that must be completed before launch. These tasks are grouped in the **Before you launch** section. See “Inside a quest”.",
       "{#before-you-launch}**Before you launch:** The section that lists a quest’s **Launch critical** tasks. These tasks must be completed before launch. See “Inside a quest”.",
       "{#make-candidate}**Make candidate:** Turns an idea into a candidate quest. See “The quest lifecycle”.",
       "{#milestone}**Milestone:** A task with a date that appears on the **Timeline**. See “Inside a quest”.",
       "{#next-up}**Next up:** The earliest-starting incomplete task across all open quests. See “Today page”.",
+      "{#odd-jobs}**Odd jobs:** A simple list of small jobs that aren’t worth a quest. Jobs never appear on the Timeline or in the burndown. See “Odd jobs page”.",
       "{#pending}**Pending:** An active quest with no incomplete tasks that have due dates. See “Quests page”.",
       "{#pin}**Pin:** Adds a shortcut to a quest in the sidebar. See “Quests page”.",
       "{#prepared}**Prepared by and Prepared for:** The export’s letterhead, showing your information first and the Quest Giver’s second. See “Quest Giver and Quest links”.",
@@ -1193,7 +1252,7 @@ export function helpTopics() {
     ]],
     ["Finding your way around", [
       "**Search:** Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **x** where the magnifier was to cancel.",
-      "**New (+) button:** Use the **+** button to add a candidate quest, task, step, decision, or idea.",
+      "**New (+) button:** Use the **+** button to add a candidate quest, task, step, decision, idea, or job.",
       "**Main menu:** The **Main menu** (hamburger menu) lists every page in the app.",
       "**Tab bar (mobile):** On a mobile device, the tab bar holds the main pages. Find the other pages in the **Main menu**.",
       "**Undo:** Removing an item or sending it to the **Vault** shows an **Undo** button for a few seconds."
@@ -1251,6 +1310,14 @@ export function helpTopics() {
       ">The **Burndown** chart shows how many tasks remain in all open quests. The straight **Ideal** line shows the planned rate of progress, and the **Actual** line shows your progress. Adding or removing work changes the amount remaining.",
       ">The dotted **Forecast** line shows the projected trajectory for completing the remaining work. Hovering over the dot at the end shows the projected completion date. The orange **Scope** line shows changes in scope. You can tap or drag across the burndown to see dates and remaining tasks.",
       "The **Stats** section displays all remaining and backlogged tasks. The **Task counts** table shows how many tasks remain and tracks changes in scope. Adding a scheduled task raises the scope and deleting one lowers it. Each change shows in the **Scope change** column."
+    ]],
+    ["Odd jobs page", [
+      "**Odd jobs:** A simple list for small jobs that don’t need a quest. Jobs don’t appear on the **Timeline**, the **Burndown**, or the **Tasks** page, and they don’t change any counts.",
+      "**Add job:** Type a job and select **Add job**. You can also give it a due date. Select the pencil to rename a job.",
+      ">Jobs with due dates appear first, earliest due date first. Jobs without a date follow, in the order you added them. A job past its due date shows an **Overdue** badge.",
+      "**Complete job:** Check a job to complete it. It moves to the **Completed** section.",
+      "**Restore job:** Uncheck a completed job to move it back to the list.",
+      "**Delete forever:** Deletes a job at once. Select **Undo** right away if you change your mind."
     ]],
     ["Workshop page", [
       "All ideas live here. Use them to think through new quests or prospects. You can either select **Make candidate** to turn an idea into a candidate quest or **Vault** it."
@@ -1391,7 +1458,7 @@ export function renderHelp(root) {
 /* settings */
 export function blankState() {
   var d = defaults();
-  d.tasks = []; d.decisions = []; d.quests = []; d.workshop = []; d.pins = []; d.lastSlip = null;
+  d.tasks = []; d.decisions = []; d.quests = []; d.workshop = []; d.jobs = []; d.pins = []; d.lastSlip = null;
   d.start = iso(TODAY); d.days = state.days; d.settings = state.settings;
   return d;
 }

@@ -2,7 +2,7 @@ import { state, changed, CHECKPOINTS } from "./state.js";
 import { notify, isHosted } from "./dom.js";
 import { DAY, iso, addDays, parseISO, TODAY, weekStart } from "./dates.js";
 
-export var CORE = [["today", "Today"], ["projects", "Quests"], ["schedule", "Tasks"], ["timeline", "Timeline"]];
+export var CORE = [["today", "Today"], ["projects", "Quests"], ["schedule", "Tasks"], ["timeline", "Timeline"], ["jobs", "Odd jobs"]];
 export var BOTTOM = [["workshop", "Workshop"], ["vault", "Vault"], ["help", "Field guide"], ["settings", "Options"]];
 export var WORDS = { Block: ["block", "blocks"], Sprint: ["sprint", "sprints"], Iteration: ["iteration", "iterations"], Phase: ["phase", "phases"], Week: ["week", "weeks"] };
 export function wd() { return state.settings.blockWord in WORDS ? state.settings.blockWord : "Block"; }
@@ -16,6 +16,17 @@ export function isDusty(q) {
 /* quest helpers -- Quest is the top-tier entity every task/decision/milestone
    attaches to by id, promoted in place from candidate to active. */
 export function live(a) { return a.filter(function (x) { return !x.vault; }); }
+// Odd jobs: dated jobs first (earliest due first), then undated in the order added.
+export function openJobs() {
+  var open = state.jobs.filter(function (j) { return !j.done; });
+  return open.map(function (j, i) { return { j: j, i: i }; }).sort(function (a, b) {
+    if (a.j.due && b.j.due) return a.j.due < b.j.due ? -1 : a.j.due > b.j.due ? 1 : a.i - b.i;
+    if (a.j.due) return -1;
+    if (b.j.due) return 1;
+    return a.i - b.i;
+  }).map(function (x) { return x.j; });
+}
+export function isJobLate(j) { return !j.done && !!j.due && parseISO(j.due) < TODAY; }
 export function liveQuests() { return live(state.quests); }
 export function activeQuests() { return liveQuests().filter(function (p) { return p.status === "active"; }); }
 export function candidateQuests() { return liveQuests().filter(function (p) { return p.status === "candidate"; }); }

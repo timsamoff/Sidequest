@@ -1,12 +1,12 @@
 import { state, ui } from "./state.js";
-import { fmt } from "./dates.js";
+import { fmt, parseISO } from "./dates.js";
 import { taskStart, taskEnd, dispQuest, liveQuests, questMeta, short, validPage, findStep } from "./model.js";
 import { $, el, on, scrollTop } from "./dom.js";
 import { go, openTask, renderAll } from "./app.js";
 
 /* search */
-export var SEARCH_LABELS = { task: "Tasks", step: "Steps", quest: "Quests", idea: "Ideas", decision: "Decisions" };
-export var SEARCH_ORDER = ["task", "step", "quest", "idea", "decision"];
+export var SEARCH_LABELS = { task: "Tasks", step: "Steps", quest: "Quests", idea: "Ideas", job: "Jobs", decision: "Decisions" };
+export var SEARCH_ORDER = ["task", "step", "quest", "idea", "job", "decision"];
 export var searchFlat = [];
 export function escRe(t) { return t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 export function searchTerms(q) { return q.toLowerCase().split(/\s+/).filter(Boolean); }
@@ -52,6 +52,7 @@ export function searchAll(q, includeVault) {
   });
   state.quests.forEach(function (p) { if (p.vault) consider("quest", p.name, [p.notes], "Vaulted quest", function () { go("vault"); }, true, ["Notes"]); });
   state.workshop.forEach(function (p) { consider("idea", p.text, [p.note], "Workshop", function () { go(p.vault ? "vault" : "workshop"); }, !!p.vault, ["Note"]); });
+  state.jobs.forEach(function (j) { consider("job", j.text, [], j.done ? "Odd jobs · completed" : "Odd jobs" + (j.due ? " · due " + fmt(parseISO(j.due)) : ""), function () { go("jobs"); }, false); });
   // Quest comes from following Decision -> Step -> Task -> Quest.
   state.decisions.forEach(function (d) {
     var ls = findStep(d.step);
@@ -64,7 +65,7 @@ export function updateSearchResults() {
   var box = $("searchResults"); if (!box) return;
   box.innerHTML = ""; searchFlat.length = 0;
   var status = $("searchStatus"), q = ui.query.trim();
-  if (!q) { if (status) status.textContent = ""; box.appendChild(el("p", { "class": "hint" }, "Type to search tasks, steps, notes, quests, ideas, and decisions. Enter opens the first result.")); return; }
+  if (!q) { if (status) status.textContent = ""; box.appendChild(el("p", { "class": "hint" }, "Type to search tasks, steps, notes, quests, ideas, jobs, and decisions. Enter opens the first result.")); return; }
   var res = searchAll(q, ui.searchVault), total = 0;
   SEARCH_ORDER.forEach(function (k) { total += res.groups[k].length; });
   if (status) status.textContent = total + (total === 1 ? " result" : " results");

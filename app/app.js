@@ -3,12 +3,12 @@ import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest } fr
 import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline, playSfx } from "./dom.js";
 import { lateTasks } from "./model.js";
 import {
-  renderToday, renderSchedule, renderQuests, renderWorkshop,
+  renderToday, renderSchedule, renderQuests, renderWorkshop, renderJobs,
   renderVault, renderSettings, renderHelp, renderQuestPage, renderTimeline, setDeferredInstallPrompt, setInstalledThisSession, setAvailableUpdateVersion
 } from "./views.js";
 import { renderSearch, openSearch, closeSearch, wireSearchInput, focusSearch } from "./search.js";
 import {
-  taskDialog, questDialog, ideaDialog, decisionDialog, stepDialog
+  taskDialog, questDialog, ideaDialog, jobDialog, decisionDialog, stepDialog
 } from "./dialogs.js";
 import { playSplash } from "./splash.js";
 import { noteBurnView } from "./chart.js";
@@ -137,6 +137,7 @@ export function renderView() {
   else if (ui.view === "schedule") renderSchedule(root);
   else if (ui.view === "projects") renderQuests(root);
   else if (ui.view === "workshop") renderWorkshop(root);
+  else if (ui.view === "jobs") renderJobs(root);
   else if (ui.view === "search") renderSearch(root);
   else if (ui.view === "vault") renderVault(root);
   else if (ui.view === "settings") renderSettings(root);
@@ -171,7 +172,7 @@ export function wireMenu(btnId, menuId) {
     closeMenus(false);
     if (t.getAttribute("data-view")) { go(t.getAttribute("data-view")); return; }
     var act = t.getAttribute("data-act");
-    ({ newTask: taskDialog, newStep: function () { stepDialog(); }, newQuest: questDialog, newIdea: ideaDialog, newDecision: decisionDialog, vault: function () { go("vault"); }, settings: function () { go("settings"); } })[act]();
+    ({ newTask: taskDialog, newStep: function () { stepDialog(); }, newQuest: questDialog, newIdea: ideaDialog, newJob: jobDialog, newDecision: decisionDialog, vault: function () { go("vault"); }, settings: function () { go("settings"); } })[act]();
   });
   on(m, "keydown", function (e) {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
