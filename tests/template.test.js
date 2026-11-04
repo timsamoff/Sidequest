@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.12.1"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.12.2"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2818,7 +2818,7 @@ async function exportClick(k, projectName) {
   ok(k.$("viewTitle").textContent === "Odd jobs", "the Odd jobs page has its title");
   const open = [...k.d.querySelectorAll("#view ul.jobs")][0].textContent;
   ok(open.indexOf("Renew the domain name") < open.indexOf("Back up the photos folder") && open.indexOf("Back up the photos folder") < open.indexOf("Reply to the print shop"), "dated jobs sort first, earliest first, then undated jobs");
-  ok(k.d.querySelectorAll("#view .badge").length === 1 && k.d.querySelector("#view .badge").textContent === "Overdue", "only the past-due job shows an Overdue badge");
+  ok(k.d.querySelectorAll("#view .badge").length === 2 && [...k.d.querySelectorAll("#view .badge")].every(b => b.textContent === "Overdue"), "only the two past-due open jobs show an Overdue badge");
   ok(k.$("view").textContent.includes("Completed") && [...k.d.querySelectorAll("#view ul.jobs")][1].textContent.includes("Update the email signature"), "a completed job is in the Completed section");
   // add
   k.$("job-new").value = "Water the plants"; k.click(k.btn(k.$("view"), "Add job"));

@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.12.1";
+export var APP_VERSION = "0.12.2";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -108,16 +108,20 @@ export function sampleData() {
   tasks.forEach(function (t) { if (t.id === "g4") t.start = day(40); });
   // Sample App's last task joined the plan after the quest started: a scope change.
   tasks.forEach(function (t) { if (t.id === "a5") t.added = day(9); });
+  var ago = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 6)).toISOString().slice(0, 10);
   var soon = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() + 3)).toISOString().slice(0, 10);
   return {
     tasks: tasks,
     quests: quests,
-    // Odd jobs: one overdue, one dated, one undated, one completed.
+    // Odd jobs: two overdue, one dated, one undated, three completed.
     jobs: [
       { id: "j1", text: "Renew the domain name", done: false, due: yest },
       { id: "j2", text: "Back up the photos folder", done: false, due: soon },
       { id: "j3", text: "Reply to the print shop", done: false, due: "" },
-      { id: "j4", text: "Update the email signature", done: true, due: "" }
+      { id: "j4", text: "Update the email signature", done: true, due: "" },
+      { id: "j5", text: "Mail the signed contract", done: false, due: ago },
+      { id: "j6", text: "Order new business cards", done: true, due: ago },
+      { id: "j7", text: "Clear out the downloads folder", done: true, due: "" }
     ],
     workshop: [
       { id: "p1", text: "Try a new game engine", note: "Not urgent, but worth trying someday" },
