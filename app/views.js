@@ -1264,7 +1264,7 @@ export function helpTopics() {
       "The **Timeline** page shows the schedules of all open quests. It includes a Gantt chart of open quests and milestones, plus the overall burndown and task counts. A red line shows today’s date when it falls within the displayed schedules.",
       ">The **Burndown** chart shows how many tasks remain in all open quests. The straight **Ideal** line shows the planned rate of progress, and the **Actual** line shows your progress. Adding or removing work changes the amount remaining.",
       ">The dotted **Forecast** line shows the projected trajectory for completing the remaining work. Hovering over the dot at the end shows the projected completion date. The orange line shows changes in scope. You can tap or drag across the burndown to see dates and remaining tasks.",
-      "The **Stats** section displays all remaining and backlogged tasks. The **Task count** table shows how many tasks remain and tracks changes in scope. Adding a scheduled task raises the scope and deleting one lowers it. Each change shows in the **Scope change** column."
+      "The **Stats** section displays all remaining and backlogged tasks. The **Task counts** table shows how many tasks remain and tracks changes in scope. Adding a scheduled task raises the scope and deleting one lowers it. Each change shows in the **Scope change** column."
     ]],
     ["Workshop page", [
       "All ideas live here. Use them to think through new quests or prospects. You can either select **Make candidate** to turn an idea into a candidate quest or **Vault** it."
