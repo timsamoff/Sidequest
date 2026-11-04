@@ -209,7 +209,7 @@ export function jobDialog() {
     { key: "text", label: "Errand" },
     { key: "due", label: "Due date (optional)", type: "date" }
   ], "Add errand", function (v) {
-    if (!v.text) return "Enter the errand.";
+    if (!v.text) return "Enter an errand to add it.";
     state.jobs.push({ id: uid(), text: v.text.slice(0, 200), done: false, due: isISO(v.due) ? v.due : "" }); changed();
     return { msg: "Errand added to Errands." };
   }, "Small errands that aren’t worth a quest go on the Errands list.");

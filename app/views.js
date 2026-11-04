@@ -994,7 +994,7 @@ export function renderJobs(root) {
   var msg = el("p", { "class": "msg", role: "alert" });
   function add() {
     var v = txt.value.trim();
-    if (!v) { msg.textContent = "Enter the errand."; txt.focus(); return; }
+    if (!v) { msg.textContent = "Enter an errand to add it."; txt.focus(); return; }
     state.jobs.push({ id: uid(), text: v.slice(0, 200), done: false, due: isISO(due.value) ? due.value : "" });
     setFocusKey("job-new"); changed();
   }
@@ -1231,7 +1231,7 @@ export function helpTopics() {
       "{#ideal}**Ideal:** The burndown line showing your planned pace. See “Timeline page”.",
       "{#idea}**Idea:** A note in the **Workshop** that hasn’t become a quest. See “Workshop page”.",
       "{#in-progress}**In progress:** An active quest with at least one incomplete task that has a due date. See “Quests page”.",
-      "{#errand}**Errand:** One item on the Errands list. See “Errands page”.",
+      "{#errand}**Errand:** One item on the **Errands** page. See “Errands page”.",
       "{#launch-critical}**Launch critical:** A task that must be completed before launch. These tasks are grouped in the **Before you launch** section. See “Inside a quest”.",
       "{#before-you-launch}**Before you launch:** The section that lists a quest’s **Launch critical** tasks. These tasks must be completed before launch. See “Inside a quest”.",
       "{#make-candidate}**Make candidate:** Turns an idea into a candidate quest. See “The quest lifecycle”.",

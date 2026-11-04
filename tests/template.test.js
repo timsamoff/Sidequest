@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.12.3"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.12.4"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2825,7 +2825,7 @@ async function exportClick(k, projectName) {
   ok(k.saved().jobs.some(j => j.text === "Water the plants" && !j.done && j.due === ""), "Add job saves a new undated job");
   ok(k.$("job-new").value === "", "the field is cleared after adding");
   k.click(k.btn(k.$("view"), "Add errand"));
-  ok(k.$("view").textContent.includes("Enter the errand."), "an empty job is refused");
+  ok(k.$("view").textContent.includes("Enter an errand to add it."), "an empty job is refused");
   // complete and restore
   const row = t => [...k.d.querySelectorAll("#view ul.jobs li")].find(li => li.textContent.includes(t));
   const flip = t => { const c = row(t).querySelector("input[type=checkbox]"); c.checked = !c.checked; k.fire(c); };
