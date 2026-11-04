@@ -398,7 +398,7 @@ export function buildDetail(t, inline, readOnly) {
       dmsg.textContent = "";
       t.est = v; changed(); notify(v > 0 ? "Estimated time saved." : "Estimated time cleared.");
     });
-    dfield("task-start", "Start date (optional)", sd); dfield("task-due", "Due date, or leave empty for the Backlog", bd); dfield("task-est", "Estimated time (hours)", ei);
+    dfield("task-start", "Start date (optional)", sd); dfield("task-due", "Due date (leave empty to backlog)", bd); dfield("task-est", "Estimated time (hours)", ei);
     box.appendChild(dg); box.appendChild(dmsg);
   }
 
@@ -985,9 +985,12 @@ export function renderWorkshop(root) {
 }
 
 export function renderJobs(root) {
-  var bar = el("div", { "class": "crow oneline", style: "gap:10px" });
-  var txt = el("input", { type: "text", id: "job-new", maxlength: "200", placeholder: "New job", "aria-label": "New job", autocomplete: "off", style: "flex:1 1 220px;width:auto" });
-  var due = el("input", { type: "date", id: "job-new-due", "aria-label": "Due date (optional)", style: "width:auto;flex:0 0 auto" });
+  var bar = el("div", { "class": "jobbar" });
+  var txt = el("input", { type: "text", id: "job-new", maxlength: "200", placeholder: "New job", "aria-label": "New job", autocomplete: "off", style: "flex:1 1 220px" });
+  var dueWrap = el("div", { "class": "jobdue" });
+  dueWrap.appendChild(el("label", { "for": "job-new-due" }, "Due date"));
+  var due = el("input", { type: "date", id: "job-new-due" });
+  dueWrap.appendChild(due);
   var msg = el("p", { "class": "msg", role: "alert" });
   function add() {
     var v = txt.value.trim();
@@ -997,7 +1000,7 @@ export function renderJobs(root) {
   }
   txt.setAttribute("data-focus", "job-new");
   on(txt, "keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); add(); } });
-  bar.appendChild(txt); bar.appendChild(due);
+  bar.appendChild(txt); bar.appendChild(dueWrap);
   bar.appendChild(on(el("button", { type: "button", "class": "small", title: "Add this job" }, "Add job"), "click", add));
   root.appendChild(bar); root.appendChild(msg);
   var open = openJobs(), done = state.jobs.filter(function (j) { return j.done; });
@@ -1020,8 +1023,8 @@ function jobRow(j) {
   var text = el("span", { "class": "jobtext" }, j.text);
   lab.appendChild(cb); lab.appendChild(text); row.appendChild(lab);
   var acts = el("div", { "class": "li-actions" });
-  if (j.due) acts.appendChild(el("span", { "class": "chip" }, "Due " + fmtY(parseISO(j.due))));
   if (isJobLate(j)) acts.appendChild(el("span", { "class": "badge" }, "Overdue"));
+  if (j.due) acts.appendChild(el("span", { "class": "chip" }, "Due " + fmtY(parseISO(j.due))));
   if (j.done) {
     acts.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this job permanently" }, "Delete forever"), "click", function () { removeNow(j, "jobs", "Job"); }));
   } else {
@@ -1232,7 +1235,7 @@ export function helpTopics() {
       "{#make-candidate}**Make candidate:** Turns an idea into a candidate quest. See “The quest lifecycle”.",
       "{#milestone}**Milestone:** A task with a date that appears on the **Timeline**. See “Inside a quest”.",
       "{#next-up}**Next up:** The earliest-starting incomplete task across all open quests. See “Today page”.",
-      "{#odd-jobs}**Odd jobs:** A simple list of small jobs that aren’t worth a quest. Jobs never appear on the Timeline or in the burndown. See “Odd jobs page”.",
+      "{#odd-jobs}**Odd jobs:** List of small jobs that aren’t quite a quest. Jobs never appear on the Timeline or in the burndown. See “Odd jobs page”.",
       "{#pending}**Pending:** An active quest with no incomplete tasks that have due dates. See “Quests page”.",
       "{#pin}**Pin:** Adds a shortcut to a quest in the sidebar. See “Quests page”.",
       "{#prepared}**Prepared by and Prepared for:** The export’s letterhead, showing your information first and the Quest Giver’s second. See “Quest Giver and Quest links”.",
@@ -1312,10 +1315,10 @@ export function helpTopics() {
       "The **Stats** section displays all remaining and backlogged tasks. The **Task counts** table shows how many tasks remain and tracks changes in scope. Adding a scheduled task raises the scope and deleting one lowers it. Each change shows in the **Scope change** column."
     ]],
     ["Odd jobs page", [
-      "**Odd jobs:** A simple list for small jobs that don’t need a quest. Jobs don’t appear on the **Timeline**, the **Burndown**, or the **Tasks** page, and they don’t change any counts.",
-      "**Add job:** Type a job and select **Add job**. You can also give it a due date. Select the pencil to rename a job.",
-      ">Jobs with due dates appear first, earliest due date first. Jobs without a date follow, in the order you added them. A job past its due date shows an **Overdue** badge.",
-      "**Complete job:** Check a job to complete it. It moves to the **Completed** section.",
+      "**Odd jobs:** List for small jobs that aren’t quite a quest. Jobs don’t appear on the **Timeline**, the **Burndown**, or the **Tasks** page, and they don’t change any counts.",
+      "**Add job:** Type a job and select **Add job** or press [[Enter]]. You can also give jobs a due date. Select the pencil to rename a job.",
+      ">Jobs with due dates appear first, ordered by due date from earliest to latest. Jobs without due dates follow, in the order they were added. Jobs past their due dates display an **Overdue** badge.",
+      "**Complete job:** Check the box next to a job to mark it complete. It moves to the **Completed** section.",
       "**Restore job:** Uncheck a completed job to move it back to the list.",
       "**Delete forever:** Deletes a job at once. Select **Undo** right away if you change your mind."
     ]],
