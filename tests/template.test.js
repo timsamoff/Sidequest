@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.13.1"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.13.2"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -397,6 +397,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(row, "Make candidate"));
   const q = k.saved().quests.find(x => x.name === "Dated idea");
   ok(q && q.start === iso, "Make candidate uses today as the candidate's Start date");
+  ok(/is now a candidate quest/.test(k.$("toast").textContent) && /Candidate quests/.test(k.$("toast").textContent), "Make candidate says where the idea went");
   ok(k.saved().workshop.filter(p => !p.vault).every(p => p.created), "sample ideas carry created dates");
 }
 
@@ -2768,6 +2769,9 @@ async function exportClick(k, projectName) {
   ok(!!card && card.textContent.includes("Step 1 of 7") && card.textContent.includes("Welcome to Sidequest"), "Replay tutorial opens the card on step 1");
   k.click(k.$("tutorialNext"));
   ok(k.d.querySelector(".tutorial").textContent.includes("Add a quest") && !!k.$("tutorialSkip"), "Next moves to the first action step, which can be skipped");
+  const lit = k.d.querySelector(".tutorialtarget");
+  ok(!!lit && lit.classList.contains("tutorialflash"), "a step's first highlight flashes once");
+  ok(k.d.querySelector(".tutorial").classList.contains("tutorialflash"), "the card's own ring flashes on each step");
   k.click(k.$("tutorialSkip"));
   ok(!k.d.querySelector(".tutorial"), "Skip tutorial removes the card");
 }

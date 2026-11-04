@@ -193,7 +193,7 @@ function build() {
     );
 
   // Only flag a RELATIVE assets/ reference (href="assets/..." / src="assets/...")
-  // -- the og:image meta tag's absolute https://samoff.com/sidequest/assets/...
+  // -- the og:image meta tag's absolute https://samoff.com/Sidequest/assets/...
   // URL is fine as-is and must not trip this check.
   if (/(href|src)="assets\//.test(out)) throw new Error("build-artifact: a relative assets/ reference survived into the bundle -- these don't resolve on a published artifact with no adjacent asset folder.");
   if (/"assets\/sfx\//.test(out)) throw new Error("build-artifact: a relative assets/sfx/ string literal survived into the bundle -- the sound-effect inlining above didn't replace it.");

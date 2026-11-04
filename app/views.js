@@ -977,6 +977,7 @@ export function renderWorkshop(root) {
     acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make this a candidate quest" }, "Make candidate"), "click", function () {
       state.workshop = state.workshop.filter(function (x) { return x.id !== p.id; });
       state.quests.push(makeQuest(uid(), p.text, "candidate", { notes: p.note, start: iso(TODAY) })); changed();
+      notify("“" + p.text + "” is now a candidate quest. Find it under Candidate quests on the Quests page.");
     }));
     var rm = el("button", { type: "button", "class": "small danger", title: "Send this idea to the Vault" }, "Vault");
     on(rm, "click", function () { removeToVault(p, "Idea"); });

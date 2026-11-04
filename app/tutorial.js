@@ -54,13 +54,13 @@ var STEPS = [
   { title: "Welcome to the adventure!", view: function () { return { text: "Everything else is in the Field guide. To run this walkthrough again, open the Field guide and select **Replay tutorial**." }; } }
 ];
 
-var panel = null, textHost = null, shownText = "", timer = null, startTimer = null, index = 0, ctx = null, lit = null;
+var panel = null, textHost = null, shownText = "", timer = null, startTimer = null, index = 0, ctx = null, lit = null, flashed = "";
 
 function richText(host, text) {
   text.split("**").forEach(function (part, i) { host.appendChild(i % 2 ? el("strong", null, part) : document.createTextNode(part)); });
 }
 
-function clearLit() { if (lit) lit.classList.remove("tutorialtarget"); lit = null; }
+function clearLit() { if (lit) lit.classList.remove("tutorialtarget", "tutorialflash"); lit = null; }
 
 export function stopTutorial() {
   if (timer) clearInterval(timer);
@@ -75,6 +75,8 @@ export function stopTutorial() {
 function draw() {
   var step = STEPS[index], last = index === STEPS.length - 1;
   panel.innerHTML = "";
+  // Restart the card ring's swell for each step.
+  panel.classList.remove("tutorialflash"); void panel.offsetWidth; panel.classList.add("tutorialflash");
   panel.appendChild(el("div", { "class": "tutorialcount" }, "Step " + (index + 1) + " of " + STEPS.length));
   panel.appendChild(el("h2", { "class": "tutorialtitle" }, step.title));
   textHost = el("p", { "class": "tutorialtext" }); panel.appendChild(textHost); shownText = "";
@@ -100,13 +102,17 @@ function tick() {
   var box = panel.getBoundingClientRect();
   document.documentElement.style.setProperty("--tutorial-top", (box.height ? Math.round(window.innerHeight - box.top) : 0) + "px");
   var target = w.target || null;
-  if (target !== lit) { clearLit(); if (target) { target.classList.add("tutorialtarget"); lit = target; if (target.closest("#view")) { try { target.scrollIntoView({ block: "center" }); } catch (e) { /* ignore */ } } } }
+  if (target !== lit) { clearLit(); if (target) { target.classList.add("tutorialtarget"); lit = target;
+    // A new kind of target flashes (a tab, then the quest row on Quests). Views rebuild their DOM, so the same kind re-found stays quiet.
+    var kind = index + "|" + (target.tagName === "LI" ? "row" : target.getAttribute("data-view") || target.id || target.title || target.tagName);
+    if (flashed !== kind) { flashed = kind; target.classList.add("tutorialflash"); }
+    if (target.closest("#view")) { try { target.scrollIntoView({ block: "center" }); } catch (e) { /* ignore */ } } } }
 }
 
 // Starts the walkthrough now. A replay begins from the current state, so it adds a second quest.
 export function startTutorial() {
   stopTutorial();
-  index = 0; ctx = { baseIds: state.quests.map(function (p) { return p.id; }), baseActive: state.quests.filter(function (p) { return p.status === "active"; }).map(function (p) { return p.id; }), questId: null };
+  index = 0; flashed = ""; ctx = { baseIds: state.quests.map(function (p) { return p.id; }), baseActive: state.quests.filter(function (p) { return p.status === "active"; }).map(function (p) { return p.id; }), questId: null };
   panel = el("section", { "class": "tutorial", role: "region", "aria-label": "Tutorial", "aria-live": "polite" });
   document.body.appendChild(panel);
   draw(); tick();
