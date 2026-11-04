@@ -970,7 +970,7 @@ export function renderWorkshop(root) {
     var link = el("button", { type: "button", "class": "textbtn qlink", style: "font-weight:600", title: "Open this idea" }, p.text);
     on(link, "click", function () { ideaDialog(p); });
     nm.appendChild(link);
-    if (p.created) nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, "Added " + fmtY(parseISO(p.created))));
+    if (p.created) nm.appendChild(el("span", { "class": "hint", style: "margin-left:6px; font-size:var(--text-sm)" }, "· " + fmtY(parseISO(p.created))));
     if (p.note) nm.appendChild(el("p", { "class": "hint notetext noteclamp", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
@@ -1488,11 +1488,10 @@ export function startFreshDialog() {
     on(cb, "change", function () { go1.disabled = !cb.checked; });
     on(go1, "click", function () {
       var keep = state.settings; keep.hideWelcome = false;
+      keep.since = iso(TODAY); keep.lastBackup = ""; // new data, so the backup reminder clock starts over
       if (picked === "original") { setState(defaults()); state.settings = keep; } else { setState(blankState()); }
       ui.sel = null; ui.detail = false; ui.vaultFilter = "all"; applyTheme(); save(); closeModal(); go("today"); notify("Started fresh.");
-      // Reload once the sound has finished so the app starts clean; silent, it waits a moment for the save.
-      function reloadNow() { window.location.reload(); }
-      if (state.settings.audio) playSfx("assets/sfx/startFresh.mp3", undefined, reloadNow); else setTimeout(reloadNow, 600);
+      if (state.settings.audio) playSfx("assets/sfx/startFresh.mp3");
     });
     acts.appendChild(on(el("button", { type: "button", title: "Cancel" }, "Cancel"), "click", closeModal)); acts.appendChild(go1); body.appendChild(acts);
   });

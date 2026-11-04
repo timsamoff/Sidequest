@@ -694,8 +694,8 @@ html:has(.splash:not([hidden])) { overflow: hidden; }
             <button type="button" role="menuitem" data-act="newTask" title="Add a new task">New task</button>
             <button type="button" role="menuitem" data-act="newStep" title="Add a new step">New step</button>
             <button type="button" role="menuitem" data-act="newDecision" title="Add a new decision">New decision</button>
-            <button type="button" role="menuitem" data-act="newIdea" title="Add a new idea to the Workshop">New idea</button>
             <button type="button" role="menuitem" data-act="newJob" title="Add an errand to Errands">New errand</button>
+            <button type="button" role="menuitem" data-act="newIdea" title="Add a new idea to the Workshop">New idea</button>
           </div>
         </div>
         <div class="menuwrap">
@@ -815,18 +815,14 @@ function isHosted() {
 }
 // Plays a short sound effect, silently giving up on any failure (autoplay
 // blocked, missing file) since a sound effect is never worth surfacing an error
-// over. `volume` is optional, 0 to 1. `onEnd` runs once when the clip finishes,
-// or at once if it cannot play (with an 8 second backstop).
-function playSfx(src, volume, onEnd) {
-  var finished = false;
-  function finish() { if (finished) return; finished = true; if (onEnd) onEnd(); }
+// over. `volume` is optional, 0 to 1.
+function playSfx(src, volume) {
   try {
     var a = new window.Audio(src);
     if (volume !== undefined) a.volume = volume;
-    if (onEnd) { a.onended = finish; a.onerror = finish; setTimeout(finish, 8000); }
     var p = a.play();
-    if (p && typeof p.catch === "function") p.catch(finish);
-  } catch (e) { finish(); }
+    if (p && typeof p.catch === "function") p.catch(function () {});
+  } catch (e) { /* no audio support */ }
 }
 // Money fields work like a cash register: digits fill in from the cents, and the
 // separators are added as you type. The cap is 999,999.99. `style` is "us"
@@ -1276,7 +1272,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.13.0";
+var APP_VERSION = "0.13.1";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -4425,7 +4421,7 @@ function renderWorkshop(root) {
     var link = el("button", { type: "button", "class": "textbtn qlink", style: "font-weight:600", title: "Open this idea" }, p.text);
     on(link, "click", function () { ideaDialog(p); });
     nm.appendChild(link);
-    if (p.created) nm.appendChild(el("p", { "class": "hint", style: "margin-top:2px" }, "Added " + fmtY(parseISO(p.created))));
+    if (p.created) nm.appendChild(el("span", { "class": "hint", style: "margin-left:6px; font-size:var(--text-sm)" }, "· " + fmtY(parseISO(p.created))));
     if (p.note) nm.appendChild(el("p", { "class": "hint notetext noteclamp", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
@@ -4943,11 +4939,10 @@ function startFreshDialog() {
     on(cb, "change", function () { go1.disabled = !cb.checked; });
     on(go1, "click", function () {
       var keep = state.settings; keep.hideWelcome = false;
+      keep.since = iso(TODAY); keep.lastBackup = ""; // new data, so the backup reminder clock starts over
       if (picked === "original") { setState(defaults()); state.settings = keep; } else { setState(blankState()); }
       ui.sel = null; ui.detail = false; ui.vaultFilter = "all"; applyTheme(); save(); closeModal(); go("today"); notify("Started fresh.");
-      // Reload once the sound has finished so the app starts clean; silent, it waits a moment for the save.
-      function reloadNow() { window.location.reload(); }
-      if (state.settings.audio) playSfx(SFX_START_FRESH, undefined, reloadNow); else setTimeout(reloadNow, 600);
+      if (state.settings.audio) playSfx(SFX_START_FRESH);
     });
     acts.appendChild(on(el("button", { type: "button", title: "Cancel" }, "Cancel"), "click", closeModal)); acts.appendChild(go1); body.appendChild(acts);
   });

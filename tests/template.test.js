@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.13.0"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.13.1"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -370,8 +370,18 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     k.w.Audio = function (src) { played = src; const o = { play: function () { return Promise.resolve(); } }; ended = o; return o; };
     k.tab("settings"); k.click(k.$("startFresh"));
     const a = k.$("freshAck"); a.checked = true; k.fire(a); k.click(k.$("freshGo"));
-    ok(audio ? played === "assets/sfx/startFresh.mp3" && typeof ended.onended === "function" : played === null, "Erase everything " + (audio ? "plays the Start fresh sound and waits for it to end" : "is silent") + " when Sound effects is " + (audio ? "on" : "off"));
+    ok(audio ? played === "assets/sfx/startFresh.mp3" : played === null, "Erase everything " + (audio ? "plays the Start fresh sound" : "is silent") + " when Sound effects is " + (audio ? "on" : "off"));
   }
+}
+
+/* ---- Start fresh restarts the backup reminder ---- */
+{
+  const k = kit(await mk({ settings: { since: "2020-01-01", lastBackup: "2020-01-02", hideWelcome: true } }));
+  ok(!!k.d.querySelector(".backupreminder"), "setup: an old save shows the backup reminder");
+  k.tab("settings"); k.click(k.$("startFresh"));
+  const a = k.$("freshAck"); a.checked = true; k.fire(a); k.click(k.$("freshGo"));
+  ok(k.saved().settings.lastBackup === "" && k.saved().settings.since !== "2020-01-01", "Start fresh resets the backup clock");
+  ok(!k.d.querySelector(".backupreminder"), "and the reminder is gone from Today");
 }
 
 /* ---- Idea created date ---- */
@@ -383,7 +393,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(idea && idea.created === iso, "a new idea records today as its created date");
   k.tab("workshop");
   const row = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Dated idea"));
-  ok(row && /Added /.test(row.textContent), "the Workshop row shows when the idea was added");
+  ok(row && /· \w+ \d+, \d{4}/.test(row.textContent), "the Workshop row shows when the idea was added");
   k.click(k.btn(row, "Make candidate"));
   const q = k.saved().quests.find(x => x.name === "Dated idea");
   ok(q && q.start === iso, "Make candidate uses today as the candidate's Start date");
