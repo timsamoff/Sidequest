@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.11.3";
+export var APP_VERSION = "0.11.4";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -20,7 +20,7 @@ export function task(id, block, questId, what, done, steps, extra) {
 // A quest's own lifecycle: "candidate" or "active". Promoted in place -- the
 // same record and id carry through candidate -> active -> vaulted, never a second record.
 export function quest(id, name, status, extra) {
-  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], launchCritical: false, hist: {}, lastSlip: null, wasPinned: false, justReopened: false, touched: "", sig: "", client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } };
+  var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], hist: {}, lastSlip: null, wasPinned: false, justReopened: false, touched: "", sig: "", client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } };
   if (extra) Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   return p;
 }
@@ -44,8 +44,7 @@ export function sampleData() {
   var quests = [
     // pApp <-> pSite demonstrates a bidirectional quest link.
     quest("pApp", "Sample App", "active", { hist: appHistory, notes: "A simple habit tracker. Keep the first version small and add features after the beta.", linkedQuestIds: ["pSite"] }),
-    // launchCritical: the app's launch checklist shows the site's own status.
-    quest("pSite", "Sample Website", "active", { start: day(14), linkedQuestIds: ["pApp"], launchCritical: true }),
+    quest("pSite", "Sample Website", "active", { start: day(14), linkedQuestIds: ["pApp"] }),
     quest("pGame", "Sample Game", "active", { start: day(21), days: 14, due: day(21 + 122) }),
     quest("pNews", "Sample Newsletter", "active", { start: day(0), hist: newsHistory, notes: "A monthly note to readers. Three issues are out and the next two are scheduled." }),
     quest("pExt", "Sample Browser Extension", "candidate", { start: day(28), notes: "A small tool that could ship in a month" }),
@@ -181,7 +180,7 @@ export function normalize(s) {
         status: (x.status === "active" || x.status === "candidate" || x.status === "complete") ? x.status : "candidate",
         start: isISO(x.start) ? x.start : "", days: days,
         due: isISO(x.due) ? x.due : "",
-        notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), vault: validVault(x.vault || x.arch), launchCritical: x.launchCritical === true, hist: cleanHist(x.hist),
+        notes: (oldNote && body ? oldNote + "\n\n" + body : oldNote || body).slice(0, 5000), vault: validVault(x.vault || x.arch), hist: cleanHist(x.hist),
         lastSlip: cleanSlip(x.lastSlip),
         // Set aside by completionDialog()'s auto-unpin so Reopen can restore it.
         wasPinned: x.wasPinned === true,

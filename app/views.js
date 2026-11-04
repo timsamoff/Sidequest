@@ -105,10 +105,6 @@ export function sweepQuestCompletion() {
     if (questTasksAllDone(p)) { p.status = "complete"; completionDialog(p); }
   });
 }
-// Launch Critical is a property of the quest, not of one link.
-export function incompleteLaunchCriticalLinks(p) {
-  return linkedQuests(p).filter(function (lp) { return lp.launchCritical && lp.status !== "complete" && lp.status !== "archived" && !lp.vault; });
-}
 // Shared vault path for the Vault button, Mark complete, and the auto-sweep.
 export function vaultQuest(p) {
   removeToVault(p, "Quest", function () {
@@ -139,9 +135,8 @@ export function exportQuestForClient(p, opts) {
     notify(err && (err.code === "declined" || err.name === "AbortError") ? "Export canceled." : "The export could not be saved.");
   });
 }
-// Offers vaulting now or leaving it in Quests. Launch-critical warning is soft, never blocking.
+// Offers vaulting now or leaving it in Quests.
 export function completionDialog(p) {
-  var warn = incompleteLaunchCriticalLinks(p);
   // Unpinned directly (not unpinPage(), whose toast would compete with this
   // dialog), remembered via wasPinned so Reopen can restore it.
   var key = "quest:" + p.id;
@@ -152,7 +147,6 @@ export function completionDialog(p) {
     body.appendChild(el("p", { "class": "first" }, "“" + p.name + "” is marked complete. Send it to the Vault now, or leave it in Quests."));
     var openTasks = questRemainingUnits(p);
     if (openTasks) body.appendChild(el("p", { "class": "hint" }, openTasks + (openTasks === 1 ? " open task is" : " open tasks are") + " no longer counted in the main burndown. Reopen the quest to count " + (openTasks === 1 ? "it" : "them") + " again."));
-    if (warn.length) body.appendChild(el("p", { "class": "hint" }, "Launch-critical linked " + (warn.length === 1 ? "quest isn’t" : "quests aren’t") + " finished yet: " + warn.map(function (lp) { return lp.name; }).join(", ") + "."));
     var acts = el("div", { "class": "actions" });
     var leave = el("button", { type: "button", title: "Keep visible on Quests" }, "Leave in Quests");
     var vault = el("button", { type: "button", "class": "dangerfill", title: "Send to the Vault right now" }, "Vault now");
@@ -211,7 +205,7 @@ export function renderToday(root) {
   if (backupReminderDue()) root.appendChild(backupReminder());
   if (!state.settings.hideWelcome) root.appendChild(welcomeBox());
   var g = pgrid(), b = burnParts({});
-  g.put(el("h2", null, "Next up"), 1, 1); g.put(nextUpPanel(), 1, 2); g.put(overduePanel(), 1, 3);
+  g.put(withHelp(el("h2", null, "Next up"), "next-up", "Next up"), 1, 1); g.put(nextUpPanel(), 1, 2); g.put(overduePanel(), 1, 3);
   var progress = el("div"); b.count.style.marginTop = "0";
   progress.appendChild(el("h2", { "class": "progresshead" }, "Stats")); progress.appendChild(b.count);
   g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(progress, 2, 3);
@@ -496,31 +490,24 @@ export function buildDetail(t, inline, readOnly) {
 // Bidirectional link, not a subtask hierarchy. Lists p's own direct links only, one hop.
 export function linksSection(root, p) {
   // A live quest or a Candidate can add links (to live quests only); a vaulted quest keeps its links read-only.
-  // Only two live quests can toggle Launch critical.
-  var ownerLive = !p.vault && p.status !== "candidate";
   var links = linkedQuests(p);
   var ul = el("ul", { "class": "list" });
   if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No quest links."));
   links.forEach(function (lp) {
     var inert = !!lp.vault || lp.status === "candidate";
-    var toggleOff = inert || !ownerLive;
-    var li = el("li"), row = el("div", { "class": "crow oneline" });
+    var li = el("li"), row = el("div", { "class": "crow oneline" }), who = el("span", { "class": "linkwho" });
     if (inert) {
-      row.appendChild(el("span", { "class": "qinert", style: "font-weight:600" }, lp.name));
-      if (lp.vault) row.appendChild(el("span", { "class": "chip" }, "Vaulted"));
-      else if (lp.status === "candidate") row.appendChild(el("span", { "class": "chip" }, "Candidate"));
+      who.appendChild(el("span", { "class": "qinert", style: "font-weight:600" }, lp.name));
+      if (lp.vault) who.appendChild(el("span", { "class": "chip" }, "Vaulted"));
+      else if (lp.status === "candidate") who.appendChild(el("span", { "class": "chip" }, "Candidate"));
     } else {
       var nm = el("button", { type: "button", "class": "textbtn qlink", title: "View this quest" }, lp.name);
       on(nm, "click", function () { go("quest:" + lp.id); });
-      row.appendChild(nm);
+      who.appendChild(nm);
     }
-    if (lp.launchCritical) row.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
+    row.appendChild(who);
     if (!p.vault) {
       var acts = el("div", { "class": "li-actions" });
-      // Toggles lp's own record -- visible from either side of the link; off for a quest that is not live.
-      var lc = el("button", { type: "button", "class": "small" + (lp.launchCritical ? " on" : ""), "aria-pressed": lp.launchCritical ? "true" : "false", disabled: toggleOff ? true : undefined, title: toggleOff ? "Only available while both quests are live" : (lp.launchCritical ? "Unmark this quest as launch critical" : "Mark this quest as launch critical") }, lp.launchCritical ? "Skip launch" : "Launch critical");
-      on(lc, "click", function () { lp.launchCritical = !lp.launchCritical; changed(); });
-      acts.appendChild(lc);
       var rm = el("button", { type: "button", "class": "small danger", title: "Remove this link" }, "Unlink");
       on(rm, "click", function () { unlinkQuests(p.id, lp.id); changed(); });
       acts.appendChild(rm); row.appendChild(acts);
@@ -790,11 +777,7 @@ export function renderQuestPage(root, id) {
         if (state.settings.audio) playSfx("assets/sfx/quest.mp3");
       }));
     }
-    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Send this quest to the Vault" }, "Vault"), "click", function () {
-      var warn = incompleteLaunchCriticalLinks(p);
-      if (warn.length) notify("Sending to the Vault even though " + (warn.length === 1 ? "a launch-critical linked quest isn’t" : "launch-critical linked quests aren’t") + " finished: " + warn.map(function (lp) { return lp.name; }).join(", ") + ".");
-      vaultQuest(p);
-    }));
+    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Send this quest to the Vault" }, "Vault"), "click", function () { vaultQuest(p); }));
     ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Export web page for client review" }, "Quest Giver Export"), "click", function () {
       askExportSides(p);
     }));
@@ -1187,9 +1170,10 @@ export function helpTopics() {
       "{#idea}**Idea:** A note in the **Workshop** that hasn’t become a quest. See “Workshop page”.",
       "{#in-progress}**In progress:** An active quest with at least one incomplete task that has a due date. See “Quests page”.",
       "{#launch-critical}**Launch critical:** A task that must be completed before launch. These tasks are grouped in the **Before you launch** section. See “Inside a quest”.",
-      "{#before-you-launch}**Before you launch:** The section that lists a quest’s launch critical tasks, the ones that must be completed before launch. See “Inside a quest”.",
+      "{#before-you-launch}**Before you launch:** The section that lists a quest’s **Launch critical** tasks. These tasks must be completed before launch. See “Inside a quest”.",
       "{#make-candidate}**Make candidate:** Turns an idea into a candidate quest. See “The quest lifecycle”.",
       "{#milestone}**Milestone:** A task with a date that appears on the **Timeline**. See “Inside a quest”.",
+      "{#next-up}**Next up:** The earliest-starting incomplete task across all open quests. See “Today page”.",
       "{#pending}**Pending:** An active quest with no incomplete tasks that have due dates. See “Quests page”.",
       "{#pin}**Pin:** Adds a shortcut to a quest in the sidebar. See “Quests page”.",
       "{#prepared}**Prepared by and Prepared for:** The export’s letterhead, showing your information first and the Quest Giver’s second. See “Quest Giver and Quest links”.",

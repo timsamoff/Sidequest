@@ -74,7 +74,7 @@ async function main() {
 
   ok(Array.isArray(q1.linkedQuestIds) && q1.linkedQuestIds.indexOf("p2") >= 0, "p1's linkedProjectIds migrated to linkedQuestIds (" + JSON.stringify(q1.linkedQuestIds) + ")");
   ok(Array.isArray(q2.linkedQuestIds) && q2.linkedQuestIds.indexOf("p1") >= 0, "p2's linkedProjectIds migrated to linkedQuestIds");
-  ok(q2.launchCritical === true, "launchCritical survived the migration");
+  ok(q2.launchCritical === undefined, "the retired launchCritical field is dropped on load");
   ok(q1.hist && q1.hist["2026-01-01"] && q1.hist["2026-01-01"][0] === 2, "per-quest history survived");
 
   const t1 = s.tasks.find(t => t.id === "t1");

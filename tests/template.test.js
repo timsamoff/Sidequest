@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.11.3"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.11.4"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -185,7 +185,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 /* ---- Launch section on a project page ---- */
 {
   const k = kit(await mk()); k.tab("today"); k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  ok(k.$("viewTitle").textContent === "Sample App" && k.$("view").textContent.includes("Before you launch") && k.$("view").textContent.includes("Launch"), "project page has a Launch section, scoped to this project");
+  ok(k.$("viewTitle").textContent === "Sample App" && k.$("view").textContent.includes("Before you launch"), "project page has a Before you launch section, scoped to this project");
   ok(!k.btn(k.$("view"), "Launch task"), "there is no separate Launch task button; a task joins the checklist from its own detail");
   const checkList = () => [...k.d.querySelectorAll("#view .tlist.check li")];
   ok(/^Complete: \d+ of \d+ launch critical tasks?$/.test(k.d.querySelector("#view h2#h-checks").closest(".sechead").nextElementSibling.textContent) && checkList().length === 1, "Sample App's checklist is its own 1 launch task, with linked quests excluded (" + checkList().length + ")");
@@ -526,14 +526,12 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.saved().quests.find(p => p.id === "pExt").status === "active" && k.$("overlay").hidden, "promoting a task-less quest to Active does not trigger completion");
 }
 {
-  // Launch-critical: badge, checklist derivation, soft-gate warning (not a block)
+  // Quest links carry no Launch critical badge or toggle; sending a quest to the Vault just works
   const k = kit(await mk());
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  ok([...k.d.querySelectorAll("#view .list li")].some(li => li.textContent.includes("Sample Website") && li.textContent.includes("Launch critical")), "Linked Quests shows a Launch critical badge for Sample Website");
-  ok(!!k.btn(k.$("view"), "Skip launch"), "the toggle button reflects Sample Website's launch-critical state from Sample App's own page");
-  // sending Sample App to the Vault warns (soft gate) since Sample Website (launch-critical) is not complete/vaulted, but does not block
+  ok([...k.d.querySelectorAll("#view .list li")].some(li => li.textContent.includes("Sample Website")) && ![...k.d.querySelectorAll("#view .list li")].some(li => li.textContent.includes("Launch critical")) && !k.btn(k.$("view"), "Skip launch"), "Quest links list Sample Website with no Launch critical badge or toggle");
   k.click(k.btn(k.$("view"), "Vault"));
-  ok(k.saved().quests.find(p => p.id === "pApp").vault, "sending to the Vault proceeds even with an incomplete launch-critical link (soft gate only, never a hard block)");
+  ok(k.saved().quests.find(p => p.id === "pApp").vault, "sending a quest with a link to the Vault proceeds with no warning gate");
 }
 {
   // vaulted quest pages are genuinely viewable, read-only, until restored
@@ -669,7 +667,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.saved().quests.find(p => p.id === "pApp").savedLinkIds === undefined, "there is no separate set-aside list any more");
   let sec = [...k.d.querySelectorAll("#view h2")].find(h => h.textContent === "Quest links");
   ok(!!sec && !!k.d.querySelector("#view .qlink") && !k.d.querySelector("#view .qinert") && !!k.btn(k.$("view"), "Link quest"), "a demoted quest's page shows its link to a live quest as clickable and can still add links");
-  ok(!!k.d.querySelector("#view .list button[disabled]") && !!k.btn(k.$("view"), "Unlink"), "its Launch critical toggle is disabled but Unlink still works");
+  ok(!k.btn(k.$("view"), "Launch critical") && !!k.btn(k.$("view"), "Unlink"), "a link row has no Launch critical toggle and Unlink still works");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Website"));
   const row = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample App"));
   ok(!!row && !!row.querySelector(".qinert") && !row.querySelector(".qlink") && row.textContent.includes("Candidate"), "the other quest lists the demoted one as plain text labeled Candidate, not clickable");
@@ -2627,7 +2625,7 @@ async function exportClick(k, projectName) {
   const { helpTopics } = await import("../app/views.js?run=" + counter);
   const topics = helpTopics(), titles = topics.map(t => t[0]);
   const termLines = topics.find(t => t[0] === "Terms")[1];
-  ok(termLines.length === 33 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 33 Terms entries read as a bold term, a definition, and a pointer");
+  ok(termLines.length === 34 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 34 Terms entries read as a bold term, a definition, and a pointer");
   ok(termLines.every(l => titles.includes(l.match(/See “([^”]+)”\.$/)[1])), "every Terms pointer names a topic that exists");
   f.value = "decision"; k.fire(f, "input");
   ok(titlesOf()[0] === "Terms" && items()[0].open, "a word that is a term puts the Terms topic first and opens it");
@@ -2652,6 +2650,7 @@ async function exportClick(k, projectName) {
   k.tab("help");
   ok(!k.d.querySelector("#view .hbody b").textContent.includes("{#") && !k.d.querySelector("#view details.helpitem:nth-of-type(2)").textContent.includes("{#"), "the ids never show in the Field guide");
   ok(k.d.querySelector("#view li[data-term='bounty']") !== null, "each Terms line carries its id for linking");
+  k.tab("today"); ok(!!k.d.querySelector("#view .helpq[data-term='next-up']"), "the Today page has a ? beside Next up");
   k.tab("projects");
   const qs = [...k.d.querySelectorAll("#view .helpq")].map(b => b.getAttribute("data-term"));
   ok(qs.includes("in-progress") && qs.includes("candidate-quest"), "the Quests page has a ? beside In progress and Candidate quests (" + qs.join() + ")");
@@ -2699,7 +2698,7 @@ async function exportClick(k, projectName) {
   ok(q("pCli").linkedQuestIds.indexOf("pNews") >= 0 && q("pNews").linkedQuestIds.indexOf("pCli") >= 0, "the new link is stored on both quests");
   k.click(k.$("modalBody") && (k.btn(k.$("modalBody"), "Close") || k.btn(k.$("modalBody"), "Cancel")) || k.$("modalBody"));
   const row = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Newsletter"));
-  ok(!!row && !!row.querySelector(".qlink") && !!row.querySelector("button[disabled]") && !!k.btn(row, "Unlink"), "on the Candidate's page the live partner is clickable, Launch critical is off, and Unlink works");
+  ok(!!row && !!row.querySelector(".qlink") && !k.btn(row, "Launch critical") && !!k.btn(row, "Unlink"), "on the Candidate's page the live partner is clickable and Unlink works");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Newsletter"));
   const row2 = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Command-Line Tool"));
   ok(!!row2 && !!row2.querySelector(".qinert") && row2.textContent.includes("Candidate"), "the live quest lists the Candidate as plain text labeled Candidate");
