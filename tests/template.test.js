@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.12.4"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.13.0"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -360,6 +360,34 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const a2 = k.$("freshAck"); a2.checked = true; k.fire(a2); k.click(k.$("freshGo"));
   ok(k.saved().tasks.length === 24 && k.saved().pins.includes("quest:pApp"), "the samples can be reloaded");
   ok(k.saved().settings.hideWelcome === false, "reloading the samples brings the welcome message back too");
+}
+
+/* ---- Start fresh sound and reload ---- */
+{
+  for (const audio of [true, false]) {
+    const k = kit(await mk({ settings: { audio } }));
+    let played = null, ended = null;
+    k.w.Audio = function (src) { played = src; const o = { play: function () { return Promise.resolve(); } }; ended = o; return o; };
+    k.tab("settings"); k.click(k.$("startFresh"));
+    const a = k.$("freshAck"); a.checked = true; k.fire(a); k.click(k.$("freshGo"));
+    ok(audio ? played === "assets/sfx/startFresh.mp3" && typeof ended.onended === "function" : played === null, "Erase everything " + (audio ? "plays the Start fresh sound and waits for it to end" : "is silent") + " when Sound effects is " + (audio ? "on" : "off"));
+  }
+}
+
+/* ---- Idea created date ---- */
+{
+  const k = kit(await mk());
+  k.menuAct("newBtn", "newIdea"); k.setField("text", "Dated idea"); k.click(k.btn(k.$("modalBody"), "Workshop it"));
+  const today = new Date(); const iso = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+  const idea = k.saved().workshop.find(p => p.text === "Dated idea");
+  ok(idea && idea.created === iso, "a new idea records today as its created date");
+  k.tab("workshop");
+  const row = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Dated idea"));
+  ok(row && /Added /.test(row.textContent), "the Workshop row shows when the idea was added");
+  k.click(k.btn(row, "Make candidate"));
+  const q = k.saved().quests.find(x => x.name === "Dated idea");
+  ok(q && q.start === iso, "Make candidate uses today as the candidate's Start date");
+  ok(k.saved().workshop.filter(p => !p.vault).every(p => p.created), "sample ideas carry created dates");
 }
 
 /* ---- core behavior still intact ---- */

@@ -28,14 +28,18 @@ export function isHosted() {
 }
 // Plays a short sound effect, silently giving up on any failure (autoplay
 // blocked, missing file) since a sound effect is never worth surfacing an error
-// over. `volume` is optional, 0 to 1.
-export function playSfx(src, volume) {
+// over. `volume` is optional, 0 to 1. `onEnd` runs once when the clip finishes,
+// or at once if it cannot play (with an 8 second backstop).
+export function playSfx(src, volume, onEnd) {
+  var finished = false;
+  function finish() { if (finished) return; finished = true; if (onEnd) onEnd(); }
   try {
     var a = new window.Audio(src);
     if (volume !== undefined) a.volume = volume;
+    if (onEnd) { a.onended = finish; a.onerror = finish; setTimeout(finish, 8000); }
     var p = a.play();
-    if (p && typeof p.catch === "function") p.catch(function () {});
-  } catch (e) { /* no audio support */ }
+    if (p && typeof p.catch === "function") p.catch(finish);
+  } catch (e) { finish(); }
 }
 // Money fields work like a cash register: digits fill in from the cents, and the
 // separators are added as you type. The cap is 999,999.99. `style` is "us"

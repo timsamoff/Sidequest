@@ -120,7 +120,8 @@ function stripModuleSyntax(source, filename) {
 // quest sound currently is) is only embedded once, not once per reference.
 var SFX_FILES = {
   "assets/sfx/quest.mp3": "SFX_QUEST", "assets/sfx/complete.mp3": "SFX_COMPLETE",
-  "assets/sfx/refresh.mp3": "SFX_REFRESH", "assets/sfx/restoreBackup.mp3": "SFX_RESTORE_BACKUP"
+  "assets/sfx/refresh.mp3": "SFX_REFRESH", "assets/sfx/restoreBackup.mp3": "SFX_RESTORE_BACKUP",
+  "assets/sfx/startFresh.mp3": "SFX_START_FRESH"
 };
 
 function buildSfxDataUris() {

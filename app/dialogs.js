@@ -200,7 +200,7 @@ export function ideaDialog(idea) {
   ], idea ? "Save idea" : "Workshop it", function (v) {
     if (!v.text) return "Enter a title for the idea.";
     if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 5000); changed(); return { msg: "Idea saved." }; }
-    state.workshop.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000) }); changed();
+    state.workshop.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000), created: iso(TODAY) }); changed();
     return { msg: v.text + " added to the Workshop." };
   }, idea ? undefined : "New ideas live in the Workshop. When ready, ideas can be made into candidate quests.");
 }

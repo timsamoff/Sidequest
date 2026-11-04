@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.12.4";
+export var APP_VERSION = "0.13.0";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -124,9 +124,9 @@ export function sampleData() {
       { id: "j7", text: "Clear out the downloads folder", done: true, due: "" }
     ],
     workshop: [
-      { id: "p1", text: "Try a new game engine", note: "Not urgent, but worth trying someday" },
-      { id: "p2", text: "Write up lessons learned", note: "After the website launches" },
-      { id: "p3", text: "Redesign the logo", note: "", vault: { at: yest, why: "removed" } }
+      { id: "p1", text: "Try a new game engine", note: "Not urgent, but worth trying someday", created: day(-12) },
+      { id: "p2", text: "Write up lessons learned", note: "After the website launches", created: day(-5) },
+      { id: "p3", text: "Redesign the logo", note: "", created: day(-20), vault: { at: yest, why: "removed" } }
     ],
     // Decisions attach through a required step link. d3 is a vaulted example.
     decisions: [
@@ -270,7 +270,7 @@ export function normalize(s) {
   }
   // The Workshop array used to be called `parked`; read whichever is present.
   var rawWorkshop = Array.isArray(s.workshop) ? s.workshop : s.parked;
-  if (Array.isArray(rawWorkshop)) d.workshop = rawWorkshop.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 5000), vault: validVault(x.vault || x.arch) }; });
+  if (Array.isArray(rawWorkshop)) d.workshop = rawWorkshop.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 5000), created: isISO(x.created) ? x.created : "", vault: validVault(x.vault || x.arch) }; });
   // A save from before Odd jobs existed gets an empty list, not the sample jobs.
   d.jobs = Array.isArray(s.jobs) ? s.jobs.filter(function (x) { return x && typeof x.id === "string"; }).slice(0, 2000).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), done: x.done === true, due: isISO(x.due) ? x.due : "" }; }) : [];
   if (s.settings && typeof s.settings === "object") {
