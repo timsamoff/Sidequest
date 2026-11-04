@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.12.2"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.12.3"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -302,7 +302,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
-  const sections = ["How Sidequest works", "Terms", "Finding your way around", "The quest lifecycle", "Today page", "Quests page", "Inside a quest", "Quest Giver and Quest links", "A quest’s Schedule and Timeline", "Tasks page", "Timeline page", "Odd jobs page", "Workshop page", "Vault page", "Options page"];
+  const sections = ["How Sidequest works", "Terms", "Finding your way around", "The quest lifecycle", "Today page", "Quests page", "Inside a quest", "Quest Giver and Quest links", "A quest’s Schedule and Timeline", "Tasks page", "Timeline page", "Errands page", "Workshop page", "Vault page", "Options page"];
   ok(titles.join() === sections.join(), "the Field guide has the thirteen sections of the rewrite plus Terms, in order (" + titles.join(", ") + ")");
   const helpText = k.$("view").textContent;
   ok(k.d.querySelectorAll("#view .hbody ul ul").length > 0 && k.d.querySelectorAll("#view .hbody ul ul ul").length === 0, "nested bullets in the guide render as nested lists, no deeper than two levels");
@@ -2815,17 +2815,17 @@ async function exportClick(k, projectName) {
 {
   const k = kit(await mk()); k.tab("jobs");
   const names = () => [...k.d.querySelectorAll("#view ul.jobs li")].map(li => li.textContent);
-  ok(k.$("viewTitle").textContent === "Odd jobs", "the Odd jobs page has its title");
+  ok(k.$("viewTitle").textContent === "Errands", "the Errands page has its title");
   const open = [...k.d.querySelectorAll("#view ul.jobs")][0].textContent;
   ok(open.indexOf("Renew the domain name") < open.indexOf("Back up the photos folder") && open.indexOf("Back up the photos folder") < open.indexOf("Reply to the print shop"), "dated jobs sort first, earliest first, then undated jobs");
   ok(k.d.querySelectorAll("#view .badge").length === 2 && [...k.d.querySelectorAll("#view .badge")].every(b => b.textContent === "Overdue"), "only the two past-due open jobs show an Overdue badge");
   ok(k.$("view").textContent.includes("Completed") && [...k.d.querySelectorAll("#view ul.jobs")][1].textContent.includes("Update the email signature"), "a completed job is in the Completed section");
   // add
-  k.$("job-new").value = "Water the plants"; k.click(k.btn(k.$("view"), "Add job"));
+  k.$("job-new").value = "Water the plants"; k.click(k.btn(k.$("view"), "Add errand"));
   ok(k.saved().jobs.some(j => j.text === "Water the plants" && !j.done && j.due === ""), "Add job saves a new undated job");
   ok(k.$("job-new").value === "", "the field is cleared after adding");
-  k.click(k.btn(k.$("view"), "Add job"));
-  ok(k.$("view").textContent.includes("Enter the job."), "an empty job is refused");
+  k.click(k.btn(k.$("view"), "Add errand"));
+  ok(k.$("view").textContent.includes("Enter the errand."), "an empty job is refused");
   // complete and restore
   const row = t => [...k.d.querySelectorAll("#view ul.jobs li")].find(li => li.textContent.includes(t));
   const flip = t => { const c = row(t).querySelector("input[type=checkbox]"); c.checked = !c.checked; k.fire(c); };
@@ -2854,8 +2854,8 @@ async function exportClick(k, projectName) {
 {
   const k = kit(await mk()); k.menuAct("newBtn", "newJob");
   k.setField("text", "Call the dentist"); k.setField("due", "2031-05-04");
-  k.click(k.btn(k.d.querySelector(".modal"), "Add job"));
-  ok(k.saved().jobs.some(j => j.text === "Call the dentist" && j.due === "2031-05-04"), "the + menu's New job adds a dated job");
+  k.click(k.btn(k.d.querySelector(".modal"), "Add errand"));
+  ok(k.saved().jobs.some(j => j.text === "Call the dentist" && j.due === "2031-05-04"), "the + menu's New errand adds a dated errand");
   k.type("dentist");
   ok(k.d.querySelector('#searchResults .sgroup[data-kind="job"]') && k.d.querySelector('#searchResults .sgroup[data-kind="job"]').textContent.includes("Call the dentist"), "search has a Jobs group");
 }

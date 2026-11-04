@@ -986,7 +986,7 @@ export function renderWorkshop(root) {
 
 export function renderJobs(root) {
   var bar = el("div", { "class": "jobbar" });
-  var txt = el("input", { type: "text", id: "job-new", maxlength: "200", placeholder: "New job", "aria-label": "New job", autocomplete: "off", style: "flex:1 1 220px" });
+  var txt = el("input", { type: "text", id: "job-new", maxlength: "200", placeholder: "New errand", "aria-label": "New errand", autocomplete: "off", style: "flex:1 1 220px" });
   var dueWrap = el("div", { "class": "jobdue" });
   dueWrap.appendChild(el("label", { "for": "job-new-due" }, "Due date"));
   var due = el("input", { type: "date", id: "job-new-due" });
@@ -994,18 +994,18 @@ export function renderJobs(root) {
   var msg = el("p", { "class": "msg", role: "alert" });
   function add() {
     var v = txt.value.trim();
-    if (!v) { msg.textContent = "Enter the job."; txt.focus(); return; }
+    if (!v) { msg.textContent = "Enter the errand."; txt.focus(); return; }
     state.jobs.push({ id: uid(), text: v.slice(0, 200), done: false, due: isISO(due.value) ? due.value : "" });
     setFocusKey("job-new"); changed();
   }
   txt.setAttribute("data-focus", "job-new");
   on(txt, "keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); add(); } });
   bar.appendChild(txt); bar.appendChild(dueWrap);
-  bar.appendChild(on(el("button", { type: "button", "class": "small", title: "Add this job" }, "Add job"), "click", add));
+  bar.appendChild(on(el("button", { type: "button", "class": "small", title: "Add this errand" }, "Add errand"), "click", add));
   root.appendChild(bar); root.appendChild(msg);
   var open = openJobs(), done = state.jobs.filter(function (j) { return j.done; });
   var ul = el("ul", { "class": "list jobs", style: "margin-top:12px" });
-  if (!open.length) ul.appendChild(el("li", { "class": "hint" }, "No open jobs. Add one with the Add job button."));
+  if (!open.length) ul.appendChild(el("li", { "class": "hint" }, "No open errands. Add one with the Add errand button."));
   open.forEach(function (j) { ul.appendChild(jobRow(j)); });
   root.appendChild(ul);
   if (done.length) {
@@ -1016,31 +1016,33 @@ export function renderJobs(root) {
   }
 }
 function jobRow(j) {
-  var li = el("li", { "class": j.done ? "done" : "" }), row = el("div", { "class": "crow oneline" });
-  var lab = el("label", { style: "font-weight:400" });
-  var cb = el("input", { type: "checkbox", "aria-label": (j.done ? "Restore job: " : "Complete job: ") + j.text }); cb.checked = j.done;
+  var li = el("li", { "class": j.done ? "done" : "" }), row = el("div", { "class": "jobrow" });
+  var lab = el("label", { "class": "jobmain" });
+  var cb = el("input", { type: "checkbox", "aria-label": (j.done ? "Restore errand: " : "Complete errand: ") + j.text }); cb.checked = j.done;
   on(cb, "change", function () { j.done = cb.checked; changed(); });
   var text = el("span", { "class": "jobtext" }, j.text);
   lab.appendChild(cb); lab.appendChild(text); row.appendChild(lab);
-  var acts = el("div", { "class": "li-actions" });
-  if (isJobLate(j)) acts.appendChild(el("span", { "class": "badge" }, "Overdue"));
-  if (j.due) acts.appendChild(el("span", { "class": "chip" }, "Due " + fmtY(parseISO(j.due))));
+  var badges = el("div", { "class": "jobbadges" });
+  if (isJobLate(j)) badges.appendChild(el("span", { "class": "badge" }, "Overdue"));
+  if (j.due) badges.appendChild(el("span", { "class": "chip" }, "Due " + fmtY(parseISO(j.due))));
+  if (badges.childNodes.length) row.appendChild(badges);
   if (j.done) {
-    acts.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this job permanently" }, "Delete forever"), "click", function () { removeNow(j, "jobs", "Job"); }));
+    var del = el("button", { type: "button", "class": "small danger jobend del", title: "Delete this errand permanently" }, "Delete forever");
+    row.appendChild(on(del, "click", function () { removeNow(j, "jobs", "Errand"); }));
   } else {
-    var pen = pencilButton("Rename this job", "Rename this job");
+    var pen = pencilButton("Rename this errand", "Rename this errand"); pen.classList.add("jobend", "pen");
     on(pen, "click", function () {
       pen.hidden = true;
       editInline(text, {
-        label: "Job", max: 200, value: function () { return j.text; },
+        label: "Errand", max: 200, value: function () { return j.text; },
         onSave: function (v) { j.text = v.slice(0, 200); changed(); },
-        onEmpty: function () { notify("A job needs some text."); },
+        onEmpty: function () { notify("An errand needs some text."); },
         onDone: function () { pen.hidden = false; }
       });
     });
-    acts.appendChild(pen);
+    row.appendChild(pen);
   }
-  row.appendChild(acts); li.appendChild(row);
+  li.appendChild(row);
   return li;
 }
 
@@ -1229,13 +1231,13 @@ export function helpTopics() {
       "{#ideal}**Ideal:** The burndown line showing your planned pace. See “Timeline page”.",
       "{#idea}**Idea:** A note in the **Workshop** that hasn’t become a quest. See “Workshop page”.",
       "{#in-progress}**In progress:** An active quest with at least one incomplete task that has a due date. See “Quests page”.",
-      "{#job}**Job:** One item on the Odd jobs list. See “Odd jobs page”.",
+      "{#errand}**Errand:** One item on the Errands list. See “Errands page”.",
       "{#launch-critical}**Launch critical:** A task that must be completed before launch. These tasks are grouped in the **Before you launch** section. See “Inside a quest”.",
       "{#before-you-launch}**Before you launch:** The section that lists a quest’s **Launch critical** tasks. These tasks must be completed before launch. See “Inside a quest”.",
       "{#make-candidate}**Make candidate:** Turns an idea into a candidate quest. See “The quest lifecycle”.",
       "{#milestone}**Milestone:** A task with a date that appears on the **Timeline**. See “Inside a quest”.",
       "{#next-up}**Next up:** The earliest-starting incomplete task across all open quests. See “Today page”.",
-      "{#odd-jobs}**Odd jobs:** List of small jobs that aren’t quite a quest. Jobs never appear on the Timeline or in the burndown. See “Odd jobs page”.",
+      "{#errands}**Errands:** List of small errands that aren’t quite a quest. Errands never appear on the Timeline or in the burndown. See “Errands page”.",
       "{#pending}**Pending:** An active quest with no incomplete tasks that have due dates. See “Quests page”.",
       "{#pin}**Pin:** Adds a shortcut to a quest in the sidebar. See “Quests page”.",
       "{#prepared}**Prepared by and Prepared for:** The export’s letterhead, showing your information first and the Quest Giver’s second. See “Quest Giver and Quest links”.",
@@ -1255,7 +1257,7 @@ export function helpTopics() {
     ]],
     ["Finding your way around", [
       "**Search:** Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **x** where the magnifier was to cancel.",
-      "**New (+) button:** Use the **+** button to add a candidate quest, task, step, decision, idea, or job.",
+      "**New (+) button:** Use the **+** button to add a candidate quest, task, step, decision, idea, or errand.",
       "**Main menu:** The **Main menu** (hamburger menu) lists every page in the app.",
       "**Tab bar (mobile):** On a mobile device, the tab bar holds the main pages. Find the other pages in the **Main menu**.",
       "**Undo:** Removing an item or sending it to the **Vault** shows an **Undo** button for a few seconds."
@@ -1314,13 +1316,13 @@ export function helpTopics() {
       ">The dotted **Forecast** line shows the projected trajectory for completing the remaining work. Hovering over the dot at the end shows the projected completion date. The orange **Scope** line shows changes in scope. You can tap or drag across the burndown to see dates and remaining tasks.",
       "The **Stats** section displays all remaining and backlogged tasks. The **Task counts** table shows how many tasks remain and tracks changes in scope. Adding a scheduled task raises the scope and deleting one lowers it. Each change shows in the **Scope change** column."
     ]],
-    ["Odd jobs page", [
-      "**Odd jobs:** List for small jobs that aren’t quite a quest. Jobs don’t appear on the **Timeline**, the **Burndown**, or the **Tasks** page, and they don’t change any counts.",
-      "**Add job:** Type a job and select **Add job** or press [[Enter]]. You can also give jobs a due date. Select the pencil to rename a job.",
-      ">Jobs with due dates appear first, ordered by due date from earliest to latest. Jobs without due dates follow, in the order they were added. Jobs past their due dates display an **Overdue** badge.",
-      "**Complete job:** Check the box next to a job to mark it complete. It moves to the **Completed** section.",
-      "**Restore job:** Uncheck a completed job to move it back to the list.",
-      "**Delete forever:** Deletes a job at once. Select **Undo** right away if you change your mind."
+    ["Errands page", [
+      "**Errands:** List for small errands that aren’t quite a quest. Errands don’t appear on the **Timeline**, the **Burndown**, or the **Tasks** page, and they don’t change any counts.",
+      "**Add errand:** Type an errand and select **Add errand** or press [[Enter]]. You can also give errands a due date. Select the pencil to rename an errand.",
+      ">Errands with due dates appear first, ordered by due date from earliest to latest. Errands without due dates follow, in the order they were added. Errands past their due dates display an **Overdue** badge.",
+      "**Complete errand:** Check the box next to an errand to mark it complete. It moves to the **Completed** section.",
+      "**Restore errand:** Uncheck a completed errand to move it back to the list.",
+      "**Delete forever:** Deletes an errand at once. Select **Undo** right away if you change your mind."
     ]],
     ["Workshop page", [
       "All ideas live here. Use them to think through new quests or prospects. You can either select **Make candidate** to turn an idea into a candidate quest or **Vault** it."

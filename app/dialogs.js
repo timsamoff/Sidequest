@@ -205,14 +205,14 @@ export function ideaDialog(idea) {
   }, idea ? undefined : "New ideas live in the Workshop. When ready, ideas can be made into candidate quests.");
 }
 export function jobDialog() {
-  formDialog("New job", [
-    { key: "text", label: "Job" },
+  formDialog("New errand", [
+    { key: "text", label: "Errand" },
     { key: "due", label: "Due date (optional)", type: "date" }
-  ], "Add job", function (v) {
-    if (!v.text) return "Enter the job.";
+  ], "Add errand", function (v) {
+    if (!v.text) return "Enter the errand.";
     state.jobs.push({ id: uid(), text: v.text.slice(0, 200), done: false, due: isISO(v.due) ? v.due : "" }); changed();
-    return { msg: "Job added to Odd jobs." };
-  }, "Small jobs that aren’t worth a quest go on the Odd jobs list.");
+    return { msg: "Errand added to Errands." };
+  }, "Small errands that aren’t worth a quest go on the Errands list.");
 }
 // Steps with no decision yet, for one task -- shared by the cascade below.
 function openStepOptions(taskId) {
