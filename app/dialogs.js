@@ -1,17 +1,20 @@
 import { state, ui, changed, isISO, task, makeQuest } from "./state.js";
 import { iso, addDays, parseISO, fmt, fmtY, TODAY } from "./dates.js";
 import {
-  wd, wl, wpC, questDueLimit, liveQuests, findQuest, dispQuest, nextTask, findTask,
+  wd, wl, wpC, questDueLimit, dateProblems, liveQuests, findQuest, dispQuest, nextTask, findTask,
   orderedAll, taskOptions, stepOptions, stepOptionsForTask, syncFromSteps, findStep, decisionFor,
-  pset, blockForDate, taskStart, taskEnd, linkQuests
+  pset, blockForDate, blockStartFor, taskStart, taskEnd, linkQuests, estimateWarning
 } from "./model.js";
-import { $, el, on, uid, notify, moneyInput, parseMoney } from "./dom.js";
+import { $, el, on, uid, notify, moneyInput, parseMoney, helpLink } from "./dom.js";
 import { closeMenus } from "./app.js";
 
 /* modal */
 export var modalReturn = null;
 // opts.full makes the dialog fill the screen (less a small margin), for a big chart.
+// A "?" opened from inside a dialog saves that dialog here, so closing the help brings it back as it was.
+var modalSaved = null;
 export function openModal(title, build, opts) {
+  modalSaved = null;
   modalReturn = document.activeElement;
   document.querySelector("#overlay .modal").classList.toggle("full", !!(opts && opts.full));
   $("modalTitle").textContent = title;
@@ -22,7 +25,26 @@ export function openModal(title, build, opts) {
   var first = body.querySelector("input, textarea, select, button");
   if (first) first.focus();
 }
+// Opens over whatever dialog is showing; closing it (X, Escape, outside click) returns to that dialog.
+export function openModalOver(title, build, opts) {
+  if ($("overlay").hidden) { openModal(title, build, opts); return; }
+  var body = $("modalBody"), modal = document.querySelector("#overlay .modal");
+  var saved = { title: $("modalTitle").textContent, nodes: Array.prototype.slice.call(body.childNodes), full: modal.classList.contains("full"), ret: modalReturn };
+  openModal(title, build, opts);
+  modalSaved = saved;
+}
+// Closes everything, including a dialog saved underneath a help modal.
+export function closeAllModals() { modalSaved = null; closeModal(); }
 export function closeModal() {
+  if (modalSaved) {
+    var s = modalSaved, b = $("modalBody"); modalSaved = null;
+    b.innerHTML = ""; s.nodes.forEach(function (n) { b.appendChild(n); });
+    $("modalTitle").textContent = s.title;
+    document.querySelector("#overlay .modal").classList.toggle("full", s.full);
+    modalReturn = s.ret;
+    var f = b.querySelector("input, textarea, select, button"); if (f) f.focus();
+    return;
+  }
   $("overlay").hidden = true; $("modalBody").innerHTML = "";
   document.querySelector("#overlay .modal").classList.remove("full");
   if (modalReturn && document.body.contains(modalReturn) && modalReturn.focus) modalReturn.focus();
@@ -49,19 +71,44 @@ document.addEventListener("keydown", function (e) {
 export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
   openModal(title, function (body) {
     if (intro) body.appendChild(el("p", { "class": "hint first" }, intro));
-    var inputs = {};
+    var inputs = {}, host = body;
     fields.forEach(function (f) {
       var w = el("div", { "class": "field" }); var id = "f-" + f.key;
       if (f.type === "checkbox") {
         var crow = el("label", { "class": "radiorow" }), cbx = el("input", { type: "checkbox", id: id }); cbx.checked = !!f.value;
-        crow.appendChild(cbx); crow.appendChild(el("span", null, f.label)); w.appendChild(crow); body.appendChild(w); inputs[f.key] = cbx; return;
+        crow.appendChild(cbx); crow.appendChild(el("span", null, f.label)); w.appendChild(crow); host.appendChild(w); inputs[f.key] = cbx; return;
       }
       if (f.type === "static") {
-        w.appendChild(el("span", { "class": "hint" }, f.label + ": " + f.value)); body.appendChild(w); return;
+        w.appendChild(el("span", { "class": "hint" }, f.label + ": " + f.value)); host.appendChild(w); return;
       }
       if (f.type === "heading") {
-        body.appendChild(el("h3", { "class": "dialogheading" }, f.label));
-        if (f.hint) body.appendChild(el("p", { "class": "hint" }, f.hint));
+        host = body;
+        var h3 = el("h3", { "class": "dialogheading" });
+        if (f.collapsible) {
+          // Same look as a quest page's collapsible section: a heading, then a one-row card that opens in place. Everything after the heading goes in the card.
+          h3 = el("h2", { "class": "dialogheading hasq" }, f.label);
+          if (f.help) h3.appendChild(helpLink(f.help, f.label));
+          body.appendChild(h3);
+          var cul = el("ul", { "class": "tlist sectionlist" }), cli = el("li");
+          var cb = el("button", { type: "button", "class": "item", "aria-expanded": "false", title: "Show " + f.label }, null);
+          var cline = el("div", { "class": "l2" }); cb.appendChild(cline);
+          var grp = el("div", { "class": "detail" }); grp.hidden = true;
+          var paintLine = function () {
+            var t = (f.summaryKeys || []).map(function (k) { return inputs[k] ? inputs[k].value.trim() : ""; }).filter(Boolean).join(" · ");
+            cline.textContent = t || f.emptyText || f.label; cline.style.color = t ? "" : "var(--muted)"; cline.style.fontSize = t ? "" : "var(--text-sm)";
+          };
+          paintLine();
+          on(cb, "click", function () {
+            var open = grp.hidden; grp.hidden = !open;
+            cb.setAttribute("aria-expanded", open ? "true" : "false"); cb.title = (open ? "Hide " : "Show ") + f.label; paintLine();
+          });
+          cli.appendChild(cb); cli.appendChild(grp); cul.appendChild(cli); body.appendChild(cul);
+          host = grp;
+        } else {
+          h3.appendChild(document.createTextNode(f.label)); if (f.help) h3.appendChild(helpLink(f.help, f.label));
+          body.appendChild(h3);
+          if (f.hint) body.appendChild(el("p", { "class": "hint" }, f.hint));
+        }
         return;
       }
       w.appendChild(el("label", { "for": id }, f.label));
@@ -83,7 +130,7 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
       }
       if (f.placeholder) inp.setAttribute("placeholder", f.placeholder);
       if (f.value !== undefined) inp.value = f.value;
-      w.appendChild(inp); body.appendChild(w); inputs[f.key] = inp;
+      w.appendChild(inp); host.appendChild(w); inputs[f.key] = inp;
     });
     var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
@@ -121,49 +168,70 @@ export function taskDialog(prefillQuestId) {
   fields.push({ key: "what", label: "Task" });
   fields.push({ key: "done", label: "How you’ll know it’s done (optional)" });
   fields.push({ key: "start", label: "Start date (optional)", type: "date" });
-  fields.push({ key: "due", label: "Due date (leave empty to add to the quest’s backlog)", type: "date" });
+  fields.push({ key: "due", label: "Due date (leave empty to backlog)", type: "date" });
   fields.push({ key: "est", label: "Estimated time in hours (optional)", type: "number", min: "0", max: "9999", step: "0.25" });
   formDialog("New task", fields, "Add task", function (v) {
     if (fixedQuest) v.quest = startId;
     if (!v.quest) return "Choose a quest.";
     if (!v.what) return "Enter a title for the task.";
     var blk = 0, start = "", due = "";
-    var first = parseISO(pset(v.quest).start);
+    var first = parseISO(pset(v.quest).start), prob = dateProblems(v.quest, v.start, v.due);
+    if (prob.start || prob.due) return showDates(prob.start, prob.due);
     if (v.start) {
       if (!isISO(v.start)) return "Enter a valid start date, or leave it empty.";
-      if (parseISO(v.start) < first) return "This quest starts " + fmtY(first) + ". Pick a start date on or after that.";
+      if (parseISO(v.start) < first) return showDates("This quest starts " + fmtY(first) + ". Pick a start date on or after that.", "");
       start = v.start;
     }
     if (v.due) {
       if (!isISO(v.due)) return "Enter a valid due date, or leave it empty for the Backlog.";
       blk = blockForDate(v.quest, parseISO(v.due));
-      if (blk === null) return "This quest starts " + fmtY(first) + ". Pick a due date on or after that.";
+      if (blk === null) return showDates("", "This quest starts " + fmtY(first) + ". Pick a due date on or after that.");
       var qdue = questDueLimit(v.quest);
-      if (qdue !== null && parseISO(v.due) > qdue) return "This quest is due " + fmtY(qdue) + ". Pick a due date on or before that.";
-      if (start && start > v.due) return "You can’t begin after you finish! Pick a start date on or before the due date.";
+      if (qdue !== null && parseISO(v.due) > qdue) return showDates("", "This quest is due " + fmtY(qdue) + ". Choose a due date on or before then.");
+      if (start && start > v.due) return showDates("You can’t begin after you finish! Pick a start date on or before the due date.", "");
       due = v.due;
     }
     var est = v.est === "" ? 0 : parseFloat(v.est);
     if (isNaN(est) || est < 0 || est > 9999) return "Enter the estimated time as hours from 0 to 9999, or leave it empty.";
     var t = task("c" + uid(), blk, v.quest, v.what.slice(0, 400), v.done.slice(0, 200) || "It’s finished", [], { custom: true, start: start, due: due, est: Math.round(est * 100) / 100, added: blk > 0 ? iso(TODAY) : "" });
     state.tasks.push(t); ui.sel = t.id; changed();
-    return { msg: blk === 0 ? t.what + " added as a task to " + dispQuest(t) + "’s backlog." : t.what + " added as a task to " + wd() + " " + blk + " in " + dispQuest(t) + ". (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ".)" };
+    return { msg: blk === 0 ? "“" + t.what + "” added as a task to " + dispQuest(t) + "’s backlog." : "“" + t.what + "” added as a task to " + wd() + " " + blk + " in " + dispQuest(t) + ". (" + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + ".)" };
   }, (fixedQuest ? "Assign a new task to this quest." : "Assign a new task to any open quest.") + " Adding start and due dates will automatically place the task within the quest’s corresponding " + wl() + ".");
-  // A start date with no due date is allowed; say right away where the task will go.
+  // Live notes under the fields: a start with no due date goes to the Backlog, and an estimate that is too big for the dates gets a warning (neither blocks saving).
   var NO_DUE = "A task with no due date goes to the quest’s backlog.";
-  var sIn = $("f-start"), dIn = $("f-due"), noteLine = $("modalBody") && $("modalBody").querySelector("p.msg");
-  function showNoDue() {
-    if (!noteLine) return;
-    if (sIn.value && !dIn.value) noteLine.textContent = NO_DUE;
-    else if (noteLine.textContent === NO_DUE) noteLine.textContent = "";
+  var sIn = $("f-start"), dIn = $("f-due"), eIn = $("f-est"), noteLine = $("modalBody") && $("modalBody").querySelector("p.msg");
+  function estNote() {
+    if (!eIn || !dIn || !isISO(dIn.value)) return "";
+    var qid = fixedQuest ? startId : ($("f-quest") ? $("f-quest").value : startId), blk = blockForDate(qid, parseISO(dIn.value));
+    if (blk === null) return "";
+    var from = isISO(sIn.value) ? parseISO(sIn.value) : blockStartFor(qid, blk);
+    return estimateWarning(parseFloat(eIn.value), from, parseISO(dIn.value));
   }
-  if (sIn && dIn) ["input", "change"].forEach(function (ev) { on(sIn, ev, showNoDue); on(dIn, ev, showNoDue); });
+  function questNow() { return fixedQuest ? startId : ($("f-quest") ? $("f-quest").value : startId); }
+  // One line under each of Start date, Due date and Estimated time, so every problem shows at once.
+  function lineAfter(input, cls) {
+    if (!input) return null;
+    var p = el("p", { "class": "msg schedmsg" + (cls ? " " + cls : ""), role: "status", "aria-live": "polite" });
+    input.parentNode.parentNode.insertBefore(p, input.parentNode.nextSibling);
+    return p;
+  }
+  var startLine = lineAfter(sIn), dueLine = lineAfter(dIn), estLine = lineAfter(eIn);
+  function setLine(p, text, isErr) { if (p) { p.textContent = text; p.classList.toggle("errmsg", !!text && isErr); } }
+  function showDates(startMsg, dueMsg) { setLine(startLine, startMsg, true); setLine(dueLine, dueMsg, true); return ""; }
+  function showNote() {
+    if (!noteLine) return;
+    var pr = dateProblems(questNow(), sIn.value, dIn.value);
+    setLine(startLine, pr.start, true);
+    if (pr.due) setLine(dueLine, pr.due, true); else setLine(dueLine, sIn.value && !dIn.value ? NO_DUE : "", false);
+    setLine(estLine, estNote(), true);
+  }
+  if (sIn && dIn) ["input", "change"].forEach(function (ev) { [sIn, dIn, eIn, $("f-quest")].forEach(function (x) { if (x) on(x, ev, showNote); }); });
 }
 export function questDialog() {
   formDialog("New candidate quest", [
     { key: "name", label: "Quest name" },
     { key: "notes", label: "Notes", type: "textarea", rows: 5 },
-    { key: "giverHeading", label: "Quest Giver", type: "heading", hint: "The client or contact for this quest." },
+    { key: "giverHeading", label: "Quest giver", type: "heading", collapsible: true, help: "quest-giver", emptyText: "Add Quest giver details", summaryKeys: ["giverOrg", "giverPoc"] },
     { key: "giverOrg", label: "Organization" },
     { key: "giverPoc", label: "POC" },
     { key: "giverPhone", label: "Phone", type: "tel" },
@@ -176,8 +244,8 @@ export function questDialog() {
     if (!v.name) return "Enter a title for the candidate quest.";
     var coin = parseMoney(v.giverCoin, state.settings.coinFormat);
     var client = { org: v.giverOrg.slice(0, 200), poc: v.giverPoc.slice(0, 200), phone: v.giverPhone.slice(0, 200), email: v.giverEmail.slice(0, 200), address: v.giverAddress.slice(0, 500), website: v.giverWebsite.slice(0, 200), coin: coin, per: v.giverPer === "Quest" ? "Quest" : "Hour" };
-    state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000), client: client })); changed();
-    return { msg: v.name + " has been added as a candidate quest on the Quests page. Promote the candidate to open it." };
+    state.quests.push(makeQuest(uid(), v.name.slice(0, 120), "candidate", { notes: v.notes.slice(0, 5000), client: client, start: iso(TODAY) })); changed();
+    return { msg: "“" + v.name + "” has been added as a candidate quest to Quests." };
   }, "New quests appear in the Candidate quests section on the Quests page. The quest name is the only required field.");
 }
 // Links are bidirectional, so the chosen quest shows this one too. Only
@@ -201,7 +269,7 @@ export function ideaDialog(idea) {
     if (!v.text) return "Enter a title for the idea.";
     if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 5000); changed(); return { msg: "Idea saved." }; }
     state.workshop.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000), created: iso(TODAY) }); changed();
-    return { msg: v.text + " added to the Workshop." };
+    return { msg: "“" + v.text + "” added to the Workshop." };
   }, idea ? undefined : "New ideas live in the Workshop. When ready, ideas can be made into candidate quests.");
 }
 export function jobDialog() {
@@ -211,7 +279,7 @@ export function jobDialog() {
   ], "Add errand", function (v) {
     if (!v.text) return "Enter an errand to add it.";
     state.jobs.push({ id: uid(), text: v.text.slice(0, 200), done: false, due: isISO(v.due) ? v.due : "" }); changed();
-    return { msg: "Errand added to Errands." };
+    return { msg: "“" + v.text.slice(0, 200) + "” added to Errands." };
   }, "Small errands that aren’t worth a quest go on the Errands list.");
 }
 // Steps with no decision yet, for one task -- shared by the cascade below.
@@ -228,7 +296,7 @@ export function decisionDialog(prefill) {
       if (!v.q) return "Enter a title for the decision.";
       if (decisionFor(stepId)) return "That step already has a decision.";
       state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: stepId }); changed();
-      return { msg: v.q + " added as a decision to " + fixed.s.text + " in " + dispQuest(fixed.t) + "." };
+      return { msg: "“" + v.q + "” added as a decision to " + fixed.s.text + " in " + dispQuest(fixed.t) + "." };
     }, "For the step: " + opts[0].label + ". A decision is something you need to figure out before you can move forward. Answering it automatically checks that step off.");
     return;
   }
@@ -259,7 +327,7 @@ export function decisionDialog(prefill) {
     if (decisionFor(v.step)) return "That step already has a decision.";
     state.decisions.push({ id: uid(), q: v.q.slice(0, 300), a: "", step: v.step }); changed();
     var at = findStep(v.step);
-    return { msg: v.q + " added as a decision to " + (at ? at.s.text + " in " + dispQuest(at.t) : "a step") + "." };
+    return { msg: "“" + v.q + "” added as a decision to " + (at ? at.s.text + " in " + dispQuest(at.t) : "a step") + "." };
   }, "Decisions can be added to any step within a task.");
   var questSel = $("f-quest"), taskSel = $("f-task"), stepSel = $("f-step");
   if (questSel && taskSel && stepSel) {
@@ -311,7 +379,7 @@ export function stepDialog(prefillQuestId) {
     if (!v.text) return "Enter a title for the step.";
     if (!t) return "Choose a task.";
     t.steps.push({ id: uid(), text: v.text.slice(0, 300), done: false }); syncFromSteps(t); changed();
-    return { msg: v.text + " added as a step to " + t.what + " in " + dispQuest(t) + "." };
+    return { msg: "“" + v.text + "” added as a step to " + t.what + " in " + dispQuest(t) + "." };
   }, "Steps can be added to any task within a quest.");
   var questSel = $("f-quest"), taskSel = $("f-task");
   if (questSel && taskSel) {

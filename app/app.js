@@ -12,7 +12,7 @@ import {
 } from "./dialogs.js";
 import { playSplash } from "./splash.js";
 import { noteBurnView } from "./chart.js";
-import { maybeStartTutorial, stopTutorial } from "./tutorial.js";
+import { stopTutorial } from "./tutorial.js";
 
 /* navigation */
 export function leaveSearch() { if (ui.view === "search") { ui.query = ""; var b = $("searchBox"); if (b) b.value = ""; } }
@@ -211,8 +211,6 @@ Promise.resolve().then(function () {
     autoVault(); purgeOldVault(); save();
     renderAll();
   });
-  // Decided after the db read, so a copy with empty local storage doesn't replay a tutorial the db says is done.
-  maybeStartTutorial(dbLoaded);
 
   // No-op on the web app, since checkForAppUpdate() resolves null with no db.
   // The stamp read here is set by hand when a new sidequest.html is published,

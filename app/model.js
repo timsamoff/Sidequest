@@ -1,9 +1,9 @@
 import { state, changed, CHECKPOINTS } from "./state.js";
 import { notify, isHosted } from "./dom.js";
-import { DAY, iso, addDays, parseISO, TODAY, weekStart } from "./dates.js";
+import { DAY, iso, addDays, parseISO, TODAY, weekStart, fmtY } from "./dates.js";
 
-export var CORE = [["today", "Today"], ["projects", "Quests"], ["schedule", "Tasks"], ["timeline", "Timeline"], ["jobs", "Errands"]];
-export var BOTTOM = [["workshop", "Workshop"], ["vault", "Vault"], ["help", "Field guide"], ["settings", "Options"]];
+export var CORE = [["today", "Today"], ["projects", "Quests"], ["schedule", "Tasks"], ["timeline", "Timeline"]];
+export var BOTTOM = [["jobs", "Errands"], ["workshop", "Workshop"], ["vault", "Vault"], ["help", "Field guide"], ["settings", "Options"]];
 export var WORDS = { Block: ["block", "blocks"], Sprint: ["sprint", "sprints"], Iteration: ["iteration", "iterations"], Phase: ["phase", "phases"], Week: ["week", "weeks"] };
 export function wd() { return state.settings.blockWord in WORDS ? state.settings.blockWord : "Block"; }
 export function wl() { return WORDS[wd()][0]; }
@@ -66,6 +66,17 @@ export function unlinkQuests(aId, bId) {
 }
 // A quest's own due date, as ms, or null when it has none; its tasks' due dates may not pass it.
 export function questDueLimit(questId) { var p = findQuest(questId); return p && p.due ? parseISO(p.due) : null; }
+// Problems with a start and due date pair for a quest, one message per field ("" when fine). Used live while typing, so a date whose year is still being typed (before 1900) is skipped.
+export function dateProblems(questId, start, due) {
+  var ok = function (v) { return /^\d{4}-\d{2}-\d{2}$/.test(v) && +v.slice(0, 4) >= 1900 && !isNaN(parseISO(v)); };
+  var first = parseISO(pset(questId).start), qd = questDueLimit(questId), hasS = ok(start), hasD = ok(due), r = { start: "", due: "" };
+  if (hasS && parseISO(start) < first) r.start = "This quest starts " + fmtY(first) + ". Pick a start date on or after that.";
+  else if (qd !== null && hasS && parseISO(start) > qd) r.start = "This quest is due " + fmtY(qd) + ". Choose a start date on or before then.";
+  if (hasD && parseISO(due) < first) r.due = "This quest starts " + fmtY(first) + ". Pick a due date on or after that.";
+  else if (qd !== null && hasD && parseISO(due) > qd) r.due = "This quest is due " + fmtY(qd) + ". Choose a due date on or before then.";
+  if (!r.start && !r.due && hasS && hasD && start > due) r.start = "You can’t begin after you finish! Pick a start date on or before the due date.";
+  return r;
+}
 export function pset(questId) { var p = findQuest(questId); return { start: (p && p.start) || state.start, days: (p && p.days) || state.days }; }
 export function offsetFor(questId, n) { return n * pset(questId).days; }
 export function blockStartFor(questId, b) { return addDays(parseISO(pset(questId).start), offsetFor(questId, b - 1)); }
@@ -93,6 +104,13 @@ export function syncTaskBlocks() {
 }
 // Estimated time is hours, shown as "3 h" or "1.5 h".
 export function fmtHours(h) { return (Math.round(h * 100) / 100) + " h"; }
+// A plain warning (never a block) when the estimate is more than 24 hours a day fits between two dates, counting both days.
+export function estimateWarning(hours, startMs, endMs) {
+  if (!(hours > 0) || startMs == null || endMs == null || endMs < startMs) return "";
+  var cap = (Math.round((endMs - startMs) / DAY) + 1) * 24;
+  if (hours <= cap) return "";
+  return fmtHours(hours) + " exceeds the time between these dates (24 h/day).";
+}
 export function fmtHoursLong(h) { var r = Math.round(h * 100) / 100; return r + (r === 1 ? " hour" : " hours"); }
 // Total and still-open estimated hours across every task of one quest,
 // Backlog included.

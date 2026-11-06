@@ -1,12 +1,12 @@
 import { state, ui, save, changed, autoVault, STATUSES, APP_NAME, APP_VERSION, isISO, defaults, setState, normalize, makeQuest, task, st, S, removeLinksTo } from "./state.js";
 import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart, addDays } from "./dates.js";
 import {
-  WORDS, wd, wl, pset, questDueLimit, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
+  WORDS, wd, wl, pset, questDueLimit, dateProblems, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
   checkpoints, live, counted, planCounted, liveQuests, activeQuests, candidateQuests,
   findQuest, isDusty, findAnyQuest, linkedQuests, linkQuests, unlinkQuests, dispQuest, dispWhat,
   totalUnits, remainingUnits, planned, ordered, backlogTasks, sortTasks,
   isLate, lateTasks, setStatus, syncFromSteps, nextTask, questTasksAllDone, questTotalUnits, questRemainingUnits,
-  validPage, isPinned, pinPage, unpinPage, questMeta, fmtHours, fmtHoursLong, questEstimate, recordHist, checkpointStep, globalActual,
+  validPage, isPinned, pinPage, unpinPage, questMeta, fmtHours, fmtHoursLong, estimateWarning, questEstimate, recordHist, checkpointStep, globalActual,
   findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask, questTasks, openJobs, isJobLate
 } from "./model.js";
 import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx, moneyInput, formatMoney, inClaude, isHosted, helpLink, setHelpOpener } from "./dom.js";
@@ -14,7 +14,7 @@ import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.
 import { playConfetti } from "./confetti.js";
 import { startTutorial } from "./tutorial.js";
 import { openTask, go, renderView, renderAll, renderChrome, applyTheme, replaySplash } from "./app.js";
-import { formDialog, stepDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, slipDialog, taskDialog, confirmDialog, openModal, closeModal } from "./dialogs.js";
+import { formDialog, stepDialog, decisionDialog, decisionEditDialog, linkQuestDialog, ideaDialog, slipDialog, taskDialog, confirmDialog, openModal, openModalOver, closeModal, closeAllModals } from "./dialogs.js";
 import { buildExportSnapshot, renderExportDocument, exportFileName, exportSides } from "./export.js";
 
 /* views */
@@ -117,8 +117,8 @@ function askExportSides(p) {
   if (!sides.by && !sides.forWhom) { exportQuestForClient(p); return; }
   var fields = [];
   if (sides.by) fields.push({ key: "by", label: "Include “Prepared by” (your contact info and brandmark from Options)", type: "checkbox", value: true });
-  if (sides.forWhom) fields.push({ key: "forWhom", label: "Include “Prepared for” (this quest’s Quest Giver)", type: "checkbox", value: true });
-  formDialog("Quest Giver Export", fields, "Export", function (v) {
+  if (sides.forWhom) fields.push({ key: "forWhom", label: "Include “Prepared for” (this quest’s Quest giver)", type: "checkbox", value: true });
+  formDialog("Quest giver export", fields, "Export", function (v) {
     exportQuestForClient(p, { preparedBy: !sides.by || v.by === "1", preparedFor: !sides.forWhom || v.forWhom === "1" });
   }, "Choose what appears at the top of the export.");
 }
@@ -185,9 +185,14 @@ export function welcomeBox() {
   var welcomeHint = el("p", { "class": "hint first" });
   welcomeHint.appendChild(el("strong", null, "Your new adventure begins here!"));
   var blank = !state.quests.length;
-  welcomeHint.appendChild(document.createTextNode(blank
-    ? " You’re looking at a blank slate now, but that won’t last long. Time to start questing!"
-    : " These sample quests are here for you to explore. Look around, make changes, and press / to search. You can edit the existing quests or, when you’re ready to start your own, open Options and choose Start fresh."));
+  function strong(t) { return el("strong", null, t); }
+  function txt(t) { return document.createTextNode(t); }
+  if (blank) welcomeHint.appendChild(txt(" You’re looking at a blank slate now, but that won’t last long. Time to start questing!"));
+  else {
+    welcomeHint.appendChild(txt(" These sample quests are here for you to explore. Look around, make changes, and press / to search. You can edit the existing quests or, when you’re ready to start your own, open "));
+    welcomeHint.appendChild(strong("Options")); welcomeHint.appendChild(txt(" and choose ")); welcomeHint.appendChild(strong("Start fresh")); welcomeHint.appendChild(txt("."));
+  }
+  welcomeHint.appendChild(txt(" Press ")); welcomeHint.appendChild(strong("Play tutorial")); welcomeHint.appendChild(txt(" for a short walkthrough of adding a quest, giving it a task, and starting it."));
   box.appendChild(welcomeHint);
   var acts = el("div", { "class": "actions" });
   if (!blank) acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "welcomeSettings", title: "Open Options" }, "Open Options"), "click", function () {
@@ -196,6 +201,7 @@ export function welcomeBox() {
     var h = $("startFreshHeading");
     if (h) { if (typeof h.scrollIntoView === "function") h.scrollIntoView(); h.focus({ preventScroll: true }); }
   }));
+  acts.appendChild(on(el("button", { type: "button", "class": "tutorialbtn", id: "welcomePlay", title: "Play the first-run walkthrough" }, "Play tutorial"), "click", function () { go("today"); startTutorial(); }));
   acts.appendChild(on(el("button", { type: "button", id: "welcomeDismiss", title: "Hide this welcome message" }, "Dismiss"), "click", function () { state.settings.hideWelcome = true; save(); renderView(); }));
   box.appendChild(acts);
   return box;
@@ -357,49 +363,54 @@ export function buildDetail(t, inline, readOnly) {
   }
   if (!readOnly) {
     var dg = el("div", { "class": "setgrid" });
-    var dmsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
-    function dfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); dg.appendChild(w); }
+    var smsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
+    var dmsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
+    var emsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
+    function dfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); dg.appendChild(w); return w; }
     function shownStart() { return t.start ? t.start : (t.block === 0 ? "" : iso(taskStart(t))); }
     function shownDue() { return t.block === 0 ? "" : iso(taskEnd(t)); }
     var sd = el("input", { type: "date", id: "task-start" }), bd = el("input", { type: "date", id: "task-due" });
     var ei = el("input", { type: "number", id: "task-est", min: "0", max: "9999", step: "0.25", inputmode: "decimal" });
     sd.value = shownStart(); bd.value = shownDue(); ei.value = t.est > 0 ? t.est : "";
-    function resetDates() { sd.value = shownStart(); bd.value = shownDue(); }
+    if (t.block > 0) emsg.textContent = estimateWarning(t.est, taskStart(t), taskEnd(t));
     var questFirst = parseISO(pset(projKey(t)).start);
-    // "blur", not "change" -- a date input fires "change" per segment while typing.
+    // A bad date stays in its field with its message until it is fixed; nothing is saved or reverted. "change" fires per segment while typing, so saving waits for blur.
+    function liveCheck() { var m = dateProblems(projKey(t), sd.value, bd.value); smsg.textContent = m.start; dmsg.textContent = m.due; return m; }
+    ["input", "change"].forEach(function (ev) { on(bd, ev, liveCheck); on(sd, ev, liveCheck); });
     on(bd, "blur", function () {
       if (bd.value === shownDue()) return;
+      var m = liveCheck();
       if (bd.value === "") { var hadStart = !!t.start; t.block = 0; t.due = ""; t.added = ""; changed(); notify(hadStart ? "Moved to the Backlog. Its start date is kept." : "Moved to the Backlog."); return; }
-      if (!isISO(bd.value)) { resetDates(); dmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
+      if (!isISO(bd.value)) { dmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
       var blk = blockForDate(projKey(t), parseISO(bd.value));
-      if (blk === null) { resetDates(); dmsg.textContent = "This quest starts " + fmtY(questFirst) + ". Pick a due date on or after that."; return; }
-      var qdue = questDueLimit(projKey(t));
-      if (qdue !== null && parseISO(bd.value) > qdue) { resetDates(); dmsg.textContent = "This quest is due " + fmtY(qdue) + ". Pick a due date on or before that."; return; }
-      if (t.start && bd.value < t.start) { resetDates(); dmsg.textContent = "You can’t finish before you begin! Pick a due date on or after the start date."; return; }
-      dmsg.textContent = "";
+      if (blk === null || m.due || m.start.indexOf("You can’t begin") === 0) { if (!dmsg.textContent && !smsg.textContent) dmsg.textContent = "This quest starts " + fmtY(questFirst) + ". Pick a due date on or after that."; return; }
+      if (t.start && bd.value < t.start) { smsg.textContent = "You can’t begin after you finish! Pick a start date on or before the due date."; return; }
       if (t.block === 0) t.added = iso(TODAY);
       t.due = bd.value; t.block = blk; changed();
       notify("Due " + fmt(taskEnd(t)) + ", in " + wd() + " " + blk + ".");
     });
     on(sd, "blur", function () {
       if (sd.value === shownStart()) return;
-      if (sd.value === "") { dmsg.textContent = ""; t.start = ""; changed(); notify(t.block === 0 ? "Start date cleared." : "Start date cleared. The task starts when its " + wl() + " does."); return; }
-      if (!isISO(sd.value)) { resetDates(); dmsg.textContent = "Enter a valid start date, or leave it empty."; return; }
-      if (parseISO(sd.value) < questFirst) { resetDates(); dmsg.textContent = "This quest starts " + fmtY(questFirst) + ". Pick a start date on or after that."; return; }
-      if (t.block > 0 && sd.value > iso(taskEnd(t))) { resetDates(); dmsg.textContent = "You can’t begin after you finish! Pick a start date on or before the due date."; return; }
-      dmsg.textContent = "";
+      var m = liveCheck();
+      if (sd.value === "") { smsg.textContent = ""; t.start = ""; changed(); notify(t.block === 0 ? "Start date cleared." : "Start date cleared. The task starts when its " + wl() + " does."); return; }
+      if (!isISO(sd.value)) { smsg.textContent = "Enter a valid start date, or leave it empty."; return; }
+      if (m.start) return;
+      if (t.block > 0 && sd.value > iso(taskEnd(t))) { smsg.textContent = "You can’t begin after you finish! Pick a start date on or before the due date."; return; }
       t.start = sd.value; changed(); notify("Start date saved.");
     });
+    // Warn while typing; saving still waits for blur.
+    on(ei, "input", function () { emsg.textContent = t.block > 0 ? estimateWarning(parseFloat(ei.value), taskStart(t), taskEnd(t)) : ""; });
     on(ei, "blur", function () {
       var v = ei.value === "" ? 0 : parseFloat(ei.value);
-      if (isNaN(v) || v < 0 || v > 9999) { ei.value = t.est > 0 ? t.est : ""; dmsg.textContent = "Enter the estimated time as hours from 0 to 9999."; return; }
+      if (isNaN(v) || v < 0 || v > 9999) { ei.value = t.est > 0 ? t.est : ""; emsg.textContent = "Enter the estimated time as hours from 0 to 9999."; return; }
       v = Math.round(v * 100) / 100;
       if (v === (t.est || 0)) return;
-      dmsg.textContent = "";
-      t.est = v; changed(); notify(v > 0 ? "Estimated time saved." : "Estimated time cleared.");
+      emsg.textContent = "";
+      t.est = v; changed();
+      notify(v > 0 ? "Estimated time saved." : "Estimated time cleared.");
     });
-    dfield("task-start", "Start date (optional)", sd); dfield("task-due", "Due date (leave empty to backlog)", bd); dfield("task-est", "Estimated time (hours)", ei);
-    box.appendChild(dg); box.appendChild(dmsg);
+    dfield("task-start", "Start date (optional)", sd); dfield("task-due", "Due date (leave empty to backlog)", bd); dg.appendChild(smsg); dg.appendChild(dmsg); dfield("task-est", "Estimated time (hours)", ei).appendChild(emsg);
+    box.appendChild(dg);
   }
 
   var nDone = t.steps.filter(function (s) { return s.done; }).length;
@@ -534,7 +545,7 @@ export function launchSection(root, p) {
   var items = launchItems(p.id);
   var n = items.filter(function (t) { return t.status === "Completed"; }).length;
   var total = items.length;
-  root.appendChild(el("p", { "class": "hint" }, total ? "Complete: " + n + " of " + total + " launch critical " + (total === 1 ? "task" : "tasks") : "No tasks have been marked as launch critical yet."));
+  root.appendChild(el("p", { "class": "hint" }, total ? "Complete: " + n + " of " + total + " launch-critical " + (total === 1 ? "task" : "tasks") : "No tasks have been marked as launch critical yet."));
   var ul = el("ul", { "class": "tlist check", "aria-labelledby": "h-checks" });
   items.forEach(function (t) {
     var done = t.status === "Completed";
@@ -647,9 +658,9 @@ export function renderQuestPage(root, id) {
   if (p.status === "candidate" && readOnly) {
     root.appendChild(el("h2", null, "Notes"));
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
-    root.appendChild(el("h2", null, "Quest Giver"));
+    root.appendChild(el("h2", null, "Quest giver"));
     var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Bounty: " + formatMoney(p.client.coin, state.settings.coinFormat) + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
-    root.appendChild(el("p", { "class": "hint notetext" }, cgLines.length ? cgLines.join("\n") : "No Quest Giver."));
+    root.appendChild(el("p", { "class": "hint notetext" }, cgLines.length ? cgLines.join("\n") : "No Quest giver."));
     if (linkedQuests(p).length) { root.appendChild(el("h2", null, "Quest links")); linksSection(root, p); }
     return;
   }
@@ -711,12 +722,11 @@ export function renderQuestPage(root, id) {
   }
 
   if (readOnly) {
-    root.appendChild(el("h2", null, "Quest Giver"));
+    root.appendChild(el("h2", null, "Quest giver"));
     var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website, gc.coin !== "" ? "Bounty: " + formatMoney(gc.coin, state.settings.coinFormat) + " per " + gc.per.toLowerCase() : ""].filter(Boolean);
-    root.appendChild(el("p", { "class": "hint notetext" }, glines.length ? glines.join("\n") : "No Quest Giver."));
+    root.appendChild(el("p", { "class": "hint notetext" }, glines.length ? glines.join("\n") : "No Quest giver."));
   } else {
-    root.appendChild(el("h2", null, "Quest Giver"));
-    root.appendChild(el("p", { "class": "hint" }, "The client or contact for this quest."));
+    root.appendChild(withHelp(el("h2", null, "Quest giver"), "quest-giver", "Quest giver"));
     var giverBox = el("div");
     var gg = el("div", { "class": "setgrid" });
     function gfield(key, id, label, type, full) {
@@ -748,7 +758,7 @@ export function renderQuestPage(root, id) {
     on(gper, "change", function () { p.client.per = gper.value; save(); });
     gpw.appendChild(gper); gg2.appendChild(gpw);
     giverBox.appendChild(gg2);
-    root.appendChild(collapsibleSection("giver:" + p.id, function () { return [p.client.org, p.client.poc].filter(Boolean).join(" · "); }, giverBox, "Add Quest Giver details"));
+    root.appendChild(collapsibleSection("giver:" + p.id, function () { return [p.client.org, p.client.poc].filter(Boolean).join(" · "); }, giverBox, "Add Quest giver details"));
   }
 
   var ar = el("div", { "class": "actions questactions", style: "margin-top:14px" });
@@ -778,7 +788,7 @@ export function renderQuestPage(root, id) {
       }));
     }
     ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Send this quest to the Vault" }, "Vault"), "click", function () { vaultQuest(p); }));
-    ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Export web page for client review" }, "Quest Giver Export"), "click", function () {
+    ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Export web page for client review" }, "Quest giver export"), "click", function () {
       askExportSides(p);
     }));
   }
@@ -970,7 +980,12 @@ export function renderWorkshop(root) {
     var link = el("button", { type: "button", "class": "textbtn qlink", style: "font-weight:600", title: "Open this idea" }, p.text);
     on(link, "click", function () { ideaDialog(p); });
     nm.appendChild(link);
-    if (p.created) nm.appendChild(el("span", { "class": "hint", style: "margin-left:6px; font-size:var(--text-sm)" }, "· " + fmtY(parseISO(p.created))));
+    if (p.created) {
+      var made = el("span", { "class": "hint ideamade" });
+      made.appendChild(el("span", { "class": "ideadot", "aria-hidden": "true" }, "· "));
+      made.appendChild(document.createTextNode("Created on " + fmtY(parseISO(p.created))));
+      nm.appendChild(made);
+    }
     if (p.note) nm.appendChild(el("p", { "class": "hint notetext noteclamp", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
@@ -998,7 +1013,7 @@ export function renderJobs(root) {
     var v = txt.value.trim();
     if (!v) { msg.textContent = "Enter an errand to add it."; txt.focus(); return; }
     state.jobs.push({ id: uid(), text: v.slice(0, 200), done: false, due: isISO(due.value) ? due.value : "" });
-    setFocusKey("job-new"); changed();
+    setFocusKey("job-new"); changed(); notify("“" + v.slice(0, 200) + "” added to Errands.");
   }
   txt.setAttribute("data-focus", "job-new");
   on(txt, "keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); add(); } });
@@ -1017,6 +1032,7 @@ export function renderJobs(root) {
     root.appendChild(dl);
   }
 }
+var CALENDAR = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>';
 function jobRow(j) {
   var li = el("li", { "class": j.done ? "done" : "" }), row = el("div", { "class": "jobrow" });
   var lab = el("label", { "class": "jobmain" });
@@ -1026,8 +1042,17 @@ function jobRow(j) {
   lab.appendChild(cb); lab.appendChild(text); row.appendChild(lab);
   var badges = el("div", { "class": "jobbadges" });
   if (isJobLate(j)) badges.appendChild(el("span", { "class": "badge" }, "Overdue"));
-  if (j.due) badges.appendChild(el("span", { "class": "chip" }, "Due " + fmtY(parseISO(j.due))));
-  if (badges.childNodes.length) row.appendChild(badges);
+  var dueBtn = el("button", { type: "button", "class": "chip datechip" + (j.due ? "" : " nodue"), title: j.due ? "Change the due date" : "Add a due date" });
+  var dueIcon = el("span", { "class": "dateicon", "aria-hidden": "true" }); dueIcon.innerHTML = CALENDAR;
+  dueBtn.appendChild(dueIcon); dueBtn.appendChild(document.createTextNode(j.due ? "Due " + fmtY(parseISO(j.due)) : "No due date"));
+  on(dueBtn, "click", function () {
+    formDialog("Errand due date", [{ key: "due", label: "Due date", type: "date", value: j.due }], "Save", function (v) {
+      j.due = isISO(v.due) ? v.due : ""; changed();
+      return { msg: j.due ? j.text + " is due " + fmtY(parseISO(j.due)) + "." : "Due date cleared." };
+    }, j.text, j.due ? { label: "Clear", title: "Remove the due date", onClick: function () { j.due = ""; changed(); notify("Due date cleared."); } } : null);
+  });
+  badges.appendChild(dueBtn);
+  row.appendChild(badges);
   if (j.done) {
     var del = el("button", { type: "button", "class": "small danger jobend del", title: "Delete this errand permanently" }, "Delete forever");
     row.appendChild(on(del, "click", function () { removeNow(j, "jobs", "Errand"); }));
@@ -1203,10 +1228,10 @@ export function helpTerm(id) {
 // The "?" modal: the definition, plus a button that opens the Field guide at the topic that explains more.
 function openTermHelp(id) {
   var t = helpTerm(id); if (!t) return;
-  openModal(t.name, function (body) {
+  openModalOver(t.name, function (body) {
     var tp = el("p", { "class": "first" }); tp.appendChild(helpMarkup(t.text)); body.appendChild(tp);
     var acts = el("div", { "class": "actions" });
-    acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "termMore", title: "Open “" + t.topic + "” in the Field guide" }, "Read more in the Field guide"), "click", function () { closeModal(); ui.helpTopic = t.topic; go("help"); }));
+    acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "termMore", title: "Open “" + t.topic + "” in the Field guide" }, "Read more in the Field guide"), "click", function () { closeAllModals(); ui.helpTopic = t.topic; go("help"); }));
     body.appendChild(acts);
   });
 }
@@ -1225,7 +1250,7 @@ export function helpTopics() {
       "{#badge-added}**Added badge:** Marks a task added after the quest started. See “Inside a quest”.",
       "{#adventurer}**Adventurer:** Your contact information and brandmark, used on exports. See “Options page”.",
       "{#backlog}**Backlog:** Open tasks without a due date. See “Tasks page”.",
-      "{#bounty}**Bounty:** The amount a quest pays. This does not appear on exports. See “Quest Giver and Quest links”.",
+      "{#bounty}**Bounty:** The amount a quest pays. This does not appear on exports. See “Quest giver and Quest links”.",
       "{#candidate-quest}**Candidate quest:** A quest you’re considering but haven’t started. See “Quests page”.",
       "{#decision}**Decision:** A question attached to a step. Answering it completes the step. See “Inside a quest”.",
       "{#forecast}**Forecast:** The dotted burndown line estimating when you’ll finish. See “Timeline page”.",
@@ -1242,12 +1267,12 @@ export function helpTopics() {
       "{#errands}**Errands:** List of small errands that aren’t quite a quest. Errands never appear on the Timeline or in the burndown. See “Errands page”.",
       "{#pending}**Pending:** An active quest with no incomplete tasks that have due dates. See “Quests page”.",
       "{#pin}**Pin:** Adds a shortcut to a quest in the sidebar. See “Quests page”.",
-      "{#prepared}**Prepared by and Prepared for:** The export’s letterhead, showing your information first and the Quest Giver’s second. See “Quest Giver and Quest links”.",
+      "{#prepared}**Prepared by and Prepared for:** The export’s letterhead, showing your information first and the Quest giver’s second. See “Quest giver and Quest links”.",
       "{#promote-demote}**Promote and Demote:** **Promote** moves a candidate quest to active. **Demote** moves it back to candidate. See “The quest lifecycle”.",
       "{#quest}**Quest:** A project, from the initial idea through completion. See “The quest lifecycle”.",
-      "{#quest-giver}**Quest Giver:** The client a quest is for. See “Quest Giver and Quest links”.",
-      "{#quest-giver-export}**Quest Giver Export:** A read-only page you can share with a client. See “Quest Giver and Quest links”.",
-      "{#quest-links}**Quest links:** Connections between quests that belong to the same job. See “Quest Giver and Quest links”.",
+      "{#quest-giver}**Quest giver:** The client or contact for this quest. See “Quest giver and Quest links”.",
+      "{#quest-giver-export}**Quest giver export:** A read-only page you can share with a client. See “Quest giver and Quest links”.",
+      "{#quest-links}**Quest links:** Connections between quests that belong to the same job. See “Quest giver and Quest links”.",
       "{#scope}**Scope:** The total amount of work in a quest. The orange line shows when that amount changes. See “Timeline page”.",
       "{#slip-schedule}**Slip schedule:** Moves a quest’s incomplete tasks to later dates. You can undo this change. See “A quest’s Schedule and Timeline”.",
       "{#step}**Step:** A smaller action that makes up a task. See “Inside a quest”.",
@@ -1294,9 +1319,9 @@ export function helpTopics() {
       "**Before you launch:** Tasks that must be done before a quest can launch go in this section. Selecting **Launch critical** adds a task to this section. This is only an organizational feature and does not otherwise change the task.",
       "**Notes:** Use **Notes** for any additional information about the quest. An idea’s note carries over when the idea becomes a candidate quest."
     ]],
-    ["Quest Giver and Quest links", [
-      "**Quest Giver:** The Quest Giver is the client for a quest. You can also enter a **Bounty** (a monetary value), either as an hourly rate or a fixed payment for the quest.",
-      ">The **Quest Giver Export** includes everything entered here except the **Bounty**. It creates a read-only, interactive web page you can share with the client. Before it exports, you choose whether to include **Prepared by** (your contact information and brandmark) and **Prepared for** (the Quest Giver). Its button is at the bottom of an in progress or complete quest’s details and doesn’t appear on a candidate or vaulted quest.",
+    ["Quest giver and Quest links", [
+      "**Quest giver:** The Quest giver is the client for a quest. You can also enter a **Bounty** (a monetary value), either as an hourly rate or a fixed payment for the quest.",
+      ">The **Quest giver export** includes everything entered here except the **Bounty**. It creates a read-only, interactive web page you can share with the client. Before it exports, you choose whether to include **Prepared by** (your contact information and brandmark) and **Prepared for** (the Quest giver). Its button is at the bottom of an in progress or complete quest’s details and doesn’t appear on a candidate or vaulted quest.",
       "**Quest links:** When a job requires more than one quest, link them. Use **Link quest** to link a quest to any quest that is in progress, pending, or completed.",
       ">A candidate quest can add links the same way, but other quests can’t link to a candidate quest. Links to a candidate or vaulted quest show as plain text, and you can follow links to other quests.",
       ">Vaulting or demoting a quest keeps its links, and promoting or restoring it makes them active again."
@@ -1333,7 +1358,7 @@ export function helpTopics() {
       "The **Vault** is a place to store ideas and quests you’re no longer actively working with but may want to keep. You can use **Restore** or **Delete forever** on vaulted items. You can also choose to have the **Vault** automatically delete old items after a set period."
     ]],
     ["Options page", [
-      "**Adventurer:** This is where you can add your contact information and brandmark or logo. You can choose whether or not to include it when creating a **Quest Giver Export**.",
+      "**Adventurer:** This is where you can add your contact information and brandmark or logo. You can choose whether or not to include it when creating a **Quest giver export**.",
       "**Schedule defaults:** Set the default length of a **stretch of work**. You can adjust the stretch duration for individual quests.",
       ">You can also choose what to call a stretch of work: Block, Sprint, Iteration, Phase, or Week.",
       ">**Warn when active quests exceed:** Set the number of active quests you want to allow at a time. If you try to promote another candidate quest past that number, Sidequest warns you, and you can bypass the warning.",
@@ -1356,7 +1381,7 @@ export function renderHelp(root) {
   var openAll = el("button", { type: "button", "class": "small", id: "helpOpen" }, "Open all"), closeAll = el("button", { type: "button", "class": "small", id: "helpClose" }, "Close all");
   on(openAll, "click", function () { items.forEach(function (d) { d.open = true; }); });
   on(closeAll, "click", function () { items.forEach(function (d) { d.open = false; }); });
-  var replay = el("button", { type: "button", "class": "small primary", id: "helpReplay", style: "margin-left:auto", title: "Replay the first-run walkthrough" }, "Replay tutorial");
+  var replay = el("button", { type: "button", "class": "small tutorialbtn", id: "helpReplay", style: "margin-left:auto", title: "Play the first-run walkthrough" }, "Play tutorial");
   on(replay, "click", function () { go("today"); startTutorial(); });
   acts.appendChild(openAll); acts.appendChild(closeAll); acts.appendChild(replay); root.appendChild(acts);
   // A line that starts with ">" is nested one level under the line above it (">>" is two levels).

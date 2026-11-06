@@ -1,6 +1,6 @@
 // First-run walkthrough: a small card that points at real controls and moves on when the action is done.
-import { state, ui, save } from "./state.js";
-import { $, el, on } from "./dom.js";
+import { state, ui } from "./state.js";
+import { el, on } from "./dom.js";
 
 function questOf(c) { return state.quests.filter(function (p) { return p.id === c.questId; })[0]; }
 function hasTask(c) { return !!c.questId && state.tasks.some(function (t) { return t.questId === c.questId; }); }
@@ -51,10 +51,10 @@ var STEPS = [
         : "Open **Today** to see what to work on next across all your quests. Your task has no due date, so it sits in the quest’s Backlog and is not on **Timeline**. Give a task a due date to schedule it." };
     },
     done: function () { return ui.view === "today"; } },
-  { title: "Welcome to the adventure!", view: function () { return { text: "Everything else is in the Field guide. To run this walkthrough again, open the Field guide and select **Replay tutorial**." }; } }
+  { title: "Welcome to the adventure!", view: function () { return { text: "Everything else is in the Field guide. To run this walkthrough again, open the Field guide and select **Play tutorial**." }; } }
 ];
 
-var panel = null, textHost = null, shownText = "", timer = null, startTimer = null, index = 0, ctx = null, lit = null, flashed = "";
+var panel = null, textHost = null, shownText = "", timer = null, index = 0, ctx = null, lit = null, flashed = "";
 
 function richText(host, text) {
   text.split("**").forEach(function (part, i) { host.appendChild(i % 2 ? el("strong", null, part) : document.createTextNode(part)); });
@@ -64,8 +64,7 @@ function clearLit() { if (lit) lit.classList.remove("tutorialtarget", "tutorialf
 
 export function stopTutorial() {
   if (timer) clearInterval(timer);
-  if (startTimer) clearTimeout(startTimer);
-  timer = startTimer = null;
+  timer = null;
   clearLit();
   document.documentElement.style.removeProperty("--tutorial-top");
   if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
@@ -117,19 +116,4 @@ export function startTutorial() {
   document.body.appendChild(panel);
   draw(); tick();
   timer = setInterval(tick, 300);
-}
-
-// First launch only: waits for the splash to finish, then marks the tutorial seen so it never returns on its own.
-export function maybeStartTutorial(ready) {
-  Promise.resolve(ready).then(check, check);
-  function check() {
-    if (state.settings.tutorialDone) return;
-    wait();
-  }
-  function wait() {
-    var splash = $("splash");
-    if (splash && !splash.hidden) { startTimer = setTimeout(wait, 250); return; }
-    state.settings.tutorialDone = true; save();
-    startTutorial();
-  }
 }

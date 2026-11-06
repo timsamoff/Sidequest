@@ -187,7 +187,7 @@ const AREAS = [
     topics: ["The quest lifecycle", "Quests page", "Vault page"],
     re: /\b(sweepQuestCompletion|vaultQuest|completionDialog|promoteToActive|demoteToCandidate|restoreEntry|removeToVault|removeNow|questTasksAllDone|renderQuestPage|renderQuests|standingBlock|pagesSection|candidatesSection)\b/ },
   { name: "launch checklist, decisions, and links",
-    topics: ["Inside a quest", "Quest Giver and Quest links"],
+    topics: ["Inside a quest", "Quest giver and Quest links"],
     re: /\b(launchSection|launchItems|decisionDialog|decisionEditDialog|stepDialog|stepEditDialog|linkQuestDialog|linksSection|incompleteLaunchCriticalLinks)\b/ },
   { name: "the Workshop and candidates",
     topics: ["The quest lifecycle", "Workshop page", "Quests page"],

@@ -18,16 +18,7 @@ The artifact needs two capabilities. Without `db`, nothing saves. Without `downl
 
 ### First-time setup
 
-1. Start a new conversation with Claude.
-2. Send this message:
-
-   > Please fetch this file and publish it as an artifact: https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html. It needs the `db` capability for storage and the `downloads` capability so Save backup works.
-
-3. Open the artifact Claude gives you.
-
-That link is yours. Bookmark it or pin it, since it's how you get back to your data. Claude fetches the file itself, so there's nothing to download or upload.
-
-If fetching doesn't work, or you'd rather upload: download `sidequest.html` from this folder, upload it to a new conversation, and ask Claude to publish it as an artifact with the `db` and `downloads` capabilities.
+The prompt to send is in the main [README](../README.md#claude). That link is yours once Claude gives it to you, so bookmark it or pin it, since it's how you get back to your data.
 
 ## Muse
 
@@ -35,23 +26,7 @@ Muse builds Sidequest from the source file on GitHub and runs it on its own host
 
 ### First-time setup
 
-1. Start a new chat with your own Muse.
-2. Paste this prompt. It asks Muse to build the app from the repo and keep your data in your Muse database:
-
-```
-Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty.
-
-Keep every feature as is, including the sound effects and the GitHub version check, and keep its update prompt word for word. Set window.sidequestHosted = true before the app starts, so it shows its hosted wording about where your data is saved.
-
-Keep this Google Fonts stylesheet in the <head> of the client's index.html, and make sure it survives the build into the published bundles, because the launch quotes are sized for Spectral and overflow their two-line box in the Georgia fallback:
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600&family=Public+Sans:wght@400;500;600&display=swap">
-
-When it's built, launch the app several times to confirm every launch quote fits its two-line box, and click-test every button, dialog, and import before handing it over.
-```
-
-Muse fetches the file from the repo itself, so there's nothing to download or attach. It builds the app in the background and hands you a card to open it. Your data lives only in your Muse environment.
-
-If fetching doesn't work, you can attach the file instead. Save `sidequest.html` from this folder (or from the repo: https://github.com/timsamoff/Sidequest/blob/main/Sidequest-Artifact/sidequest.html, using the Raw button), attach it to the chat, and paste the same prompt with the link in its first sentence replaced by "the attached sidequest.html".
+The prompt to paste is in the main [README](../README.md#muse). Muse fetches the file from the repo itself and builds it in the background. Your data lives only in your Muse environment.
 
 The first time you open the app, it asks for permission to check for updates online. Choose **Always allow** so the version check runs without asking again.
 

@@ -94,7 +94,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.13.2"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.13.3"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -118,7 +118,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("viewTitle").textContent === "Today" && k.d.title.includes("Sidequest"), "opens on Today");
   ok(k.$("view").textContent.includes("Welcome to Sidequest") && k.$("view").textContent.includes("sample quests") && !!k.$("welcomeSettings") && !!k.$("welcomeDismiss"), "welcome box explains the samples");
   ok(k.d.querySelector('.tab[data-view="quest:pApp"]').textContent.trim() === "Sample App" && k.d.querySelector("#nav").textContent.includes("Pinned"), "Sample App is the pinned quest");
-  ok([...k.d.querySelectorAll("#nav .tab")].map(t => t.dataset.view).join() === "today,projects,schedule,timeline,jobs,quest:pApp", "sidebar: core pages + one pinned quest");
+  ok([...k.d.querySelectorAll("#nav .tab")].map(t => t.dataset.view).join() === "today,projects,schedule,timeline,quest:pApp", "sidebar: core pages + one pinned quest");
   // dismiss
   k.click(k.$("welcomeDismiss")); ok(!k.$("view").textContent.includes("Welcome to Sidequest") && k.saved().settings.hideWelcome === true, "dismissing hides it and remembers");
   // Today content
@@ -188,7 +188,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("viewTitle").textContent === "Sample App" && k.$("view").textContent.includes("Before you launch"), "project page has a Before you launch section, scoped to this project");
   ok(!k.btn(k.$("view"), "Launch task"), "there is no separate Launch task button; a task joins the checklist from its own detail");
   const checkList = () => [...k.d.querySelectorAll("#view .tlist.check li")];
-  ok(/^Complete: \d+ of \d+ launch critical tasks?$/.test(k.d.querySelector("#view h2#h-checks").closest(".sechead").nextElementSibling.textContent) && checkList().length === 1, "Sample App's checklist is its own 1 launch task, with linked quests excluded (" + checkList().length + ")");
+  ok(/^Complete: \d+ of \d+ launch-critical tasks?$/.test(k.d.querySelector("#view h2#h-checks").closest(".sechead").nextElementSibling.textContent) && checkList().length === 1, "Sample App's checklist is its own 1 launch task, with linked quests excluded (" + checkList().length + ")");
   ok(checkList().some(li => li.textContent.includes("Submit to the app store")), "the launch task itself appears in the checklist");
   ok(!checkList().some(li => li.textContent.includes("Sample Website")), "a linked quest no longer appears in the Before you launch checklist");
   ok(!k.d.querySelector("#view .decision") && ![...k.d.querySelectorAll("#view h3")].some(h => h.textContent === "Decisions") && !k.btn(k.$("view"), "Add decision"), "the project page no longer has a Decisions section (decisions live on steps in Tasks)");
@@ -302,18 +302,18 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const k = kit(await mk()); k.d.querySelector('#navBottom .tab[data-view="help"]').dispatchEvent(new k.w.MouseEvent("click", { bubbles: true }));
   const titles = [...k.d.querySelectorAll("#view summary")].map(s => s.textContent);
-  const sections = ["How Sidequest works", "Terms", "Finding your way around", "The quest lifecycle", "Today page", "Quests page", "Inside a quest", "Quest Giver and Quest links", "A quest’s Schedule and Timeline", "Tasks page", "Timeline page", "Errands page", "Workshop page", "Vault page", "Options page"];
+  const sections = ["How Sidequest works", "Terms", "Finding your way around", "The quest lifecycle", "Today page", "Quests page", "Inside a quest", "Quest giver and Quest links", "A quest’s Schedule and Timeline", "Tasks page", "Timeline page", "Errands page", "Workshop page", "Vault page", "Options page"];
   ok(titles.join() === sections.join(), "the Field guide has the thirteen sections of the rewrite plus Terms, in order (" + titles.join(", ") + ")");
   const helpText = k.$("view").textContent;
   ok(k.d.querySelectorAll("#view .hbody ul ul").length > 0 && k.d.querySelectorAll("#view .hbody ul ul ul").length === 0, "nested bullets in the guide render as nested lists, no deeper than two levels");
   ok(!helpText.includes("Mark done") && !helpText.includes("archive completed tasks") && !helpText.includes("View beside its name") && !helpText.includes("with its circle"), "Help no longer describes buttons and settings that were removed");
   const staleHelp = ["default start date", "Show backup text", "pasted text", "Restore from text", "copy your data as text", "Sprint 1", "Where things stand", "Next slot", "what used to be called", "used to be called a project", "Completion FX"];
   ok(staleHelp.every(ph => !helpText.includes(ph)), "Help does not describe things that were removed (" + staleHelp.filter(ph => helpText.includes(ph)).join(", ") + ")");
-  const coveredHelp = ["Quest details", "Quest Giver Export", "Bounty", "Slip schedule", "Forecast", "Ideal", "Actual", "Gathering dust", "Make milestone", "Launch critical", "Coin format", "Completion effects", "Sound effects", "Refresh", "stretch of work", "Backup and restore", "Start fresh", "Link quest", "Make candidate", "Splash screen on open", "Main menu"];
+  const coveredHelp = ["Quest details", "Quest giver export", "Bounty", "Slip schedule", "Forecast", "Ideal", "Actual", "Gathering dust", "Make milestone", "Launch critical", "Coin format", "Completion effects", "Sound effects", "Refresh", "stretch of work", "Backup and restore", "Start fresh", "Link quest", "Make candidate", "Splash screen on open", "Main menu"];
   ok(coveredHelp.every(ph => helpText.includes(ph)), "the guide covers the features it should (missing: " + coveredHelp.filter(ph => !helpText.includes(ph)).join(", ") + ")");
   ok(!/—/.test(helpText) && !helpText.includes("--"), "Help has no em dashes, real or double-hyphen");
   ok(!/[A-Za-z]'[A-Za-z]/.test(helpText), "Help uses smart apostrophes, not straight ones, in contractions and possessives");
-  ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Workshop,Vault,Field guide,Options", "the Field guide sits between Vault and Options");
+  ok([...k.d.querySelectorAll("#navBottom .tab")].map(t => t.textContent.trim()).join() === "Errands,Workshop,Vault,Field guide,Options", "the Field guide sits between Vault and Options");
 }
 
 /* ---- vault samples: only Quests and Ideas go to the Vault now ---- */
@@ -393,7 +393,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(idea && idea.created === iso, "a new idea records today as its created date");
   k.tab("workshop");
   const row = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Dated idea"));
-  ok(row && /· \w+ \d+, \d{4}/.test(row.textContent), "the Workshop row shows when the idea was added");
+  ok(row && /· Created on \w+ \d+, \d{4}/.test(row.textContent), "the Workshop row shows when the idea was added");
   k.click(k.btn(row, "Make candidate"));
   const q = k.saved().quests.find(x => x.name === "Dated idea");
   ok(q && q.start === iso, "Make candidate uses today as the candidate's Start date");
@@ -596,7 +596,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!protoDetail && protoDetail.textContent.includes("Make the player move") && protoDetail.textContent.includes("Add one obstacle"), "a vaulted quest's own task still expands in place and shows its steps, for historical purposes");
   ok(!protoDetail.querySelector("select.status") && !protoDetail.querySelector("textarea") && ![...protoDetail.querySelectorAll("button")].some(b => ["Delete", "Launch critical", "Add step", "Add decision"].includes(b.textContent)), "the expanded task on a vaulted quest page has no mutating controls of its own (status select, notes textarea, Delete, Launch critical, Add step/decision)");
   ok([...protoDetail.querySelectorAll('input[type="checkbox"]')].every(cb => cb.disabled), "step checkboxes are disabled when the quest is vaulted");
-  ok(k.$("view").textContent.includes("No Quest Giver.") && !k.$("view").textContent.includes("If filled, this information will appear on the Quest Giver Export."), "a vaulted quest page shows a plain Quest Giver empty state with no editable-page description");
+  ok(k.$("view").textContent.includes("No Quest giver.") && !k.$("view").textContent.includes("If filled, this information will appear on the Quest giver export."), "a vaulted quest page shows a plain Quest giver empty state with no editable-page description");
   ok(!/\d{4}-\d{2}-\d{2}/.test(k.$("view").textContent), "a vaulted quest's Schedule line formats its start date like its due date, not as a raw ISO string");
   {
     const sched = [...k.$("view").querySelectorAll(".hint")].find(p => p.textContent.startsWith("Started "));
@@ -608,7 +608,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.saved().tasks.filter(t => t.questId === "pGame" && !t.vault).length === tasksBefore, "restoring the quest also brings its tasks back out of the Vault");
 }
 {
-  // a vaulted candidate's read-only page shows Quest Giver info too
+  // a vaulted candidate's read-only page shows Quest giver info too
   const saved = {
     quests: [{ id: "pVC", name: "Vaulted Candidate", status: "candidate", notes: "some notes", vault: { at: "2026-08-01", why: "removed" }, client: { org: "Acme Co.", poc: "Jordan Lee", phone: "", email: "", address: "", website: "" } }],
     tasks: []
@@ -616,7 +616,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk(saved));
   k.tab("vault");
   k.click(k.btn(k.$("view"), "Vaulted Candidate"));
-  ok(k.$("view").textContent.includes("Quest Giver") && k.$("view").textContent.includes("Acme Co.") && k.$("view").textContent.includes("Jordan Lee"), "a vaulted candidate's page shows its filled-in Quest Giver fields");
+  ok(k.$("view").textContent.includes("Quest giver") && k.$("view").textContent.includes("Acme Co.") && k.$("view").textContent.includes("Jordan Lee"), "a vaulted candidate's page shows its filled-in Quest giver fields");
 }
 {
   const saved = {
@@ -626,7 +626,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk(saved));
   k.tab("vault");
   k.click(k.btn(k.$("view"), "Empty Giver"));
-  ok(k.$("view").textContent.includes("No Quest Giver."), "a vaulted candidate with no Quest Giver info says so plainly");
+  ok(k.$("view").textContent.includes("No Quest giver."), "a vaulted candidate with no Quest giver info says so plainly");
 }
 
 {
@@ -675,13 +675,13 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!k.$("renameBtn").hidden, "a candidate's page has the rename pencil like any other live quest");
   ok([...k.d.querySelectorAll("#view h2")].some(h => h.textContent === "Quest links") && !!k.btn(k.$("view"), "Link quest"), "a candidate's page has a Quest links section with a Link quest button");
   ok(!!k.btn(k.$("view"), "Promote") && !!k.btn(k.$("view"), "Vault"), "a candidate's page offers Promote and Vault");
-  ok(!k.btn(k.$("view"), "Mark complete") && !k.btn(k.$("view"), "Quest Giver Export"), "a candidate's page has no Mark complete or Quest Giver Export button");
-  // Quest Giver fields live right on the page for a candidate, same as an active quest
-  ok(!!k.$("giver-org-pExt") && !!k.$("giver-poc-pExt") && !!k.$("giver-phone-pExt") && !!k.$("giver-email-pExt") && !!k.$("giver-website-pExt") && !!k.$("giver-address-pExt"), "the candidate page has all six Quest Giver fields");
+  ok(!k.btn(k.$("view"), "Mark complete") && !k.btn(k.$("view"), "Quest giver export"), "a candidate's page has no Mark complete or Quest giver export button");
+  // Quest giver fields live right on the page for a candidate, same as an active quest
+  ok(!!k.$("giver-org-pExt") && !!k.$("giver-poc-pExt") && !!k.$("giver-phone-pExt") && !!k.$("giver-email-pExt") && !!k.$("giver-website-pExt") && !!k.$("giver-address-pExt"), "the candidate page has all six Quest giver fields");
   k.$("giver-org-pExt").value = "Acme Co."; k.fire(k.$("giver-org-pExt"), "input");
   k.$("giver-poc-pExt").value = "Jordan Lee"; k.fire(k.$("giver-poc-pExt"), "input");
   const giver = k.saved().quests.find(p => p.id === "pExt").client;
-  ok(giver.org === "Acme Co." && giver.poc === "Jordan Lee" && giver.phone === "", "editing the candidate page's Quest Giver fields saves them, blank ones stay blank");
+  ok(giver.org === "Acme Co." && giver.poc === "Jordan Lee" && giver.phone === "", "editing the candidate page's Quest giver fields saves them, blank ones stay blank");
 }
 {
   // Promote and Vault both work from the candidate page itself
@@ -689,7 +689,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Browser Extension"));
   k.click(k.btn(k.$("view"), "Promote"));
   ok(k.saved().quests.find(p => p.id === "pExt").status === "active", "Promote on the candidate page promotes it");
-  ok(!!k.btn(k.$("view"), "Demote") && !!k.btn(k.$("view"), "Mark complete") && !!k.btn(k.$("view"), "Vault") && !!k.btn(k.$("view"), "Quest Giver Export"), "the now-active quest's page has the full active action row, including Demote");
+  ok(!!k.btn(k.$("view"), "Demote") && !!k.btn(k.$("view"), "Mark complete") && !!k.btn(k.$("view"), "Vault") && !!k.btn(k.$("view"), "Quest giver export"), "the now-active quest's page has the full active action row, including Demote");
   k.click(k.btn(k.$("view"), "Demote"));
   ok(k.saved().quests.find(p => p.id === "pExt").status === "candidate", "Demote sends it back to Candidates");
   ok(!!k.btn(k.$("view"), "Promote") && !k.btn(k.$("view"), "Mark complete"), "after demotion the page shows the candidate layout again");
@@ -742,15 +742,15 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(a2.linkedQuestIds.indexOf("pSite") >= 0 && s2.linkedQuestIds.indexOf("pApp") >= 0 && a2.savedLinkIds === undefined, "an older save's set-aside links become real links on both sides");
 }
 {
-  // New quest also collects Quest Giver fields up front
+  // New quest also collects Quest giver fields up front
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.menuAct("newBtn", "newQuest");
-  ok(!!k.$("f-giverOrg") && !!k.$("f-giverAddress"), "the New quest dialog has Quest Giver fields too");
+  ok(!!k.$("f-giverOrg") && !!k.$("f-giverAddress"), "the New quest dialog has Quest giver fields too");
   k.setField("name", "Brand New Quest"); k.setField("giverOrg", "New Client LLC");
   k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
   const nq = k.saved().quests.find(p => p.name === "Brand New Quest");
-  ok(nq.client.org === "New Client LLC" && nq.client.poc === "", "a quest created with Quest Giver info saves it from the start");
+  ok(nq.client.org === "New Client LLC" && nq.client.poc === "", "a quest created with Quest giver info saves it from the start");
 }
 {
   const k = kit(await mk());
@@ -834,7 +834,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   const split = k.d.querySelector("#view .questsplit");
   ok(!!split && !!split.querySelector(".questmain") && !split.querySelector(".questtop") && !split.querySelector(".questrest") && !!split.querySelector(".questcharts"), "an active quest's page has one content column and a Schedule/Timeline/Burndown column");
-  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Quest links,Notes,Quest Giver", "the left column runs Tasks, Before you launch, Quest links, Notes, then Quest Giver (" + [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() + ")");
+  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Quest links,Notes,Quest giver", "the left column runs Tasks, Before you launch, Quest links, Notes, then Quest giver (" + [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() + ")");
   ok(!split.querySelector(".pintoggle") && !split.querySelector(".pinbar"), "there is no Pin button on a quest's own page");
   ok(split.querySelector(".questmain").textContent.includes("Complete: 1 of 6 tasks | Backlog: 1 unscheduled task"), "the task-count line sits under the Tasks heading");
   const side = split.querySelector(".questcharts");
@@ -1548,7 +1548,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const chips = [...k.d.querySelectorAll("#view .questmain .l3 span")].map(s => s.textContent);
   ok(chips.includes("Est 3 h") && chips.includes("Est 6 h"), "task rows on the quest page show their estimate as Est N h");
   const heads = [...k.d.querySelectorAll("#view .questmain h2")].map(h => h.textContent);
-  ok(heads.join() === "Tasks,Before you launch,Quest links,Notes,Quest Giver", "the quest page order is Tasks, Before you launch, Quest links, Notes, Quest Giver (" + heads.join() + ")");
+  ok(heads.join() === "Tasks,Before you launch,Quest links,Notes,Quest giver", "the quest page order is Tasks, Before you launch, Quest links, Notes, Quest giver (" + heads.join() + ")");
   const g1 = sv.find(t => t.id === "g1");
   ok(g1.block === 1 && g1.start && g1.due && g1.start < g1.due, "Sample Game's first task keeps block 1 with its own start and due");
   const gp = k.saved().quests.find(p => p.id === "pGame");
@@ -1573,11 +1573,11 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   set("task-start", "2026-08-20");
   ok(t().start === "2026-08-20", "a start date is stored");
   set("task-start", "2026-09-05");
-  ok(t().start === "2026-08-20" && k.$("task-start").value === "2026-08-20" && k.$("view").textContent.includes("You can’t begin after you finish! Pick a start date on or before the due date."), "a start after the due date is rejected");
+  ok(t().start === "2026-08-20" && k.$("view").textContent.includes("You can’t begin after you finish! Pick a start date on or before the due date."), "a start after the due date is rejected");
   set("task-start", "2026-07-01");
   ok(t().start === "2026-08-20" && k.$("view").textContent.includes("on or after"), "a start before the project's start is rejected");
   set("task-due", "2026-08-10");
-  ok(t().due === "2026-08-30" && k.$("view").textContent.includes("You can’t finish before you begin! Pick a due date on or after the start date."), "a due date before the start is rejected");
+  ok(t().due === "2026-08-30" && k.$("view").textContent.includes("You can’t begin after you finish! Pick a start date on or before the due date."), "a due date before the start is rejected");
   set("task-due", "2026-07-01");
   ok(t().due === "2026-08-30" && t().block === 4, "a due date before the project's start is rejected");
   set("task-est", "2.5");
@@ -1590,7 +1590,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   set("task-start", "2026-08-25");
   ok(t().start === "2026-08-25" && t().block === 0, "a Backlog task can be given a different start date without a due date");
   set("task-due", "2026-08-22");
-  ok(t().block === 0 && t().due === "" && k.$("view").textContent.includes("You can’t finish before you begin! Pick a due date on or after the start date."), "a due date before the kept start is rejected");
+  ok(t().block === 0 && t().due === "" && k.$("view").textContent.includes("You can’t begin after you finish! Pick a start date on or before the due date."), "a due date before the kept start is rejected");
   set("task-due", "2026-08-30");
   ok(t().block === 4 && t().due === "2026-08-30" && t().start === "2026-08-25", "adding a due date later keeps the start and schedules the task");
   set("task-due", ""); set("task-start", "");
@@ -1701,14 +1701,14 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   }
 }
 
-// Quest Giver Export writes through the same Save As dialog stub as Save backup's
+// Quest giver export writes through the same Save As dialog stub as Save backup's
 // own test, since both go through showSaveFilePicker before falling back to a
 // plain download.
 async function exportClick(k, projectName) {
   let written = null, downloadName = null;
   k.w.showSaveFilePicker = (opts) => { downloadName = opts.suggestedName; return Promise.resolve({ createWritable: () => Promise.resolve({ write: (t) => { written = t; return Promise.resolve(); }, close: () => Promise.resolve() }) }); };
   k.tab("projects"); k.click(k.btn(k.$("view"), projectName));
-  k.click(k.btn(k.$("view"), "Quest Giver Export"));
+  k.click(k.btn(k.$("view"), "Quest giver export"));
   // A quest with something to print on the letterhead asks first; take the default, both sides included.
   const go = k.btn(k.$("overlay"), "Export"); if (go) k.click(go);
   await new Promise((r) => setTimeout(r, 30));
@@ -1834,12 +1834,12 @@ async function exportClick(k, projectName) {
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   const { html } = await exportClick(k, "Sample App");
-  ok(!html.includes('class="eletterhead"'), "with no contact or Quest Giver info filled in at all, no letterhead block is printed");
+  ok(!html.includes('class="eletterhead"'), "with no contact or Quest giver info filled in at all, no letterhead block is printed");
 }
 {
   // Letterhead: Prepared by / Prepared for, and the positioning rules
   // the user asked for -- no Prepared for when only the user's own info
-  // exists, and Prepared for alone (on the left) when only Quest Giver
+  // exists, and Prepared for alone (on the left) when only Quest giver
   // info exists.
   const saved = {
     settings: { contact: { name: "Ada Lovelace", company: "", phone: "", email: "", address: "", website: "" } },
@@ -1887,29 +1887,29 @@ async function exportClick(k, projectName) {
     tasks: []
   };
   const { html } = await exportClick(kit(await mk(saved)), "Only Giver Info");
-  ok(!html.includes("Prepared by") && html.includes("Prepared for"), "with only Quest Giver info, Prepared by is left out");
+  ok(!html.includes("Prepared by") && html.includes("Prepared for"), "with only Quest giver info, Prepared by is left out");
   const letterhead = html.slice(html.indexOf('class="eletterhead"'), html.indexOf('class="eletterhead"') + 400);
   ok(letterhead.indexOf("Prepared for") < letterhead.indexOf("Acme Co."), "and Prepared for takes the lone/left position, not stranded on the right");
 }
 {
-  // Quest Giver: per-quest client info, saves live, and round-trips.
+  // Quest giver: per-quest client info, saves live, and round-trips.
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   k.$("giver-org-pApp").value = "Acme Co."; k.fire(k.$("giver-org-pApp"), "input");
   k.$("giver-poc-pApp").value = "Jordan Lee"; k.fire(k.$("giver-poc-pApp"), "input");
   const client = k.saved().quests.find(q => q.id === "pApp").client;
-  ok(client.org === "Acme Co." && client.poc === "Jordan Lee" && client.phone === "" && client.email === "" && client.address === "" && client.website === "", "Quest Giver fields save live and round-trip, blank ones stay blank");
+  ok(client.org === "Acme Co." && client.poc === "Jordan Lee" && client.phone === "" && client.email === "" && client.address === "" && client.website === "", "Quest giver fields save live and round-trip, blank ones stay blank");
   k.$("giver-org-pApp").value = ""; k.fire(k.$("giver-org-pApp"), "input");
-  ok(k.saved().quests.find(q => q.id === "pApp").client.org === "", "clearing a Quest Giver field saves right away, same as Settings' own contact fields");
+  ok(k.saved().quests.find(q => q.id === "pApp").client.org === "", "clearing a Quest giver field saves right away, same as Settings' own contact fields");
 }
 {
   // Coin/Per: an optional per-quest pay-rate pair, saved alongside Quest
-  // Giver but deliberately never printed on the Quest Giver Export.
+  // Giver but deliberately never printed on the Quest giver export.
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  ok(!!k.$("giver-coin-pApp") && k.d.querySelector('label[for="giver-coin-pApp"]').textContent === "Bounty", "the quest page has a Bounty field, under Address in the Quest Giver box");
+  ok(!!k.$("giver-coin-pApp") && k.d.querySelector('label[for="giver-coin-pApp"]').textContent === "Bounty", "the quest page has a Bounty field, under Address in the Quest giver box");
   ok(!!k.$("giver-per-pApp") && k.d.querySelector('label[for="giver-per-pApp"]').textContent === "Per" && k.$("giver-per-pApp").value === "Hour", "and a Per select, defaulting to Hour");
   const coinEl = () => k.$("giver-coin-pApp");
   // Typing works like a cash register: each digit enters from the cents, with commas and a decimal point added
@@ -1925,13 +1925,13 @@ async function exportClick(k, projectName) {
   typeInto("5"); ok(typeInto("0.0") === "" && k.saved().quests.find(q => q.id === "pApp").client.coin === "", "backspacing to nothing clears the field");
   ok(typeInto("0") === "", "a lone zero stays empty, so a zero bounty is never stored");
   const { html } = await exportClick(k, "Sample App");
-  ok(!html.includes("Bounty") && !html.includes('"per"') && !html.includes("giver-coin"), "Bounty/Per never appear in the Quest Giver Export");
+  ok(!html.includes("Bounty") && !html.includes('"per"') && !html.includes("giver-coin"), "Bounty/Per never appear in the Quest giver export");
 }
 {
   // Old-shaped saved data with no `client` field at all still loads with a usable, empty one.
   const saved = { quests: [{ id: "pOld", name: "Old Quest", status: "active", start: "2026-08-03", days: 7 }], tasks: [] };
   const k = kit(await mk(saved));
-  ok(JSON.stringify(k.saved().quests[0].client) === JSON.stringify({ org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" }), "a quest saved before Quest Giver existed gets a default empty client object on load");
+  ok(JSON.stringify(k.saved().quests[0].client) === JSON.stringify({ org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" }), "a quest saved before Quest giver existed gets a default empty client object on load");
 }
 {
   // Brandmark: the Settings UI, and normalize()'s validation. The actual
@@ -2328,7 +2328,8 @@ async function exportClick(k, projectName) {
   k.menuAct("newBtn", "newStep"); ok(k.$("toast").textContent === "Steps can only be added to a task.", "adding a step with no tasks explains the rule");
   k.menuAct("newBtn", "newDecision"); ok(k.$("toast").textContent === "A decision can only be added to a step.", "adding a decision with no steps explains the rule");
   k.menuAct("newBtn", "newQuest"); k.setField("name", "Test Quest"); k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
-  ok(k.$("toast").textContent === "Test Quest has been added as a candidate quest on the Quests page. Promote the candidate to open it.", "the new-quest confirmation says it is a candidate and how to open it");
+  ok(k.$("toast").textContent === "“Test Quest” has been added as a candidate quest to Quests.", "the new-quest confirmation says it is a candidate and how to open it");
+  ok(k.saved().quests.find(q => q.name === "Test Quest").start === new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0") + "-" + String(new Date().getDate()).padStart(2, "0"), "a new candidate quest starts today by default");
   k.tab("projects");
   ok(JSON.stringify(heads()) === JSON.stringify(["Candidate quests"]) && k.$("view").textContent.includes("Test Quest") && !k.$("view").textContent.includes("No candidate quests yet."), "with only a candidate quest, only Candidate quests shows, listing it");
   k.tab("today");
@@ -2339,15 +2340,15 @@ async function exportClick(k, projectName) {
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.menuAct("newBtn", "newTask"); k.setField("quest", "pSite"); k.setField("what", "Scheduled task"); k.setField("due", (() => { const d = new Date(); return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) + 3 * 86400000).toISOString().slice(0, 10); })()); k.click(k.btn(k.$("modalBody"), "Add task"));
-  ok(/^Scheduled task added as a task to \w+ \d+ in Sample Website\. \(.+ to .+\.\)$/.test(k.$("toast").textContent), "a scheduled task's confirmation names its block and quest, with the date range (" + k.$("toast").textContent + ")");
+  ok(/^“Scheduled task” added as a task to \w+ \d+ in Sample Website\. \(.+ to .+\.\)$/.test(k.$("toast").textContent), "a scheduled task's confirmation names its block and quest, with the date range (" + k.$("toast").textContent + ")");
   k.menuAct("newBtn", "newTask"); k.setField("quest", "pSite"); k.setField("what", "Unscheduled task"); k.click(k.btn(k.$("modalBody"), "Add task"));
-  ok(k.$("toast").textContent === "Unscheduled task added as a task to Sample Website’s backlog.", "a task with no due date says it went to the quest's backlog");
+  ok(k.$("toast").textContent === "“Unscheduled task” added as a task to Sample Website’s backlog.", "a task with no due date says it went to the quest's backlog");
   k.menuAct("newBtn", "newStep"); k.setField("text", "Brand new step"); k.click(k.btn(k.$("modalBody"), "Add step"));
-  ok(/^Brand new step added as a step to .+ in .+\.$/.test(k.$("toast").textContent), "a step's confirmation names its task and quest (" + k.$("toast").textContent + ")");
+  ok(/^“Brand new step” added as a step to .+ in .+\.$/.test(k.$("toast").textContent), "a step's confirmation names its task and quest (" + k.$("toast").textContent + ")");
   k.menuAct("newBtn", "newDecision"); k.setField("q", "Which font?"); k.click(k.btn(k.$("modalBody"), "Add decision"));
-  ok(/^Which font\? added as a decision to .+ in .+\.$/.test(k.$("toast").textContent), "a decision's confirmation names its step and quest (" + k.$("toast").textContent + ")");
+  ok(/^“Which font\?” added as a decision to .+ in .+\.$/.test(k.$("toast").textContent), "a decision's confirmation names its step and quest (" + k.$("toast").textContent + ")");
   k.menuAct("newBtn", "newIdea"); k.setField("text", "Try a plugin system"); k.click(k.btn(k.$("modalBody"), "Workshop it"));
-  ok(k.$("toast").textContent === "Try a plugin system added to the Workshop.", "an idea's confirmation names the idea and the Workshop");
+  ok(k.$("toast").textContent === "“Try a plugin system” added to the Workshop.", "an idea's confirmation names the idea and the Workshop");
 }
 
 {
@@ -2360,7 +2361,7 @@ async function exportClick(k, projectName) {
   k.menuAct("newBtn", "newTask");
   k.setField("quest", "pSite"); k.setField("what", "Start only");
   k.setField("start", iso(1)); k.fire(k.$("f-start"), "input");
-  const note = () => k.$("modalBody").querySelector("p.msg").textContent;
+  const note = () => k.$("f-due").parentNode.nextSibling.textContent;
   ok(note() === "A task with no due date goes to the quest’s backlog.", "entering a start date with no due date shows the backlog message right away (" + note() + ")");
   k.setField("due", iso(8)); k.fire(k.$("f-due"), "input");
   ok(note() === "", "the message goes away on its own once a due date is added");
@@ -2369,11 +2370,12 @@ async function exportClick(k, projectName) {
   k.click(k.btn(k.$("modalBody"), "Add task"));
   const made = k.saved().tasks.find(x => x.what === "Start only");
   ok(!!made && made.block === 0 && made.due === "" && made.start === iso(1), "the task is still created, in the Backlog, with its start date kept");
-  ok(k.$("toast").textContent === "Start only added as a task to Sample Website’s backlog.", "and the confirmation says it went to the backlog");
+  ok(k.$("toast").textContent === "“Start only” added as a task to Sample Website’s backlog.", "and the confirmation says it went to the backlog");
   k.menuAct("newBtn", "newTask");
   k.setField("quest", "pSite"); k.setField("what", "Bad order"); k.setField("start", iso(5)); k.setField("due", iso(2));
   k.click(k.btn(k.$("modalBody"), "Add task"));
-  ok(!k.saved().tasks.some(x => x.what === "Bad order") && note().includes("You can’t begin after you finish!"), "a start after the due date is still refused");
+  ok(k.$("modalBody").querySelector("p.errmsg") && !k.$("modalBody").querySelector("p.errmsg").textContent === false, "a refused date shows red under the dates");
+  ok(!k.saved().tasks.some(x => x.what === "Bad order") && k.$("f-start").parentNode.nextSibling.textContent.includes("You can’t begin after you finish!"), "a start after the due date is still refused");
 }
 {
   // The Welcome box's Open Options button lands on Start fresh
@@ -2395,10 +2397,10 @@ async function exportClick(k, projectName) {
   const k = kit(await mk(saved));
   k.click(k.$("welcomeDismiss"));
   // New Task dialog
-  const tryTask = (due, start) => { k.menuAct("newBtn", "newTask"); k.setField("quest", "pT"); k.setField("what", "Probe"); k.setField("due", due || ""); k.setField("start", start || ""); k.click(k.btn(k.$("modalBody"), "Add task")); const m = k.$("modalBody").querySelector("p.msg"); return m ? m.textContent : ""; };
+  const tryTask = (due, start) => { k.menuAct("newBtn", "newTask"); k.setField("quest", "pT"); k.setField("what", "Probe"); k.setField("due", due || ""); k.setField("start", start || ""); k.click(k.btn(k.$("modalBody"), "Add task")); const ms = [...k.$("modalBody").querySelectorAll("p.msg")].filter(x => x.textContent); const m = ms[0]; return m ? m.textContent : ""; };
   ok(tryTask("2026-07-20") === "This quest starts Aug 3, 2026. Pick a due date on or after that.", "a due date before the quest starts says when the quest starts");
   k.click(k.btn(k.$("modalBody"), "Cancel"));
-  ok(tryTask("2026-09-10") === "This quest is due Aug 31, 2026. Pick a due date on or before that.", "a due date after the quest's own due date is refused with that date");
+  ok(tryTask("2026-09-10") === "This quest is due Aug 31, 2026. Choose a due date on or before then.", "a due date after the quest's own due date is refused with that date");
   k.click(k.btn(k.$("modalBody"), "Cancel"));
   ok(tryTask("2026-08-20", "2026-07-20") === "This quest starts Aug 3, 2026. Pick a start date on or after that.", "a start date before the quest starts says when the quest starts");
   k.click(k.btn(k.$("modalBody"), "Cancel"));
@@ -2412,11 +2414,46 @@ async function exportClick(k, projectName) {
   const set = (id, v) => { const i = k.$(id); i.value = v; k.fire(i, "blur"); };
   const t = () => k.saved().tasks.find(x => x.id === "t1");
   set("task-due", "2026-09-10");
-  ok(t().due === "" && k.$("view").textContent.includes("This quest is due Aug 31, 2026. Pick a due date on or before that."), "the detail pane refuses a due date after the quest's due date");
+  ok(t().due === "" && k.$("view").textContent.includes("This quest is due Aug 31, 2026. Choose a due date on or before then."), "the detail pane refuses a due date after the quest's due date");
+  ok(k.$("toast").textContent !== "This quest is due Aug 31, 2026. Choose a due date on or before then.", "a due date past the quest’s due date is refused with the message line only, no toast");
   set("task-due", "2026-07-20");
   ok(k.$("view").textContent.includes("This quest starts Aug 3, 2026. Pick a due date on or after that."), "and a due date before the quest starts");
   set("task-start", "2026-07-20");
   ok(k.$("view").textContent.includes("This quest starts Aug 3, 2026. Pick a start date on or after that."), "and a start date before the quest starts");
+  k.$("toast").textContent = "";
+  set("task-start", "2026-07-20"); set("task-due", "2026-09-10");
+  ok(k.$("view").textContent.includes("This quest starts Aug 3, 2026. Pick a start date on or after that.") && k.$("view").textContent.includes("This quest is due Aug 31, 2026. Choose a due date on or before then."), "a bad start and a bad due date both stay showing after leaving each field");
+  ok(k.$("task-start").value === "2026-07-20" && k.$("task-due").value === "2026-09-10" && k.$("toast").textContent === "", "the bad dates stay in their fields and no toast is shown");
+  // Estimate against the dates: 24 hours a day, both days counted, a warning and never a block
+  set("task-start", "2026-08-10"); set("task-due", "2026-08-11");
+  set("task-est", "48");
+  ok(t().est === 48 && !k.$("view").textContent.includes("exceeds the time"), "48 hours on a two-day task does not warn");
+  k.$("task-est").value = "60"; k.fire(k.$("task-est"), "input");
+  ok(k.$("view").textContent.includes("60 h exceeds the time between these dates (24 h/day)."), "the estimate warning shows while typing, before the field loses focus");
+  k.$("task-est").value = "48"; k.fire(k.$("task-est"), "input");
+  ok(!k.$("view").textContent.includes("exceeds the time"), "and clears as soon as it fits");
+  set("task-est", "49");
+  ok(t().est === 49 && k.$("toast").textContent === "Estimated time saved.", "49 hours on a two-day task still saves, with a plain toast (the warning is not repeated in it)");
+  ok(k.$("view").textContent.includes("49 h exceeds the time between these dates (24 h/day)."), "and the warning stays under the fields");
+  // dates are checked live in the New Task dialog, start included
+  k.menuAct("newBtn", "newTask"); k.setField("quest", "pT");
+  const live = () => [...k.$("modalBody").querySelectorAll("p.msg")].map(x => x.textContent).filter(Boolean).join(" | ");
+  k.setField("start", "2026-09-10"); k.fire(k.$("f-start"), "input");
+  ok(k.$("f-start").parentNode.nextSibling.textContent === "This quest is due Aug 31, 2026. Choose a start date on or before then.", "a start date past the quest’s due date is flagged as soon as it is entered");
+  k.setField("start", "2026-07-01"); k.fire(k.$("f-start"), "input");
+  ok(live().includes("This quest starts Aug 3, 2026. Pick a start date on or after that."), "a start date before the quest begins is flagged as soon as it is entered");
+  k.setField("start", "2026-08-20"); k.setField("due", "2026-08-10"); k.fire(k.$("f-due"), "input");
+  ok(live().startsWith("You can’t begin after you finish!"), "a start after the due date is flagged as soon as both are entered");
+  k.setField("start", "2026-07-01"); k.setField("due", "2026-09-20"); k.setField("est", "3000"); k.fire(k.$("f-est"), "input");
+  ok(k.$("f-start").parentNode.nextSibling.textContent.includes("This quest starts Aug 3, 2026") && k.$("f-due").parentNode.nextSibling.textContent.includes("This quest is due Aug 31, 2026") && k.$("f-est").parentNode.nextSibling.textContent.includes("3000 h exceeds"), "a bad start, due date and estimate all show at once, each under its own field");
+  k.click(k.btn(k.$("modalBody"), "Cancel"));
+  // same rule in the New Task dialog
+  k.menuAct("newBtn", "newTask"); k.setField("quest", "pT"); k.setField("start", "2026-08-10"); k.setField("due", "2026-08-10"); k.setField("est", "25"); k.fire(k.$("f-est"), "input");
+  ok(k.$("f-est").parentNode.nextSibling.textContent.startsWith("25 h exceeds the time between these dates (24 h/day)."), "the New Task dialog warns as the estimate is typed");
+  k.setField("est", "24"); k.fire(k.$("f-est"), "input");
+  ok(k.$("f-est").parentNode.nextSibling.textContent === "", "and the warning clears when it fits");
+  k.setField("est", "30"); k.setField("what", "Big one"); k.click(k.btn(k.$("modalBody"), "Add task"));
+  ok(k.saved().tasks.some(x => x.what === "Big one" && x.est === 30), "an over-long estimate still saves");
 }
 
 {
@@ -2514,9 +2551,9 @@ async function exportClick(k, projectName) {
   ok(web.help.includes("Your quest data is stored in the browser") && cl.help.includes("Your quest data is stored in the browser") && web.help.includes("Artifact version") && cl.help.includes("Artifact version"), "the guide explains both the web and the Artifact storage, in either version");
 }
 {
-  // The Muse prompt in the artifact README carries the app's Google Fonts link; the two must not drift apart
+  // The Muse prompt in the main README carries the app's Google Fonts link; the two must not drift apart
   const hrefOf = (text) => { const i = text.indexOf('href="https://fonts.googleapis.com'); return i < 0 ? null : text.slice(i + 6, text.indexOf('"', i + 6)); };
-  const museReadme = fs.readFileSync(path.join(__dirname, "..", "Sidequest-Artifact", "README.md"), "utf8");
+  const museReadme = fs.readFileSync(path.join(__dirname, "..", "README.md"), "utf8");
   ok(!!hrefOf(html) && hrefOf(museReadme) === hrefOf(html), "the Muse prompt's Google Fonts link is the same one index.html loads");
 }
 {
@@ -2556,7 +2593,7 @@ async function exportClick(k, projectName) {
   k.tab("projects"); ok(k.$("view").textContent.includes("Your limit is 2"), "the Quests page notes being over the limit");
 }
 {
-  // Contact info and Quest Giver open in place like a task row and start collapsed
+  // Contact info and Quest giver open in place like a task row and start collapsed
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.tab("settings");
@@ -2566,7 +2603,7 @@ async function exportClick(k, projectName) {
   ok(row.querySelector("button.item").getAttribute("aria-expanded") === "true" && !row.querySelector(".detail").hidden && !!row.querySelector("#set-contact-phone"), "selecting its row opens the fields");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
   row = k.d.querySelector("#view .questmain .sectionlist");
-  ok(row.querySelector("button.item").getAttribute("aria-expanded") === "false" && row.querySelector(".detail").hidden, "Quest Giver starts collapsed");
+  ok(row.querySelector("button.item").getAttribute("aria-expanded") === "false" && row.querySelector(".detail").hidden, "Quest giver starts collapsed");
   k.click(row.querySelector("button.item"));
   ok(!row.querySelector(".detail").hidden, "and opens when its row is selected");
 }
@@ -2755,18 +2792,28 @@ async function exportClick(k, projectName) {
   k.tab("projects");
   ok(/main menu/.test(([...k.d.querySelectorAll("#view .pintoggle, .pintoggle")][0] || {}).title || ""), "and pin text says main menu");
 }
-// First-run tutorial
+// Tutorial: starts only from a button
 {
-  const old = kit(await mk({ settings: { hideWelcome: true } }));
-  ok(old.saved().settings.tutorialDone === true, "a save from before the tutorial counts as already started");
-  const fresh = kit(await mk({ settings: { hideWelcome: true, tutorialDone: false } }));
-  ok(fresh.saved().settings.tutorialDone === false, "a stored false is kept, so a first run can still show it");
+  const k = kit(await mk({}));
+  ok(!k.d.querySelector(".tutorial"), "the tutorial does not start on its own");
+  ok(!("tutorialDone" in k.saved().settings), "there is no tutorialDone flag any more");
+  const play = k.$("welcomePlay");
+  ok(!!play && play.textContent === "Play tutorial" && play.classList.contains("tutorialbtn"), "the Welcome box has an orange Play tutorial button");
+  const btns = [...k.$("welcomePlay").parentNode.querySelectorAll("button")].map(b => b.textContent);
+  ok(btns.join() === "Open Options,Play tutorial,Dismiss", "Play tutorial sits between Open Options and Dismiss (" + btns.join() + ")");
+  ok(/Press Play tutorial for a short walkthrough of adding a quest, giving it a task, and starting it\./.test(k.d.querySelector(".welcomebox .hint").textContent) && k.d.querySelector(".welcomebox .hint").textContent.indexOf("Press Play tutorial") > k.d.querySelector(".welcomebox .hint").textContent.indexOf("Start fresh") && [...k.d.querySelectorAll(".welcomebox .hint strong")].map(n => n.textContent).join() === "Your new adventure begins here!,Options,Start fresh,Play tutorial", "the Welcome text puts the tutorial sentence last and bolds the button names");
+  k.click(play);
+  const c1 = k.d.querySelector(".tutorial");
+  ok(!!c1 && c1.textContent.includes("Step 1 of 7"), "Play tutorial in the Welcome box opens the card on step 1");
+  k.click(k.$("tutorialSkip") || k.$("tutorialNext"));
+}
+{
   const k = kit(await mk({ settings: { hideWelcome: true } }));
   k.tab("help");
-  ok(!!k.$("helpReplay") && !k.d.querySelector(".tutorial"), "the Field guide offers Replay tutorial, and no card shows until it is used");
+  ok(!!k.$("helpReplay") && k.$("helpReplay").textContent === "Play tutorial" && k.$("helpReplay").classList.contains("tutorialbtn") && !k.d.querySelector(".tutorial"), "the Field guide offers an orange Play tutorial, and no card shows until it is used");
   k.click(k.$("helpReplay"));
   const card = k.d.querySelector(".tutorial");
-  ok(!!card && card.textContent.includes("Step 1 of 7") && card.textContent.includes("Welcome to Sidequest"), "Replay tutorial opens the card on step 1");
+  ok(!!card && card.textContent.includes("Step 1 of 7") && card.textContent.includes("Welcome to Sidequest"), "Play tutorial opens the card on step 1");
   k.click(k.$("tutorialNext"));
   ok(k.d.querySelector(".tutorial").textContent.includes("Add a quest") && !!k.$("tutorialSkip"), "Next moves to the first action step, which can be skipped");
   const lit = k.d.querySelector(".tutorialtarget");
@@ -2775,24 +2822,28 @@ async function exportClick(k, projectName) {
   k.click(k.$("tutorialSkip"));
   ok(!k.d.querySelector(".tutorial"), "Skip tutorial removes the card");
 }
+// New quest dialog and the + menu
 {
-  // the tutorial waits for the db read: a copy with empty local storage must not replay what the db says is done
-  const wait = (ms) => new Promise(r => setTimeout(r, ms || 150));
-  const fakeDb = (store) => ({ claude: { use: (n) => Promise.resolve(n === "db" ? { doc: (p) => ({
-    get: () => new Promise(r => setTimeout(() => r({ exists: p in store, data: () => store[p], id: "main", metadata: {} }), 4)),
-    set: (d) => new Promise(r => setTimeout(() => { store[p] = JSON.parse(JSON.stringify(d)); r(); }, 4)) }) } : null) } });
-  const seedKit = kit(await mk({ settings: { hideWelcome: true, showSplash: false } }));
-  const doneState = seedKit.saved(); doneState.settings.tutorialDone = true; doneState.settings.showSplash = false;
-  {
-    const f = fakeDb({ "state/main": { json: JSON.stringify(doneState) } });
-    const k = kit(await mk({ settings: { hideWelcome: true, tutorialDone: false, showSplash: false } }, f.claude)); await wait();
-    ok(!k.d.querySelector(".tutorial") && k.saved().settings.tutorialDone === true, "a fresh copy whose db says the tutorial is done does not show it");
-  }
-  {
-    const f = fakeDb({});
-    const k = kit(await mk({ settings: { hideWelcome: true, tutorialDone: false, showSplash: false } }, f.claude)); await wait();
-    ok(!!k.d.querySelector(".tutorial"), "a truly new user with an empty db still gets the tutorial");
-  }
+  const k = kit(await mk({ settings: { hideWelcome: true } }));
+  const kids = [...k.$("newMenu").children].map(n => n.tagName === "HR" ? "-" : n.dataset.act).join();
+  ok(kids === "newQuest,newTask,newStep,newDecision,-,newJob,newIdea", "the + menu has a divider between New decision and New errand (" + kids + ")");
+  k.menuAct("newBtn", "newQuest");
+  const tg = k.$("modalBody").querySelector(".dialogheading + .sectionlist .item"), grp = k.$("modalBody").querySelector(".dialogheading + .sectionlist .detail");
+  ok(!!tg && !!grp && grp.hidden && tg.getAttribute("aria-expanded") === "false", "the New quest dialog starts with Quest giver collapsed");
+  ok(!!k.$("modalBody").querySelector(".dialogheading [data-term=\"quest-giver\"]"), "and a ? button sits beside Quest giver");
+  k.setField("name", "Keep me");
+  k.click(k.$("modalBody").querySelector("[data-term=\"quest-giver\"]"));
+  ok(k.$("modalTitle").textContent === "Quest giver" && !k.$("modalBody").querySelector("#f-name"), "the ? opens the Quest giver help over the dialog");
+  k.click(k.$("modalClose"));
+  ok(k.$("modalTitle").textContent === "New candidate quest" && k.$("f-name").value === "Keep me" && !k.$("overlay").hidden, "closing the help returns to the New quest dialog with what was typed");
+  k.setField("name", "");
+  k.click(tg);
+  ok(!grp.hidden && tg.getAttribute("aria-expanded") === "true" && !!grp.querySelector("#f-giverOrg"), "Quest giver opens to show its fields");
+  k.click(tg);
+  ok(grp.hidden, "and closes again");
+  k.click(tg); k.setField("name", "Giver Quest"); k.setField("giverOrg", "Acme");
+  k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
+  ok(k.saved().quests.find(q => q.name === "Giver Quest").client.org === "Acme", "fields inside the collapsible group still save");
 }
 // Hosted launch quotes: the shuffled bucket lives in its own db document, so it survives a relaunch with cleared local storage and never moves the sync stamp.
 {
@@ -2822,7 +2873,7 @@ async function exportClick(k, projectName) {
   ok(calls.includes("scrollTo") && calls.includes("into-view"), "switching pages scrolls the window and the app's top into view");
   ok(calls.filter(c => c === "scrollTo").length >= 2, "and repeats the reset after the page has painted");
 }
-// Quest Giver Export asks which letterhead sides to include.
+// Quest giver export asks which letterhead sides to include.
 {
   const quest = (client) => ({ id: "pQ", name: "Ask Quest", status: "active", start: "2026-08-03", days: 7, client: Object.assign({ org: "", poc: "", phone: "", email: "", address: "", website: "" }, client) });
   const contact = { name: "Ada Lovelace", company: "", phone: "", email: "", address: "", website: "" };
@@ -2831,7 +2882,7 @@ async function exportClick(k, projectName) {
     let written = null;
     k.w.showSaveFilePicker = () => Promise.resolve({ createWritable: () => Promise.resolve({ write: (t) => { written = t; return Promise.resolve(); }, close: () => Promise.resolve() }) });
     k.tab("projects"); k.click(k.btn(k.$("view"), "Ask Quest"));
-    k.click(k.btn(k.$("view"), "Quest Giver Export"));
+    k.click(k.btn(k.$("view"), "Quest giver export"));
     const dialog = k.d.querySelector("#overlay:not([hidden])");
     const boxes = dialog ? [...dialog.querySelectorAll('input[type="checkbox"]')].map(c => c.id) : [];
     (uncheck || []).forEach(id => { const c = k.$(id); c.checked = false; });
@@ -2845,7 +2896,7 @@ async function exportClick(k, projectName) {
   r = await run(both, ["f-by"]);
   ok(!r.html.includes("Prepared by") && !r.html.includes("Ada Lovelace") && r.html.includes("Prepared for"), "unchecking Prepared by leaves your contact info off the export");
   r = await run(both, ["f-forWhom"]);
-  ok(r.html.includes("Prepared by") && !r.html.includes("Prepared for") && !r.html.includes("Acme Co."), "unchecking Prepared for leaves the Quest Giver off the export");
+  ok(r.html.includes("Prepared by") && !r.html.includes("Prepared for") && !r.html.includes("Acme Co."), "unchecking Prepared for leaves the Quest giver off the export");
   r = await run(both, ["f-by", "f-forWhom"]);
   ok(r.html.includes("<!doctype html>") && !r.html.includes("Prepared by") && !r.html.includes("Prepared for"), "unchecking both still exports, with no letterhead");
   r = await run({ settings: { contact }, quests: [quest({})], tasks: [] });

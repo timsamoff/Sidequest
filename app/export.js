@@ -156,7 +156,7 @@ function filledOrNull(fields) {
   return fields && Object.keys(fields).some(function (k) { return fields[k]; }) ? fields : null;
 }
 
-// Which letterhead sides have anything to print for this quest: "Prepared by" (Options contact info or a brandmark) and "Prepared for" (the Quest Giver).
+// Which letterhead sides have anything to print for this quest: "Prepared by" (Options contact info or a brandmark) and "Prepared for" (the Quest giver).
 export function exportSides(p) {
   var cl = p.client;
   return {
@@ -172,7 +172,7 @@ export function buildExportSnapshot(p, opts) {
   var sections = flattenSections(tree);
   var contact = includeBy ? filledOrNull(state.settings.contact) : null;
   // coin/per (the pay rate) never print on the export -- excluded here so they
-  // can't make filledOrNull treat an otherwise-empty Quest Giver as filled in.
+  // can't make filledOrNull treat an otherwise-empty Quest giver as filled in.
   var client = !includeFor ? null : filledOrNull({ org: p.client.org, poc: p.client.poc, phone: p.client.phone, email: p.client.email, address: p.client.address, website: p.client.website });
   return { exportedAt: fmtY(TODAY), root: tree, sections: sections, contact: contact, client: client, brandmark: includeBy ? (state.settings.brandmark || "") : "" };
 }
@@ -503,7 +503,7 @@ function renderLetterColumn(heading, fields, nameKey, secondKey, brandmark) {
 }
 
 // "Prepared by" is the user's own Settings info; "Prepared for" is the quest's
-// Quest Giver info. Either side can be empty; if only one is filled, it takes the left position alone.
+// Quest giver info. Either side can be empty; if only one is filled, it takes the left position alone.
 function renderLetterhead(contact, client, brandmark) {
   var by = renderLetterColumn("Prepared by", contact, "company", "name", brandmark);
   var forWhom = renderLetterColumn("Prepared for", client, "org", "poc");
