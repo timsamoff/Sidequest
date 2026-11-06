@@ -6,9 +6,9 @@ A lightweight project planner for juggling several projects.
 
 ## I just made the perfect project management system... for me. And maybe you'll like it too!
 
-I wanted something simple. Something that would help me keep track of multiple projects, organize tasks, figure out what I should be working on, and actually get things done. I didn't want to spend more time managing my projects than working on them.
+Managing multiple projects shouldn't mean spending more time organizing work than actually doing it. Sidequest provides a simple way to keep projects organized, manage tasks, decide what to work on next, and make steady progress.
 
-So I made Sidequest.
+That's why there's Sidequest.
 
 Sidequest is a lightweight, easy-to-use project management system. There's no complicated process to learn, no particular way you're expected to work, and no elaborate system to maintain. Just organize your projects, add some tasks, and get to work.
 
@@ -20,7 +20,7 @@ You can use Sidequest wherever you want. Run it right in your browser, or instal
 
 Sidequest has plenty of features to help you organize and keep track of your work, but you don't have to use all of them. Use as much or as little as you need. It's your system.
 
-So give Sidequest a try! It's free, and maybe it'll become your new favorite way to keep track of all your side quests.
+So give Sidequest a try! It's free, and it might become your favorite way to keep track of all your side quests.
 
 *"Even the smallest step carrieth thee onward."* (Sidequest)
 
