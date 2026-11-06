@@ -26,7 +26,7 @@ function pickBlock(source, re) {
 function checkSharedBlocks(pages) {
   const violations = [];
   const blocks = [
-    { name: "header", re: /<header class="band">[\s\S]*?<\/header>/, norm: (s) => s.replace(/ aria-current="page"/g, "") },
+    { name: "header", re: /<header class="flap">[\s\S]*?<\/header>/, norm: (s) => s.replace(/ aria-current="page"/g, "") },
     { name: "footer", re: /<footer class="band footband">[\s\S]*?<\/footer>/, norm: (s) => s },
     { name: "logo symbol", re: /<symbol id="sqLogo"[\s\S]*?<\/symbol>/, norm: (s) => s },
   ];

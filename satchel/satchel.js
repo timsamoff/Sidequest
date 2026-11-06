@@ -5,7 +5,11 @@
   /* Theme toggle: Auto, Light, Dark. */
   var KEY = "sidequest-landing-theme";
   var ORDER = ["auto", "light", "dark"];
-  var ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg>';
+  var ICON = {
+    auto: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg>',
+    light: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    dark: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="currentColor"/></svg>'
+  };
 
   function readTheme() {
     try { var v = window.localStorage.getItem(KEY); return ORDER.indexOf(v) > -1 ? v : "auto"; } catch (e) { return "auto"; }
@@ -18,8 +22,7 @@
     var mode = readTheme();
     var showTheme = function () {
       var next = ORDER[(ORDER.indexOf(mode) + 1) % ORDER.length];
-      var word = mode.charAt(0).toUpperCase() + mode.slice(1);
-      themeBtn.innerHTML = ICON + '<span>' + word + "</span>";
+      themeBtn.innerHTML = ICON[mode];
       themeBtn.setAttribute("aria-label", "Theme: " + mode + ". Switch to " + next + ".");
     };
     showTheme();
@@ -32,7 +35,7 @@
     });
   }
 
-  /* Menu button: opens and closes the nav dropdown below 62rem. Escape closes it and returns focus to the button. */
+  /* Clasp: opens and closes the lining at every width. Escape closes it and returns focus to the button. */
   var menuBtn = document.getElementById("menuBtn");
   var nav = document.getElementById("mainNav");
   if (menuBtn && nav) {

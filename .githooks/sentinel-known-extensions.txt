@@ -2,6 +2,7 @@
 .ai
 .css
 .html
+.jpg
 .js
 .json
 .md
@@ -10,3 +11,4 @@
 .png
 .svg
 .txt
+.webp
