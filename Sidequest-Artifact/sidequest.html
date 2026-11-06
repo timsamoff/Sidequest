@@ -46,8 +46,17 @@
   --text-sm: .9rem;
   --text-100: 1rem;
   --shadow-menu: 0 8px 24px rgba(0, 0, 0, .18);
-  --bg: #F2F4F1;
-  --surface: #FFFFFF;
+  --bg: #F3F0E7;
+  --surface: #FAF8F3;
+  --card: #FBF3E6;
+  --control-bg: #FFFFFF; --control-line: var(--line);
+  /* The app icon keeps these colors in both themes. */
+  --logo-est: #B9CCE0; --logo-planned: #2F5D8A; --logo-surface: #FFFFFF; --logo-burn: #C62F2F;
+  /* Brand colors for the landing site cards (approximate, from each logo). */
+  --brand-trello: #1457B7; --brand-todoist: #E44C3C; --brand-muse: #0A66E6;
+  --wood: var(--badge-attention); --on-wood: var(--badge-attention-bg); --brass: var(--bar-active);
+  --shadow-pin: 0 2px 2px rgba(0, 0, 0, .3), 0 4px 7px rgba(0, 0, 0, .16);
+  --grain: repeating-linear-gradient(90deg, transparent 0 9px, color-mix(in srgb, var(--on-wood) 6%, transparent) 9px 10px, transparent 10px 23px, color-mix(in srgb, black 14%, transparent) 23px 24px);
   --ink: #1A2733;
   --muted: #566772;
   --line: #D3DAD5;
@@ -83,7 +92,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #131A20; --surface: #1B252D; --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
+    --bg: #1F2120; --surface: #272A2A; --card: #2F2E28; --control-bg: #171B1F; --control-line: #6F808B; --wood: var(--badge-attention-bg); --on-wood: var(--badge-attention); --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
     --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
     --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
     --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
@@ -98,7 +107,7 @@
   }
 }
 :root[data-theme="dark"] {
-  --bg: #131A20; --surface: #1B252D; --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
+  --bg: #1F2120; --surface: #272A2A; --card: #2F2E28; --control-bg: #171B1F; --control-line: #6F808B; --wood: var(--badge-attention-bg); --on-wood: var(--badge-attention); --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
   --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
   --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
   --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
@@ -129,13 +138,13 @@ p { margin: 0; }
 
 input, select, button, textarea { font: inherit; color: var(--ink); margin: 0; }
 input[type="text"], input[type="date"], input[type="number"], input[type="tel"], input[type="email"], input[type="url"], input[type="search"], textarea {
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%;
+  background: var(--control-bg); border: 1px solid var(--control-line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%;
 }
 /* iOS WebKit sizes a date input to its content and can overflow its container. */
 @supports (-webkit-touch-callout: none) { input[type="date"] { -webkit-appearance: none; appearance: none; display: block; box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; } }
 input[type="file"] { max-width: 100%; }
 input[type="file"]::file-selector-button {
-  font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+  font: inherit; color: var(--ink); background: var(--control-bg); border: 1px solid var(--control-line);
   border-radius: var(--radius-control); padding: var(--space-8) var(--space-14); min-height: var(--control-height); cursor: pointer; margin-right: var(--space-10);
 }
 input[type="file"]::file-selector-button:hover { border-color: var(--muted); }
@@ -154,7 +163,7 @@ button.pencil[hidden] { display: none; }
 ::-webkit-scrollbar-thumb { background: var(--line); border-radius: var(--radius-pill); border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-button { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control); padding: var(--space-8) var(--space-14); min-height: var(--control-height); cursor: pointer; }
+button { background: var(--control-bg); border: 1px solid var(--control-line); border-radius: var(--radius-control); padding: var(--space-8) var(--space-14); min-height: var(--control-height); cursor: pointer; }
 button:hover { border-color: var(--muted); }
 button.primary { background: var(--planned); border-color: var(--planned); color: var(--on-planned); font-weight: 600; }
 button.primary:hover { border-color: var(--planned); filter: brightness(1.15); }
@@ -173,6 +182,9 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .app { min-height: 100vh; display: grid; grid-template-columns: 220px minmax(0, 1fr); }
 .side { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; height: 100vh; height: 100dvh; padding: var(--space-22) var(--space-14); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--space-4); background: var(--surface); }
 .brandrow { display: flex; align-items: center; gap: var(--space-10); padding: 0 var(--space-6) var(--space-16); }
+/* Wood brand block: the top of the sidebar, edge to edge. */
+.side .brandrow { margin: calc(var(--space-22) * -1) calc(var(--space-14) * -1) var(--space-14); padding: var(--space-16) var(--space-20); background: var(--grain), var(--wood); color: var(--on-wood); border-bottom: 3px solid var(--brass); }
+.side .brand { color: var(--on-wood); font-size: 1.45rem; }
 .logo { width: 38px; height: 38px; flex: none; display: block; }
 .mlogo { display: none; width: 44px; height: 44px; }
 .brand { font-family: var(--font-serif); font-weight: 600; font-size: 1.25rem; line-height: 1.1; }
@@ -211,7 +223,7 @@ kbd { font: inherit; font-size: .9em; border: 1px solid var(--line); border-bott
 .searchbar { display: flex; flex-wrap: wrap; gap: var(--space-10) var(--space-16); align-items: center; }
 .searchbar input[type="search"] { flex: 1 1 260px; width: auto; }
 .searchbar label { display: flex; gap: var(--space-8); align-items: center; color: var(--muted); font-size: var(--text-sm); cursor: pointer; }
-input[type="search"] { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; }
+input[type="search"] { background: var(--control-bg); border: 1px solid var(--control-line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; }
 mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding: 0 var(--space-1); }
 .sgroup { margin-top: var(--space-22); }
 .sgroup h3 { margin-top: 0; }
@@ -259,6 +271,19 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 /* The Welcome box is a soft green, the friendly one of the three notices. */
 .welcomebox { background: var(--notice-welcome); border-color: color-mix(in srgb, var(--chip-ink) 20%, var(--notice-welcome)); }
 .welcomebox .hint { color: var(--ink); }
+/* Pinned notices and tutorial card: a cream card with a brass pin; each notice keeps its own color as a top edge. */
+:is(.updatebanner, .backupreminder, .welcomebox, .tutorial) { position: relative; padding-top: var(--space-26); background: var(--card); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); box-shadow: var(--shadow-menu); }
+:is(.updatebanner, .backupreminder, .welcomebox, .tutorial, .list.pinboard > li)::before { content: ""; position: absolute; top: var(--space-9); left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--scope) 85%, white), var(--brass) 55%, var(--wood)); box-shadow: var(--shadow-pin); }
+.updatebanner { border-top: 5px solid var(--notice-update); }
+.backupreminder { border-top: 5px solid var(--notice-backup); }
+.welcomebox { border-top: 5px solid var(--notice-welcome); }
+/* Workshop ideas: parchment cards pinned to a board. */
+.list.pinboard { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: var(--space-18); background: transparent; border: 0; border-radius: 0; padding: var(--space-8) 0 0; }
+.list.pinboard > li { position: relative; padding: var(--space-26) var(--space-18) var(--space-16); background: var(--card); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); border-radius: var(--radius-card); box-shadow: var(--shadow-menu); }
+.list.pinboard > li.hint { grid-column: 1 / -1; }
+.list.pinboard > li.hint::before { display: none; }
+.list.pinboard .crow { flex-direction: column; align-items: stretch; gap: var(--space-10); }
+.list.pinboard .li-actions { justify-content: flex-start; }
 .updateprompt { display: block; width: 100%; max-width: 100%; min-height: 0; margin-top: var(--space-10); resize: none; font-size: var(--text-sm); }
 /* Stacked, Progress follows the burndown and gets the same gap above it Burndown has. */
 .pgrid .progresshead { margin-top: var(--space-14); }
@@ -295,6 +320,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .chip.datechip { min-width: 11rem; justify-content: center; min-height: calc(var(--control-height) - 6px); border: 0; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: var(--space-6); }
 .chip.datechip:hover { filter: brightness(.95); }
 .chip.datechip.nodue { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
+.chip.datechip.nodue:hover { filter: none; background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); box-shadow: inset 0 0 0 1px var(--muted); }
 .chip.backlog { background: var(--badge-neutral-bg); color: var(--badge-neutral); }
 .chip.milestonechip { background: var(--milestone-bg); color: var(--milestone); }
 .tlist { list-style: none; margin: var(--space-10) 0 0; padding: 0; overflow: hidden; }
@@ -347,6 +373,9 @@ select.status[data-v="Completed"] { background: var(--badge-done-bg); color: var
 /* While a step name is being edited the input is taller than the text, so the buttons must not be pulled up into it. */
 .steps li.editing .stepactions { margin-top: var(--space-8); }
 .steps li.done label span { color: var(--muted); text-decoration: line-through; }
+:root[data-theme="dark"] :is(input[type="checkbox"], input[type="radio"]) { color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) :is(input[type="checkbox"], input[type="radio"]) { color-scheme: dark; } }
+::placeholder { color: var(--muted); opacity: 1; }
 input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin: var(--space-2) 0 0; flex: none; accent-color: var(--planned); }
 .inline { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-10); }
 .inline input[type="text"] { flex: 1 1 180px; width: auto; }
@@ -376,7 +405,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 640px) { .setgrid { grid-template-columns: minmax(0, 1fr); } }
 .about p { margin-top: var(--space-2); }
 .radiorow { display: flex; gap: var(--space-10); align-items: flex-start; margin-top: var(--space-10); cursor: pointer; }
-select.plain { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%; }
+select.plain { background: var(--control-bg); border: 1px solid var(--control-line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%; }
 button.small.on { background: var(--sel); border-color: var(--planned); color: var(--planned); font-weight: 600; }
 
 .list { list-style: none; margin: var(--space-12) 0 0; padding: 0; }
@@ -611,13 +640,13 @@ html:has(.splash:not([hidden])) { overflow: hidden; }
 /* No transition here -- backdropBlurred is present from first paint, must never ramp up. */
 .splashbackdrop { position: absolute; inset: 0; backdrop-filter: blur(0px); }
 .splash.backdropBlurred .splashbackdrop { backdrop-filter: blur(10px); }
-.splashpanel { position: relative; isolation: isolate; width: min(75vw, 75vh, 560px); aspect-ratio: 1 / 1; border-radius: 28px; overflow: hidden; background: var(--est); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; }
+.splashpanel { position: relative; isolation: isolate; width: min(75vw, 75vh, 560px); aspect-ratio: 1 / 1; border-radius: 28px; overflow: hidden; background: var(--logo-est); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; }
 .splashsvg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .splashart { transition: filter .6s ease; }
 .splash.artBlurred .splashart { filter: blur(5px); }
 /* The quote box is fixed and two lines tall: --q is its width in em (measured in the Georgia fallback), so every active affirmation fits two lines. Title and quote stack in one cell; only the text is masked and blurred. */
 .splashpanel { container-type: inline-size; }
-.splashtextwrap { --q: 11.5; position: relative; z-index: 1; box-sizing: border-box; display: grid; align-items: center; width: calc(var(--q) * 1em + 32px); height: calc(2.8em + 2 * var(--space-12) + 4px); padding: var(--space-12) var(--space-14); text-align: center; color: var(--surface); background: var(--planned); border: 2px solid var(--surface); border-radius: 14px; font-family: var(--font-serif); font-size: min(1.15rem, calc((94cqw - 32px) / var(--q))); font-weight: 600; line-height: 1.4; }
+.splashtextwrap { --q: 11.5; position: relative; z-index: 1; box-sizing: border-box; display: grid; align-items: center; width: calc(var(--q) * 1em + 32px); height: calc(2.8em + 2 * var(--space-12) + 4px); padding: var(--space-12) var(--space-14); text-align: center; color: var(--logo-surface); background: var(--logo-planned); border: 2px solid var(--logo-surface); border-radius: 14px; font-family: var(--font-serif); font-size: min(1.15rem, calc((94cqw - 32px) / var(--q))); font-weight: 600; line-height: 1.4; }
 .splashtitle, .splashaffirm { grid-area: 1 / 1; margin: 0; }
 /* Balances the two lines so a quote never ends on a single word. */
 .splashaffirm { text-wrap: balance; }
@@ -657,18 +686,18 @@ html:has(.splash:not([hidden])) { overflow: hidden; }
         <rect width="512" height="512" rx="112"/>
       </clipPath>
     </defs>
-    <rect width="512" height="512" rx="112" fill="var(--est)"/>
+    <rect width="512" height="512" rx="112" fill="var(--logo-est)"/>
     <g clip-path="url(#sqLogoClip)">
-      <path d="M115.88-30.43l30.33,154.2" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M102.47,177.65l-23.25,4.57c-36.81,7.24-51.6,29.27-44.36,66.08l28.7,145.94" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M207.09,157.08l52.31-10.29c34.87-6.86,55.74,7.15,62.6,42.02l9.64,49.01" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M295.51,299.68l-23.25,4.57c-25.19,4.95-35.3,20.02-30.35,45.21l19.38,98.53" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M388.51,281.39l29.06-5.72c32.94-6.48,52.64,6.75,59.12,39.69l4,20.34" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="154.78" cy="167.37" r="53.31" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/>
-      <circle cx="342.01" cy="290.53" r="47.39" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/>
-      <rect x="31.22" y="387.08" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-80.82 21.45) rotate(-11.13)" fill="var(--planned)"/>
-      <rect x="227.98" y="435.92" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-86.54 60.34) rotate(-11.13)" fill="var(--planned)"/>
-      <rect x="432.89" y="334.59" width="118.48" height="118.48" rx="9" ry="9" transform="translate(-109.15 582.92) rotate(-56.13)" fill="var(--burn)"/>
+      <path d="M115.88-30.43l30.33,154.2" fill="none" stroke="var(--logo-planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M102.47,177.65l-23.25,4.57c-36.81,7.24-51.6,29.27-44.36,66.08l28.7,145.94" fill="none" stroke="var(--logo-planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M207.09,157.08l52.31-10.29c34.87-6.86,55.74,7.15,62.6,42.02l9.64,49.01" fill="none" stroke="var(--logo-planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M295.51,299.68l-23.25,4.57c-25.19,4.95-35.3,20.02-30.35,45.21l19.38,98.53" fill="none" stroke="var(--logo-planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M388.51,281.39l29.06-5.72c32.94-6.48,52.64,6.75,59.12,39.69l4,20.34" fill="none" stroke="var(--logo-planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="154.78" cy="167.37" r="53.31" fill="var(--logo-surface)" stroke="var(--logo-planned)" stroke-width="16"/>
+      <circle cx="342.01" cy="290.53" r="47.39" fill="var(--logo-surface)" stroke="var(--logo-planned)" stroke-width="16"/>
+      <rect x="31.22" y="387.08" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-80.82 21.45) rotate(-11.13)" fill="var(--logo-planned)"/>
+      <rect x="227.98" y="435.92" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-86.54 60.34) rotate(-11.13)" fill="var(--logo-planned)"/>
+      <rect x="432.89" y="334.59" width="118.48" height="118.48" rx="9" ry="9" transform="translate(-109.15 582.92) rotate(-56.13)" fill="var(--logo-burn)"/>
     </g>
   </symbol>
 </svg>
@@ -723,9 +752,9 @@ html:has(.splash:not([hidden])) { overflow: hidden; }
   <div class="splashbackdrop"></div>
   <div class="splashpanel">
     <svg class="splashsvg" id="splashSvg" viewBox="0 0 512 512" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
-      <rect width="512" height="512" fill="var(--est)"/>
+      <rect width="512" height="512" fill="var(--logo-est)"/>
       <g class="splashart" id="splashArt">
-        <g id="splashLines" fill="none" stroke="var(--planned)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"></g>
+        <g id="splashLines" fill="none" stroke="var(--logo-planned)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"></g>
         <g id="splashNodes"></g>
       </g>
     </svg>
@@ -1282,7 +1311,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.13.6";
+var APP_VERSION = "0.14.0";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -2421,8 +2450,8 @@ function renderSection(node) {
 }
 
 var EXPORT_CSS = "\
-:root { --bg:#F2F4F1; --surface:#FFFFFF; --ink:#1A2733; --muted:#566772; --line:#D3DAD5; --planned:#2F5D8A; --burn:#C62F2F; --scope:#FFAC1C; --est:#B9CCE0; --chip-idle:#E7ECE8; --chip-work:#F6E3C4; --chip-done:#CFE6D5; --chip-new:#D3E3F6; --chip-ink:#1A2733; --late:#A8261C; --late-bg:#F8DDD9; --milestone:#694C80; --milestone-bg:#E8DFF1; --badge-attention:#4F3416; --badge-attention-bg:#DDC3A5; --badge-priority:#4A2E00; --badge-priority-bg:#F8C15A; --badge-active:#6B4A0F; --badge-active-bg:#F6E3C4; --bar-active:#C99A3E; --badge-pending:#34475A; --badge-pending-bg:#CBD6E0; --bar-pending:#8AA3BF; --badge-done:#315C3C; --badge-done-bg:#CFE6D5; --bar-done:#74AD85; --badge-neutral:#47433E; --badge-neutral-bg:#D4D1CD; --badge-info:#275568; --badge-info-bg:#CFE3EC; }\
-@media (prefers-color-scheme: dark) { :root { --bg:#131A20; --surface:#1B252D; --ink:#E6ECEF; --muted:#9AABB5; --line:#2C3843; --planned:#86B4E0; --burn:#E5534B; --scope:#FFAC1C; --est:#34506B; --chip-idle:#26323B; --chip-work:#4A3B22; --chip-done:#21402C; --chip-new:#2A4560; --chip-ink:#E6ECEF; --late:#F2A29B; --late-bg:#4A2723; --milestone:#D0B6E1; --milestone-bg:#382D43; --badge-attention:#E8C6A6; --badge-attention-bg:#4D3428; --badge-priority:#FFCB80; --badge-priority-bg:#6E4410; --badge-active:#F0D49A; --badge-active-bg:#4A3B22; --bar-active:#A98232; --badge-pending:#D5DEE6; --badge-pending-bg:#3A4754; --bar-pending:#6A8BAA; --badge-done:#B5DDBF; --badge-done-bg:#21402C; --bar-done:#4E9A68; --badge-neutral:#D8D4CF; --badge-neutral-bg:#403C38; --badge-info:#C8DFE9; --badge-info-bg:#2F4E5C; } }\
+:root { --logo-est:#B9CCE0; --logo-planned:#2F5D8A; --logo-surface:#FFFFFF; --logo-burn:#C62F2F; --bg:#F3F0E7; --surface:#FAF8F3; --ink:#1A2733; --muted:#566772; --line:#D3DAD5; --planned:#2F5D8A; --burn:#C62F2F; --scope:#FFAC1C; --est:#B9CCE0; --chip-idle:#E7ECE8; --chip-work:#F6E3C4; --chip-done:#CFE6D5; --chip-new:#D3E3F6; --chip-ink:#1A2733; --late:#A8261C; --late-bg:#F8DDD9; --milestone:#694C80; --milestone-bg:#E8DFF1; --badge-attention:#4F3416; --badge-attention-bg:#DDC3A5; --badge-priority:#4A2E00; --badge-priority-bg:#F8C15A; --badge-active:#6B4A0F; --badge-active-bg:#F6E3C4; --bar-active:#C99A3E; --badge-pending:#34475A; --badge-pending-bg:#CBD6E0; --bar-pending:#8AA3BF; --badge-done:#315C3C; --badge-done-bg:#CFE6D5; --bar-done:#74AD85; --badge-neutral:#47433E; --badge-neutral-bg:#D4D1CD; --badge-info:#275568; --badge-info-bg:#CFE3EC; }\
+@media (prefers-color-scheme: dark) { :root { --bg:#1F2120; --surface:#272A2A; --ink:#E6ECEF; --muted:#9AABB5; --line:#2C3843; --planned:#86B4E0; --burn:#E5534B; --scope:#FFAC1C; --est:#34506B; --chip-idle:#26323B; --chip-work:#4A3B22; --chip-done:#21402C; --chip-new:#2A4560; --chip-ink:#E6ECEF; --late:#F2A29B; --late-bg:#4A2723; --milestone:#D0B6E1; --milestone-bg:#382D43; --badge-attention:#E8C6A6; --badge-attention-bg:#4D3428; --badge-priority:#FFCB80; --badge-priority-bg:#6E4410; --badge-active:#F0D49A; --badge-active-bg:#4A3B22; --bar-active:#A98232; --badge-pending:#D5DEE6; --badge-pending-bg:#3A4754; --bar-pending:#6A8BAA; --badge-done:#B5DDBF; --badge-done-bg:#21402C; --bar-done:#4E9A68; --badge-neutral:#D8D4CF; --badge-neutral-bg:#403C38; --badge-info:#C8DFE9; --badge-info-bg:#2F4E5C; } }\
 * { box-sizing: border-box; }\
 body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; line-height: 1.4; }\
 .ewrap { max-width: 1100px; margin: 0 auto; }\
@@ -4443,7 +4472,7 @@ function renderQuests(root) {
 function renderWorkshop(root) {
   var hd = el("div", { "class": "sechead workshophead" });
   hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add new idea" }, "Add idea"), "click", function () { ideaDialog(); })); root.appendChild(hd);
-  var pl = el("ul", { "class": "list", style: "margin-top:12px" });
+  var pl = el("ul", { "class": "list pinboard", style: "margin-top:12px" });
   var ps = live(state.workshop);
   if (!ps.length) pl.appendChild(el("li", { "class": "hint" }, "No ideas yet. Add one with the Add idea button."));
   ps.forEach(function (p) {
@@ -5782,10 +5811,10 @@ function buildTree() {
 // Same shapes/colors as the real icon, rotated to match its own angles.
 function buildNodeShape(n) {
   if (n.kind === "circle") {
-    return svgEl("circle", { cx: n.x, cy: n.y, r: n.r, fill: "var(--surface)", stroke: "var(--planned)", "stroke-width": "16" });
+    return svgEl("circle", { cx: n.x, cy: n.y, r: n.r, fill: "var(--logo-surface)", stroke: "var(--logo-planned)", "stroke-width": "16" });
   }
   var half = n.size / 2;
-  var color = n.kind === "diamond" ? "var(--burn)" : "var(--planned)";
+  var color = n.kind === "diamond" ? "var(--logo-burn)" : "var(--logo-planned)";
   return svgEl("rect", { x: n.x - half, y: n.y - half, width: n.size, height: n.size, rx: n.kind === "diamond" ? 9 : 8, fill: color, transform: "rotate(" + n.rotate + " " + n.x + " " + n.y + ")" });
 }
 

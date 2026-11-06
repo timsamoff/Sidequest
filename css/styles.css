@@ -15,13 +15,13 @@ p { margin: 0; }
 
 input, select, button, textarea { font: inherit; color: var(--ink); margin: 0; }
 input[type="text"], input[type="date"], input[type="number"], input[type="tel"], input[type="email"], input[type="url"], input[type="search"], textarea {
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%;
+  background: var(--control-bg); border: 1px solid var(--control-line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%;
 }
 /* iOS WebKit sizes a date input to its content and can overflow its container. */
 @supports (-webkit-touch-callout: none) { input[type="date"] { -webkit-appearance: none; appearance: none; display: block; box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; } }
 input[type="file"] { max-width: 100%; }
 input[type="file"]::file-selector-button {
-  font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+  font: inherit; color: var(--ink); background: var(--control-bg); border: 1px solid var(--control-line);
   border-radius: var(--radius-control); padding: var(--space-8) var(--space-14); min-height: var(--control-height); cursor: pointer; margin-right: var(--space-10);
 }
 input[type="file"]::file-selector-button:hover { border-color: var(--muted); }
@@ -40,7 +40,7 @@ button.pencil[hidden] { display: none; }
 ::-webkit-scrollbar-thumb { background: var(--line); border-radius: var(--radius-pill); border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-button { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control); padding: var(--space-8) var(--space-14); min-height: var(--control-height); cursor: pointer; }
+button { background: var(--control-bg); border: 1px solid var(--control-line); border-radius: var(--radius-control); padding: var(--space-8) var(--space-14); min-height: var(--control-height); cursor: pointer; }
 button:hover { border-color: var(--muted); }
 button.primary { background: var(--planned); border-color: var(--planned); color: var(--on-planned); font-weight: 600; }
 button.primary:hover { border-color: var(--planned); filter: brightness(1.15); }
@@ -59,6 +59,9 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .app { min-height: 100vh; display: grid; grid-template-columns: 220px minmax(0, 1fr); }
 .side { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; height: 100vh; height: 100dvh; padding: var(--space-22) var(--space-14); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--space-4); background: var(--surface); }
 .brandrow { display: flex; align-items: center; gap: var(--space-10); padding: 0 var(--space-6) var(--space-16); }
+/* Wood brand block: the top of the sidebar, edge to edge. */
+.side .brandrow { margin: calc(var(--space-22) * -1) calc(var(--space-14) * -1) var(--space-14); padding: var(--space-16) var(--space-20); background: var(--grain), var(--wood); color: var(--on-wood); border-bottom: 3px solid var(--brass); }
+.side .brand { color: var(--on-wood); font-size: 1.45rem; }
 .logo { width: 38px; height: 38px; flex: none; display: block; }
 .mlogo { display: none; width: 44px; height: 44px; }
 .brand { font-family: var(--font-serif); font-weight: 600; font-size: 1.25rem; line-height: 1.1; }
@@ -97,7 +100,7 @@ kbd { font: inherit; font-size: .9em; border: 1px solid var(--line); border-bott
 .searchbar { display: flex; flex-wrap: wrap; gap: var(--space-10) var(--space-16); align-items: center; }
 .searchbar input[type="search"] { flex: 1 1 260px; width: auto; }
 .searchbar label { display: flex; gap: var(--space-8); align-items: center; color: var(--muted); font-size: var(--text-sm); cursor: pointer; }
-input[type="search"] { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; }
+input[type="search"] { background: var(--control-bg); border: 1px solid var(--control-line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; }
 mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding: 0 var(--space-1); }
 .sgroup { margin-top: var(--space-22); }
 .sgroup h3 { margin-top: 0; }
@@ -145,6 +148,19 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 /* The Welcome box is a soft green, the friendly one of the three notices. */
 .welcomebox { background: var(--notice-welcome); border-color: color-mix(in srgb, var(--chip-ink) 20%, var(--notice-welcome)); }
 .welcomebox .hint { color: var(--ink); }
+/* Pinned notices and tutorial card: a cream card with a brass pin; each notice keeps its own color as a top edge. */
+:is(.updatebanner, .backupreminder, .welcomebox, .tutorial) { position: relative; padding-top: var(--space-26); background: var(--card); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); box-shadow: var(--shadow-menu); }
+:is(.updatebanner, .backupreminder, .welcomebox, .tutorial, .list.pinboard > li)::before { content: ""; position: absolute; top: var(--space-9); left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--scope) 85%, white), var(--brass) 55%, var(--wood)); box-shadow: var(--shadow-pin); }
+.updatebanner { border-top: 5px solid var(--notice-update); }
+.backupreminder { border-top: 5px solid var(--notice-backup); }
+.welcomebox { border-top: 5px solid var(--notice-welcome); }
+/* Workshop ideas: parchment cards pinned to a board. */
+.list.pinboard { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: var(--space-18); background: transparent; border: 0; border-radius: 0; padding: var(--space-8) 0 0; }
+.list.pinboard > li { position: relative; padding: var(--space-26) var(--space-18) var(--space-16); background: var(--card); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); border-radius: var(--radius-card); box-shadow: var(--shadow-menu); }
+.list.pinboard > li.hint { grid-column: 1 / -1; }
+.list.pinboard > li.hint::before { display: none; }
+.list.pinboard .crow { flex-direction: column; align-items: stretch; gap: var(--space-10); }
+.list.pinboard .li-actions { justify-content: flex-start; }
 .updateprompt { display: block; width: 100%; max-width: 100%; min-height: 0; margin-top: var(--space-10); resize: none; font-size: var(--text-sm); }
 /* Stacked, Progress follows the burndown and gets the same gap above it Burndown has. */
 .pgrid .progresshead { margin-top: var(--space-14); }
@@ -181,6 +197,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .chip.datechip { min-width: 11rem; justify-content: center; min-height: calc(var(--control-height) - 6px); border: 0; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: var(--space-6); }
 .chip.datechip:hover { filter: brightness(.95); }
 .chip.datechip.nodue { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
+.chip.datechip.nodue:hover { filter: none; background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); box-shadow: inset 0 0 0 1px var(--muted); }
 .chip.backlog { background: var(--badge-neutral-bg); color: var(--badge-neutral); }
 .chip.milestonechip { background: var(--milestone-bg); color: var(--milestone); }
 .tlist { list-style: none; margin: var(--space-10) 0 0; padding: 0; overflow: hidden; }
@@ -233,6 +250,9 @@ select.status[data-v="Completed"] { background: var(--badge-done-bg); color: var
 /* While a step name is being edited the input is taller than the text, so the buttons must not be pulled up into it. */
 .steps li.editing .stepactions { margin-top: var(--space-8); }
 .steps li.done label span { color: var(--muted); text-decoration: line-through; }
+:root[data-theme="dark"] :is(input[type="checkbox"], input[type="radio"]) { color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) :is(input[type="checkbox"], input[type="radio"]) { color-scheme: dark; } }
+::placeholder { color: var(--muted); opacity: 1; }
 input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin: var(--space-2) 0 0; flex: none; accent-color: var(--planned); }
 .inline { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-10); }
 .inline input[type="text"] { flex: 1 1 180px; width: auto; }
@@ -262,7 +282,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 640px) { .setgrid { grid-template-columns: minmax(0, 1fr); } }
 .about p { margin-top: var(--space-2); }
 .radiorow { display: flex; gap: var(--space-10); align-items: flex-start; margin-top: var(--space-10); cursor: pointer; }
-select.plain { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%; }
+select.plain { background: var(--control-bg); border: 1px solid var(--control-line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%; }
 button.small.on { background: var(--sel); border-color: var(--planned); color: var(--planned); font-weight: 600; }
 
 .list { list-style: none; margin: var(--space-12) 0 0; padding: 0; }

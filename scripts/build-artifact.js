@@ -10,13 +10,13 @@ const OUT_DIR = path.join(ROOT, "Sidequest-Artifact");
 const OUT_FILE = path.join(OUT_DIR, "sidequest.html");
 
 // A published artifact has no assets/ folder, so the favicon is rebuilt from index.html's #sqLogo symbol as a self-contained SVG data URI at build time, with the CSS variables replaced by light-theme hex values.
-var FAVICON_TOKEN_VALUES = { est: "#B9CCE0", planned: "#2F5D8A", surface: "#FFFFFF", burn: "#C62F2F" };
+var FAVICON_TOKEN_VALUES = { "logo-est": "#B9CCE0", "logo-planned": "#2F5D8A", "logo-surface": "#FFFFFF", "logo-burn": "#C62F2F" };
 
 function buildFaviconDataUri(html) {
   var m = html.match(/<symbol id="sqLogo"[^>]*viewBox="([^"]+)">([\s\S]*?)<\/symbol>/);
   if (!m) throw new Error("build-artifact: could not find the #sqLogo <symbol> markup in index.html to build a favicon from.");
   var viewBox = m[1], inner = m[2];
-  var resolved = inner.replace(/var\(--(\w+)\)/g, function (whole, name) {
+  var resolved = inner.replace(/var\(--([\w-]+)\)/g, function (whole, name) {
     if (!(name in FAVICON_TOKEN_VALUES)) throw new Error("build-artifact: #sqLogo uses var(--" + name + "), which has no known favicon substitute -- add it to FAVICON_TOKEN_VALUES.");
     return FAVICON_TOKEN_VALUES[name];
   });

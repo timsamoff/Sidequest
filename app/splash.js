@@ -155,10 +155,10 @@ function buildTree() {
 // Same shapes/colors as the real icon, rotated to match its own angles.
 function buildNodeShape(n) {
   if (n.kind === "circle") {
-    return svgEl("circle", { cx: n.x, cy: n.y, r: n.r, fill: "var(--surface)", stroke: "var(--planned)", "stroke-width": "16" });
+    return svgEl("circle", { cx: n.x, cy: n.y, r: n.r, fill: "var(--logo-surface)", stroke: "var(--logo-planned)", "stroke-width": "16" });
   }
   var half = n.size / 2;
-  var color = n.kind === "diamond" ? "var(--burn)" : "var(--planned)";
+  var color = n.kind === "diamond" ? "var(--logo-burn)" : "var(--logo-planned)";
   return svgEl("rect", { x: n.x - half, y: n.y - half, width: n.size, height: n.size, rx: n.kind === "diamond" ? 9 : 8, fill: color, transform: "rotate(" + n.rotate + " " + n.x + " " + n.y + ")" });
 }
 

@@ -36,8 +36,17 @@
   --text-sm: .9rem;
   --text-100: 1rem;
   --shadow-menu: 0 8px 24px rgba(0, 0, 0, .18);
-  --bg: #F2F4F1;
-  --surface: #FFFFFF;
+  --bg: #F3F0E7;
+  --surface: #FAF8F3;
+  --card: #FBF3E6;
+  --control-bg: #FFFFFF; --control-line: var(--line);
+  /* The app icon keeps these colors in both themes. */
+  --logo-est: #B9CCE0; --logo-planned: #2F5D8A; --logo-surface: #FFFFFF; --logo-burn: #C62F2F;
+  /* Brand colors for the landing site cards (approximate, from each logo). */
+  --brand-trello: #1457B7; --brand-todoist: #E44C3C; --brand-muse: #0A66E6;
+  --wood: var(--badge-attention); --on-wood: var(--badge-attention-bg); --brass: var(--bar-active);
+  --shadow-pin: 0 2px 2px rgba(0, 0, 0, .3), 0 4px 7px rgba(0, 0, 0, .16);
+  --grain: repeating-linear-gradient(90deg, transparent 0 9px, color-mix(in srgb, var(--on-wood) 6%, transparent) 9px 10px, transparent 10px 23px, color-mix(in srgb, black 14%, transparent) 23px 24px);
   --ink: #1A2733;
   --muted: #566772;
   --line: #D3DAD5;
@@ -73,7 +82,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #131A20; --surface: #1B252D; --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
+    --bg: #1F2120; --surface: #272A2A; --card: #2F2E28; --control-bg: #171B1F; --control-line: #6F808B; --wood: var(--badge-attention-bg); --on-wood: var(--badge-attention); --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
     --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
     --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
     --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
@@ -88,7 +97,7 @@
   }
 }
 :root[data-theme="dark"] {
-  --bg: #131A20; --surface: #1B252D; --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
+  --bg: #1F2120; --surface: #272A2A; --card: #2F2E28; --control-bg: #171B1F; --control-line: #6F808B; --wood: var(--badge-attention-bg); --on-wood: var(--badge-attention); --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
   --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
   --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
   --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;

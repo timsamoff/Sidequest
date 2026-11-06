@@ -957,7 +957,7 @@ export function renderQuests(root) {
 export function renderWorkshop(root) {
   var hd = el("div", { "class": "sechead workshophead" });
   hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add new idea" }, "Add idea"), "click", function () { ideaDialog(); })); root.appendChild(hd);
-  var pl = el("ul", { "class": "list", style: "margin-top:12px" });
+  var pl = el("ul", { "class": "list pinboard", style: "margin-top:12px" });
   var ps = live(state.workshop);
   if (!ps.length) pl.appendChild(el("li", { "class": "hint" }, "No ideas yet. Add one with the Add idea button."));
   ps.forEach(function (p) {

@@ -2,35 +2,16 @@
 
 :root {
   /* New tokens. Each one points at an app token where it can, so both themes follow the app. */
-  --wood: var(--badge-attention);
-  --on-wood: var(--badge-attention-bg);
   --parchment: var(--chip-work);
-  --brass: var(--bar-active);
-  --page-warm: color-mix(in srgb, var(--bg) 78%, var(--parchment));
-  --paper: color-mix(in srgb, var(--surface) 58%, var(--parchment));
+  --page-warm: var(--bg);
+  --paper: var(--card);
   --glow: color-mix(in srgb, var(--scope) 40%, transparent);
-  --shadow-pin: 0 2px 2px rgba(0, 0, 0, .3), 0 4px 7px rgba(0, 0, 0, .16);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --text-lg: 1.15rem;
   --text-xl: clamp(1.45rem, 1.15rem + 1.2vw, 1.95rem);
   --text-hero: min(clamp(2.8rem, 1.7rem + 4.4vw, 5rem), 13vw);
   --wrap: 70rem;
   --target: 48px;
-  --grain: repeating-linear-gradient(90deg,
-    transparent 0 9px,
-    color-mix(in srgb, var(--on-wood) 6%, transparent) 9px 10px,
-    transparent 10px 23px,
-    color-mix(in srgb, black 14%, transparent) 23px 24px);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --wood: var(--badge-attention-bg);
-    --on-wood: var(--badge-attention);
-  }
-}
-:root[data-theme="dark"] {
-  --wood: var(--badge-attention-bg);
-  --on-wood: var(--badge-attention);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -98,15 +79,13 @@ strong { font-weight: 600; }
 .topnav a:hover { background: color-mix(in srgb, var(--on-wood) 16%, transparent); }
 .topnav a[aria-current="page"] { background: color-mix(in srgb, var(--on-wood) 22%, transparent); font-weight: 600; }
 .menubtn {
-  display: none; align-items: center; gap: var(--space-8); min-height: var(--control-height); padding: 0 var(--space-12);
+  display: none; align-items: center; justify-content: center; width: 44px; height: 44px; min-height: 44px; padding: 0;
   background: transparent; color: var(--on-wood);
   border: 1px solid color-mix(in srgb, var(--on-wood) 60%, transparent); border-radius: var(--radius-control);
   font: 500 var(--text-sm)/1 var(--font-sans); cursor: pointer;
 }
 .menubtn:hover { background: color-mix(in srgb, var(--on-wood) 16%, transparent); }
 .menubtn svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-.menubtn .mb-close, .menubtn[aria-expanded="true"] .mb-open { display: none; }
-.menubtn[aria-expanded="true"] .mb-close { display: inline; }
 @media (max-width: 61.99rem) {
   .js .menubtn { display: inline-flex; }
   .js .headgrid { grid-template-areas: "brand menu theme"; }
@@ -125,8 +104,7 @@ strong { font-weight: 600; }
   html:not(.js) .topnav ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 35.99rem) {
-  .menulabel { display: none; }
-  .menubtn, .themebtn { padding: 0 var(--space-10); }
+  .themebtn { padding: 0 var(--space-10); }
   .brand { font-size: 1.25rem; }
   .brand svg { width: 32px; height: 32px; }
 }
@@ -249,7 +227,9 @@ main .wrap { container-type: inline-size; }
 .way { border-top: 5px solid var(--bar-pending); }
 .way.pwa { border-top-color: var(--bar-done); }
 .way.claude { border-top-color: var(--bar-active); }
-.way.muse { border-top-color: var(--milestone); }
+.way.muse { border-top-color: var(--brand-muse); }
+.way.trello { border-top-color: var(--brand-trello); }
+.way.todoist { border-top-color: var(--brand-todoist); }
 .way .actions { margin-top: var(--space-16); }
 .postlink { display: inline-block; margin-top: var(--space-12); font-weight: 600; }
 

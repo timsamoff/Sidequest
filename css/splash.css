@@ -8,13 +8,13 @@ html:has(.splash:not([hidden])) { overflow: hidden; }
 /* No transition here -- backdropBlurred is present from first paint, must never ramp up. */
 .splashbackdrop { position: absolute; inset: 0; backdrop-filter: blur(0px); }
 .splash.backdropBlurred .splashbackdrop { backdrop-filter: blur(10px); }
-.splashpanel { position: relative; isolation: isolate; width: min(75vw, 75vh, 560px); aspect-ratio: 1 / 1; border-radius: 28px; overflow: hidden; background: var(--est); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; }
+.splashpanel { position: relative; isolation: isolate; width: min(75vw, 75vh, 560px); aspect-ratio: 1 / 1; border-radius: 28px; overflow: hidden; background: var(--logo-est); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; }
 .splashsvg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .splashart { transition: filter .6s ease; }
 .splash.artBlurred .splashart { filter: blur(5px); }
 /* The quote box is fixed and two lines tall: --q is its width in em (measured in the Georgia fallback), so every active affirmation fits two lines. Title and quote stack in one cell; only the text is masked and blurred. */
 .splashpanel { container-type: inline-size; }
-.splashtextwrap { --q: 11.5; position: relative; z-index: 1; box-sizing: border-box; display: grid; align-items: center; width: calc(var(--q) * 1em + 32px); height: calc(2.8em + 2 * var(--space-12) + 4px); padding: var(--space-12) var(--space-14); text-align: center; color: var(--surface); background: var(--planned); border: 2px solid var(--surface); border-radius: 14px; font-family: var(--font-serif); font-size: min(1.15rem, calc((94cqw - 32px) / var(--q))); font-weight: 600; line-height: 1.4; }
+.splashtextwrap { --q: 11.5; position: relative; z-index: 1; box-sizing: border-box; display: grid; align-items: center; width: calc(var(--q) * 1em + 32px); height: calc(2.8em + 2 * var(--space-12) + 4px); padding: var(--space-12) var(--space-14); text-align: center; color: var(--logo-surface); background: var(--logo-planned); border: 2px solid var(--logo-surface); border-radius: 14px; font-family: var(--font-serif); font-size: min(1.15rem, calc((94cqw - 32px) / var(--q))); font-weight: 600; line-height: 1.4; }
 .splashtitle, .splashaffirm { grid-area: 1 / 1; margin: 0; }
 /* Balances the two lines so a quote never ends on a single word. */
 .splashaffirm { text-wrap: balance; }
