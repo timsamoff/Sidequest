@@ -36,9 +36,9 @@
   --text-sm: .9rem;
   --text-100: 1rem;
   --shadow-menu: 0 8px 24px rgba(0, 0, 0, .18);
-  --bg: #F3F0E7;
-  --surface: #FAF8F3;
-  --card: #FBF3E6;
+  --bg: #F5EFDC;
+  --surface: #FAF6E6;
+  --card: #FCF1D6;
   --control-bg: #FFFFFF; --control-line: var(--line);
   /* The app icon keeps these colors in both themes. */
   --logo-est: #B9CCE0; --logo-planned: #2F5D8A; --logo-surface: #FFFFFF; --logo-burn: #C62F2F;
@@ -82,7 +82,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #1F2120; --surface: #272A2A; --card: #2F2E28; --control-bg: #171B1F; --control-line: #6F808B; --wood: var(--badge-attention-bg); --on-wood: var(--badge-attention); --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
+    --bg: #161C22; --surface: #202A33; --card: #2F2E28; --control-bg: #171B1F; --control-line: #6F808B; --wood: var(--badge-attention-bg); --on-wood: var(--badge-attention); --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
     --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
     --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
     --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
@@ -97,7 +97,7 @@
   }
 }
 :root[data-theme="dark"] {
-  --bg: #1F2120; --surface: #272A2A; --card: #2F2E28; --control-bg: #171B1F; --control-line: #6F808B; --wood: var(--badge-attention-bg); --on-wood: var(--badge-attention); --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
+  --bg: #161C22; --surface: #202A33; --card: #2F2E28; --control-bg: #171B1F; --control-line: #6F808B; --wood: var(--badge-attention-bg); --on-wood: var(--badge-attention); --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
   --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
   --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
   --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;

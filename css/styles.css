@@ -441,22 +441,22 @@ svg.chart.nofocusring { outline: none; }
 .confettiFx { position: fixed; inset: 0; z-index: 80; pointer-events: none; }
 
 /* first-run tutorial card: bottom right on a wide screen, under the top bar on a phone */
-.tutorial { position: fixed; right: var(--space-16); bottom: var(--space-16); width: min(340px, calc(100vw - 32px)); z-index: 55; padding: var(--space-14) var(--space-16); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-menu); outline: 3px solid var(--tutorial); outline-offset: 3px; }
+.tutorial { position: fixed; right: var(--space-16); bottom: var(--space-16); width: min(340px, calc(100vw - 32px)); z-index: 55; padding: var(--space-26) var(--space-16) var(--space-14); background: var(--card); color: var(--ink); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); border-radius: var(--radius-card); box-shadow: var(--shadow-menu); outline: 3px solid var(--tutorial); outline-offset: 3px; }
 .tutorialcount { font-size: var(--text-sm); color: var(--muted); }
 .tutorial .tutorialtitle { margin: var(--space-4) 0 var(--space-6); font-size: var(--text-100); }
 .tutorial .tutorialtext { margin: 0; font-size: var(--text-sm); line-height: 1.45; }
 /* Lifted above its neighbors so a selected tab next to it cannot paint over the ring. */
 .tutorialtarget { position: relative; z-index: 1; outline: 3px solid var(--tutorial); outline-offset: 3px; }
-/* The ring swells once when a step first points at something, and the card's ring swells on every step, then both stay put. */
-.tutorial.tutorialflash { animation: tutorialflash .9s ease-out 1; }
-/* The highlighted item swells a second after the card does. */
-.tutorialtarget.tutorialflash { animation: tutorialflash .9s ease-out 1s 1; }
-@keyframes tutorialflash { 0%, 100% { outline-width: 3px; } 35% { outline-width: 9px; } 70% { outline-width: 3px; } }
+/* The ring grows in from nothing when a step first points at something, and the card's ring does so on every step, then both stay put. */
+.tutorial.tutorialflash { animation: tutorialflash .9s ease-out 1 backwards; }
+/* The highlighted item's ring grows in a second after the card's does, and stays hidden until then. */
+.tutorialtarget.tutorialflash { animation: tutorialflash .9s ease-out 1s 1 backwards; }
+@keyframes tutorialflash { 0% { outline-width: 0; } 40% { outline-width: 9px; } 100% { outline-width: 3px; } }
 /* A highlighted candidate row: rounded like the other highlights, with its title underlined in the same weight. */
 li.tutorialtarget { border-radius: var(--radius-control); }
 li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: var(--tutorial); text-decoration-thickness: 3px; text-underline-offset: 4px; }
 @media (max-width: 899px) {
-  .tutorial { bottom: calc(env(safe-area-inset-bottom, 0px) + 76px); left: var(--space-12); right: var(--space-12); width: auto; padding: var(--space-10) var(--space-14); }
+  .tutorial { bottom: calc(env(safe-area-inset-bottom, 0px) + 76px); left: var(--space-12); right: var(--space-12); width: auto; padding: var(--space-22) var(--space-14) var(--space-10); }
   body:has(.tutorial) #view { padding-bottom: 230px; }
   .tutorialcount { display: none; }
   /* The card spans the bottom here, so confirmation toasts sit just above it (--tutorial-top is the card's top edge, measured from the bottom of the window). */

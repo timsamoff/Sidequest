@@ -46,9 +46,9 @@
   --text-sm: .9rem;
   --text-100: 1rem;
   --shadow-menu: 0 8px 24px rgba(0, 0, 0, .18);
-  --bg: #F3F0E7;
-  --surface: #FAF8F3;
-  --card: #FBF3E6;
+  --bg: #F5EFDC;
+  --surface: #FAF6E6;
+  --card: #FCF1D6;
   --control-bg: #FFFFFF; --control-line: var(--line);
   /* The app icon keeps these colors in both themes. */
   --logo-est: #B9CCE0; --logo-planned: #2F5D8A; --logo-surface: #FFFFFF; --logo-burn: #C62F2F;
@@ -92,7 +92,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #1F2120; --surface: #272A2A; --card: #2F2E28; --control-bg: #171B1F; --control-line: #6F808B; --wood: var(--badge-attention-bg); --on-wood: var(--badge-attention); --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
+    --bg: #161C22; --surface: #202A33; --card: #2F2E28; --control-bg: #171B1F; --control-line: #6F808B; --wood: var(--badge-attention-bg); --on-wood: var(--badge-attention); --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
     --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
     --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
     --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
@@ -107,7 +107,7 @@
   }
 }
 :root[data-theme="dark"] {
-  --bg: #1F2120; --surface: #272A2A; --card: #2F2E28; --control-bg: #171B1F; --control-line: #6F808B; --wood: var(--badge-attention-bg); --on-wood: var(--badge-attention); --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
+  --bg: #161C22; --surface: #202A33; --card: #2F2E28; --control-bg: #171B1F; --control-line: #6F808B; --wood: var(--badge-attention-bg); --on-wood: var(--badge-attention); --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
   --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
   --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
   --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
@@ -564,22 +564,22 @@ svg.chart.nofocusring { outline: none; }
 .confettiFx { position: fixed; inset: 0; z-index: 80; pointer-events: none; }
 
 /* first-run tutorial card: bottom right on a wide screen, under the top bar on a phone */
-.tutorial { position: fixed; right: var(--space-16); bottom: var(--space-16); width: min(340px, calc(100vw - 32px)); z-index: 55; padding: var(--space-14) var(--space-16); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-menu); outline: 3px solid var(--tutorial); outline-offset: 3px; }
+.tutorial { position: fixed; right: var(--space-16); bottom: var(--space-16); width: min(340px, calc(100vw - 32px)); z-index: 55; padding: var(--space-26) var(--space-16) var(--space-14); background: var(--card); color: var(--ink); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); border-radius: var(--radius-card); box-shadow: var(--shadow-menu); outline: 3px solid var(--tutorial); outline-offset: 3px; }
 .tutorialcount { font-size: var(--text-sm); color: var(--muted); }
 .tutorial .tutorialtitle { margin: var(--space-4) 0 var(--space-6); font-size: var(--text-100); }
 .tutorial .tutorialtext { margin: 0; font-size: var(--text-sm); line-height: 1.45; }
 /* Lifted above its neighbors so a selected tab next to it cannot paint over the ring. */
 .tutorialtarget { position: relative; z-index: 1; outline: 3px solid var(--tutorial); outline-offset: 3px; }
-/* The ring swells once when a step first points at something, and the card's ring swells on every step, then both stay put. */
-.tutorial.tutorialflash { animation: tutorialflash .9s ease-out 1; }
-/* The highlighted item swells a second after the card does. */
-.tutorialtarget.tutorialflash { animation: tutorialflash .9s ease-out 1s 1; }
-@keyframes tutorialflash { 0%, 100% { outline-width: 3px; } 35% { outline-width: 9px; } 70% { outline-width: 3px; } }
+/* The ring grows in from nothing when a step first points at something, and the card's ring does so on every step, then both stay put. */
+.tutorial.tutorialflash { animation: tutorialflash .9s ease-out 1 backwards; }
+/* The highlighted item's ring grows in a second after the card's does, and stays hidden until then. */
+.tutorialtarget.tutorialflash { animation: tutorialflash .9s ease-out 1s 1 backwards; }
+@keyframes tutorialflash { 0% { outline-width: 0; } 40% { outline-width: 9px; } 100% { outline-width: 3px; } }
 /* A highlighted candidate row: rounded like the other highlights, with its title underlined in the same weight. */
 li.tutorialtarget { border-radius: var(--radius-control); }
 li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: var(--tutorial); text-decoration-thickness: 3px; text-underline-offset: 4px; }
 @media (max-width: 899px) {
-  .tutorial { bottom: calc(env(safe-area-inset-bottom, 0px) + 76px); left: var(--space-12); right: var(--space-12); width: auto; padding: var(--space-10) var(--space-14); }
+  .tutorial { bottom: calc(env(safe-area-inset-bottom, 0px) + 76px); left: var(--space-12); right: var(--space-12); width: auto; padding: var(--space-22) var(--space-14) var(--space-10); }
   body:has(.tutorial) #view { padding-bottom: 230px; }
   .tutorialcount { display: none; }
   /* The card spans the bottom here, so confirmation toasts sit just above it (--tutorial-top is the card's top edge, measured from the bottom of the window). */
@@ -1311,7 +1311,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.14.1";
+var APP_VERSION = "0.14.2";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -2450,8 +2450,8 @@ function renderSection(node) {
 }
 
 var EXPORT_CSS = "\
-:root { --logo-est:#B9CCE0; --logo-planned:#2F5D8A; --logo-surface:#FFFFFF; --logo-burn:#C62F2F; --bg:#F3F0E7; --surface:#FAF8F3; --ink:#1A2733; --muted:#566772; --line:#D3DAD5; --planned:#2F5D8A; --burn:#C62F2F; --scope:#FFAC1C; --est:#B9CCE0; --chip-idle:#E7ECE8; --chip-work:#F6E3C4; --chip-done:#CFE6D5; --chip-new:#D3E3F6; --chip-ink:#1A2733; --late:#A8261C; --late-bg:#F8DDD9; --milestone:#694C80; --milestone-bg:#E8DFF1; --badge-attention:#4F3416; --badge-attention-bg:#DDC3A5; --badge-priority:#4A2E00; --badge-priority-bg:#F8C15A; --badge-active:#6B4A0F; --badge-active-bg:#F6E3C4; --bar-active:#C99A3E; --badge-pending:#34475A; --badge-pending-bg:#CBD6E0; --bar-pending:#8AA3BF; --badge-done:#315C3C; --badge-done-bg:#CFE6D5; --bar-done:#74AD85; --badge-neutral:#47433E; --badge-neutral-bg:#D4D1CD; --badge-info:#275568; --badge-info-bg:#CFE3EC; }\
-@media (prefers-color-scheme: dark) { :root { --bg:#1F2120; --surface:#272A2A; --ink:#E6ECEF; --muted:#9AABB5; --line:#2C3843; --planned:#86B4E0; --burn:#E5534B; --scope:#FFAC1C; --est:#34506B; --chip-idle:#26323B; --chip-work:#4A3B22; --chip-done:#21402C; --chip-new:#2A4560; --chip-ink:#E6ECEF; --late:#F2A29B; --late-bg:#4A2723; --milestone:#D0B6E1; --milestone-bg:#382D43; --badge-attention:#E8C6A6; --badge-attention-bg:#4D3428; --badge-priority:#FFCB80; --badge-priority-bg:#6E4410; --badge-active:#F0D49A; --badge-active-bg:#4A3B22; --bar-active:#A98232; --badge-pending:#D5DEE6; --badge-pending-bg:#3A4754; --bar-pending:#6A8BAA; --badge-done:#B5DDBF; --badge-done-bg:#21402C; --bar-done:#4E9A68; --badge-neutral:#D8D4CF; --badge-neutral-bg:#403C38; --badge-info:#C8DFE9; --badge-info-bg:#2F4E5C; } }\
+:root { --logo-est:#B9CCE0; --logo-planned:#2F5D8A; --logo-surface:#FFFFFF; --logo-burn:#C62F2F; --bg:#F5EFDC; --surface:#FAF6E6; --ink:#1A2733; --muted:#566772; --line:#D3DAD5; --planned:#2F5D8A; --burn:#C62F2F; --scope:#FFAC1C; --est:#B9CCE0; --chip-idle:#E7ECE8; --chip-work:#F6E3C4; --chip-done:#CFE6D5; --chip-new:#D3E3F6; --chip-ink:#1A2733; --late:#A8261C; --late-bg:#F8DDD9; --milestone:#694C80; --milestone-bg:#E8DFF1; --badge-attention:#4F3416; --badge-attention-bg:#DDC3A5; --badge-priority:#4A2E00; --badge-priority-bg:#F8C15A; --badge-active:#6B4A0F; --badge-active-bg:#F6E3C4; --bar-active:#C99A3E; --badge-pending:#34475A; --badge-pending-bg:#CBD6E0; --bar-pending:#8AA3BF; --badge-done:#315C3C; --badge-done-bg:#CFE6D5; --bar-done:#74AD85; --badge-neutral:#47433E; --badge-neutral-bg:#D4D1CD; --badge-info:#275568; --badge-info-bg:#CFE3EC; }\
+@media (prefers-color-scheme: dark) { :root { --bg:#161C22; --surface:#202A33; --ink:#E6ECEF; --muted:#9AABB5; --line:#2C3843; --planned:#86B4E0; --burn:#E5534B; --scope:#FFAC1C; --est:#34506B; --chip-idle:#26323B; --chip-work:#4A3B22; --chip-done:#21402C; --chip-new:#2A4560; --chip-ink:#E6ECEF; --late:#F2A29B; --late-bg:#4A2723; --milestone:#D0B6E1; --milestone-bg:#382D43; --badge-attention:#E8C6A6; --badge-attention-bg:#4D3428; --badge-priority:#FFCB80; --badge-priority-bg:#6E4410; --badge-active:#F0D49A; --badge-active-bg:#4A3B22; --bar-active:#A98232; --badge-pending:#D5DEE6; --badge-pending-bg:#3A4754; --bar-pending:#6A8BAA; --badge-done:#B5DDBF; --badge-done-bg:#21402C; --bar-done:#4E9A68; --badge-neutral:#D8D4CF; --badge-neutral-bg:#403C38; --badge-info:#C8DFE9; --badge-info-bg:#2F4E5C; } }\
 * { box-sizing: border-box; }\
 body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; line-height: 1.4; }\
 .ewrap { max-width: 1100px; margin: 0 auto; }\
