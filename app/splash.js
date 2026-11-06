@@ -1,5 +1,5 @@
 // Splash overlay atop the already-rendered app, gated by showSplash. Fixed,
-// hand-composed artwork (the icon's own 5 branches): blur, branches draw, title wipes into an affirmation, fade out.
+// hand-composed artwork (the icon's 5 branches): blur, branches draw, title wipes into an affirmation, fade out.
 import { $, playSfx } from "./dom.js";
 
 var SVG_NS = "http://www.w3.org/2000/svg";
@@ -191,7 +191,7 @@ var TIMING = {
   textDelay: 500,   // after blur starts
   holdDur: 2150,    // text fully visible before fade-out starts
   fadeOutDur: 500,
-  // Ms relative to the text-wipe when the splash sound starts (negative fires early, covering play()'s own lag).
+  // Ms relative to the text-wipe when the splash sound starts (negative fires early, covering play()'s lag).
   soundOffset: -10
 };
 
@@ -207,12 +207,9 @@ function schedule(pairs) {
   return drawEnd;
 }
 
-// Plays the splash sequence, then hides the overlay and calls done() once the
-// fade-out finishes. No-op if showSplash is off or the element isn't present.
-// `pickIndex`, given AFFIRMATIONS.length, returns which quote to show -- callers
-// pass a shuffled-bucket picker (state.js's pickAffirmation, which may return a promise) so quotes
-// don't repeat until the whole list has shown; defaults to plain random.
-export function playSplash(showSplash, done, audio, pickIndex) {
+// Plays the splash, then hides the overlay and calls done(). No-op if showSplash is off; `pickIndex(count)` chooses the quote (possibly a promise, defaults to random), and `opts.hold` keeps the last frame instead of fading out (`opts.instant` jumps straight to it).
+export function playSplash(showSplash, done, audio, pickIndex, opts) {
+  var hold = !!(opts && opts.hold), instant = hold && !!opts.instant;
   var root = $("splash");
   // Markup ships pre-blurred in plain HTML, before any JS runs -- avoids a
   // real flash-of-sharp-app bug. If the setting's off, hide it now instead.
@@ -233,6 +230,13 @@ export function playSplash(showSplash, done, audio, pickIndex) {
   // eslint-disable-next-line no-unused-expressions
   root.offsetHeight;
 
+  if (instant) {
+    pairs.forEach(function (pair) { pair.path.style.transitionDuration = "0ms"; pair.path.classList.add("drawn"); pair.node.classList.add("shown"); });
+    root.classList.add("artBlurred", "textIn");
+    if (done) done();
+    return function cancel() {};
+  }
+
   var drawEnd = schedule(pairs);
   var artBlurAt = drawEnd + TIMING.blurDelay;
   var textAt = artBlurAt + TIMING.textDelay;
@@ -242,14 +246,15 @@ export function playSplash(showSplash, done, audio, pickIndex) {
   pairs.forEach(function (pair) {
     pair.path.style.transitionDuration = pair.dur + "ms";
     timers.push(setTimeout(function () { pair.path.classList.add("drawn"); }, pair.start));
-    // This node is this path's own terminus.
+    // This node is this path's terminus.
     timers.push(setTimeout(function () { pair.node.classList.add("shown"); }, pair.end));
   });
   timers.push(setTimeout(function () { root.classList.add("artBlurred"); }, artBlurAt));
   // Disabled: browsers block Audio.play() here outside a real click/tap/keydown handler.
   // if (audio) timers.push(setTimeout(function () { playSfx("assets/sfx/quest.mp3"); }, Math.max(0, textAt + TIMING.soundOffset)));
   timers.push(setTimeout(function () { root.classList.add("textIn"); }, textAt));
-  timers.push(setTimeout(function () {
+  if (hold) timers.push(setTimeout(function () { if (done) done(); }, fadeOutAt));
+  else timers.push(setTimeout(function () {
     root.classList.add("fading");
     setTimeout(function () {
       root.hidden = true;
@@ -259,5 +264,5 @@ export function playSplash(showSplash, done, audio, pickIndex) {
     }, TIMING.fadeOutDur);
   }, fadeOutAt));
 
-  return function cancel() { timers.forEach(clearTimeout); root.hidden = true; };
+  return function cancel() { timers.forEach(clearTimeout); if (!hold) root.hidden = true; };
 }

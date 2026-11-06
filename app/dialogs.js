@@ -391,7 +391,7 @@ export function stepDialog(prefillQuestId) {
   }
 }
 // Slips only incomplete, scheduled tasks later by N days -- Completed tasks,
-// the Backlog, and the quest's own start date are never touched.
+// the Backlog, and the quest's start date are never touched.
 export function slipDialog(p) {
   openModal("Slip " + p.name + "'s schedule", function (body) {
     body.appendChild(el("p", { "class": "hint first" }, "This moves incomplete tasks later by the same number of days. Completed tasks and the Backlog are not affected."));

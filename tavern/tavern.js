@@ -1,0 +1,114 @@
+// Enhancements only. Every page reads and navigates fine without this file.
+(function () {
+  var root = document.documentElement;
+
+  /* Theme toggle: Auto, Light, Dark. */
+  var KEY = "sidequest-landing-theme";
+  var ORDER = ["auto", "light", "dark"];
+  var ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg>';
+
+  function readTheme() {
+    try { var v = window.localStorage.getItem(KEY); return ORDER.indexOf(v) > -1 ? v : "auto"; } catch (e) { return "auto"; }
+  }
+  function applyTheme(mode) {
+    if (mode === "auto") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", mode);
+  }
+  var themeBtn = document.getElementById("themeToggle");
+  if (themeBtn) {
+    var mode = readTheme();
+    var showTheme = function () {
+      var next = ORDER[(ORDER.indexOf(mode) + 1) % ORDER.length];
+      var word = mode.charAt(0).toUpperCase() + mode.slice(1);
+      themeBtn.innerHTML = ICON + '<span>' + word + "</span>";
+      themeBtn.setAttribute("aria-label", "Theme: " + mode + ". Switch to " + next + ".");
+    };
+    showTheme();
+    themeBtn.hidden = false;
+    themeBtn.addEventListener("click", function () {
+      mode = ORDER[(ORDER.indexOf(mode) + 1) % ORDER.length];
+      applyTheme(mode);
+      try { window.localStorage.setItem(KEY, mode); } catch (e) { /* storage blocked */ }
+      showTheme();
+    });
+  }
+
+  /* Menu button: opens and closes the nav dropdown below 62rem. Escape closes it and returns focus to the button. */
+  var menuBtn = document.getElementById("menuBtn");
+  var nav = document.getElementById("mainNav");
+  if (menuBtn && nav) {
+    var setMenu = function (open) {
+      nav.classList.toggle("open", open);
+      menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+    menuBtn.addEventListener("click", function () { setMenu(!nav.classList.contains("open")); });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && nav.classList.contains("open")) { setMenu(false); menuBtn.focus(); }
+    });
+    document.addEventListener("click", function (e) {
+      if (nav.classList.contains("open") && !nav.contains(e.target) && !menuBtn.contains(e.target)) setMenu(false);
+    });
+  }
+
+  /* Prompt copy buttons. */
+  Array.prototype.forEach.call(document.querySelectorAll("[data-copy]"), function (b) {
+    var target = document.getElementById(b.getAttribute("data-copy"));
+    var status = b.parentNode.querySelector(".copystatus");
+    if (!target || !navigator.clipboard) return;
+    b.hidden = false;
+    b.addEventListener("click", function () {
+      navigator.clipboard.writeText(target.textContent).then(function () {
+        status.textContent = "Copied.";
+      }, function () {
+        status.textContent = "Couldn’t copy. Select the text and copy it by hand.";
+      });
+    });
+  });
+
+  /* Scroll lerp: a mouse wheel eases toward its target instead of jumping. Keyboard, touch, trackpads,
+     the scrollbar, and in-page links keep their native behavior, and reduced motion turns it off. */
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  var target = window.scrollY, current = target, raf = 0, driving = false;
+  var EASE = 0.12;
+
+  var lastY = target;
+
+  function maxScroll() { return Math.max(0, root.scrollHeight - window.innerHeight); }
+  function release() {
+    if (raf) { window.cancelAnimationFrame(raf); raf = 0; }
+    driving = false;
+    target = current = window.scrollY;
+  }
+  function step() {
+    // Something else moved the page (a key, a link, the scrollbar): hand control back.
+    if (Math.abs(window.scrollY - lastY) > 2) { release(); return; }
+    var diff = target - current;
+    if (Math.abs(diff) < 1) {
+      current = target;
+      window.scrollTo({ top: current, behavior: "instant" });
+      raf = 0; driving = false;
+      return;
+    }
+    current += diff * EASE;
+    window.scrollTo({ top: current, behavior: "instant" });
+    lastY = window.scrollY;
+    raf = window.requestAnimationFrame(step);
+  }
+  window.addEventListener("scroll", function () {
+    if (!driving) { target = current = window.scrollY; }
+  }, { passive: true });
+  ["keydown", "pointerdown", "touchstart", "click"].forEach(function (type) {
+    document.addEventListener(type, function () { if (driving) release(); }, { passive: true, capture: true });
+  });
+  window.addEventListener("wheel", function (e) {
+    if (reduce.matches || e.ctrlKey || e.defaultPrevented) return;
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+    var dy = e.deltaY;
+    if (e.deltaMode === 1) dy *= 16; else if (e.deltaMode === 2) dy *= window.innerHeight;
+    if (Math.abs(dy) < 40) return;
+    e.preventDefault();
+    if (!driving) { target = current = lastY = window.scrollY; }
+    target = Math.max(0, Math.min(maxScroll(), target + dy));
+    driving = true;
+    if (!raf) raf = window.requestAnimationFrame(step);
+  }, { passive: false });
+})();

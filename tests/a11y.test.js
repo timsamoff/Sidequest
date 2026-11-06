@@ -1,8 +1,4 @@
-// Real-browser accessibility scan (axe-core via Playwright), separate from
-// template.test.js's jsdom suite -- jsdom has no layout engine, so contrast/
-// focus/aria-in-context checks can't run there. Not part of `npm test` (needs
-// a live server + a real browser, too slow for the everyday loop); run via
-// `npm run test:a11y`. See Sentinel-Notes/TODO.md's `a11y-tooling` item.
+// Real-browser accessibility scan (axe-core via Playwright). Separate from the jsdom suite, which has no layout engine; run it with `npm run test:a11y`.
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -28,10 +24,7 @@ function serve() {
   });
 }
 
-// Pages reachable straight from a fresh load, exercised via the nav tabs
-// already present in the sample data -- covers every CORE/BOTTOM page kind
-// (a plain list page, a project's own page, the vault, settings) without
-// needing to fabricate state.
+// Pages reachable from a fresh load through the nav tabs in the sample data: a list page, a quest's page, the vault, and settings.
 const PAGES = [
   { name: "Today", tab: "today" },
   { name: "Quests", tab: "projects" },
@@ -64,19 +57,19 @@ async function main() {
     ok(results.violations.length === 0, p.name + " page has no axe violations" + (results.violations.length ? ":\n     " + results.violations.map(v => v.id + " (" + v.nodes.length + ")").join(", ") : ""));
   }
 
-  // One quest's own page (a distinct template from the plain list pages above)
+  // One quest's page (a distinct template from the plain list pages above)
   await page.click('.tab[data-view="quest:pApp"]');
   await page.waitForTimeout(150);
   const projResults = await new AxeBuilder({ page }).include("#view").analyze();
-  ok(projResults.violations.length === 0, "a quest's own page has no axe violations" + (projResults.violations.length ? ":\n     " + projResults.violations.map(v => v.id + " (" + v.nodes.length + ")").join(", ") : ""));
+  ok(projResults.violations.length === 0, "a quest's page has no axe violations" + (projResults.violations.length ? ":\n     " + projResults.violations.map(v => v.id + " (" + v.nodes.length + ")").join(", ") : ""));
 
-  // A candidate's own page (its own branch: no Quest links, Promote/Vault actions)
+  // A candidate's page (its own branch: no Quest links, Promote/Vault actions)
   await page.click('.tab[data-view="projects"]');
   await page.waitForTimeout(150);
   await page.click('#view button:has-text("Sample Browser Extension")');
   await page.waitForTimeout(150);
   const candResults = await new AxeBuilder({ page }).include("#view").analyze();
-  ok(candResults.violations.length === 0, "a candidate's own page has no axe violations" + (candResults.violations.length ? ":\n     " + candResults.violations.map(v => v.id + " (" + v.nodes.length + ")").join(", ") : ""));
+  ok(candResults.violations.length === 0, "a candidate's page has no axe violations" + (candResults.violations.length ? ":\n     " + candResults.violations.map(v => v.id + " (" + v.nodes.length + ")").join(", ") : ""));
 
   await browser.close();
   server.close();

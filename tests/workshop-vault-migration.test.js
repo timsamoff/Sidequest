@@ -1,9 +1,4 @@
-// Round-trip test for the Parking lot -> Workshop and Archive -> Vault
-// data-shape rename. Constructs an OLD-shaped saved object by hand
-// (state.parked, t.arch/p.arch/x.arch, settings.archivePurgeDays) covering
-// all three record types that carry the marker (a task, a quest, and a
-// parked idea), loads it through the real normalize() via a full boot, and
-// asserts everything survived under the new field names with no data loss.
+// Round-trip test for the Parking lot to Workshop and Archive to Vault renames: an old-shaped save covering a task, a quest, and an idea is loaded through the real normalize() and nothing may be lost.
 const { JSDOM } = require("jsdom");
 const fs = require("fs");
 const path = require("path");

@@ -5,32 +5,11 @@ const { register } = require("module");
 const { pathToFileURL } = require("url");
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 
-// index.html now loads its logic as real ES modules (app/app.js and everything it
-// imports), not an inline <script>. jsdom 30's own <script type="module"> support
-// is not something to rely on here (untested against this project, version-
-// dependent, and historically incomplete) -- instead, each test window gets its
-// own jsdom instance, and the app's module graph is loaded directly through
-// Node's native ESM loader against that window's document/localStorage, set as
-// temporary globals for the duration of the dynamic import() (the app code reads
-// bare `window`/`document`/`localStorage` globals, same as it did inline).
-//
-// A fresh, unique query string on ONLY the entry-point import (app/app.js?t=N)
-// is NOT enough to isolate `state` between tests: confirmed by direct testing,
-// app.js's own internal `import "./state.js"` carries no query of its own, so
-// every mk() call's app.js graph still resolved the SAME state.js instance,
-// silently leaking mutations (marking a task done, archiving it, etc.) from one
-// test's dom into the next test's "fresh" one. tests/isolate-loader.mjs is a
-// Node module customization hook that rewrites every resolution of a file under
-// app/ to carry the current run's tag, so the WHOLE graph (state, dates, model,
-// dom, views, dialogs, search, chart) reloads fresh each call, not just the
-// entry module.
+// Each test window is its own jsdom instance, and the app's module graph is loaded through Node's native ESM loader (tests/isolate-loader.mjs) with that window's document and localStorage set as temporary globals. A query string on the entry import alone would not isolate state.js, which is why the loader exists.
 register(pathToFileURL(path.join(__dirname, "isolate-loader.mjs")));
 
 let counter = 0;
-// The previous mk() call's own app.js module instance, so its still-pending
-// splash timers (which otherwise keep firing -- including a sound effect --
-// well after that test has moved on to a different global.window) can be
-// cancelled before the next one boots.
+// The previous mk() call's app module, kept so its pending splash timers can be cancelled before the next boot.
 let lastAppModule = null;
 async function mk(saved, claude, stamp, audioStub, matchMediaStub, beforeBoot) {
   if (lastAppModule) { lastAppModule.cancelSplash(); lastAppModule.cancelTutorial(); }
@@ -58,7 +37,7 @@ async function mk(saved, claude, stamp, audioStub, matchMediaStub, beforeBoot) {
   Object.defineProperty(global, "localStorage", { value: dom.window.localStorage, configurable: true, writable: true });
   global.FileReader = dom.window.FileReader;
   lastAppModule = await import("../app/app.js?run=" + (++counter));
-  // app.js's own boot sequence (rendering the initial view, wiring menus and
+  // app.js's boot sequence (rendering the initial view, wiring menus and
   // search) is deferred one microtask past module evaluation -- see app/app.js's
   // comment on this -- so tests must wait a tick for it to have run.
   await Promise.resolve();
@@ -94,9 +73,9 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.13.3"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.13.4"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
-  ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
+  ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v) && html.includes("css/splash.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -193,14 +172,14 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!checkList().some(li => li.textContent.includes("Sample Website")), "a linked quest no longer appears in the Before you launch checklist");
   ok(!k.d.querySelector("#view .decision") && ![...k.d.querySelectorAll("#view h3")].some(h => h.textContent === "Decisions") && !k.btn(k.$("view"), "Add decision"), "the project page no longer has a Decisions section (decisions live on steps in Tasks)");
   ok(![...k.d.querySelectorAll("#view .tlist:not(.check) .item")].some(b => b.textContent.includes("Submit to the app store")), "a launch task does not also show up in the regular Tasks list on the quest page");
-  ok([...k.d.querySelectorAll("#view .tlist:not(.check) .l2 .chip")].some(c => c.textContent === "Launch critical") === false, "a launch task's own badge only shows inside the checklist, not duplicated elsewhere on this page since it's excluded from the regular list");
+  ok([...k.d.querySelectorAll("#view .tlist:not(.check) .l2 .chip")].some(c => c.textContent === "Launch critical") === false, "a launch task's badge only shows inside the checklist, not duplicated elsewhere on this page since it's excluded from the regular list");
   // opening the launch row expands the task inline, same as a regular Tasks row
   const launchBtn = checkList().map(li => li.querySelector(".item")).find(b => b && b.textContent.includes("Submit to the app store"));
   k.click(launchBtn);
   const detail = () => k.d.querySelector("#view .tlist.check .detail");
   ok(!!detail().querySelector(".chip") && detail().textContent.includes("Launch critical"), "the expanded launch task shows a Launch critical badge");
   ok(!!k.btn(detail(), "Open in Tasks") && !!k.btn(detail(), "Skip launch") && !!k.btn(detail(), "Delete") && !k.btn(detail(), "Launch critical"), "a launch task's detail offers Open in Tasks, Skip launch, and Delete");
-  ok(k.btn(detail(), "Skip launch").classList.contains("on") && k.btn(detail(), "Skip launch").getAttribute("aria-pressed") === "true", "Skip launch shows as an active/pressed toggle (blue), matching Remove milestone's own on-state");
+  ok(k.btn(detail(), "Skip launch").classList.contains("on") && k.btn(detail(), "Skip launch").getAttribute("aria-pressed") === "true", "Skip launch shows as an active/pressed toggle (blue), matching Remove milestone's on-state");
   ok(detail().querySelector(".steps li.done") && detail().querySelector(".steps").textContent.includes("Choose the first app store"), "answered decision's step is already ticked");
   // Skip launch takes the task off the checklist without deleting it
   k.click(k.btn(detail(), "Skip launch"));
@@ -248,7 +227,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.menuAct("newBtn", "newDecision");
   k.$("f-quest").value = "pSite"; k.fire(k.$("f-quest"));
   const taskOpts = [...k.$("modalBody").querySelectorAll("#f-task option")];
-  ok(taskOpts.length > 0 && taskOpts.every(o => !o.textContent.includes("Submit to the app store")), "choosing a quest narrows Task to just that quest's own tasks");
+  ok(taskOpts.length > 0 && taskOpts.every(o => !o.textContent.includes("Submit to the app store")), "choosing a quest narrows Task to just that quest's tasks");
   const stepOpts = [...k.$("modalBody").querySelectorAll("#f-step option")];
   ok(stepOpts.length > 0, "Step repopulates for the first task of the newly chosen quest");
   k.setField("q", "Which domain do we use?");
@@ -441,7 +420,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!k.$("modalBody").textContent.includes("All quests"), "there is no All quests option; the filter always starts on a real quest");
   ok(questSel.value === "pApp", "with nothing selected in Schedule, the quest filter starts on the first active quest");
   const firstQuestTasks = [...taskSel.options].map(o => o.label);
-  ok(firstQuestTasks.length > 0 && firstQuestTasks.every(l => l.startsWith("Sample App:")), "the task select is already scoped to that quest's own tasks");
+  ok(firstQuestTasks.length > 0 && firstQuestTasks.every(l => l.startsWith("Sample App:")), "the task select is already scoped to that quest's tasks");
   k.setField("quest", "pGame"); k.fire(questSel);
   const afterGame = [...taskSel.options].map(o => o.label);
   ok(afterGame.length > 0 && afterGame.every(l => l.startsWith("Sample Game:")), "choosing a quest narrows the task list to only that quest's tasks");
@@ -474,10 +453,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("overlay").hidden && k.$("view").textContent.includes("Sample Game"), "linking Sample Game from the dialog closes it and shows the link in the list");
   k.click(k.btn(k.$("view"), "Sample Game"));
   ok(k.$("viewTitle").textContent === "Sample Game" && k.$("view").textContent.includes("Sample Website"), "the new link is bidirectional too -- Sample Game shows Sample Website back");
-  // unlink and confirm it's gone from the current page -- check the picker's
-  // own <select> options too (Sample Website legitimately reappears THERE
-  // once unlinked, since it's available to re-link; that's not the same as
-  // still showing as a linked quest).
+  // Unlink and confirm the quest is gone from the current page; the picker's <select> legitimately lists it again, since it is available to re-link.
   const unlinkBtn = [...k.d.querySelectorAll("#view button")].find(b => b.textContent.trim() === "Unlink");
   k.click(unlinkBtn);
   ok(k.$("view").textContent.includes("No quest links"), "unlinking removes the linked-quest row (Sample Website may still appear in the re-link picker, which is correct)");
@@ -508,7 +484,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!appRow.querySelector(".chip.questcomplete"), "the Quests section also shows the Complete badge");
   ok(!k.btn(appRow, "View"), "Quests rows have no separate View button, the title is the link");
   k.click(k.btn(appRow, "Sample App"));
-  ok(k.$("viewTitle").textContent === "Sample App", "View navigated to Sample App's own page");
+  ok(k.$("viewTitle").textContent === "Sample App", "View navigated to Sample App's page");
   k.click(k.btn(k.$("view"), "Reopen"));
   ok(k.saved().quests.find(p => p.id === "pApp").status === "active", "Reopen sets the quest back to active");
   ok(!k.d.querySelector("#view .chip.questcomplete"), "reopened quest loses the Complete badge");
@@ -519,14 +495,14 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(k.$("view"), "Mark complete"));
   k.click(k.btn(k.$("modalBody"), "Leave in Quests"));
   // Complete-but-kept: its tasks drop out of the Tasks list and the global
-  // Timeline, but stay visible on the quest's own page.
+  // Timeline, but stay visible on the quest's page.
   k.tab("schedule");
   ok(!k.$("view").textContent.includes("Sketch the main screens"), "a Complete-but-kept quest's tasks are hidden from the Tasks list");
   ok(!k.$("view").textContent.includes("Tasks are gathered from all open quests.") && !k.$("view").textContent.includes("Tasks from complete quests are not listed here"), "the Tasks page has no description line");
   k.tab("timeline");
   ok(![...k.d.querySelectorAll("#view .lane .lname")].some(l => l.textContent === "Sample App"), "a Complete-but-kept quest's lane is hidden from the global Timeline");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
-  ok(k.$("view").textContent.includes("Its tasks are not included in Tasks, Timeline, or Today"), "the quest's own page explains the hiding");
+  ok(k.$("view").textContent.includes("Its tasks are not included in Tasks, Timeline, or Today"), "the quest's page explains the hiding");
   k.click([...k.d.querySelectorAll(".questmain .tlist .item")].find(b => b.textContent.includes("Sketch the main screens")));
   const statusSel = k.d.querySelector(".questmain .detail .status"); statusSel.value = "In progress"; k.fire(statusSel);
   ok(k.saved().quests.find(p => p.id === "pApp").status === "complete", "reopening a task does not auto-revert a Complete quest");
@@ -586,14 +562,14 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const gameVaultRow = [...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("Sample Game"));
   ok(!k.btn(gameVaultRow, "View") && gameVaultRow.querySelector(".chip").previousElementSibling === k.btn(gameVaultRow, "Sample Game"), "Vault rows have no View button, the title is the link, and the kind chip follows it");
   k.click(k.btn(gameVaultRow, "Sample Game"));
-  ok(k.$("viewTitle").textContent === "Sample Game", "a vaulted quest's own page is now reachable (previously invisible)");
+  ok(k.$("viewTitle").textContent === "Sample Game", "a vaulted quest's page is now reachable (previously invisible)");
   ok(k.$("view").textContent.includes("In the Vault. Restore it to make changes."), "vaulted quest page states it's read-only");
-  ok(k.d.querySelectorAll("#view .tlist li").length === tasksBefore && k.$("view").textContent.includes("Add a level editor") && k.$("view").textContent.includes("Backlog"), "a vaulted quest's own page still lists its own tasks, including its Backlog task (previously showed none at all)");
+  ok(k.d.querySelectorAll("#view .tlist li").length === tasksBefore && k.$("view").textContent.includes("Add a level editor") && k.$("view").textContent.includes("Backlog"), "a vaulted quest's page still lists its own tasks, including its Backlog task (previously showed none at all)");
   ok(!k.btn(k.$("view"), "Add task") && !k.d.querySelector("#proj-start") && !k.d.querySelector("#view textarea"), "no mutating controls (Add task, schedule inputs, notes textarea) on a vaulted quest page");
   ok(!!k.btn(k.$("view"), "Restore"), "vaulted quest page offers Restore instead of Vault/Mark complete");
   k.click(k.$("view").querySelector("#ptask-g1 button"));
   const protoDetail = k.$("view").querySelector("#ptask-g1 .detail");
-  ok(!!protoDetail && protoDetail.textContent.includes("Make the player move") && protoDetail.textContent.includes("Add one obstacle"), "a vaulted quest's own task still expands in place and shows its steps, for historical purposes");
+  ok(!!protoDetail && protoDetail.textContent.includes("Make the player move") && protoDetail.textContent.includes("Add one obstacle"), "a vaulted quest's task still expands in place and shows its steps, for historical purposes");
   ok(!protoDetail.querySelector("select.status") && !protoDetail.querySelector("textarea") && ![...protoDetail.querySelectorAll("button")].some(b => ["Delete", "Launch critical", "Add step", "Add decision"].includes(b.textContent)), "the expanded task on a vaulted quest page has no mutating controls of its own (status select, notes textarea, Delete, Launch critical, Add step/decision)");
   ok([...protoDetail.querySelectorAll('input[type="checkbox"]')].every(cb => cb.disabled), "step checkboxes are disabled when the quest is vaulted");
   ok(k.$("view").textContent.includes("No Quest giver.") && !k.$("view").textContent.includes("If filled, this information will appear on the Quest giver export."), "a vaulted quest page shows a plain Quest giver empty state with no editable-page description");
@@ -762,7 +738,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("renameBtn").hidden, "the pencil is only on quest pages");
 }
 {
-  // the Candidates list row's own name navigates to the candidate's page
+  // the Candidates list row's name navigates to the candidate's page
   const k = kit(await mk());
   k.tab("projects");
   k.click(k.btn(k.$("view"), "Sample Browser Extension"));
@@ -835,7 +811,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const split = k.d.querySelector("#view .questsplit");
   ok(!!split && !!split.querySelector(".questmain") && !split.querySelector(".questtop") && !split.querySelector(".questrest") && !!split.querySelector(".questcharts"), "an active quest's page has one content column and a Schedule/Timeline/Burndown column");
   ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Quest links,Notes,Quest giver", "the left column runs Tasks, Before you launch, Quest links, Notes, then Quest giver (" + [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() + ")");
-  ok(!split.querySelector(".pintoggle") && !split.querySelector(".pinbar"), "there is no Pin button on a quest's own page");
+  ok(!split.querySelector(".pintoggle") && !split.querySelector(".pinbar"), "there is no Pin button on a quest's page");
   ok(split.querySelector(".questmain").textContent.includes("Complete: 1 of 6 tasks | Backlog: 1 unscheduled task"), "the task-count line sits under the Tasks heading");
   const side = split.querySelector(".questcharts");
   ok([...side.querySelectorAll("h2")].map(h => h.textContent).join() === "Schedule,Timeline,Burndown,Stats", "the right column flows Schedule, Timeline, Burndown, then Stats, as one column");
@@ -846,11 +822,11 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!side.textContent.includes("not shown until scheduled") && !side.textContent.includes("The red line marks today"), "an unscheduled Backlog task is not drawn, and the Timeline has no caption under it");
   ok(side.querySelectorAll(".ms").length === 1 && /Run a beta with five friends/.test(side.querySelector(".ms").getAttribute("aria-label")), "the timeline shows only this quest's milestone");
   const svg = side.querySelector("svg.chart");
-  ok(/^Burndown chart for Sample App\./.test(svg.getAttribute("aria-label")), "the burndown is this quest's own");
+  ok(/^Burndown chart for Sample App\./.test(svg.getAttribute("aria-label")), "the burndown is this quest's");
   ok(svg.querySelectorAll(".dot").length === 3, "the actual line has its recorded weeks plus this week (" + svg.querySelectorAll(".dot").length + ")");
   ok(svg.querySelectorAll(".mark").length === 1 && svg.querySelectorAll("rect.hit").length >= 4, "a milestone marker and a hover column for each week are drawn");
   ok(!svg.querySelector("title"), "the chart has no native tooltips, which would double up with the new one and never reach a phone or keyboard");
-  ok(/Remaining: 4 of 5 tasks/.test(side.textContent), "the count line is this quest's own tasks");
+  ok(/Remaining: 4 of 5 tasks/.test(side.textContent), "the count line is this quest's tasks");
   // Expand opens both charts in a full-size dialog, and closing restores normal dialogs
   k.click(k.btn(side, "Expand"));
   const modal = k.d.querySelector("#overlay .modal");
@@ -864,7 +840,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.$("modalClose"));
 }
 {
-  // a quest's own history is recorded as it changes, and its chart reads it
+  // a quest's history is recorded as it changes, and its chart reads it
   const k = kit(await mk());
   const d = new Date(), todayKey = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
   k.tab("schedule");
@@ -879,10 +855,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(JSON.stringify(k.saved().quests.find(p => p.id === "pApp").hist[todayKey]) === "[5,3]", "changing a task back and forth keeps the day's record at its final counts");
 }
 {
-  // a Complete quest's burndown never leaves a gap for a week nothing was
-  // recorded -- its remaining count is unambiguously 0 from completion on,
-  // unlike an active quest's genuinely-unknown unrecorded past. Also exercises
-  // the pre-rename "projects"/"projectId" saved-data shape.
+  // A Complete quest's burndown has no gap for a week nothing was recorded, since its remaining count is 0 from completion on. Also exercises the old "projects"/"projectId" saved-data shape.
   const saved = {
     projects: [{ id: "pDoneGap", name: "Finished Long Ago", status: "complete", start: "2026-08-03", days: 7, hist: { "2026-08-10": [2, 1] } }],
     tasks: [
@@ -915,7 +888,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(before === "Est. 27 hours remaining" && after === "Est. 23 hours remaining", "completing a 4 h task lowers the open estimate (" + before + " -> " + after + ")");
   k.click(k.d.querySelector("#view .questmain .tlist button.item[aria-expanded='true']"));
   ok(!k.d.querySelector("#view .questmain .tlist:not(.sectionlist) .detail"), "clicking the open task again closes it");
-  // the launch checklist's own task row also opens the task in place, same as a regular Tasks row
+  // the launch checklist's task row also opens the task in place, same as a regular Tasks row
   const launchRow = [...k.d.querySelectorAll("#view .questmain .tlist.check button.item")].find(b => b.textContent.includes("Submit to the app store"));
   k.click(launchRow);
   ok(k.$("viewTitle").textContent === "Sample App" && !!k.d.querySelector("#view .questmain .tlist.check .detail"), "a task row in Before you launch opens that task in place");
@@ -965,7 +938,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(k.$("view"), "Quick"));
   const svg = k.d.querySelector("#view .questcharts svg.chart");
   const hits = svg.querySelectorAll("rect.hit").length;
-  ok(hits >= 5 && hits <= 7, "the quest's own chart is daily too (" + hits + " points for a 4-day schedule)");
+  ok(hits >= 5 && hits <= 7, "the quest's chart is daily too (" + hits + " points for a 4-day schedule)");
 }
 {
   // completing a launch task's last step counts like any other change: history is recorded and the quest can complete
@@ -1023,21 +996,21 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const slope = pts.some((p, i) => i > 0 && p[0] !== pts[i - 1][0] && p[1] !== pts[i - 1][1]);
   ok(!vertical && slope, "it ramps where scope changed (a slope, never a vertical step) and is level everywhere else");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
-  ok(!!k.d.querySelector("#view .questcharts polyline.scope") && [...k.d.querySelectorAll("#view .questcharts .legend span")].some(s => s.textContent === "Scope"), "a quest's own burndown draws its own In scope line too");
+  ok(!!k.d.querySelector("#view .questcharts polyline.scope") && [...k.d.querySelectorAll("#view .questcharts .legend span")].some(s => s.textContent === "Scope"), "a quest's burndown draws its own In scope line too");
   const ppts = k.d.querySelector("#view .questcharts polyline.scope").getAttribute("points").split(" ").map(p => p.split(",").map(Number));
   ok(ppts.some((p, i) => i > 0 && p[0] > ppts[i - 1][0] && p[1] < ppts[i - 1][1]), "and it ramps up where a task was added");
 }
 {
-  // New task from a quest's own page names the quest instead of offering a picker
+  // New task from a quest's page names the quest instead of offering a picker
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   k.click(k.btn(k.$("view"), "Add task"));
-  ok(!k.$("f-quest"), "no quest selector in the dialog opened from a quest's own page");
+  ok(!k.$("f-quest"), "no quest selector in the dialog opened from a quest's page");
   ok(k.$("modalBody").textContent.includes("Quest: Sample App"), "the quest is named instead (" + k.$("modalBody").textContent.slice(0, 80) + ")");
   k.setField("what", "Named quest test"); k.click(k.btn(k.$("modalBody"), "Add task"));
   ok(k.saved().tasks.find(t => t.what === "Named quest test").questId === "pApp", "it still saves to the right quest");
-  // the Main Menu's own New task keeps the real picker
+  // the Main Menu's New task keeps the real picker
   k.menuAct("newBtn", "newTask");
   ok(!!k.$("f-quest") && k.$("f-quest").tagName === "SELECT", "the Main Menu's New task still offers a quest picker");
 }
@@ -1133,7 +1106,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
       { id: "c2", name: "Write copy", desc: "", due: null, closed: false, idChecklists: [], idLabels: [], idMembers: [] },
       { id: "c3", name: "Old, skipped", desc: "", due: null, closed: true, idChecklists: [], idLabels: [], idMembers: [] }
     ],
-    // Real Trello exports put completion on the card's own checkItemStates
+    // Real Trello exports put completion on the card's checkItemStates
     // (by idCheckItem), not on the checklist's checkItems themselves.
     checklists: [{ id: "cl1", idCard: "c1", checkItems: [{ id: "ci1", name: "Pick palette" }, { id: "ci2", name: "Draft hero copy" }] }],
     labels: [{ id: "lab1", name: "Design", color: "blue" }],
@@ -1425,7 +1398,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!k.$("view").textContent.includes("Slip"), "Slip is no longer offered from Today's Overdue panel");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Behind Schedule"));
   const slipBtn = k.btn(k.$("view"), "Slip schedule");
-  ok(!!slipBtn, "a project's own page has a Slip schedule button");
+  ok(!!slipBtn, "a project's page has a Slip schedule button");
   k.click(slipBtn);
   k.$("slipDays").value = "7"; k.click(k.$("slipGo"));
   const tasksAfter = k.saved().tasks;
@@ -1514,7 +1487,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 }
 
 {
-  // the Gantt's own red today line is a real, labeled control with its own
+  // the Gantt's red today line is a real, labeled control with its own
   // tap-to-pin tooltip, same hover/tap/keyboard pattern as the burndown's points
   const k = kit(await mk());
   k.tab("timeline");
@@ -1723,16 +1696,13 @@ async function exportClick(k, projectName) {
   ok(html.includes("echarttip") && html.includes("svg.echart"), "embeds the chart renderer and tooltip markup");
   ok(!html.includes("Sample Finished Quest") && !html.includes("Sample Next Quest"), "quests not linked from the exported one are left out entirely");
   ok(html.includes("window.__sqExport"), "chart data is embedded as plain JSON, not live state");
-  // Real bug fixed 2026-10-09: the export's own Timeline drew only each task's
-  // status bar, never the pale block-band behind it, and computed a laneMilestones
-  // array that nothing ever drew -- both are real data for Sample App (a real
-  // milestone, real multi-day tasks), checked against the actual embedded JSON here.
+  // The export's Timeline draws the pale block band behind each task's status bar and draws the lane milestones, checked against the embedded JSON for Sample App.
   const exportData = JSON.parse(html.match(/window\.__sqExport\s*=\s*(\{.*?\});/s)[1]);
   const appCharts = exportData.charts["proj-pApp"];
-  ok(Array.isArray(appCharts.laneMilestones) && appCharts.laneMilestones.length === 1 && appCharts.laneMilestones[0].text === "Run a beta with five friends", "the exported Timeline's own chart data includes Sample App's real milestone task, with its own percent-of-range position");
+  ok(Array.isArray(appCharts.laneMilestones) && appCharts.laneMilestones.length === 1 && appCharts.laneMilestones[0].text === "Run a beta with five friends", "the exported Timeline's chart data includes Sample App's real milestone task, with its own percent-of-range position");
   ok(appCharts.lanes.length > 0 && appCharts.lanes.every((ln) => typeof ln.blkLeft === "number" && typeof ln.blkWidth === "number"), "every exported lane carries its own block-band position, not just its status bar");
-  ok(html.includes("'eblk'") || html.includes('"eblk"') || html.includes("eblk"), "the export's own runtime script actually draws the block band (eblk), not just computes its data");
-  ok(html.includes("'ems'") || html.includes('"ems"') || html.includes("data-label"), "the export's own runtime script actually draws milestone markers (ems), not just computes their data");
+  ok(html.includes("'eblk'") || html.includes('"eblk"') || html.includes("eblk"), "the export's runtime script actually draws the block band (eblk), not just computes its data");
+  ok(html.includes("'ems'") || html.includes('"ems"') || html.includes("data-label"), "the export's runtime script actually draws milestone markers (ems), not just computes their data");
 }
 {
   // Cycle guard: A -> B -> A is not expanded a second time, and the repeat
@@ -1774,7 +1744,7 @@ async function exportClick(k, projectName) {
     tasks: []
   };
   const { html, downloadName } = await exportClick(kit(await mk(saved)), "Full Notes Co.");
-  ok(html.includes(longNote), "the full, unclamped notes field is included even past the live app's own display clamp");
+  ok(html.includes(longNote), "the full, unclamped notes field is included even past the live app's display clamp");
   ok(/^full-notes-co-\d{4}-\d{2}-\d{2}\.html$/.test(downloadName), "the filename is the project's name, slugged, plus today's date (" + downloadName + ")");
 }
 {
@@ -1797,7 +1767,7 @@ async function exportClick(k, projectName) {
   const ids = xs => xs.map(x => x.id);
   ok(!ids(k.saved().quests).includes("pOld") && ids(k.saved().quests).includes("pNew"), "a 30-day threshold purges only the project vaulted more than 30 days ago");
   ok(!ids(k.saved().workshop).includes("iOld") && ids(k.saved().workshop).includes("iNew"), "and the idea vaulted more than 30 days ago, leaving the newer one");
-  ok(!ids(k.saved().tasks).includes("tOld"), "the purged project's own tasks go with it");
+  ok(!ids(k.saved().tasks).includes("tOld"), "the purged project's tasks go with it");
 }
 {
   const d = new Date(), n = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()), iso = k => new Date(n + k * 86400000).toISOString().slice(0, 10);
@@ -1837,10 +1807,7 @@ async function exportClick(k, projectName) {
   ok(!html.includes('class="eletterhead"'), "with no contact or Quest giver info filled in at all, no letterhead block is printed");
 }
 {
-  // Letterhead: Prepared by / Prepared for, and the positioning rules
-  // the user asked for -- no Prepared for when only the user's own info
-  // exists, and Prepared for alone (on the left) when only Quest giver
-  // info exists.
+  // Letterhead: no Prepared for when only the user's info exists, and Prepared for alone (on the left) when only Quest giver info exists.
   const saved = {
     settings: { contact: { name: "Ada Lovelace", company: "", phone: "", email: "", address: "", website: "" } },
     quests: [{ id: "pL", name: "Letterhead Quest", status: "active", start: "2026-08-03", days: 7, client: { org: "Acme Co.", poc: "Jordan Lee", phone: "", email: "", address: "", website: "" } }],
@@ -1879,7 +1846,7 @@ async function exportClick(k, projectName) {
     tasks: []
   };
   const { html } = await exportClick(kit(await mk(saved)), "Only User Info");
-  ok(html.includes("Prepared by") && !html.includes("Prepared for"), "with only the user's own info, Prepared for is left out entirely");
+  ok(html.includes("Prepared by") && !html.includes("Prepared for"), "with only the user's info, Prepared for is left out entirely");
 }
 {
   const saved = {
@@ -1901,7 +1868,7 @@ async function exportClick(k, projectName) {
   const client = k.saved().quests.find(q => q.id === "pApp").client;
   ok(client.org === "Acme Co." && client.poc === "Jordan Lee" && client.phone === "" && client.email === "" && client.address === "" && client.website === "", "Quest giver fields save live and round-trip, blank ones stay blank");
   k.$("giver-org-pApp").value = ""; k.fire(k.$("giver-org-pApp"), "input");
-  ok(k.saved().quests.find(q => q.id === "pApp").client.org === "", "clearing a Quest giver field saves right away, same as Settings' own contact fields");
+  ok(k.saved().quests.find(q => q.id === "pApp").client.org === "", "clearing a Quest giver field saves right away, same as Settings' contact fields");
 }
 {
   // Coin/Per: an optional per-quest pay-rate pair, saved alongside Quest
@@ -2009,10 +1976,7 @@ async function exportClick(k, projectName) {
   ok(!!k.d.querySelector("rect.burnreveal"), "coming back to the page draws the burndown in again");
 }
 {
-  // Completion FX gates the confetti burst on quest completion. The canvas
-  // element appears synchronously (before the animation itself runs on
-  // requestAnimationFrame), so checking for it right after Mark complete is
-  // enough to confirm the gate without needing a real animation loop.
+  // Completion FX gates the confetti burst. The canvas appears synchronously after Mark complete, so checking for it confirms the gate without running the animation loop.
   const k = kit(await mk({ quests: [{ id: "pFx", name: "FX Quest", status: "active" }], tasks: [] }));
   k.tab("projects"); k.click(k.btn(k.d.querySelector("#view"), "FX Quest"));
   k.click(k.btn(k.$("view"), "Mark complete"));
@@ -2038,13 +2002,7 @@ async function exportClick(k, projectName) {
   ok(!k.d.querySelector("canvas.confettiFx"), "Mark complete starts no confetti burst when Completion FX is off");
 }
 {
-  // The splash sound itself is commented out in app/splash.js pending more
-  // research (confirmed: a browser blocks play() called from a setTimeout
-  // even right after a real click, not just at boot with zero interaction --
-  // there's no timing fix for that). This just confirms it stays silent for
-  // now, so re-enabling it later is a deliberate, visible change to this
-  // test too, not a silent gap in coverage. mk() cancels the previous call's
-  // own splash timers before booting the next one (see lastAppModule above).
+  // The splash sound is disabled in app/splash.js because browsers block play() outside a real gesture. This confirms it stays silent, so re-enabling it is a visible change here too.
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   let played = null;
   const stub = function (src) { played = src; return { play: function () { return Promise.resolve(); } }; };
@@ -2087,7 +2045,7 @@ async function exportClick(k, projectName) {
 {
   // Promoting a candidate to a quest plays the quest sound, since that
   // click is a real user gesture a browser will actually allow audio from
-  // (unlike the splash's own setTimeout-driven moment -- see app/splash.js).
+  // (unlike the splash's setTimeout-driven moment -- see app/splash.js).
   const saved = { settings: { audio: true }, quests: [{ id: "pCand", name: "Candidate Quest", status: "candidate" }], tasks: [] };
   const k = kit(await mk(saved));
   let played = null;
@@ -2160,16 +2118,13 @@ async function exportClick(k, projectName) {
   ok(k.saved().settings.affirmationBucket.filter(n => n === 2).length <= 1, "a duplicate saved index is deduplicated on load");
 }
 {
-  // Running as the installed PWA (matchMedia display-mode: standalone) shows
-  // uninstall-only copy in Options, and a Refresh icon button in the top bar.
-  // Stubbed before boot (not after mk() returns), since app.js's own
-  // isStandaloneApp check reads matchMedia at module-eval time.
+  // Running as the installed PWA (display-mode: standalone) shows uninstall-only copy in Options and a Refresh button in the top bar. The matchMedia stub is installed before boot because app.js reads it at module evaluation.
   const standaloneMM = (q) => ({ matches: q === "(display-mode: standalone)", media: q, addListener() {}, removeListener() {} });
   const k = kit(await mk(null, null, null, null, standaloneMM));
   ok(!k.$("refreshBtn").hidden, "the top-bar Refresh button is shown while running standalone");
   k.tab("settings");
   const box = k.$("view");
-  ok(box.textContent.includes("To uninstall Sidequest, open the title bar menu and select Uninstall Sidequest...") && !box.textContent.includes("chrome://apps"), "running standalone points to the app window's own menu for uninstalling");
+  ok(box.textContent.includes("To uninstall Sidequest, open the title bar menu and select Uninstall Sidequest...") && !box.textContent.includes("chrome://apps"), "running standalone points to the app window's menu for uninstalling");
   ok(!box.textContent.includes("Install Sidequest as an app") && !box.textContent.includes("already installed as an app, or your browser does not show an Install button"), "the normal install-prompt and unsupported-browser copy are not shown while standalone");
   ok(!box.textContent.includes("Refresh"), "Options itself no longer offers a Refresh button -- it moved to the top bar");
 }
@@ -2389,7 +2344,7 @@ async function exportClick(k, projectName) {
 }
 
 {
-  // Date rules and their messages, including a quest's own due date as a ceiling for its tasks
+  // Date rules and their messages, including a quest's due date as a ceiling for its tasks
   const saved = {
     quests: [{ id: "pT", name: "Dates", status: "active", start: "2026-08-03", days: 7, due: "2026-08-31" }],
     tasks: [{ id: "t1", block: 2, questId: "pT", what: "Dated task", done: "done", status: "Not started", steps: [] }]
@@ -2400,7 +2355,7 @@ async function exportClick(k, projectName) {
   const tryTask = (due, start) => { k.menuAct("newBtn", "newTask"); k.setField("quest", "pT"); k.setField("what", "Probe"); k.setField("due", due || ""); k.setField("start", start || ""); k.click(k.btn(k.$("modalBody"), "Add task")); const ms = [...k.$("modalBody").querySelectorAll("p.msg")].filter(x => x.textContent); const m = ms[0]; return m ? m.textContent : ""; };
   ok(tryTask("2026-07-20") === "This quest starts Aug 3, 2026. Pick a due date on or after that.", "a due date before the quest starts says when the quest starts");
   k.click(k.btn(k.$("modalBody"), "Cancel"));
-  ok(tryTask("2026-09-10") === "This quest is due Aug 31, 2026. Choose a due date on or before then.", "a due date after the quest's own due date is refused with that date");
+  ok(tryTask("2026-09-10") === "This quest is due Aug 31, 2026. Choose a due date on or before then.", "a due date after the quest's due date is refused with that date");
   k.click(k.btn(k.$("modalBody"), "Cancel"));
   ok(tryTask("2026-08-20", "2026-07-20") === "This quest starts Aug 3, 2026. Pick a start date on or after that.", "a start date before the quest starts says when the quest starts");
   k.click(k.btn(k.$("modalBody"), "Cancel"));
@@ -2503,7 +2458,7 @@ async function exportClick(k, projectName) {
   k.tab("projects");
   ok(JSON.stringify([...k.d.querySelectorAll("#view h2")].map(h => h.textContent)) === JSON.stringify(["Candidate quests"]) && !k.$("view").textContent.includes("Dated candidate task"), "the Quests page does not put the Candidate quest in progress");
   k.click(k.btn(k.$("view"), "Fleshing out"));
-  ok(k.$("view").textContent.includes("Dated candidate task"), "the Candidate quest's own page lists its tasks");
+  ok(k.$("view").textContent.includes("Dated candidate task"), "the Candidate quest's page lists its tasks");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Promote"));
   ok(k.saved().quests[0].status === "active" && k.saved().tasks.find(t => t.what === "Dated candidate task").added === "", "promoting it makes the quest active, and its tasks were part of the plan from the start (no Added tag)");
   k.tab("schedule");
@@ -2613,7 +2568,7 @@ async function exportClick(k, projectName) {
   k.tab("timeline");
   ok(!!k.d.querySelector("#view .chart line.forecast") && [...k.d.querySelectorAll("#view .legend span")].some(s => s.textContent === "Forecast"), "the global burndown draws a forecast line and lists it in the legend");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
-  ok(!!k.d.querySelector("#view .questcharts .chart line.forecast"), "a quest's own burndown draws it too");
+  ok(!!k.d.querySelector("#view .questcharts .chart line.forecast"), "a quest's burndown draws it too");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Website"));
   ok(!k.d.querySelector("#view .questcharts .chart line.forecast"), "a quest that has not started yet has no projection");
   const raw = JSON.parse(k.w.localStorage.getItem("sidequest-template-v1"));
@@ -2818,7 +2773,7 @@ async function exportClick(k, projectName) {
   ok(k.d.querySelector(".tutorial").textContent.includes("Add a quest") && !!k.$("tutorialSkip"), "Next moves to the first action step, which can be skipped");
   const lit = k.d.querySelector(".tutorialtarget");
   ok(!!lit && lit.classList.contains("tutorialflash"), "a step's first highlight flashes once");
-  ok(k.d.querySelector(".tutorial").classList.contains("tutorialflash"), "the card's own ring flashes on each step");
+  ok(k.d.querySelector(".tutorial").classList.contains("tutorialflash"), "the card's ring flashes on each step");
   k.click(k.$("tutorialSkip"));
   ok(!k.d.querySelector(".tutorial"), "Skip tutorial removes the card");
 }
@@ -2862,6 +2817,18 @@ async function exportClick(k, projectName) {
   await launch();
   ok(store["meta/quotes"].bucket.length === AFFIRMATIONS.length - 1, "then a fresh shuffled cycle starts");
   ok(Object.keys(store["meta/quotes"]).join() === "bucket", "the quote document holds only the bucket, no sync stamp");
+}
+// A held, instant splash (the landing site's Welcome card) shows its last frame at once and stays.
+{
+  const k = kit(await mk({ settings: { showSplash: false } }));
+  const { playSplash } = await import("../app/splash.js");
+  const root = k.$("splash"); root.hidden = false;
+  const picks = [];
+  playSplash(true, null, false, (n) => { picks.push(n); return 2; }, { hold: true, instant: true });
+  const paths = root.querySelectorAll("#splashLines path");
+  ok(!root.hidden && root.classList.contains("artBlurred") && root.classList.contains("textIn"), "an instant held splash shows its last frame at once and stays visible");
+  ok(paths.length > 0 && root.querySelectorAll("#splashLines path.drawn").length === paths.length, "with every branch drawn");
+  ok(picks.length === 1 && k.$("splashText").textContent.length > 0, "and a quote chosen through pickIndex");
 }
 // scrollTop zeroes every scroller, scrolls the app's top into view, and repeats after paint.
 {

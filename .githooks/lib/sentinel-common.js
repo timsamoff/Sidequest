@@ -1,7 +1,4 @@
-// Sentinel gate-check shared helpers.
-// Used by both the commit-msg/pre-commit hooks and the manual sentinel-check.js runner.
-// Node, no dependencies (project has none at runtime and this must run inside a git hook
-// with no npm install guarantee at commit time).
+// Shared helpers for the commit hooks and the manual sentinel-check.js runner. Plain Node with no dependencies, since a hook cannot assume npm install.
 
 "use strict";
 const { execFileSync } = require("child_process");
@@ -37,19 +34,12 @@ function stagedDiff(filePath) {
   }
 }
 
-// Normalizes CRLF -> LF. This project's working tree is checked out with CRLF
-// line endings on Windows (git's core.autocrlf conversion) -- any regex that
-// anchors on a literal "\n" boundary (e.g. "find the line ending a function body")
-// silently fails to match against "\r\n" content otherwise. Every function in this
-// module that hands back raw file/diff text normalizes through this first, so
-// every downstream check (and check-pre-commit.js's own extraction regexes) can
-// assume LF-only content without each one having to remember to normalize itself.
+// Normalizes CRLF to LF, because the working tree is CRLF on Windows and regexes anchored on newlines would otherwise silently miss.
 function normalizeNewlines(text) {
   return text === null || text === undefined ? text : text.replace(/\r\n/g, "\n");
 }
 
-// Content of a path as it is STAGED (the index), not the working tree.
-// Returns null if the path does not exist in the index (e.g. it was deleted).
+// Content of a path as staged in the index, or null if it is not in the index.
 function stagedContent(filePath) {
   try {
     return normalizeNewlines(execFileSync("git", ["show", ":" + filePath], { encoding: "utf8" }));
@@ -62,11 +52,7 @@ function isStaged(filePath) {
   return stagedFiles().some((f) => f.path === filePath);
 }
 
-// --- Gitignored-file access (mtime/disk, never git) ---
-// CLAUDE.md and everything under Sentinel-Notes/ are gitignored per this project's
-// local-only decision. A git-based read (`git show :<path>`, `git diff --cached`)
-// structurally cannot see their content, staged or not, so any check needing their
-// current state must read the filesystem directly.
+// Gitignored-file access: CLAUDE.md and Sentinel-Notes/ are gitignored, so git cannot show their content and checks that need it read the filesystem directly.
 
 function diskMTimeMs(relPath) {
   try {
@@ -112,9 +98,7 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Returns the matching, still-valid exception entry for a rule+scope, or null.
-// scope is matched as an exact string (content-keyed, e.g. a file path or a specific
-// identifier) -- never a line number or position, per the "don't key to position" rule.
+// Returns the still-valid exception entry for a rule and scope, or null. Scope is an exact string such as a file path, never a line number.
 function findException(rule, scope) {
   const today = todayISO();
   const entries = loadExceptions();

@@ -31,14 +31,11 @@ export function liveQuests() { return live(state.quests); }
 export function activeQuests() { return liveQuests().filter(function (p) { return p.status === "active"; }); }
 export function candidateQuests() { return liveQuests().filter(function (p) { return p.status === "candidate"; }); }
 export function completeQuests() { return liveQuests().filter(function (p) { return p.status === "complete"; }); }
-// A Complete-but-not-vaulted quest's tasks drop out of every cross-quest
-// surface (Tasks, Today, the burndown/Timeline), reversible the instant its status changes back.
-// A Candidate quest's tasks are not counted anywhere across quests (Today, Tasks, Timeline,
-// the burndown) until it is promoted, dates or not; they show on the quest's own page.
+// A Candidate quest's tasks count nowhere across quests (Today, Tasks, Timeline, burndown) until it is promoted; they still show on its own page.
 export function isCandidateTask(t) { var p = findQuest(t.questId); return !!p && p.status === "candidate" && !p.vault; }
 export function isHiddenFromPlan(t) { return isHiddenComplete(t) || isCandidateTask(t); }
 export function isHiddenComplete(t) { var p = findQuest(t.questId); return !!p && p.status === "complete" && !p.vault; }
-// Searches every quest, vaulted or not -- a vaulted quest's own page
+// Searches every quest, vaulted or not -- a vaulted quest's page
 // must stay reachable, read-only, until restored.
 export function findQuest(id) { for (var i = 0; i < state.quests.length; i++) if (state.quests[i].id === id) return state.quests[i]; return null; }
 export function findAnyQuest(id) { return findQuest(id); }
@@ -64,7 +61,7 @@ export function unlinkQuests(aId, bId) {
   if (a) a.linkedQuestIds = a.linkedQuestIds.filter(function (id) { return id !== bId; });
   if (b) b.linkedQuestIds = b.linkedQuestIds.filter(function (id) { return id !== aId; });
 }
-// A quest's own due date, as ms, or null when it has none; its tasks' due dates may not pass it.
+// A quest's due date, as ms, or null when it has none; its tasks' due dates may not pass it.
 export function questDueLimit(questId) { var p = findQuest(questId); return p && p.due ? parseISO(p.due) : null; }
 // Problems with a start and due date pair for a quest, one message per field ("" when fine). Used live while typing, so a date whose year is still being typed (before 1900) is skipped.
 export function dateProblems(questId, start, due) {
@@ -82,14 +79,14 @@ export function offsetFor(questId, n) { return n * pset(questId).days; }
 export function blockStartFor(questId, b) { return addDays(parseISO(pset(questId).start), offsetFor(questId, b - 1)); }
 export function blockEndFor(questId, b) { return addDays(parseISO(pset(questId).start), offsetFor(questId, b) - 1); }
 // The inverse of blockStartFor/blockEndFor: which block a given date falls in,
-// so a task can be scheduled by picking a due date. Null before the quest's own start.
+// so a task can be scheduled by picking a due date. Null before the quest's start.
 export function blockForDate(questId, dateMs) {
   var eff = pset(questId), start = parseISO(eff.start);
   if (dateMs < start) return null;
   return Math.floor((dateMs - start) / (eff.days * DAY)) + 1;
 }
 export function projKey(t) { return t.questId; }
-// A task's own start/due dates, when set, are the truth; otherwise it fills its
+// A task's start/due dates, when set, are the truth; otherwise it fills its
 // block. Its block is always the one containing its due date (see syncTaskBlocks).
 export function taskStart(t) { return t.start ? parseISO(t.start) : blockStartFor(projKey(t), t.block); }
 export function taskEnd(t) { return t.due ? parseISO(t.due) : blockEndFor(projKey(t), t.block); }
@@ -167,10 +164,7 @@ export function globalActual(cps) {
 
 /* task helpers */
 export function counted() { return state.tasks.filter(function (t) { return !t.vault || t.vault.why === "done"; }); }
-// A vaulted quest's own page shows every one of its tasks regardless of
-// their own vault state (the quest-vault cascade vaults them too), since the
-// page's own readOnly gate already governs editability -- counted()/live()
-// are for cross-quest lists and would wrongly hide them here.
+// A vaulted quest's page shows all its tasks regardless of their own vault state; counted()/live() are for cross-quest lists and would hide them here.
 export function questTasks(questId) { return state.tasks.filter(function (t) { return t.questId === questId; }); }
 // The "chosen" quest is the first active one with no tasks yet. If two are
 // both task-less, whichever was promoted first wins.
@@ -214,8 +208,8 @@ export function velocityForecast(tasks, blockDays, sinceMs) {
   var rate = done / windowDays;
   return { open: open, done: done, rate: rate, windowDays: windowDays, finish: TODAY + Math.ceil(open / rate) * DAY };
 }
-// --- One quest's own burndown ---
-// From counted(), not burnTasks() -- a Complete quest's own page keeps
+// --- One quest's burndown ---
+// From counted(), not burnTasks() -- a Complete quest's page keeps
 // showing its burndown even while its tasks are hidden cross-quest.
 export function questBurnTasks(p) { return counted().filter(function (t) { return t.block > 0 && t.questId === p.id; }); }
 export function questTotalUnits(p) { return questBurnTasks(p).length; }
@@ -257,7 +251,7 @@ export function syncFromSteps(t) {
 }
 export function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Completed") return o[i]; return null; }
 export function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
-// "quest:" + id routes to a quest's own page -- id-based, not name-based, so
+// "quest:" + id routes to a quest's page -- id-based, not name-based, so
 // renaming a quest never breaks its pin or an in-flight link to it.
 export function validPage(key) {
   if (typeof key !== "string" || key.indexOf("quest:") !== 0) return false;
@@ -293,8 +287,8 @@ export function findStep(id) {
 }
 export function decisionFor(stepId) { var ds = live(state.decisions); for (var i = 0; i < ds.length; i++) if (ds[i].step === stepId) return ds[i]; return null; }
 export function short(str, n) { return str.length > n ? str.slice(0, n - 1) + "…" : str; }
-// Tasks flagged for a quest's own launch checklist -- renders as a section on
-// that quest's own page (no separate global Launch page anymore).
+// Tasks flagged for a quest's launch checklist -- renders as a section on
+// that quest's page (no separate global Launch page anymore).
 export function launchItems(questId) {
   return sortTasks(questTasks(questId).filter(function (t) { return t.launch; }));
 }
@@ -318,7 +312,7 @@ export function stepOptions(questId) {
   });
   return o;
 }
-// One task's own steps, for the Quest -> Task -> Step cascade in decisionDialog().
+// One task's steps, for the Quest -> Task -> Step cascade in decisionDialog().
 export function stepOptionsForTask(taskId) {
   var t = findTask(taskId);
   if (!t) return [];

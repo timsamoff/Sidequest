@@ -16,13 +16,11 @@ export function helpLink(id, name) {
   b.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); if (helpOpener) helpOpener(id); });
   return b;
 }
-// True when the page is running as a Claude artifact (Claude's own capabilities are present).
+// True when the page is running as a Claude artifact (Claude's capabilities are present).
 export function inClaude() {
   try { return !!(window.claude && typeof window.claude.use === "function"); } catch (e) { return false; }
 }
-// True when Sidequest runs as a hosted artifact: inside Claude (its tools are present) or in any
-// other host that sets window.sidequestHosted = true. Wording about where data lives, and the
-// web-only features (Install box, backup reminder), follow this. Claude-only abilities use inClaude().
+// True when running as a hosted artifact: inside Claude, or any host that sets window.sidequestHosted. Wording about where data lives and the web-only features follow this; Claude-only abilities use inClaude().
 export function isHosted() {
   try { return inClaude() || window.sidequestHosted === true; } catch (e) { return false; }
 }
@@ -37,9 +35,7 @@ export function playSfx(src, volume) {
     if (p && typeof p.catch === "function") p.catch(function () {});
   } catch (e) { /* no audio support */ }
 }
-// Money fields work like a cash register: digits fill in from the cents, and the
-// separators are added as you type. The cap is 999,999.99. `style` is "us"
-// (1,234.56) or "eu" (1.234,56); it is the Options "Coin format" setting.
+// Cash-register money input: digits fill in from the cents, capped at 999,999.99. `style` is "us" or "eu" from the Options Coin format setting.
 function moneySeps(style) { return style === "eu" ? { group: ".", dec: "," } : { group: ",", dec: "." }; }
 export function formatMoney(n, style) {
   if (typeof n !== "number" || isNaN(n) || n <= 0) return "";
@@ -93,8 +89,7 @@ export function pencilButton(label, title, onClick) {
   if (onClick) on(b, "click", onClick);
   return b;
 }
-// Turns the text in `display` into an input in place. Enter or clicking away saves,
-// Esc cancels. onDone runs first (so callers can restore their pencil), then onSave.
+// Turns `display` into an input in place; Enter or clicking away saves, Esc cancels. onDone runs before onSave.
 export function editInline(display, opts) {
   var input = el("input", { type: "text", "class": "inlineedit", "aria-label": opts.label, maxlength: String(opts.max || 200), autocomplete: "off" });
   input.value = opts.value();

@@ -1,26 +1,5 @@
 #!/usr/bin/env node
-// Builds the single-file Claude Artifact version from the same app/*.js and
-// css/*.css sources the web app uses. Not a general bundler: this project's
-// module graph is small, closed, and dependency-free (no npm packages, only
-// relative imports between app/*.js), so scope-safe concatenation in
-// dependency order plus a stripped storage layer is enough -- see DESIGN.md's
-// "Claude Artifact parity version" section for why a real bundler was
-// deliberately not introduced.
-//
-// Every app/*.js file uses only `function`/`var` declarations (confirmed:
-// zero arrow functions, zero top-level const/let), which are hoisted --
-// concatenation order does not affect correctness for declarations. The one
-// real ordering constraint is dialogs.js's top-level DOM wiring
-// (on($("modalClose"), ...)), which needs dom.js's functions (hoisted, order-
-// safe) AND real DOM elements from index.html to already exist -- satisfied
-// by keeping the bundled <script> at the end of <body>, same as today.
-//
-// STORAGE SWAP: this script does not yet implement the db-backed adapter
-// (see TODO.md's artifact-parity-storage-adapter item) -- state.js's
-// load()/save() are concatenated as-is, unmodified, until that lands.
-// Running this build today produces a single-file app that still calls
-// window.localStorage, not window.claude.use("db"). That swap is the next
-// piece of work, not yet done.
+// Builds the single-file artifact from the same app/*.js and css/*.css sources: concatenation in dependency order plus a stripped storage layer, not a bundler. Only function/var declarations are used (hoisted), so order barely matters; see CLAUDE.md's Two distribution targets entry.
 
 const fs = require("fs");
 const path = require("path");
@@ -30,20 +9,7 @@ const APP_DIR = path.join(ROOT, "app");
 const OUT_DIR = path.join(ROOT, "Sidequest-Artifact");
 const OUT_FILE = path.join(OUT_DIR, "sidequest.html");
 
-// A published artifact has no assets/ directory alongside it -- index.html's
-// relative favicon/apple-touch-icon <link> tags (assets/sidequest-icon.svg
-// etc.) silently fail to resolve there (confirmed 2026-09-23: Claude's own
-// publish step noticed this and substituted an emoji favicon as a stopgap).
-// Fix: extract the existing inline #sqLogo <symbol> markup from index.html
-// (the same artwork used for the in-app nav logo) and re-emit it as a
-// standalone, self-contained SVG data URI for the favicon link -- generated
-// from the one real source at build time, not a second hand-maintained copy.
-// The symbol's fill/stroke values are CSS custom properties (var(--planned)
-// etc.), which cannot resolve in a favicon's own detached rendering context
-// (no stylesheet applies there) -- substituted with the light-theme hex
-// values from css/tokens.css, matching the deliberate choice already made
-// for the repo-only assets/sidequest-icon.svg favicon file: a favicon is a
-// fixed brand mark with no theme context, not a themed UI element.
+// A published artifact has no assets/ folder, so the favicon is rebuilt from index.html's #sqLogo symbol as a self-contained SVG data URI at build time, with the CSS variables replaced by light-theme hex values.
 var FAVICON_TOKEN_VALUES = { est: "#B9CCE0", planned: "#2F5D8A", surface: "#FFFFFF", burn: "#C62F2F" };
 
 function buildFaviconDataUri(html) {
@@ -58,11 +24,7 @@ function buildFaviconDataUri(html) {
   return "data:image/svg+xml;base64," + Buffer.from(svg, "utf8").toString("base64");
 }
 
-// Dependency order, hand-verified against each file's own `import` lines
-// (see the comment above: hoisting makes exact order mostly irrelevant for
-// declarations, but this order still matches the real dependency graph for
-// clarity and so file-level top-level side effects, like dialogs.js's DOM
-// wiring, run after everything they depend on).
+// Dependency order, matching each file's imports; hoisting makes it mostly irrelevant for declarations, but top-level side effects (dialogs.js DOM wiring) must run after what they depend on.
 const MODULE_ORDER = [
   "dates.js",
   "dom.js",
@@ -84,19 +46,14 @@ function stripModuleSyntax(source, filename) {
   (source.match(/^import\s*\{[\s\S]*?\}\s*from/gm) || []).forEach(function (imp) {
     if (/\sas\s/.test(imp)) throw new Error("build-artifact: aliased import in " + filename + ": " + imp.split(String.fromCharCode(10)).join(" ") + " -- import the real name; the single-file build cannot rename imports.");
   });
-  // Drop every import statement, single-line or multi-line (some destructuring
-  // lists in this codebase, e.g. dialogs.js/views.js, span several lines).
-  // Matches `import {` ... `} from "...";` non-greedily across newlines.
+  // Drop every import statement, including multi-line destructuring lists.
   var withoutImports = source.replace(/^import\s*\{[\s\S]*?\}\s*from\s*["'][^"']+["'];?\s*$/gm, "");
 
   var lines = withoutImports.split("\n");
   var out = [];
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
-    // Strip a leading "export " from function/var declarations, keep the rest
-    // of the line as-is. This codebase only ever exports functions and vars
-    // at the top level (confirmed: no `export default`, no `export {...}`
-    // re-export lists, no `export class`).
+    // Strip a leading "export " from function and var declarations; the codebase exports only those at top level.
     var stripped = line.replace(/^export\s+(function|var)\s/, "$1 ");
     if (stripped !== line && !/^(function|var)\s/.test(stripped)) {
       throw new Error("build-artifact: unexpected export form in " + filename + " at line " + (i + 1) + ": " + line);
@@ -111,13 +68,7 @@ function stripModuleSyntax(source, filename) {
   return out.join("\n");
 }
 
-// Sound effects are referenced in app/*.js as plain relative paths
-// ("assets/sfx/....mp3"), which don't resolve on a published artifact with
-// no adjacent assets/ folder -- same problem the favicon had. Fixed the same
-// way: each literal string reference in the bundled JS is swapped for a
-// variable name, with one real `var SFX_...` declaration holding the actual
-// base64 data URI -- a file referenced from more than one call site (the
-// quest sound currently is) is only embedded once, not once per reference.
+// Sound effects are relative asset paths that do not resolve in a published artifact, so each reference becomes a variable and one var SFX_... declaration holds the base64 data URI, embedded once however many call sites use it.
 var SFX_FILES = {
   "assets/sfx/quest.mp3": "SFX_QUEST", "assets/sfx/complete.mp3": "SFX_COMPLETE",
   "assets/sfx/refresh.mp3": "SFX_REFRESH", "assets/sfx/restoreBackup.mp3": "SFX_RESTORE_BACKUP",
@@ -139,6 +90,7 @@ function build() {
 
   var tokens = fs.readFileSync(path.join(ROOT, "css", "tokens.css"), "utf8");
   var styles = fs.readFileSync(path.join(ROOT, "css", "styles.css"), "utf8");
+  var splashCss = fs.readFileSync(path.join(ROOT, "css", "splash.css"), "utf8");
 
   var scriptParts = [];
   MODULE_ORDER.forEach(function (name) {
@@ -152,13 +104,7 @@ function build() {
   }).join("\n");
   var bundledScript = "(function () {\n\"use strict\";\n" + sfxVarDecls + "\n" + scriptParts.join("\n\n") + "\n})();\n";
 
-  // A literal "</script" anywhere in the bundled text (e.g. export.js's own
-  // runtime-embedding string) closes the outer <script> tag early once this
-  // is dropped into HTML, truncating the rest of the bundle -- the artifact
-  // then fails to parse at all ("Unexpected end of input"), frozen on the
-  // splash since nothing after that point ever runs. Breaking up the sequence
-  // is safe wherever it occurs inside a JS string (the only place it should
-  // ever appear in source); it has no other valid meaning in this bundle.
+  // Break up any literal </script sequence in the bundle, because it would close the outer script tag early and truncate the artifact; this is safe inside JS strings, the only place it appears.
   bundledScript = bundledScript.replace(/<\/script/gi, "<\\/script");
 
   Object.keys(SFX_FILES).forEach(function (relPath) {
@@ -184,8 +130,8 @@ function build() {
       function () { return '<link rel="icon" type="image/svg+xml" href="' + faviconDataUri + '">'; }
     )
     .replace(
-      /<link rel="stylesheet" href="css\/tokens\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="css\/styles\.css(?:\?v=[0-9.]+)?">/,
-      function () { return "<style>\n" + tokens + "\n" + styles + "\n</style>"; }
+      /<link rel="stylesheet" href="css\/tokens\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="css\/styles\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="css\/splash\.css(?:\?v=[0-9.]+)?">/,
+      function () { return "<style>\n" + tokens + "\n" + styles + "\n" + splashCss + "\n</style>"; }
     )
     .replace(
       /<script type="module" src="app\/app\.js"><\/script>/,

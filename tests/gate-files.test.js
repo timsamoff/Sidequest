@@ -13,7 +13,7 @@ ok(onDisk.every(f => pre.SOURCE_FILES.includes(f)), "SOURCE_FILES covers every a
 ok(onDisk.every(f => pre.HEX_SCAN_FILES.includes(f)), "HEX_SCAN_FILES covers every app/*.js module");
 ok(pre.SOURCE_FILES.includes("app/splash.js") && pre.SOURCE_FILES.includes("app/dates.js"), "the two modules that used to be missing are included");
 ok(pre.SOURCE_FILES.includes("index.html"), "index.html is still checked");
-ok(pre.HEX_SCAN_FILES.includes("css/tokens.css") && pre.HEX_SCAN_FILES.includes("css/styles.css"), "both stylesheets are still hex-scanned");
+ok(pre.HEX_SCAN_FILES.includes("css/tokens.css") && pre.HEX_SCAN_FILES.includes("css/styles.css") && pre.HEX_SCAN_FILES.includes("css/splash.css"), "all three stylesheets are still hex-scanned");
 ok(JSON.stringify(pre.appModules()) === JSON.stringify(onDisk.slice().sort()), "appModules() returns the sorted app/*.js list");
 
 console.log(fails ? "\n" + fails + " FAILED" : "\nALL PASSED");

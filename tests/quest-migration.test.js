@@ -1,11 +1,4 @@
-// Round-trip test for the Project -> Quest data-shape rename. Constructs an
-// OLD-shaped saved object by hand (state.projects, task.projectId,
-// p.linkedProjectIds, "proj:" pins) exactly as a real user's save would look
-// before this rename, loads it through the real normalize() via a full boot,
-// and asserts every quest/link/pin survived under its new field name with no
-// data loss. The fixture's own old-shaped milestones[] array (from before
-// milestones became a task flag) is left in place as real historical save
-// data but asserts nothing -- that entity is gone, not migrated.
+// Round-trip test for the Project to Quest rename: an old-shaped save (state.projects, task.projectId, p.linkedProjectIds, "proj:" pins) is loaded through the real normalize() and every quest, link, and pin must survive under its new name.
 const { JSDOM } = require("jsdom");
 const fs = require("fs");
 const path = require("path");

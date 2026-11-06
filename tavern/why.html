@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sidequest: Why I made it</title>
+<meta name="description" content="A lightweight project planner for juggling several projects.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#4F3416" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#4D3428" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="Sidequest">
+<meta property="og:description" content="A lightweight project planner for juggling several projects.">
+<meta property="og:image" content="https://samoff.com/Sidequest/assets/sidequest-icon-512.png">
+<meta property="og:url" content="https://samoff.com/Sidequest/tavern/why.html">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/svg+xml" href="../assets/sidequest-icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
+<link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600&family=Public+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="tavern.css">
+<script>document.documentElement.className+=" js";try{var t=localStorage.getItem("sidequest-landing-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="sqLogo" viewBox="0 0 512 512">
+    <defs>
+      <clipPath id="sqLogoClip">
+        <rect width="512" height="512" rx="112"/>
+      </clipPath>
+    </defs>
+    <rect width="512" height="512" rx="112" fill="var(--est)"/>
+    <g clip-path="url(#sqLogoClip)">
+      <path d="M115.88-30.43l30.33,154.2" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M102.47,177.65l-23.25,4.57c-36.81,7.24-51.6,29.27-44.36,66.08l28.7,145.94" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M207.09,157.08l52.31-10.29c34.87-6.86,55.74,7.15,62.6,42.02l9.64,49.01" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M295.51,299.68l-23.25,4.57c-25.19,4.95-35.3,20.02-30.35,45.21l19.38,98.53" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M388.51,281.39l29.06-5.72c32.94-6.48,52.64,6.75,59.12,39.69l4,20.34" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="154.78" cy="167.37" r="53.31" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/>
+      <circle cx="342.01" cy="290.53" r="47.39" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/>
+      <rect x="31.22" y="387.08" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-80.82 21.45) rotate(-11.13)" fill="var(--planned)"/>
+      <rect x="227.98" y="435.92" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-86.54 60.34) rotate(-11.13)" fill="var(--planned)"/>
+      <rect x="432.89" y="334.59" width="118.48" height="118.48" rx="9" ry="9" transform="translate(-109.15 582.92) rotate(-56.13)" fill="var(--burn)"/>
+    </g>
+  </symbol>
+</svg>
+<header class="band">
+  <div class="wrap headgrid">
+    <a class="brand" href="index.html"><svg aria-hidden="true" focusable="false"><use href="#sqLogo"/></svg><span>Sidequest</span></a>
+    <button class="menubtn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="mainNav"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="mb-open" d="M4 7h16M4 12h16M4 17h16"/><path class="mb-close" d="M6 6l12 12M18 6L6 18"/></svg><span class="menulabel">Menu</span></button>
+    <nav class="topnav" id="mainNav" aria-label="Main">
+      <ul>
+        <li><a href="index.html">Welcome</a></li>
+        <li><a href="why.html" aria-current="page">Why I made it</a></li>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="get-started.html">Get started</a></li>
+        <li><a href="import.html">Import</a></li>
+        <li><a href="artifact.html">Use as artifact</a></li>
+      </ul>
+    </nav>
+    <button class="themebtn" id="themeToggle" type="button" hidden>Auto</button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<div class="pagehead">
+  <div class="wrap">
+    <p class="kicker">From behind the bar</p>
+    <h1 id="top-title">Why I made it</h1>
+  </div>
+</div>
+<section class="section" id="about" aria-labelledby="top-title">
+  <div class="wrap">
+    <div class="split">
+      <div class="prose">
+    <p>I wanted something simple. Something that would help me keep track of multiple projects, organize tasks, figure out what I should be working on, and actually get things done. I didn’t want to spend more time managing my projects than working on them.</p>
+    <p>So I made Sidequest.</p>
+    <p>Sidequest is a lightweight, easy-to-use project management system. There’s no complicated process to learn, no particular way you’re expected to work, and no elaborate system to maintain. Just organize your projects, add some tasks, and get to work.</p>
+    <p>Learning how to use Sidequest takes about a minute. There’s a quick tutorial to show you around, and then you’re on your own… in a good way.</p>
+    <p>If you’re already using Trello or Todoist, you can import your existing projects and tasks into Sidequest. And if you don’t need anything fancy, Sidequest works just as well as a simple to-do list.</p>
+    <p>You can use Sidequest wherever you want. Run it right in your browser, or install it as a Progressive Web App (PWA) for offline access. The browser and PWA versions save your data locally, and won’t sync between devices. You can also use Sidequest as a Claude or Muse Artifact, which saves your data to your account and makes it available across all of your devices. Claude and Muse operate independently, so choose one.</p>
+    <p>Sidequest has plenty of features to help you organize and keep track of your work, but you don’t have to use all of them. Use as much or as little as you need. It’s your system.</p>
+    <p>So give Sidequest a try! It’s free, and maybe it’ll become your new favorite way to keep track of all your side quests.</p>
+      </div>
+      <figure class="shot side"><div class="shotframe" role="img" aria-label="Screenshot placeholder: Quest page"><span class="shotlabel">Screenshot</span><span class="shotname">Quest page</span></div></figure>
+    </div>
+  </div>
+</section>
+</main>
+<footer class="band footband">
+  <div class="wrap footrow">
+    <p class="legal" data-parity="license">© <a href="https://samoff.com">Tim Samoff</a>. Licensed under <a href="https://github.com/timsamoff/Sidequest/blob/main/LICENSE">GPLv3</a>.</p>
+    <div class="footlinks">
+      <a class="supportlink" href="https://www.paypal.com/paypalme/timsamoff" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="2" x2="6" y2="4"></line><line x1="10" y1="2" x2="10" y2="4"></line><line x1="14" y1="2" x2="14" y2="4"></line></svg><span>Support Sidequest<span class="sr"> (opens in a new tab)</span></span></a>
+      <a href="https://github.com/timsamoff/Sidequest">Source on GitHub</a>
+    </div>
+  </div>
+</footer>
+<script src="tavern.js"></script>
+</body>
+</html>

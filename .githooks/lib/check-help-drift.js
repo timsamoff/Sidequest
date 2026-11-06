@@ -1,23 +1,4 @@
-// Help drift reminder for Sidequest. NON-BLOCKING: it prints a reminder, it never
-// fails a commit. A hook can see that something a user sees or does changed in a
-// diff; it cannot judge whether Help's prose still describes it correctly. That
-// takes a human read, so the most this can honestly do is ask "did Help need to
-// change?" at the moment a change is made, instead of finding the drift later.
-//
-// Signals:
-//   1. A button's visible label was added, removed, or renamed (a moved line, or a
-//      change to a tooltip/attribute only, does not count).
-//   2. One of check-pre-commit.js's TRIGGER_PATTERNS fired (new page, dialog, or
-//      state field).
-//   3. A new Settings control was added (an element id starting "set-").
-//   4. A step in a user's process changed: a section heading, a dialog or
-//      confirmation, or an input control was added, removed, or renamed.
-//   5. Code that decides what a user is told changed. AREAS lists those parts of the
-//      app (burndown and task counting, scheduling, status colors, backup and
-//      restore, project lifecycle, and so on) and the Help topics that describe each.
-// Signals 1 to 4 stay quiet if the commit edited any part of helpTopics(). Signal 5
-// is stricter: it stays quiet only if a topic that describes that area was edited,
-// so fixing one unrelated topic does not hide drift in another.
+// Non-blocking Help drift reminder: it prints a reminder when something a user sees or does changed, since only a human can judge whether Help's prose still matches. Signals and area lists are in CLAUDE.md's Help drift reminder entry.
 
 "use strict";
 const fs = require("fs");
@@ -291,7 +272,7 @@ function buildReminder(input) {
 
 function helpDriftReminder() {
   const diffs = {};
-  const files = LABEL_FILES.concat(fs.readdirSync("app").filter((f) => f.endsWith(".js")).map((f) => "app/" + f), ["css/styles.css", "css/tokens.css"]);
+  const files = LABEL_FILES.concat(fs.readdirSync("app").filter((f) => f.endsWith(".js")).map((f) => "app/" + f), ["css/styles.css", "css/splash.css", "css/tokens.css"]);
   files.forEach((f) => { if (!(f in diffs)) diffs[f] = common.isStaged(f) ? common.stagedDiff(f) : ""; });
   const { hits } = pre.classifySourceDiffs();
   return buildReminder({ diffs, triggerHits: hits, viewsSource: common.stagedContent(VIEWS_FILE) });

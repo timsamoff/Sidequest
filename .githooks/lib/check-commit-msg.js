@@ -1,16 +1,4 @@
-// Commit message convention checks for Sidequest.
-// House style (confirmed 2026-09-21): terse single-line summary, no Conventional
-// Commits prefix, no body unless truly necessary, no co-author notes.
-//
-// Numeric thresholds below are Sentinel's own suggested defaults (per
-// 03-gate-check-implementation.md Part 2's fallback guidance), NOT something the
-// user confirmed live in this run. Flagged in the implementation report as
-// adjustable.
-//
-//   SUBJECT_MAX        = 72   (subject-line character cap; prompt's suggested 50-72 range)
-//   BULLET_MAX_COUNT    = 5    (prompt's suggested default)
-//   BULLET_LINE_MAX     = 80   (single physical line cap for a bullet)
-//   BULLET_WRAP_MAX     = 160  (combined cap across a bullet's 2 allowed physical lines)
+// Commit message checks: terse single-line summary, no Conventional Commits prefix, no co-author lines. The numeric thresholds (SUBJECT_MAX 72, BULLET_MAX_COUNT 5, BULLET_LINE_MAX 80, BULLET_WRAP_MAX 160) are Sentinel's suggested defaults and adjustable.
 
 "use strict";
 const common = require("./sentinel-common");
@@ -105,7 +93,7 @@ function checkCommitMessage(rawMessage) {
       rule: "agent-voice",
       message:
         "Commit message uses wording that describes the collaboration instead of the change (" + voice.map((v) => '"' + v + '"').join(", ") +
-        "). Write it as the change itself, in the author's own voice. This check is a phrase list and will miss other wordings.",
+        "). Write it as the change itself, in the author's voice. This check is a phrase list and will miss other wordings.",
     });
   }
 
@@ -132,13 +120,10 @@ function checkCommitMessage(rawMessage) {
 
   const bodyLines = lines.slice(1);
   // A commit with nothing more to say has no body at all -- a single blank line
-  // separator with nothing after it is fine (git's own convention); real content
+  // separator with nothing after it is fine (git's convention); real content
   // after that blank line is what gets scrutinized below.
   const bodyContent = bodyLines.filter((l, i) => !(i === 0 && l.trim() === ""));
-  // Known trailer lines (e.g. "Sentinel-Override: <reason>") are a separate
-  // structural element, not narrative body prose or a bullet -- exclude them from
-  // the bullet-structure scan before checking it, or a trailer with no "- " marker
-  // would otherwise misreport as a narrative-body violation.
+  // Known trailer lines (such as Sentinel-Override) are excluded before the bullet scan, or they would misreport as narrative prose.
   const trailers = trailerLines(lines);
   trailers.forEach((l) => {
     const name = l.split(":")[0];
@@ -195,10 +180,7 @@ function checkCommitMessage(rawMessage) {
       });
       i += 1;
     } else {
-      // A body line with no bullet marker at all -- narrative prose, the thing this
-      // rule exists to hard-block. This is the case the numeric-cap-alone approach
-      // would miss: several short unmarked lines under any length cap, forming one
-      // continuous narrative block with no marker on any line.
+      // A body line with no bullet marker is narrative prose, which is hard-blocked; this catches several short unmarked lines that a length cap alone would miss.
       violations.push({
         rule: "narrative-body-hard-block",
         message: `Body line "${line.trim().slice(0, 60)}..." has no bullet marker. This project's style has no body at all for the common case, and a bullet list (not prose) for the rare case that needs one -- every body line must start with "- ".`,
@@ -242,24 +224,11 @@ function checkCommitMessage(rawMessage) {
   return { violations, overrideReason: overrideMatch ? overrideMatch[1].trim() : null };
 }
 
-// ---------------------------------------------------------------------------
-// Version-bump reminder
-// ---------------------------------------------------------------------------
-// APP_VERSION (app/state.js) sat at "1.0.0" through dozens of real feature
-// commits -- raised directly by the user 2026-10-09, who asked why nothing
-// catches this. The gate cannot decide major vs. minor vs. patch itself; that
-// stays a human (or Claude, asking the user) judgment call made before this
-// commit is written, by editing APP_VERSION. This check is the backstop for
-// the rare case that step is skipped -- it blocks a commit that touches real
-// app source (app/*.js or css/*.css) without APP_VERSION also changing in the
-// same commit, unless a "Sentinel-Version-Skip: <reason>" trailer explains
-// why this particular change shouldn't bump the version at all (a test-only
-// edit, a comment cleanup, a gate-script change that happens to touch a
-// source file for no user-visible reason).
+// Version-bump check: a commit touching app/*.js or css/*.css must also change APP_VERSION, unless a Sentinel-Version-Skip trailer says why not. It cannot choose major, minor, or patch; that stays a human decision made before the commit.
 const VERSION_LINE_RE = /^\+\s*export var APP_VERSION\s*=/m;
 
 function touchesRealSource() {
-  const sourceFiles = pre.appModules().concat(["css/tokens.css", "css/styles.css"]);
+  const sourceFiles = pre.appModules().concat(["css/tokens.css", "css/styles.css", "css/splash.css"]);
   return sourceFiles.some((f) => common.isStaged(f));
 }
 

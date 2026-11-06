@@ -1,25 +1,5 @@
 #!/usr/bin/env node
-// Manual Sentinel command. Two modes:
-//   node .githooks/sentinel-check.js          -- diff-scoped, same checks the
-//                                                 pre-commit hook runs, against
-//                                                 whatever is currently staged.
-//                                                 Useful for checking without
-//                                                 committing, or if hooks are ever
-//                                                 bypassed with --no-verify.
-//   node .githooks/sentinel-check.js --full   -- whole-repo structural scan. Slower.
-//                                                 Enforces (non-zero exit on
-//                                                 violation), not report-only.
-//                                                 Blocks only on violations NOT
-//                                                 already present in the Part 4
-//                                                 baseline (Sentinel-Notes/
-//                                                 sentinel-baseline.json).
-//   node .githooks/sentinel-check.js --full --report-only
-//                                              -- whole-repo scan, prints findings,
-//                                                 always exits 0. Used for the
-//                                                 Part 4 one-time baseline pass.
-//
-// Wired into: package.json's "sentinel:check" script (diff mode) and
-// "sentinel:check:full" (full mode). Also invocable directly with node.
+// Manual Sentinel command: with no flag it runs the pre-commit checks against the staged diff, and with --full it scans the whole repo and exits non-zero on violations beyond the baseline.
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -72,16 +52,7 @@ function fullScanNormalizeDefaultsPairing() {
 }
 
 function fullScanCrossListPairing() {
-  // Narrow, specific pairing checks -- NOT a generic "all hardcoded lists must
-  // match" rule (WORDS is an unrelated vocabulary set and is correctly excluded).
-  // See report: this is the conservative version of the cross-list-consistency
-  // idea, limited to the two pairs that are actually meant to enumerate the same
-  // concept from two sides.
-  //
-  // Post-JS-split: SEARCH_LABELS/SEARCH_ORDER now live in app/search.js, and
-  // KIND_LABEL/KIND_FILTERS now live in app/views.js -- both were index.html
-  // before. Each pair is read from its own current file rather than one shared
-  // `source` string.
+  // Cross-list consistency, deliberately narrow: only SEARCH_LABELS/SEARCH_ORDER (app/search.js) and KIND_LABEL/KIND_FILTERS (app/views.js), each read from its own file. WORDS and CORE/BOTTOM are a different shape and excluded.
   const searchSource = common.diskRead("app/search.js") || "";
   const viewsSource = common.diskRead("app/views.js") || "";
   const violations = [];
@@ -98,13 +69,7 @@ function fullScanCrossListPairing() {
     let m;
     while ((m = keyRe.exec(labelMatch[1])) !== null) labelKeys.add(m[1]);
     const orderKeys = new Set(extractOrderKeys(orderMatch[1]));
-    // Content-keyed exclusion, not positional: "all" in KIND_FILTERS is a real,
-    // intentional UI-only "show everything" filter option, never used as a lookup
-    // key into KIND_LABEL (confirmed by reading app/views.js's archiveEntries()/
-    // renderArchive() -- KIND_LABEL is only indexed by an entry's actual kind,
-    // never by the filter value). This asymmetry is a known, accepted design, not
-    // a miss -- exclude it by name so it doesn't re-report as noise on every
-    // future full scan.
+    // "all" in KIND_FILTERS is an intentional UI-only option never used as a KIND_LABEL key, so it is excluded by name.
     const INTENTIONAL_ASYMMETRY = new Set(["all"]);
     labelKeys.forEach((k) => { if (!orderKeys.has(k)) violations.push(common.violation("cross-list-consistency", file, null, `${labelName} has key "${k}" with no matching entry in ${orderOrFilterName}.`)); });
     orderKeys.forEach((k) => { if (!labelKeys.has(k) && !INTENTIONAL_ASYMMETRY.has(k)) violations.push(common.violation("cross-list-consistency", file, null, `${orderOrFilterName} references "${k}" with no matching entry in ${labelName}.`)); });
@@ -120,10 +85,7 @@ function fullScanCrossListPairing() {
   // SEARCH_ORDER is a flat array of quoted kind-keys: ["task", "step", ...].
   // Both SEARCH_LABELS and SEARCH_ORDER live in app/search.js.
   pairCheck(searchSource, "app/search.js", "SEARCH_LABELS", "SEARCH_ORDER", extractQuoted);
-  // KIND_FILTERS is an array of [key, label] pairs: [["all","All"],["task","Tasks"],...].
-  // Only the FIRST quoted string in each [..] pair is the key; the second is a
-  // display label and must not be treated as another key to match against KIND_LABEL.
-  // Both KIND_LABEL and KIND_FILTERS live in app/views.js.
+  // KIND_FILTERS is an array of [key, label] pairs; only the first string in each pair is the key.
   pairCheck(viewsSource, "app/views.js", "KIND_LABEL", "KIND_FILTERS", (text) => {
     const out = [];
     const re = /\[\s*"(\w+)"\s*,\s*"[^"]*"\s*\]/g;
@@ -154,12 +116,7 @@ function fullScanSocialMetaDrift() {
   return [];
 }
 
-// A literal (radius/height/text-size value) that repeats 3+ times in
-// styles.css with no token behind it -- a candidate for promotion, the other
-// half of checkCssTokenValue()'s diff-scoped catch (that one only stops a
-// value that ALREADY has a token from being re-typed as a literal; this one
-// finds a value that never got a token in the first place, which only shows
-// up by looking at the whole file, not one diff line at a time).
+// Whole-file check for a literal (radius, height, text size) repeated 3+ times in styles.css with no token, the counterpart to checkCssTokenValue()'s diff-scoped check.
 function fullScanCssRepeatedLiteral() {
   const source = common.diskRead("css/styles.css") || "";
   const tokensSource = common.diskRead("css/tokens.css") || "";
@@ -211,12 +168,7 @@ function fullScanHookIntegrity() {
   } catch (e) {
     hooksPath = "";
   }
-  // Accept either the portable relative form (".githooks") or an absolute path
-  // that resolves to the same tracked directory -- git itself may store/normalize
-  // this differently depending on platform and how it was set (observed: `git
-  // config core.hooksPath .githooks` on Windows can round-trip to an absolute
-  // "C:\...\.githooks" on read-back). What matters is that it resolves to the
-  // tracked .githooks directory, not the exact string.
+  // Accept the relative .githooks path or an absolute path that resolves to it, since git on Windows can round-trip it to an absolute form.
   const path = require("path");
   const resolved = hooksPath ? path.resolve(common.REPO_ROOT, hooksPath) : "";
   const expected = common.repoPath(".githooks");
@@ -247,17 +199,7 @@ function runFullScan() {
   violations = violations.concat(fullScanSocialMetaDrift());
   violations = violations.concat(fullScanCssRepeatedLiteral());
   violations = violations.concat(fullScanCommentVerbosity());
-  // README keyword map, whole-repo version: every current CORE/BOTTOM/pinned-page
-  // label should appear in README's current text. CORE/BOTTOM moved to
-  // app/model.js in the JS module split (2026-09-21) -- was index.html.
-  //
-  // Bug found and fixed while migrating this line to the new file (pre-existing,
-  // not introduced by the split): the old regex `\[[^\]]*\]` cannot match CORE/
-  // BOTTOM's actual shape, an array of [key, label] pairs (nested brackets), so
-  // it matched the FIRST inner pair's closing "]" and stopped -- meaning
-  // coreBottomMatch was always [] and this whole keyword-map block was silently
-  // a no-op on every full scan, on index.html before the split too. Confirmed by
-  // running the old regex against `git show HEAD:index.html` before this fix.
+  // README keyword map, whole-repo: every CORE/BOTTOM/pinned-page label must appear in README. The regex has to handle CORE/BOTTOM's nested [key, label] pair arrays.
   const source = common.diskRead("app/model.js");
   const readme = common.diskRead("README.md");
   const coreBottomMatch = source.match(/(?:export )?var (?:CORE|BOTTOM) = (\[(?:\[[^\]]*\],?\s*)*\]);/g) || [];

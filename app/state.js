@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.13.3";
+export var APP_VERSION = "0.13.4";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -17,7 +17,7 @@ export function task(id, block, questId, what, done, steps, extra) {
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
   return t;
 }
-// A quest's own lifecycle: "candidate" or "active". Promoted in place -- the
+// A quest's lifecycle: "candidate" or "active". Promoted in place -- the
 // same record and id carry through candidate -> active -> vaulted, never a second record.
 export function quest(id, name, status, extra) {
   var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], hist: {}, lastSlip: null, wasPinned: false, justReopened: false, touched: "", sig: "", client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } };
@@ -73,9 +73,7 @@ export function sampleData() {
     task("g2", 2, "pGame", "Make the first ten levels", "Ten levels load and can be finished start to end"),
     task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid"), st("g3c", "Record a trailer")], { milestone: true }),
     task("g4", 0, "pGame", "Add a level editor", "Players can build, save, and share a level"),
-    // pDone's own tasks, all finished. Four weekly tasks at weight 2 each give
-    // an even planned line, which doneHistory above then zig-zags around.
-    // A Candidate with tasks of its own: they show on its page but do not count anywhere until it is promoted.
+    // A Candidate with tasks of its own: they show on its page but count nowhere until it is promoted.
     task("e1", 1, "pExt", "Sketch the toolbar button", "A mockup you would be happy to click", [st("e1a", "Pick an icon style"), st("e1b", "Mock up the popup")]),
     task("e2", 0, "pExt", "Decide which browsers to support", "A short list of browsers"),
     task("d1", 1, "pDone", "Design the feature", "The design is agreed", [st("d1a", "Sketch the approach", true), st("d1b", "Get sign-off", true)], { status: "Completed", doneAt: day(-22) }),
@@ -89,7 +87,7 @@ export function sampleData() {
   var DONE = { n1: day(6), n2: day(11), n3: day(13), a1: day(5), d1: day(-20), d2: day(-15), d3: day(-12), d4: day(-1) };
   tasks.forEach(function (t) { if (DONE[t.id]) t.doneAt = DONE[t.id]; });
   // Explicit start/due dates for every scheduled task. A start date is only
-  // set when the task's own estimate is light enough the block would otherwise look misleadingly full.
+  // set when the task's estimate is light enough the block would otherwise look misleadingly full.
   var SCHEDULE = {
     a1: { start: day(2), due: day(4) }, a2: { start: day(9), due: day(12) }, a3: { start: day(18), due: day(20) },
     a4: { start: day(25), due: day(27) }, a5: { start: day(31), due: day(34) },
@@ -162,7 +160,7 @@ function cleanHist(v) {
   });
   return out;
 }
-// A slip's own undo snapshot: each affected task's prior block number, so Undo can restore it exactly.
+// A slip's undo snapshot: each affected task's prior block number, so Undo can restore it exactly.
 function cleanSlip(v) {
   if (!v || typeof v !== "object" || typeof v.days !== "number" || !Array.isArray(v.snap)) return null;
   var snap = v.snap.slice(0, 500).filter(function (s) { return s && typeof s.id === "string" && typeof s.block === "number" && s.block >= 0 && s.block <= 5000; }).map(function (s) { return { id: S(s.id, 40), block: Math.round(s.block), start: isISO(s.start) ? s.start : "", due: isISO(s.due) ? s.due : "" }; });
@@ -322,7 +320,7 @@ function getDb() {
   return dbPromise;
 }
 
-// One write in flight at a time (the db capability's own contract); a burst
+// One write in flight at a time (the db capability's contract); a burst
 // of saves coalesces into the running write plus exactly one more carrying the latest state.
 var dbWriteInFlight = null, dbWritePending = false;
 // Nothing is written to the db until it has been read once, or an empty
@@ -363,7 +361,7 @@ export function save() {
   try { prev = window.localStorage.getItem(KEY2); } catch (e) { prev = null; }
   var changed = json !== prev;
   if (changed || !localSavedAt) localSavedAt = new Date().toISOString(); // only a real change moves the stamp
-  if (changed && savesSeen > 0) editedAfterBoot = true; // the first save is the boot's own, not an edit
+  if (changed && savesSeen > 0) editedAfterBoot = true; // the first save comes from boot, not an edit
   savesSeen++;
   writeLocal(json, localSavedAt);
   dbSave(state);
@@ -406,12 +404,7 @@ function isNewerVersion(a, b) {
   for (var i = 0; i < 3; i++) { if (pb[i] > pa[i]) return true; if (pb[i] < pa[i]) return false; }
   return false;
 }
-// A separate db document from state/main -- deliberately outside the state
-// object itself, so an ordinary save() (which only ever writes state/main)
-// can never overwrite a version stamp set here from outside the app.
-// No-op (resolves null) on the web build or with no db. The stamp itself is
-// written by hand when a new sidequest.html is published; nothing in this
-// app's own code ever writes meta/version.
+// Reads the db version stamp (doc meta/version), kept outside state/main so save() cannot overwrite it. No-op on the web build; the stamp is only written by hand when sidequest.html is published.
 export function checkForAppUpdate() {
   return getDb().then(function (db) {
     if (!db) return null;
@@ -435,9 +428,7 @@ export function autoVault() {
     if (!t.doneAt) t.doneAt = iso(TODAY);
   });
 }
-// Permanently deletes Vault entries older than settings.vaultPurgeDays,
-// checked once at boot. 0 means Never; no confirmation, the Settings control itself is standing consent.
-// Removes every link that points at a quest which no longer exists.
+// Deletes Vault entries older than settings.vaultPurgeDays, checked once at boot (0 = Never, no confirmation). Also removes links to quests that no longer exist.
 export function removeLinksTo(ids) {
   state.quests.forEach(function (q) { q.linkedQuestIds = q.linkedQuestIds.filter(function (id) { return ids.indexOf(id) < 0; }); });
 }
@@ -454,10 +445,7 @@ export function purgeOldVault() {
   removeLinksTo(goneIds);
   state.workshop = state.workshop.filter(function (p) { return !old(p); });
 }
-// Shuffled-bucket randomizer: draws from state.settings.affirmationBucket (a
-// shuffled list of remaining indices), refilling and reshuffling a fresh full
-// bucket once empty, so no quote repeats until every one has shown once.
-// `count` is the live AFFIRMATIONS.length, since the list itself can change.
+// Shuffled-bucket picker: no quote repeats until every one has shown. `count` is the live AFFIRMATIONS.length.
 export function nextAffirmationIndex(count) {
   var bucket = state.settings.affirmationBucket;
   if (!bucket || bucket.length === 0 || bucket.some(function (n) { return n >= count; })) {

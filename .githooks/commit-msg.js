@@ -1,9 +1,5 @@
 #!/usr/bin/env node
-// Sentinel commit-msg hook logic. Invoked by .githooks/commit-msg with the path to
-// git's commit-message file as argv[2]. Reads STAGED message content (the file git
-// gives us here IS the about-to-be-committed message; there is no separate staged
-// vs. working-tree distinction for the commit message itself the way there is for
-// file content).
+// Commit-msg hook logic, run by .githooks/commit-msg with the path to git's message file in argv[2].
 "use strict";
 const fs = require("fs");
 const common = require("./lib/sentinel-common");

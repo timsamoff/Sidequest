@@ -1,6 +1,4 @@
-// Tests for the Help drift reminder (.githooks/lib/check-help-drift.js). These cover
-// the pure parts: label extraction, hunk/range logic, and the reminder decision.
-// The git-reading wrapper is exercised for real by the pre-commit hook itself.
+// Tests for the Help drift reminder (.githooks/lib/check-help-drift.js): label extraction, hunk and range logic, and the reminder decision. The git-reading wrapper is exercised by the pre-commit hook itself.
 const gate = require("../.githooks/lib/check-help-drift.js");
 
 let fails = 0;

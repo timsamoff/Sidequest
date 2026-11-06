@@ -96,9 +96,7 @@ export function recordQuestHistory() {
     if (total > 0 || Object.keys(p.hist).length) recordHist(p.hist, total, questRemainingUnits(p));
   });
 }
-// Auto-completion only -- runs on every changed(). Manual "Mark complete" is
-// separate. Skips a quest Reopen just reactivated, so completing() doesn't
-// immediately refire for a quest whose tasks are still all done.
+// Auto-completion only; runs on every changed(). Skips a quest Reopen just reactivated, so it does not refire.
 export function sweepQuestCompletion() {
   activeQuests().forEach(function (p) {
     if (p.justReopened) { p.justReopened = false; return; }
@@ -217,11 +215,7 @@ export function renderToday(root) {
   g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(progress, 2, 3);
   root.appendChild(g);
 }
-// A newer version's db stamp was found (checkForAppUpdate() in state.js, set
-// by hand when a new sidequest.html is published) -- tells the user how to
-// update this artifact themselves, since nothing in its own runtime can do
-// it. Dismissing records the version, not a plain flag, so a later update
-// still shows its own notice even if an earlier one was dismissed.
+// Shown when a newer db version stamp exists (checkForAppUpdate() in state.js). Dismissing records the version, so a later update gets its own notice.
 var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html";
 function updateBanner() {
   var box = el("div", { "class": "box updatebanner", style: "margin-bottom:22px" });
@@ -479,7 +473,7 @@ export function buildDetail(t, inline, readOnly) {
   if (inline || !readOnly) {
     var ar = el("div", { "class": "actions", style: "margin-top:14px" });
     if (readOnly) {
-      // Nothing to offer here -- the quest page's own Restore button is the one way back to editing.
+      // Nothing to offer here -- the quest page's Restore button is the one way back to editing.
     } else {
       if (inline) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Open this task on the Tasks page" }, "Open in Tasks"), "click", function () { openTask(t.id); }));
       if (t.block === 0) {
@@ -498,7 +492,7 @@ export function buildDetail(t, inline, readOnly) {
   return box;
 }
 
-// Bidirectional link, not a subtask hierarchy. Lists p's own direct links only, one hop.
+// Bidirectional link, not a subtask hierarchy. Lists p's direct links only, one hop.
 export function linksSection(root, p) {
   // A live quest or a Candidate can add links (to live quests only); a vaulted quest keeps its links read-only.
   var links = linkedQuests(p);
@@ -536,7 +530,7 @@ export function linksSection(root, p) {
   }
 }
 
-// Launch-critical items render as a section on a quest's own page, scoped
+// Launch-critical items render as a section on a quest's page, scoped
 // to that quest's tasks -- there's no separate standalone Launch page.
 export function launchSection(root, p) {
   var readOnly = !!p.vault;
@@ -613,9 +607,7 @@ function questListSection(title, rows, first, term) {
 }
 export function pendingSection(rows, first) { return questListSection("Pending", rows, first, ["pending", "Pending"]); }
 export function completedSection(rows, first) { return questListSection("Completed", rows, first); }
-// A quest's own lifecycle status decides how much of the page renders.
-// Promotion is in-place -- the same record and id carry through, never a second record.
-// A one-row section that opens in place like a task row: a title row, then the fields. Starts collapsed.
+// A one-row section that opens in place like a task row. Starts collapsed.
 function collapsibleSection(key, summary, detail, emptyText) {
   var ul = el("ul", { "class": "tlist sectionlist" }), li = el("li");
   var open = !!ui.sectionOpen[key];
@@ -674,7 +666,7 @@ export function renderQuestPage(root, id) {
   if (est.total > 0) metaRow.appendChild(el("span", { "class": "hint estleft" }, "Est. " + fmtHoursLong(est.left) + " remaining"));
   root.appendChild(metaRow);
   if (!readOnly && p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this quest is Complete. Reopen it to bring them back."));
-  // questTasks(), not ordered()/backlogTasks()/live() -- a quest's own page keeps
+  // questTasks(), not ordered()/backlogTasks()/live() -- a quest's page keeps
   // showing its tasks even while Complete or vaulted, when cross-quest lists exclude them.
   var ts = sortTasks(questTasks(p.id).filter(function (t) { return !t.launch; }));
   if (ts.length) {
@@ -792,16 +784,13 @@ export function renderQuestPage(root, id) {
       askExportSides(p);
     }));
   }
-  // ar is a sibling of .questmain/.questcharts inside .questsplit, not nested
-  // in .questmain, so it naturally renders last (after Schedule/Timeline/
-  // Burndown) when stacked; CSS order puts it back at the end of the left
-  // column on a wide screen, where it visually sat before this change.
+  // Sits outside .questmain so it renders last when stacked; CSS puts it back under the left column on wide screens.
   if (split) { split.appendChild(questChartsPanel(p)); split.appendChild(ar); } else { root.appendChild(ar); }
 }
 
 // `first` zeroes the heading's top margin; `extraBtn` rides its heading row.
 function scheduleSection(host, p, readOnly, first, extraBtn) {
-  // `first` can be a plain boolean (always zero the heading's own top margin,
+  // `first` can be a plain boolean (always zero the heading's top margin,
   // e.g. the Expand modal) or the string "questcharts-head" (zero it only at
   // the wide breakpoint, via CSS, so a stacked page keeps its normal section gap).
   var cls = first === true ? "first" : first === "questcharts-head" ? "questcharts-head" : "";
@@ -844,10 +833,7 @@ function questChartsPanel(p) {
 }
 function questCharts(p, wide, expandBtn, first) {
   var out = el("div");
-  // Schedule keeps its own heading from scheduleSection(); Expand rides along on that same row.
-  // .questcharts-head's own CSS zeroes this heading's margin only at the wide
-  // breakpoint, where Schedule needs to sit level with Tasks -- when stacked,
-  // the normal section gap applies, since .questcharts follows real content above it.
+  // Schedule keeps its own heading from scheduleSection(), with Expand on the same row. .questcharts-head zeroes the heading margin only at the wide breakpoint.
   scheduleSection(out, p, false, "questcharts-head", expandBtn);
   var tl = questRangeBlock(p);
   if (tl.empty) {
@@ -1850,14 +1836,7 @@ function manualSaveDialog(name, text, mime, onSaved, capability) {
     more.appendChild(copyActs); more.appendChild(copyNote); body.appendChild(more);
   });
 }
-// Hands the viewer a file. Resolves "saved" (a verified save), "downloaded" (a top-level
-// download, which the browser gives no way to confirm), "manual" (a dialog now shows the text
-// to copy; nothing was saved yet).
-// Rejects on cancel or failure. A frame or a phone can't be trusted with a plain download, so
-// after the file picker it shows the save box: a Save button (the share sheet on a phone, a
-// download elsewhere) with the copy option folded under it. With the Claude downloads
-// capability the same box shows, and its Save button calls the capability. `onSaved` runs
-// when that save completes.
+// Hands the viewer a file. Resolves "saved", "downloaded" (unverifiable) or "manual" (nothing saved yet), and rejects on cancel or failure.
 function saveFile(name, text, mime, desc, ext, onSaved) {
   return downloadsReady.then(function (d) {
     if (d) { manualSaveDialog(name, text, mime, onSaved, d); return "manual"; }
@@ -1912,10 +1891,7 @@ function saveBackupFile(msg, onDone) {
     msg.textContent = err && (err.code === "declined" || err.name === "AbortError") ? "Save canceled." : "The backup could not be saved.";
   });
 }
-// Reads the chosen file, then asks before replacing everything with it.
-// Reads a Trello JSON board export into a plain summary Sidequest can act on.
-// Only name/desc/due/checklist-items survive; labels, members, comments,
-// attachments, and custom fields are dropped by design, not by oversight.
+// Reads a Trello JSON board export into a plain summary. Labels, members, comments, attachments, and custom fields are dropped by design.
 function parseTrelloExport(obj) {
   if (!obj || typeof obj !== "object" || !Array.isArray(obj.cards)) return null;
   var boardName = typeof obj.name === "string" && obj.name ? obj.name : "Imported board";
@@ -1926,7 +1902,7 @@ function parseTrelloExport(obj) {
   if ((obj.members || []).length) dropped += obj.members.length;
   var cards = (obj.cards || []).filter(function (c) { return !c.closed; }).map(function (c) {
     // Completion can live directly on a checkItem (state) or, in a real
-    // Trello export, on the card's own checkItemStates by idCheckItem -- check both.
+    // Trello export, on the card's checkItemStates by idCheckItem -- check both.
     var completedIds = {};
     (c.checkItemStates || []).forEach(function (s) { if (s.state === "complete") completedIds[s.idCheckItem] = true; });
     var steps = [];
@@ -1942,7 +1918,7 @@ function parseTrelloExport(obj) {
 }
 function isISOInstant(v) { return typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v); }
 // Builds a new quest from a parsed Trello summary: start is the earliest due
-// date found (or today, with nothing to anchor to), so every card's own due
+// date found (or today, with nothing to anchor to), so every card's due
 // date is guaranteed on or after the quest's start and never gets rejected.
 function buildQuestFromTrello(summary) {
   var dues = summary.cards.map(function (c) { return c.due; }).filter(Boolean).sort();
@@ -2039,10 +2015,7 @@ function parseTodoistExport(text) {
   return { items: items, hasSubtasks: hasSubtasks, capped: capped };
 }
 function isPlainISODate(v) { return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v); }
-// Todoist's natural-language date field: a real ISO date is used as-is;
-// "today"/"tomorrow"/"in N day(s)" are unambiguous and resolved to a real
-// date; anything else (a recurrence phrase like "every day", or unrecognized
-// text) is left unscheduled rather than guessed at.
+// Todoist's date field: an ISO date is used as is, "today", "tomorrow" and "in N days" resolve to real dates, and anything else stays unscheduled.
 function resolveTodoistDate(v) {
   if (isPlainISODate(v)) return v;
   var s = (v || "").trim().toLowerCase();
@@ -2078,7 +2051,7 @@ function importTodoistFile(file, msg) {
     openModal("Import “" + name + "”?", function (body) {
       var lines = [nt + (nt === 1 ? " task was" : " tasks were") + " found."];
       lines.push("Completed tasks are not in this file, so only what is still open comes across.");
-      if (summary.capped) lines.push("This file has 300 tasks, Todoist’s own export limit, so some tasks may be missing from the file itself.");
+      if (summary.capped) lines.push("This file has 300 tasks, Todoist’s export limit, so some tasks may be missing from the file itself.");
       if (summary.hasSubtasks) lines.push("Subtasks come in as their own tasks, not nested under their parent.");
       lines.push("This creates a new quest named “" + name + ".” Your existing quests and tasks are not changed.");
       lines.push("Labels and other Todoist-only details are not imported.");

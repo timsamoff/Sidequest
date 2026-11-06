@@ -1,7 +1,5 @@
 #!/usr/bin/env node
-// Sentinel pre-commit hook logic. Invoked by .githooks/pre-commit. Only gates the
-// diff of THIS commit (staged content), not the whole codebase's pre-existing
-// state -- see sentinel-check.js --full for the periodic whole-repo scan.
+// Pre-commit hook logic, run by .githooks/pre-commit. It gates only this commit's staged diff; sentinel-check.js --full is the whole-repo scan.
 "use strict";
 const common = require("./lib/sentinel-common");
 const checks = require("./lib/check-pre-commit");

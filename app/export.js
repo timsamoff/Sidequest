@@ -10,7 +10,7 @@ import { scopeSteps } from "./chart.js";
 /* Client export: a single, self-contained, read-only HTML file for sharing one
    quest, with chart data precomputed here so the exported file only draws numbers, never recomputes scheduling math. */
 
-// Tasks, steps, and the quest's own fields, frozen to plain data. Does not
+// Tasks, steps, and the quest's fields, frozen to plain data. Does not
 // walk linked quests -- buildExportTree() does that, with the cycle guard.
 function snapshotTasks(p) {
   return questBurnTasksOrdered(p).map(function (t) {
@@ -31,12 +31,7 @@ function questBurnTasksOrdered(p) {
 }
 function fmtRange(t) { return t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)); }
 
-// Precomputed chart data for one quest: the burndown's points (with tooltip
-// text baked in) and the timeline's lanes. Milestones appear in two different
-// coordinate systems: burndownMilestones (plain date labels, for the
-// burndown's own date axis) and lanes.milestones (percent-of-range, for the
-// Timeline's Gantt) -- snapshotLanes() computes the latter since it already
-// has the lane range math the percentage needs.
+// Precomputed chart data for one quest: burndown points with baked tooltip text, and timeline lanes. Milestones use two coordinate systems: date labels for the burndown, percent-of-range in each lane.
 function snapshotCharts(p) {
   var bd = questBurn(p);
   if (!bd) return null;
@@ -72,11 +67,7 @@ function chartTip(bd, i, ms) {
   if (done.length) lines.push((days === 1 ? "Completed that day: " : "Completed this " + unit + ": ") + nameList(done));
   return lines.join("\n");
 }
-// One lane per scheduled task, as percentages of the lane's own date range --
-// the exported file draws these numbers directly, no month-grid math at export time.
-// Each lane also carries a pale "blk" band (the block(s) the task sits in),
-// matching the live app's own two-bars-per-lane Gantt (questRangeBlock() in
-// app/chart.js) -- the export used to draw only the task's own status bar.
+// One lane per scheduled task, as percentages of the lane's date range, so the export draws numbers directly. Each lane also carries a pale "blk" band for the task's block(s), matching questRangeBlock() in app/chart.js.
 function snapshotLanes(p, bd) {
   var ts = questBurnTasks(p).slice().sort(function (a, b) { return taskStart(a) - taskStart(b); });
   var mss = milestoneTasks(p.id).map(function (t) { return { text: t.what, ms: taskEnd(t) }; });
@@ -343,11 +334,7 @@ svg.echart { display: block; width: 100%; height: auto; }\
 .efoot { margin-top: 30px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }\
 ";
 
-// The chart drawing is written as real functions so it can run twice: at export time to
-// bake static markup into the file (what a no-script preview such as iOS Quick Look shows),
-// and again inside the file, where the script redraws with the hover and tap tooltips.
-// The functions are copied into the file's script by source text (see runtimeSource()), so
-// they can't use anything outside themselves; each is renamed there.
+// The chart functions run at export time (baked markup for no-script previews) and again in the file's script (with tooltips). They are copied by source text in runtimeSource(), so they cannot use anything outside themselves.
 function exportSvgEl(t, a) {
   var e = document.createElementNS("http://www.w3.org/2000/svg", t);
   for (var k in a) e.setAttribute(k, a[k]);
@@ -474,8 +461,8 @@ function bakedChart(draw, charts) {
   return tmp.innerHTML;
 }
 
-// The real icon's own path data (assets/sidequest-icon.svg), not invented
-// geometry, using the export's own CSS tokens so it follows light/dark mode.
+// The real icon's path data (assets/sidequest-icon.svg), not invented
+// geometry, using the export's CSS tokens so it follows light/dark mode.
 var EXPORT_BRAND = '<div class="ebrand"><svg viewBox="0 0 512 512" aria-hidden="true" focusable="false"><defs><clipPath id="eLogoClip"><rect width="512" height="512" rx="112"/></clipPath></defs><rect width="512" height="512" rx="112" fill="var(--est)"/><g clip-path="url(#eLogoClip)"><path d="M115.88-30.43l30.33,154.2" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M102.47,177.65l-23.25,4.57c-36.81,7.24-51.6,29.27-44.36,66.08l28.7,145.94" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M207.09,157.08l52.31-10.29c34.87-6.86,55.74,7.15,62.6,42.02l9.64,49.01" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M295.51,299.68l-23.25,4.57c-25.19,4.95-35.3,20.02-30.35,45.21l19.38,98.53" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M388.51,281.39l29.06-5.72c32.94-6.48,52.64,6.75,59.12,39.69l4,20.34" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><circle cx="154.78" cy="167.37" r="53.31" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/><circle cx="342.01" cy="290.53" r="47.39" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/><rect x="31.22" y="387.08" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-80.82 21.45) rotate(-11.13)" fill="var(--planned)"/><rect x="227.98" y="435.92" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-86.54 60.34) rotate(-11.13)" fill="var(--planned)"/><rect x="432.89" y="334.59" width="118.48" height="118.48" rx="9" ry="9" transform="translate(-109.15 582.92) rotate(-56.13)" fill="var(--burn)"/></g></svg><span>Sidequest</span></div>\n';
 
 function addrLine(v) { return '<div class="econtactaddr">' + escHtml(v).replace(/\n/g, "<br>") + "</div>"; }
@@ -502,7 +489,7 @@ function renderLetterColumn(heading, fields, nameKey, secondKey, brandmark) {
   return '<div class="ecol"><div class="echead">' + heading + "</div>" + lines.join("") + "</div>";
 }
 
-// "Prepared by" is the user's own Settings info; "Prepared for" is the quest's
+// "Prepared by" is the user's Settings info; "Prepared for" is the quest's
 // Quest giver info. Either side can be empty; if only one is filled, it takes the left position alone.
 function renderLetterhead(contact, client, brandmark) {
   var by = renderLetterColumn("Prepared by", contact, "company", "name", brandmark);

@@ -1,38 +1,16 @@
-// Pre-commit content checks for Sidequest. Reads STAGED content (git index) for
-// anything tracked; reads the WORKING-TREE FILESYSTEM DIRECTLY (mtime/content) for
-// anything gitignored (CLAUDE.md, Sentinel-Notes/*), since git structurally cannot
-// see a gitignored file's content, staged or not.
-//
-// Each check function returns a list of violation objects (possibly empty) and
-// never throws for a normal violation -- only common.failLoud() throws, for a
-// genuine internal error.
+// Pre-commit content checks: tracked files are read from the git index, gitignored ones (CLAUDE.md, Sentinel-Notes/*) from disk. Each check returns a list of violations; only common.failLoud() throws.
 
 "use strict";
 const fs = require("fs");
 const path = require("path");
 const common = require("./sentinel-common");
 
-// Every module under app/, read from disk. The checks below used to keep their own
-// hand-written file lists, and app/splash.js and app/dates.js quietly fell out of
-// them when they were added. Deriving the list means a new module cannot.
+// Every module under app/, read from disk, so a new module cannot fall out of the check lists.
 function appModules() {
   return fs.readdirSync(common.repoPath("app")).filter((f) => f.endsWith(".js")).sort().map((f) => "app/" + f);
 }
 
-// ---------------------------------------------------------------------------
-// Gate 1: CLAUDE.md-touched (highest priority)
-// ---------------------------------------------------------------------------
-// Trigger: staged diff of one of the app's source files touches a "recurring
-// unit of work" registry/area. CLAUDE.md is gitignored, so "was it touched" is
-// answered by filesystem mtime versus the current HEAD commit time, not
-// git diff --name-only.
-//
-// Post-JS-split (Phase 2, 2026-09-21): the logic that used to live in one
-// index.html <script> block is now spread across app/*.js modules. Each pattern
-// below is checked against every file in SOURCE_FILES, not just index.html --
-// index.html itself is kept in the list since a future change could still touch
-// markup-level registries there (e.g. new static nav markup), and dropping it
-// would silently stop checking it.
+// Gate 1: CLAUDE.md touched. CLAUDE.md is gitignored, so this compares its mtime with the HEAD commit time instead of using git diff; patterns run against every file in SOURCE_FILES.
 
 const SOURCE_FILES = ["index.html"].concat(appModules());
 
@@ -97,10 +75,7 @@ function checkClaudeMdTouched() {
   return violations;
 }
 
-// ---------------------------------------------------------------------------
-// Gate 2: README-touched (+ optional keyword-mapping layer)
-// ---------------------------------------------------------------------------
-// README.md is TRACKED (not gitignored), so this one legitimately uses git diff.
+// Gate 2: README touched. README.md is tracked, so this one uses git diff.
 
 const README_KEYWORDS = [
   "Today", "Schedule", "Projects", "Timeline", "Launch checklist", "Archive",
@@ -129,11 +104,7 @@ function checkReadmeTouched() {
     return violations; // file-level check failed; keyword layer would be redundant noise on top of this
   }
 
-  // Keyword-mapping second layer: if CORE/BOTTOM (app/model.js, post-JS-split)
-  // gained a new page-name literal in this commit's diff, require that literal
-  // string to appear somewhere in README's CURRENT (staged) text. This is a
-  // presence check only -- it confirms a keyword exists, not that the
-  // surrounding prose is accurate.
+  // Keyword map: a page label newly added to CORE/BOTTOM must appear in README's staged text. A presence check only, not an accuracy check.
   const addedPageNames = [];
   const coreBottomAdd = /^\+.*\[\s*"([a-z0-9:_-]+)"\s*,\s*"([^"]+)"\s*\]/gim;
   const modelDiff = common.isStaged("app/model.js") ? common.stagedDiff("app/model.js") : "";
@@ -161,27 +132,9 @@ function checkReadmeTouched() {
   return violations;
 }
 
-// ---------------------------------------------------------------------------
-// Gate 3: design document -- N/A for this project (no DESIGN.md exists, declined
-// by the user). Deliberately not implemented. See report.
-// ---------------------------------------------------------------------------
+// Gate 3 (design document): not implemented.
 
-// ---------------------------------------------------------------------------
-// Gate 4: TODO.md completion-sync
-// ---------------------------------------------------------------------------
-// Hard check: a commit modifying a Sentinel-Notes/[issue]-design-brief.md file
-// (in Sentinel-Notes/ or Sentinel-Notes/archive/) without a corresponding status
-// change in Sentinel-Notes/TODO.md in the same commit. Both files are gitignored,
-// so "was it touched in this commit" cannot be answered by git diff at all --
-// there is no staged git-index version of a gitignored file to compare. Since a
-// gitignored file is invisible to git regardless of hooks, this hard check instead
-// treats "the working commit that's about to be made" as inseparable from
-// "TODO.md's current mtime relative to the design-brief file's current mtime":
-// if a design-brief file's mtime is newer than TODO.md's mtime, TODO.md was not
-// updated after (or alongside) the brief, which is the structural signal available.
-//
-// This runs from pre-commit (not commit-msg) because it is a working-tree/disk
-// state check, not something derivable from staged index.html content.
+// Gate 4: TODO.md completion sync. A change to a Sentinel-Notes design brief needs a matching TODO.md change; both are gitignored, so this compares disk times against the HEAD commit instead of using git diff.
 
 function listDesignBriefFiles() {
   const glob = require("child_process").execFileSync;
@@ -252,10 +205,7 @@ function checkTodoSync() {
   return violations;
 }
 
-// Soft check (non-blocking reminder): plain one-line TODO items with no linked
-// brief get a periodic nudge, not a hard rule -- there is no structural signal
-// to check a plain line against. Returns a reminder string or null; never a
-// blocking violation.
+// Soft check: nudges about plain TODO items with no linked brief. Returns a reminder string or null and never blocks.
 function todoBacklogReminder() {
   const raw = common.diskRead(path.join("Sentinel-Notes", "TODO.md"));
   if (!raw) return null;
@@ -265,32 +215,14 @@ function todoBacklogReminder() {
   return `${openItems} open TODO item(s) in Sentinel-Notes/TODO.md untouched since before this session started. (Non-blocking reminder.)`;
 }
 
-// ---------------------------------------------------------------------------
-// normalize()/defaults() pairing check (persistence layer, highest-priority
-// touchpoint category per the project's own Integration Audit)
-// ---------------------------------------------------------------------------
-// Structural rule: every top-level key assigned in defaults()'s returned object
-// literal must have SOME corresponding reference inside normalize()'s function
-// body (a "d.<key> = ..." assignment). This is deliberately a name-presence
-// check within normalize()'s source text, not a full JS interpreter -- concrete
-// and mechanical, per the prompt's own "translate vague adjectives into numeric/
-// checkable rules" guidance, at the cost of being fooled by a key referenced only
-// in an unrelated comment (accepted false-negative risk, documented in the report).
+// normalize()/defaults() pairing: every top-level key of defaults()'s returned object must be referenced in normalize()'s body as d.<key>. A name-presence check, not an interpreter.
 
 function extractDefaultsKeys(source) {
-  // Post-JS-split (2026-09-21): defaults() lives in app/state.js as a top-level
-  // `export function`, indented one level shallower than it was inside
-  // index.html's old IIFE -- its closing brace is at column 0 ("\n}\n"), not
-  // "\n  }\n". The "export "? prefix is optional so this still matches if a
-  // future refactor makes it a plain (non-exported) function.
+  // defaults() is a top-level function in app/state.js; the "export " prefix is optional in the match.
   const fnMatch = source.match(/(?:export\s+)?function defaults\s*\(\s*\)\s*\{([\s\S]*?)\n\}\n/);
   if (!fnMatch) common.failLoud("could not locate defaults() function body in app/state.js to run the normalize/defaults pairing check");
   const body = fnMatch[1];
-  // Find the object literal that's returned and pull ONLY its top-level "key:"
-  // names -- a nested object literal (e.g. settings: { theme: ..., ... }) has its
-  // own keys, which are a different, nested pairing concern (normalize() pairs
-  // them via s.settings.<key> / d.settings.<key>, not d.<key>) and must not be
-  // treated as top-level defaults() keys, or every nested key false-positives here.
+  // Pull only the top-level key names from the returned object literal; nested keys (settings: {...}) are paired separately and would false-positive here.
   const returnMatch = body.match(/return\s*\{([\s\S]*)\};\s*$/);
   if (!returnMatch) common.failLoud("could not locate defaults()'s return object literal to run the normalize/defaults pairing check");
   const objLiteral = returnMatch[1];
@@ -337,13 +269,7 @@ function checkNormalizeDefaultsPairing() {
   const exception = common.findException("normalize-defaults-pairing");
 
   defaultsKeys.forEach((key) => {
-    // A key is "paired" if normalize() references d.<key> anywhere in its body
-    // (an assignment branch), OR the key is one of the handful whose value is
-    // always taken unconditionally from a fresh defaults() call inside normalize
-    // itself (e.g. "v" -- a version stamp that is deliberately never overridden
-    // by saved data). That second case is content-keyed (an explicit allowlist
-    // of key NAMES, not positions), and is the one legitimate reason a defaults()
-    // key has no normalize() branch.
+    // A key counts as paired if normalize() references d.<key>, or it is an allowlisted key always taken fresh from defaults() (such as "v").
     const INTENTIONALLY_UNPAIRED = new Set(["v"]);
     if (INTENTIONALLY_UNPAIRED.has(key)) return;
 
@@ -369,27 +295,12 @@ function checkNormalizeDefaultsPairing() {
   return violations;
 }
 
-// ---------------------------------------------------------------------------
-// Hardcoded-hex-outside-token-block check
-// ---------------------------------------------------------------------------
-// Real precedent: the logo-color-tokenization fix (Sentinel-Notes/archive/
-// logo-color-tokenization-design-brief.md) -- hex values that duplicated existing
-// tokens were hardcoded outside the :root block. This check flags a NEW hex color
-// literal added outside the :root/dark-theme token blocks, added by a `git diff`
-// added-lines scan (only additions are new risk here; existing hex use is the
-// known, accepted baseline handled in Part 4).
-//
-// Exclusion, justified per-rule: assets/sidequest-icon.svg is EXCLUDED from this
-// rule specifically, because it is a static, favicon-shaped asset that cannot
-// reference CSS custom properties at all (per CLAUDE.md's "Known accepted gaps").
-// That file is excluded from THIS rule only -- it is not given a blanket
-// exclusion from other checks.
+// Hardcoded-hex check: flags a new hex literal added outside the token blocks (added diff lines only). assets/sidequest-icon.svg is excluded because a favicon cannot reference CSS variables.
 
 const HEX_COLOR_RE = /#[0-9a-fA-F]{3,8}\b/g;
 
 function isInsideTokenBlock(fullText, matchIndex) {
-  // Token blocks: the :root { ... } block and the two dark-theme override blocks.
-  // Find the nearest enclosing brace pair that starts with one of those selectors.
+  // Token blocks are the :root block and the two dark-theme override blocks.
   const before = fullText.slice(0, matchIndex);
   const rootOpen = before.lastIndexOf(":root");
   if (rootOpen === -1) return false;
@@ -405,25 +316,8 @@ function isInsideTokenBlock(fullText, matchIndex) {
   return depth > 0;
 }
 
-// Files this check scans. Post-Phase-1 CSS split (2026-09-21), the :root token
-// block itself lives only in css/tokens.css -- index.html has had ZERO ":root"
-// occurrences since that split, which silently made this check a no-op for
-// index.html (isInsideTokenBlock() always returned false there for lack of any
-// :root block to find, but index.html also stopped containing any CSS at all
-// after that split, so there was nothing left to false-negative on in practice).
-// This was not caught or fixed at the time -- flagged here now, fixed as part of
-// this same pass: css/styles.css (added lines could reintroduce a hardcoded hex
-// there) and css/tokens.css (the token block itself; a literal added INSIDE it is
-// exactly what a token is supposed to be, so isInsideTokenBlock's exemption is
-// still correct there) are the real CSS-side surface now, not index.html.
-//
-// Post-JS-split (Phase 2), app/*.js is a second, genuinely new risk surface: a
-// dynamically-generated inline style (e.g. `el("div", { style: "color:#fff" })`)
-// could hardcode a hex literal in JS the same way old inline <style> markup once
-// could. Checked here too, though CLAUDE.md/state.js's own findings show no such
-// literal exists yet -- this is a forward-looking check, not a fix for an
-// existing violation.
-const HEX_SCAN_FILES = ["css/tokens.css", "css/styles.css"].concat(appModules());
+// Files scanned: app/*.js, css/styles.css, and css/tokens.css; the :root token block lives only in tokens.css.
+const HEX_SCAN_FILES = ["css/tokens.css", "css/styles.css", "css/splash.css"].concat(appModules());
 
 function checkHardcodedHex() {
   const violations = [];
@@ -440,12 +334,7 @@ function checkHardcodedHex() {
       let m;
       HEX_COLOR_RE.lastIndex = 0;
       while ((m = HEX_COLOR_RE.exec(content)) !== null) {
-        // Confirm this literal hex actually lands outside a token block in the FULL
-        // staged file (the diff line alone has no block context) by locating one
-        // occurrence of the same literal text outside a :root block anywhere in
-        // source. app/*.js files have no :root block at all, so isInsideTokenBlock
-        // trivially returns false for them -- correct, since there is no legitimate
-        // "inside the token definition" location for a hex literal in JS.
+        // Confirms the hex literal lands outside a token block in the full staged file, since a diff line has no block context. app/*.js has no :root block, so it never counts as inside one.
         const literal = m[0];
         const occursOutsideToken = (() => {
           const re = new RegExp(literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
@@ -474,20 +363,9 @@ function checkHardcodedHex() {
   return violations;
 }
 
-// ---------------------------------------------------------------------------
-// Comment-verbosity check
-// ---------------------------------------------------------------------------
-// Real precedent: a 2026-09-27 audit found comments across app/*.js drifting
-// into inline changelog entries -- dated confirmations ("confirmed
-// 2026-09-25"), "an earlier version did X" framing, and DESIGN.md/CLAUDE.md
-// pointers, none of which a future reader needs inline (that narrative
-// belongs in CLAUDE.md, which already tracks it). This is NOT a length or
-// prose-style check -- the project's own convention explicitly allows a
-// multi-line comment when it reads as human-written and stays scoped to its
-// block; a machine can't judge "reads human," but it can catch these specific
-// mechanical tells, which is what actually went wrong.
+// Comment-verbosity check: flags changelog-style tells in comments (bare dates, "confirmed <date>", "an earlier version", DESIGN.md/CLAUDE.md pointers). It is not a length check.
 
-const COMMENT_SCAN_FILES = ["css/tokens.css", "css/styles.css", "index.html"].concat(appModules());
+const COMMENT_SCAN_FILES = ["css/tokens.css", "css/styles.css", "css/splash.css", "index.html"].concat(appModules());
 
 const COMMENT_VERBOSITY_PATTERNS = [
   { name: "dated confirmation", re: /\bconfirmed\s+20\d\d-\d\d-\d\d\b/i },
@@ -530,26 +408,9 @@ function checkCommentVerbosity() {
   return violations;
 }
 
-// ---------------------------------------------------------------------------
-// CSS token-organization check
-// ---------------------------------------------------------------------------
-// Real precedent: the tokens.css/styles.css audit (2026-09-27) found several
-// values repeated across many selectors in styles.css with no token behind
-// them at all (border-radius: 10px, 8px, 6px, 999px; min-height: 40px;
-// font-size: .9rem) -- each fixed by adding a token to tokens.css and pointing
-// every selector at it. This check is the forward-looking half of that fix:
-// catch a NEWLY ADDED line in styles.css that reintroduces one of those exact
-// literal values instead of referencing the token that already exists for it.
+// CSS token-organization check: flags a newly added styles.css line that retypes a literal (border-radius, min-height, font-size) a token already covers.
 
-// Every token in tokens.css whose value is a plain number/dimension/color
-// literal (not itself a var() reference). Returns a value -> [names] map
-// (plural: --space-10 and --radius-card can legitimately share a literal
-// value like 10px while meaning different things, so a value alone must not
-// collapse to a single name -- callers pick the right one by property family,
-// see CSS_PROPERTY_TOKEN_FAMILIES). Only tokens.css's first (light-theme)
-// :root block is read -- the dark-theme blocks reassign color tokens to
-// different literals for the same name, and none of the literals this check
-// cares about (radii, control heights, text sizes) vary by theme anyway.
+// Maps each plain literal token value in tokens.css's first (light) :root block to a list of token names, because unrelated tokens can share a value (10px); callers choose by property family.
 function extractTokenValues(tokensSource) {
   const map = new Map();
   const rootMatch = tokensSource.match(/:root\s*\{([\s\S]*?)\n\}/);
@@ -574,12 +435,7 @@ function tokenNameForFamily(tokenValues, value, nameRe) {
   return names.find((n) => nameRe.test(n)) || null;
 }
 
-// Which CSS property maps to which family of token names -- kept narrow and
-// explicit rather than one shared value -> name map, since --space-10 and
-// --radius-card can legitimately share a literal (10px) while meaning
-// completely different things; a "border-radius: 10px" violation must only
-// ever suggest --radius-card, never a --space-* token that happens to match
-// by coincidence. Each entry's regex is checked against a token's own name.
+// Which property maps to which token-name family, so a shared literal never suggests the wrong token (border-radius only suggests --radius-*).
 const CSS_PROPERTY_TOKEN_FAMILIES = [
   { prop: "border-radius", nameRe: /^radius-/ },
   { prop: "min-height", nameRe: /^control-height$/ },
@@ -622,17 +478,7 @@ function checkCssTokenValue() {
   return violations;
 }
 
-// ---------------------------------------------------------------------------
-// Duplicated-icon/SVG-markup check
-// ---------------------------------------------------------------------------
-// Real precedent: the search-icon duplication fix (Sentinel-Notes/TODO.md Done
-// section, search-icon-dedup) -- a static inline SVG duplicated markup that a JS
-// constant (ICON_SEARCH/ICON_CANCEL) already produced at render time. This check
-// flags a newly-added static inline <svg>...</svg> block in index.html's HTML body
-// whose path/d data exactly matches an existing ICON_* JS string constant's path
-// data -- a mechanical, content-keyed duplication signal, not a broad "no two SVGs
-// look similar" heuristic (which would be far too noisy against a file with many
-// legitimate distinct icons).
+// Duplicated-icon check: flags a newly added static inline <svg> in index.html whose path data matches an existing ICON_* JS constant.
 
 function extractIconConstants(source) {
   const iconVarRe = /var\s+(ICON_\w+)\s*=\s*'([^']*)'/g;
@@ -652,13 +498,7 @@ function extractPathData(svgMarkup) {
 
 function checkDuplicatedIconMarkup() {
   const violations = [];
-  // ICON_SEARCH/ICON_CANCEL moved to app/app.js in the JS module split
-  // (2026-09-21) -- read the known path data from THAT file's current staged
-  // content (falling back to its on-disk content if it isn't part of this
-  // commit, since the constants still need to be known even when only
-  // index.html's markup changed). Static SVG markup that could duplicate them
-  // still lives in index.html's HTML body (e.g. the #sqLogo symbol), so that
-  // remains the file whose diff is scanned for a newly-added duplicate.
+  // ICON_SEARCH/ICON_CANCEL live in app/app.js; their path data is read from the staged file, or from disk if it is not part of the commit.
   if (!common.isStaged("index.html")) return violations;
   const diff = common.stagedDiff("index.html") || "";
   const iconSource = common.isStaged("app/app.js") ? common.stagedContent("app/app.js") : common.diskRead("app/app.js");
@@ -690,22 +530,7 @@ function checkDuplicatedIconMarkup() {
   return violations;
 }
 
-// ---------------------------------------------------------------------------
-// Social meta description drift check
-// ---------------------------------------------------------------------------
-// index.html's <meta property="og:description"> was deliberately copied from
-// README.md's opening paragraph (minus its trailing "Open index.html and start"
-// sentence, which doesn't belong in a social share preview). This is a real,
-// separate drift risk from the general README-touched gate above: og:description
-// is a hardcoded literal duplicating README prose, and nothing else re-derives
-// it, so a future README rewrite can silently leave the social preview stale.
-//
-// This is a presence/prefix check, not a semantic-accuracy check: it confirms
-// og:description's exact text still appears as the leading portion of README's
-// current opening paragraph, not that the two are still "about the same thing"
-// in some looser sense. If the wording is deliberately shortened or reworded on
-// either side, this check needs updating along with it, same as any other
-// content-keyed check in this file.
+// Social-meta drift check: index.html's og:description must still match the start of README's opening paragraph. A prefix check, not a meaning check.
 
 function extractOgDescription(source) {
   const m = source.match(/<meta\s+property="og:description"\s+content="([^"]*)"/);
@@ -755,18 +580,7 @@ function checkSocialMetaDrift() {
   return violations;
 }
 
-// ---------------------------------------------------------------------------
-// Gate: artifact-build-drift
-// ---------------------------------------------------------------------------
-// Sidequest-Artifact/sidequest.html is a committed, generated file (npm run
-// build:artifact concatenates app/*.js + css/*.css -- see scripts/build-
-// artifact.js) so users can download it directly from GitHub without needing
-// Node/npm. If a commit changes one of the build's real inputs but doesn't
-// also stage the regenerated bundle, the committed artifact silently goes
-// stale. This is a presence/timing check (was the bundle touched at all in
-// the same commit), not a rebuild-and-diff -- consistent with this project's
-// other gates (checkClaudeMdTouched/checkReadmeTouched), and avoids running
-// the actual build script inside a git hook.
+// Artifact-build drift: Sidequest-Artifact/sidequest.html is generated and committed, so a commit that changes a build input without staging the rebuilt file is blocked. A presence check, not a rebuild-and-diff.
 
 const ARTIFACT_BUNDLE = "Sidequest-Artifact/sidequest.html";
 const ARTIFACT_SOURCE_PATTERN = /^(app\/[\w-]+\.js|css\/[\w-]+\.css)$/;
@@ -796,12 +610,7 @@ function checkArtifactBuildDrift() {
   return violations;
 }
 
-// ---------------------------------------------------------------------------
-// npm test gate
-// ---------------------------------------------------------------------------
-// This runs the actual test suite. It is intentionally the LAST check run (see
-// pre-commit hook), since it is the slowest, and every other check is cheap by
-// comparison -- fail fast on the cheap checks first.
+// npm test gate: runs the suite, deliberately last because it is the slowest check.
 
 function runNpmTest() {
   const { spawnSync } = require("child_process");

@@ -1,16 +1,4 @@
-// Part 0b -- new-file-extension-category check. A standing Sentinel default, not a
-// project-specific proposal: build it on every 03 run regardless of what
-// INTEGRATION_CHECKLIST.md says.
-//
-// Manifest location decision (flagged in the implementation report as a fork
-// resolved without live user confirmation, per this run's non-interactive
-// override): the manifest lives in the TRACKED hook directory
-// (.githooks/sentinel-known-extensions.txt), not under the gitignored
-// Sentinel-Notes/. Reasoning: the manifest's CONTENT isn't sensitive (it's just a
-// list of file extensions like ".html" or ".png"), and a future clone or
-// contributor benefits from seeing what kinds of files this project expects --
-// unlike sentinel-exceptions.json, which can carry internal-detail reasons the
-// project wants to keep off a public repo.
+// New-file-extension check. The manifest of known extensions lives in the tracked hook directory (.githooks/sentinel-known-extensions.txt) because its content is not sensitive and a clone benefits from it.
 
 "use strict";
 const fs = require("fs");
@@ -49,12 +37,7 @@ function seedFromWorkingTree() {
   return known;
 }
 
-// Checks staged files for this commit. Returns { newExtensions: [...], updatedManifest }.
-// Does NOT ask interactive questions itself (a git hook has no reliable interactive
-// prompt channel mid-commit) -- instead it prints the routing questions as text and
-// blocks with a clear "answer these, then re-run with SENTINEL_ACK_NEW_EXT=<ext> to
-// proceed" escape hatch, so it fails loud rather than silently letting a new asset
-// category through unnoticed, and never assumes an answer on the user's behalf.
+// Checks staged files for new extensions. It prints routing questions and blocks with a SENTINEL_ACK_NEW_EXT=<ext> escape hatch, since a hook cannot prompt mid-commit.
 function checkNewExtensions() {
   const known = loadKnownExtensions();
   const added = common.stagedFiles().filter((f) => f.status === "A");

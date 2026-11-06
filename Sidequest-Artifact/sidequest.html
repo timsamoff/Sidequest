@@ -152,10 +152,7 @@ button.pencil:hover { border: 0; background: var(--chip-idle); color: var(--plan
 button.pencil[hidden] { display: none; }
 .inlineedit { flex: 1 1 auto; min-width: 0; width: 100%; }
 .editrow { display: flex; align-items: flex-start; gap: var(--space-8); }
-/* Thin, theme-aware scrollbars everywhere: subtle (--line) at rest, darker
-   (--muted) on hover. The standard scrollbar-color property has no hover
-   state of its own, so this is approximate outside Chromium/WebKit, which
-   use the ::-webkit-scrollbar-thumb:hover rule below for the real swap. */
+/* Thin theme-aware scrollbars: --line at rest, --muted on hover. scrollbar-color has no hover state, so the hover swap works only in Chromium and WebKit. */
 :root { scrollbar-color: var(--line) transparent; }
 * { scrollbar-width: thin; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -231,7 +228,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .tab[aria-current="page"] { background: var(--sel); color: var(--ink); font-weight: 600; box-shadow: inset 3px 0 0 var(--planned); }
 .navbottom { margin-top: auto; padding-top: var(--space-8); border-top: 1px solid var(--line); flex-shrink: 0; overflow-y: visible; }
 .column { min-width: 0; }
-/* Opaque cover over the top safe area (a host app's own bar, a phone's status bar) so scrolled content never shows through above the sticky header. */
+/* Opaque cover over the top safe area (a host app's bar, a phone's status bar) so scrolled content never shows through above the sticky header. */
 body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 9; pointer-events: none; }
 .topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); padding: var(--space-12) var(--space-24); background: var(--bg); border-bottom: 1px solid var(--line); }
 .topact { display: flex; gap: var(--space-8); align-items: center; flex: none; }
@@ -315,13 +312,10 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .item[aria-current="true"], .item[aria-expanded="true"] { background: var(--sel); box-shadow: inset 4px 0 0 var(--planned); }
 /* A task opened in place on a quest's page: part of the list, not a separate card. */
 .tlist li > .detail { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
-/* The whole row, not just the title button, goes light blue while a task is
-   expanded for editing in place -- :has() is fine here since this project
-   targets modern Chromium only. aria-current (the Tasks page's own split-pane
-   selection, no .detail sibling) is deliberately excluded. */
+/* The whole row, not just the title, tints while a task is expanded in place (:has(), modern Chromium only). The Tasks page's aria-current selection is excluded on purpose. */
 .tlist li:has(> .item[aria-expanded="true"]) { background: var(--sel); }
 .tlist li:has(> .item[aria-expanded="true"]) > .item { box-shadow: none; }
-/* .detail's own opaque --surface background (from the shared card-style rule
+/* .detail's opaque --surface background (from the shared card-style rule
    above) would otherwise paint over the blue li background for its own area,
    leaving only the title row visibly tinted. */
 .tlist li:has(> .item[aria-expanded="true"]) > .detail { background: transparent; }
@@ -339,8 +333,8 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .split { display: grid; grid-template-columns: minmax(280px, .95fr) minmax(0, 1.25fr); gap: var(--space-22); align-items: start; margin-top: var(--space-12); }
 .split .tlist { margin-top: 0; }
 .detailpane { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); margin-bottom: -72px; }
-/* The Tasks page's own detail pane, border/corners kept, filled with the same
-   highlight blue a quest page's own expanded task gets -- the user's own call. */
+/* The Tasks page's detail pane, border/corners kept, filled with the same
+   highlight blue a quest page's expanded task gets -- the user's call. */
 .detailpane .detail { background: var(--sel); }
 .detail { padding: var(--space-18) var(--space-20); }
 .detail .what { font-family: var(--font-serif); font-size: 1.25rem; font-weight: 600; line-height: 1.3; margin-top: var(--space-8); }
@@ -498,10 +492,7 @@ svg.chart.nofocusring { outline: none; }
 .bar.work { background: var(--bar-active); }
 .bar.done { background: var(--bar-done); }
 @media (min-width: 900px) {
-  /* .questactions comes last in the markup (after .questcharts) so it renders
-     at the true bottom of the page when stacked; placed back under .questmain
-     here, where it visually sat before, since the grid would otherwise float
-     it to column 1 below .questcharts's own row. */
+  /* .questactions comes last in the markup so it lands at the bottom when stacked; the grid places it back under .questmain on wide screens. */
   .questsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: "main charts" "actions charts"; column-gap: var(--space-22); align-items: start; }
   .questmain { grid-area: main; }
   .questcharts { grid-area: charts; }
@@ -556,7 +547,7 @@ svg.chart.nofocusring { outline: none; }
 .tutorial .tutorialtext { margin: 0; font-size: var(--text-sm); line-height: 1.45; }
 /* Lifted above its neighbors so a selected tab next to it cannot paint over the ring. */
 .tutorialtarget { position: relative; z-index: 1; outline: 3px solid var(--tutorial); outline-offset: 3px; }
-/* The ring swells once when a step first points at something, and the card's own ring swells on every step, then both stay put. */
+/* The ring swells once when a step first points at something, and the card's ring swells on every step, then both stay put. */
 .tutorial.tutorialflash { animation: tutorialflash .9s ease-out 1; }
 /* The highlighted item swells a second after the card does. */
 .tutorialtarget.tutorialflash { animation: tutorialflash .9s ease-out 1s 1; }
@@ -574,49 +565,6 @@ li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: va
   .side .tutorialtarget { outline-offset: -3px; }
   body:has(.overlay:not([hidden])) .tutorial, body:has(.menu:not([hidden])) .tutorial { display: none; }
 }
-/* splash screen: viewport-relative sizing so the ~75% panel works in either orientation. */
-.splash { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity .5s ease; }
-.splash.fading { opacity: 0; }
-/* No page scroll while the splash is up; releases itself when it is hidden. */
-html:has(.splash:not([hidden])) { overflow: hidden; }
-.splash { overscroll-behavior: none; touch-action: none; }
-/* No transition here -- backdropBlurred is present from first paint, must never ramp up. */
-.splashbackdrop { position: absolute; inset: 0; backdrop-filter: blur(0px); }
-.splash.backdropBlurred .splashbackdrop { backdrop-filter: blur(10px); }
-.splashpanel { position: relative; isolation: isolate; width: min(75vw, 75vh, 560px); aspect-ratio: 1 / 1; border-radius: 28px; overflow: hidden; background: var(--est); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; }
-.splashsvg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.splashart { transition: filter .6s ease; }
-.splash.artBlurred .splashart { filter: blur(5px); }
-/* The box is fixed and two lines tall: --q is the box's own width in em
-   (measured in the wider Georgia fallback), chosen so every affirmation
-   wraps to at most two lines; anything that needs a third is commented out
-   below. The font shrinks on a narrow panel to keep that true. Title and
-   affirmation stack in one cell and only the text is masked and blurred. */
-.splashpanel { container-type: inline-size; }
-.splashtextwrap { --q: 11.5; position: relative; z-index: 1; box-sizing: border-box; display: grid; align-items: center; width: calc(var(--q) * 1em + 32px); height: calc(2.8em + 2 * var(--space-12) + 4px); padding: var(--space-12) var(--space-14); text-align: center; color: var(--surface); background: var(--planned); border: 2px solid var(--surface); border-radius: 14px; font-family: var(--font-serif); font-size: min(1.15rem, calc((94cqw - 32px) / var(--q))); font-weight: 600; line-height: 1.4; }
-.splashtitle, .splashaffirm { grid-area: 1 / 1; margin: 0; }
-/* Balances the two lines so a quote never ends on a single word. */
-.splashaffirm { text-wrap: balance; }
-/* Sidequest grows to the same height as the two-line quote box, vertically centered. */
-.splashtitle { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 1.45em; }
-/* --wipe moves a wide, soft mask edge across the text, left to right, while
-   the text blurs. Registered because gradients and calc() inside filter
-   can't be transitioned any other way. */
-@property --wipe { syntax: "<number>"; inherits: false; initial-value: 0; }
-.splashtitle, .splashaffirm { transition: --wipe .9s ease; }
-.splashtitle { filter: blur(calc(var(--wipe) * 6px)); -webkit-mask-image: linear-gradient(to right, transparent calc(var(--wipe) * 150% - 50%), black calc(var(--wipe) * 150%)); mask-image: linear-gradient(to right, transparent calc(var(--wipe) * 150% - 50%), black calc(var(--wipe) * 150%)); }
-.splashaffirm { filter: blur(calc((1 - var(--wipe)) * 6px)); -webkit-mask-image: linear-gradient(to right, black calc(var(--wipe) * 150% - 50%), transparent calc(var(--wipe) * 150%)); mask-image: linear-gradient(to right, black calc(var(--wipe) * 150% - 50%), transparent calc(var(--wipe) * 150%)); }
-.splash.textIn .splashtitle, .splash.textIn .splashaffirm { --wipe: 1; }
-/* Initial dasharray/dashoffset come from real SVG attributes, not a CSS var fallback. */
-#splashLines path { transition: stroke-dashoffset .65s ease; }
-#splashLines path.drawn { stroke-dashoffset: 0; }
-/* Fade in place -- no scale/size change, so rect's own rotate() attribute isn't fought. */
-#splashNodes circle, #splashNodes rect { opacity: 0; transition: opacity .3s ease; }
-#splashNodes circle.shown, #splashNodes rect.shown { opacity: 1; }
-@media (prefers-reduced-motion: reduce) {
-  .splash, .splashbackdrop, .splashsvg, .splashtitle, .splashaffirm, #splashLines path, #splashNodes circle, #splashNodes rect { transition-duration: .01ms !important; }
-}
-
 @media (max-width: 899px) {
   .app { display: block; }
   .side { position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: auto; z-index: 20; padding: var(--space-4) var(--space-4) calc(4px + env(safe-area-inset-bottom, 0px)); border-right: 0; border-top: 1px solid var(--line); flex-direction: row; }
@@ -641,9 +589,6 @@ html:has(.splash:not([hidden])) { overflow: hidden; }
   .overlay { align-items: flex-end; padding: 0; }
   .modal { max-width: none; border-radius: 16px 16px 0 0; max-height: 92vh; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
   .menu { min-width: 220px; }
-  /* Widen the floor so the panel stays legible on a small phone. */
-  .splashpanel { width: min(85vw, 85vh, 420px); }
-  .splashtextwrap { font-size: min(var(--text-100), calc((94cqw - 32px) / var(--q))); }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
 
@@ -661,6 +606,52 @@ html:has(.splash:not([hidden])) { overflow: hidden; }
 .dialogheading .helpq { margin-left: var(--space-8); }
 .tutorialbtn { background: var(--tutorial); border-color: var(--tutorial); color: var(--on-tutorial-btn); font-weight: 600; }
 .tutorialbtn:hover { background: var(--tutorial-dark, var(--tutorial)); border-color: var(--tutorial-dark, var(--tutorial)); filter: brightness(1.08); }
+
+/* The launch splash: markup in index.html, behavior in app/splash.js. Also used inline by the landing site. */
+/* Viewport-relative sizing so the ~75% panel works in either orientation. */
+.splash { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity .5s ease; }
+.splash.fading { opacity: 0; }
+/* No page scroll while the splash is up; releases itself when it is hidden. */
+html:has(.splash:not([hidden])) { overflow: hidden; }
+.splash { overscroll-behavior: none; touch-action: none; }
+/* No transition here -- backdropBlurred is present from first paint, must never ramp up. */
+.splashbackdrop { position: absolute; inset: 0; backdrop-filter: blur(0px); }
+.splash.backdropBlurred .splashbackdrop { backdrop-filter: blur(10px); }
+.splashpanel { position: relative; isolation: isolate; width: min(75vw, 75vh, 560px); aspect-ratio: 1 / 1; border-radius: 28px; overflow: hidden; background: var(--est); box-shadow: 0 20px 60px rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; }
+.splashsvg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.splashart { transition: filter .6s ease; }
+.splash.artBlurred .splashart { filter: blur(5px); }
+/* The quote box is fixed and two lines tall: --q is its width in em (measured in the Georgia fallback), so every active affirmation fits two lines. Title and quote stack in one cell; only the text is masked and blurred. */
+.splashpanel { container-type: inline-size; }
+.splashtextwrap { --q: 11.5; position: relative; z-index: 1; box-sizing: border-box; display: grid; align-items: center; width: calc(var(--q) * 1em + 32px); height: calc(2.8em + 2 * var(--space-12) + 4px); padding: var(--space-12) var(--space-14); text-align: center; color: var(--surface); background: var(--planned); border: 2px solid var(--surface); border-radius: 14px; font-family: var(--font-serif); font-size: min(1.15rem, calc((94cqw - 32px) / var(--q))); font-weight: 600; line-height: 1.4; }
+.splashtitle, .splashaffirm { grid-area: 1 / 1; margin: 0; }
+/* Balances the two lines so a quote never ends on a single word. */
+.splashaffirm { text-wrap: balance; }
+/* Sidequest grows to the same height as the two-line quote box, vertically centered. */
+.splashtitle { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 1.45em; }
+/* --wipe moves a wide, soft mask edge across the text, left to right, while
+   the text blurs. Registered because gradients and calc() inside filter
+   can't be transitioned any other way. */
+@property --wipe { syntax: "<number>"; inherits: false; initial-value: 0; }
+.splashtitle, .splashaffirm { transition: --wipe .9s ease; }
+.splashtitle { filter: blur(calc(var(--wipe) * 6px)); -webkit-mask-image: linear-gradient(to right, transparent calc(var(--wipe) * 150% - 50%), black calc(var(--wipe) * 150%)); mask-image: linear-gradient(to right, transparent calc(var(--wipe) * 150% - 50%), black calc(var(--wipe) * 150%)); }
+.splashaffirm { filter: blur(calc((1 - var(--wipe)) * 6px)); -webkit-mask-image: linear-gradient(to right, black calc(var(--wipe) * 150% - 50%), transparent calc(var(--wipe) * 150%)); mask-image: linear-gradient(to right, black calc(var(--wipe) * 150% - 50%), transparent calc(var(--wipe) * 150%)); }
+.splash.textIn .splashtitle, .splash.textIn .splashaffirm { --wipe: 1; }
+/* Initial dasharray/dashoffset come from real SVG attributes, not a CSS var fallback. */
+#splashLines path { transition: stroke-dashoffset .65s ease; }
+#splashLines path.drawn { stroke-dashoffset: 0; }
+/* Fade in place -- no scale/size change, so rect's rotate() attribute isn't fought. */
+#splashNodes circle, #splashNodes rect { opacity: 0; transition: opacity .3s ease; }
+#splashNodes circle.shown, #splashNodes rect.shown { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .splash, .splashbackdrop, .splashsvg, .splashtitle, .splashaffirm, #splashLines path, #splashNodes circle, #splashNodes rect { transition-duration: .01ms !important; }
+}
+
+@media (max-width: 899px) {
+  /* Widen the floor so the panel stays legible on a small phone. */
+  .splashpanel { width: min(85vw, 85vh, 420px); }
+  .splashtextwrap { font-size: min(var(--text-100), calc((94cqw - 32px) / var(--q))); }
+}
 
 </style>
 </head>
@@ -777,7 +768,7 @@ function parseISO(s) { var p = s.split("-"); return Date.UTC(+p[0], +p[1] - 1, +
 function iso(ms) { return new Date(ms).toISOString().slice(0, 10); }
 function addDays(ms, n) { return ms + n * DAY; }
 // The Monday (UTC) on or before ms. Per-quest burndown snapshots are keyed by
-// this, so they stay valid when a quest's own start date moves.
+// this, so they stay valid when a quest's start date moves.
 function weekStart(ms) { return addDays(ms, -((new Date(ms).getUTCDay() + 6) % 7)); }
 function addMonths(ms, n) { var d = new Date(ms); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, d.getUTCDate()); }
 var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -821,13 +812,11 @@ function helpLink(id, name) {
   b.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); if (helpOpener) helpOpener(id); });
   return b;
 }
-// True when the page is running as a Claude artifact (Claude's own capabilities are present).
+// True when the page is running as a Claude artifact (Claude's capabilities are present).
 function inClaude() {
   try { return !!(window.claude && typeof window.claude.use === "function"); } catch (e) { return false; }
 }
-// True when Sidequest runs as a hosted artifact: inside Claude (its tools are present) or in any
-// other host that sets window.sidequestHosted = true. Wording about where data lives, and the
-// web-only features (Install box, backup reminder), follow this. Claude-only abilities use inClaude().
+// True when running as a hosted artifact: inside Claude, or any host that sets window.sidequestHosted. Wording about where data lives and the web-only features follow this; Claude-only abilities use inClaude().
 function isHosted() {
   try { return inClaude() || window.sidequestHosted === true; } catch (e) { return false; }
 }
@@ -842,9 +831,7 @@ function playSfx(src, volume) {
     if (p && typeof p.catch === "function") p.catch(function () {});
   } catch (e) { /* no audio support */ }
 }
-// Money fields work like a cash register: digits fill in from the cents, and the
-// separators are added as you type. The cap is 999,999.99. `style` is "us"
-// (1,234.56) or "eu" (1.234,56); it is the Options "Coin format" setting.
+// Cash-register money input: digits fill in from the cents, capped at 999,999.99. `style` is "us" or "eu" from the Options Coin format setting.
 function moneySeps(style) { return style === "eu" ? { group: ".", dec: "," } : { group: ",", dec: "." }; }
 function formatMoney(n, style) {
   if (typeof n !== "number" || isNaN(n) || n <= 0) return "";
@@ -898,8 +885,7 @@ function pencilButton(label, title, onClick) {
   if (onClick) on(b, "click", onClick);
   return b;
 }
-// Turns the text in `display` into an input in place. Enter or clicking away saves,
-// Esc cancels. onDone runs first (so callers can restore their pencil), then onSave.
+// Turns `display` into an input in place; Enter or clicking away saves, Esc cancels. onDone runs before onSave.
 function editInline(display, opts) {
   var input = el("input", { type: "text", "class": "inlineedit", "aria-label": opts.label, maxlength: String(opts.max || 200), autocomplete: "off" });
   input.value = opts.value();
@@ -997,14 +983,11 @@ function liveQuests() { return live(state.quests); }
 function activeQuests() { return liveQuests().filter(function (p) { return p.status === "active"; }); }
 function candidateQuests() { return liveQuests().filter(function (p) { return p.status === "candidate"; }); }
 function completeQuests() { return liveQuests().filter(function (p) { return p.status === "complete"; }); }
-// A Complete-but-not-vaulted quest's tasks drop out of every cross-quest
-// surface (Tasks, Today, the burndown/Timeline), reversible the instant its status changes back.
-// A Candidate quest's tasks are not counted anywhere across quests (Today, Tasks, Timeline,
-// the burndown) until it is promoted, dates or not; they show on the quest's own page.
+// A Candidate quest's tasks count nowhere across quests (Today, Tasks, Timeline, burndown) until it is promoted; they still show on its own page.
 function isCandidateTask(t) { var p = findQuest(t.questId); return !!p && p.status === "candidate" && !p.vault; }
 function isHiddenFromPlan(t) { return isHiddenComplete(t) || isCandidateTask(t); }
 function isHiddenComplete(t) { var p = findQuest(t.questId); return !!p && p.status === "complete" && !p.vault; }
-// Searches every quest, vaulted or not -- a vaulted quest's own page
+// Searches every quest, vaulted or not -- a vaulted quest's page
 // must stay reachable, read-only, until restored.
 function findQuest(id) { for (var i = 0; i < state.quests.length; i++) if (state.quests[i].id === id) return state.quests[i]; return null; }
 function findAnyQuest(id) { return findQuest(id); }
@@ -1030,7 +1013,7 @@ function unlinkQuests(aId, bId) {
   if (a) a.linkedQuestIds = a.linkedQuestIds.filter(function (id) { return id !== bId; });
   if (b) b.linkedQuestIds = b.linkedQuestIds.filter(function (id) { return id !== aId; });
 }
-// A quest's own due date, as ms, or null when it has none; its tasks' due dates may not pass it.
+// A quest's due date, as ms, or null when it has none; its tasks' due dates may not pass it.
 function questDueLimit(questId) { var p = findQuest(questId); return p && p.due ? parseISO(p.due) : null; }
 // Problems with a start and due date pair for a quest, one message per field ("" when fine). Used live while typing, so a date whose year is still being typed (before 1900) is skipped.
 function dateProblems(questId, start, due) {
@@ -1048,14 +1031,14 @@ function offsetFor(questId, n) { return n * pset(questId).days; }
 function blockStartFor(questId, b) { return addDays(parseISO(pset(questId).start), offsetFor(questId, b - 1)); }
 function blockEndFor(questId, b) { return addDays(parseISO(pset(questId).start), offsetFor(questId, b) - 1); }
 // The inverse of blockStartFor/blockEndFor: which block a given date falls in,
-// so a task can be scheduled by picking a due date. Null before the quest's own start.
+// so a task can be scheduled by picking a due date. Null before the quest's start.
 function blockForDate(questId, dateMs) {
   var eff = pset(questId), start = parseISO(eff.start);
   if (dateMs < start) return null;
   return Math.floor((dateMs - start) / (eff.days * DAY)) + 1;
 }
 function projKey(t) { return t.questId; }
-// A task's own start/due dates, when set, are the truth; otherwise it fills its
+// A task's start/due dates, when set, are the truth; otherwise it fills its
 // block. Its block is always the one containing its due date (see syncTaskBlocks).
 function taskStart(t) { return t.start ? parseISO(t.start) : blockStartFor(projKey(t), t.block); }
 function taskEnd(t) { return t.due ? parseISO(t.due) : blockEndFor(projKey(t), t.block); }
@@ -1133,10 +1116,7 @@ function globalActual(cps) {
 
 /* task helpers */
 function counted() { return state.tasks.filter(function (t) { return !t.vault || t.vault.why === "done"; }); }
-// A vaulted quest's own page shows every one of its tasks regardless of
-// their own vault state (the quest-vault cascade vaults them too), since the
-// page's own readOnly gate already governs editability -- counted()/live()
-// are for cross-quest lists and would wrongly hide them here.
+// A vaulted quest's page shows all its tasks regardless of their own vault state; counted()/live() are for cross-quest lists and would hide them here.
 function questTasks(questId) { return state.tasks.filter(function (t) { return t.questId === questId; }); }
 // The "chosen" quest is the first active one with no tasks yet. If two are
 // both task-less, whichever was promoted first wins.
@@ -1180,8 +1160,8 @@ function velocityForecast(tasks, blockDays, sinceMs) {
   var rate = done / windowDays;
   return { open: open, done: done, rate: rate, windowDays: windowDays, finish: TODAY + Math.ceil(open / rate) * DAY };
 }
-// --- One quest's own burndown ---
-// From counted(), not burnTasks() -- a Complete quest's own page keeps
+// --- One quest's burndown ---
+// From counted(), not burnTasks() -- a Complete quest's page keeps
 // showing its burndown even while its tasks are hidden cross-quest.
 function questBurnTasks(p) { return counted().filter(function (t) { return t.block > 0 && t.questId === p.id; }); }
 function questTotalUnits(p) { return questBurnTasks(p).length; }
@@ -1223,7 +1203,7 @@ function syncFromSteps(t) {
 }
 function nextTask() { var o = ordered(); for (var i = 0; i < o.length; i++) if (o[i].status !== "Completed") return o[i]; return null; }
 function isCore(v) { return CORE.some(function (c) { return c[0] === v; }); }
-// "quest:" + id routes to a quest's own page -- id-based, not name-based, so
+// "quest:" + id routes to a quest's page -- id-based, not name-based, so
 // renaming a quest never breaks its pin or an in-flight link to it.
 function validPage(key) {
   if (typeof key !== "string" || key.indexOf("quest:") !== 0) return false;
@@ -1259,8 +1239,8 @@ function findStep(id) {
 }
 function decisionFor(stepId) { var ds = live(state.decisions); for (var i = 0; i < ds.length; i++) if (ds[i].step === stepId) return ds[i]; return null; }
 function short(str, n) { return str.length > n ? str.slice(0, n - 1) + "…" : str; }
-// Tasks flagged for a quest's own launch checklist -- renders as a section on
-// that quest's own page (no separate global Launch page anymore).
+// Tasks flagged for a quest's launch checklist -- renders as a section on
+// that quest's page (no separate global Launch page anymore).
 function launchItems(questId) {
   return sortTasks(questTasks(questId).filter(function (t) { return t.launch; }));
 }
@@ -1284,7 +1264,7 @@ function stepOptions(questId) {
   });
   return o;
 }
-// One task's own steps, for the Quest -> Task -> Step cascade in decisionDialog().
+// One task's steps, for the Quest -> Task -> Step cascade in decisionDialog().
 function stepOptionsForTask(taskId) {
   var t = findTask(taskId);
   if (!t) return [];
@@ -1308,7 +1288,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.13.3";
+var APP_VERSION = "0.13.4";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -1318,7 +1298,7 @@ function task(id, block, questId, what, done, steps, extra) {
   if (extra) Object.keys(extra).forEach(function (k) { t[k] = extra[k]; });
   return t;
 }
-// A quest's own lifecycle: "candidate" or "active". Promoted in place -- the
+// A quest's lifecycle: "candidate" or "active". Promoted in place -- the
 // same record and id carry through candidate -> active -> vaulted, never a second record.
 function quest(id, name, status, extra) {
   var p = { id: id, name: name, status: status, start: "", days: 7, due: "", notes: "", vault: null, linkedQuestIds: [], hist: {}, lastSlip: null, wasPinned: false, justReopened: false, touched: "", sig: "", client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } };
@@ -1374,9 +1354,7 @@ function sampleData() {
     task("g2", 2, "pGame", "Make the first ten levels", "Ten levels load and can be finished start to end"),
     task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid"), st("g3c", "Record a trailer")], { milestone: true }),
     task("g4", 0, "pGame", "Add a level editor", "Players can build, save, and share a level"),
-    // pDone's own tasks, all finished. Four weekly tasks at weight 2 each give
-    // an even planned line, which doneHistory above then zig-zags around.
-    // A Candidate with tasks of its own: they show on its page but do not count anywhere until it is promoted.
+    // A Candidate with tasks of its own: they show on its page but count nowhere until it is promoted.
     task("e1", 1, "pExt", "Sketch the toolbar button", "A mockup you would be happy to click", [st("e1a", "Pick an icon style"), st("e1b", "Mock up the popup")]),
     task("e2", 0, "pExt", "Decide which browsers to support", "A short list of browsers"),
     task("d1", 1, "pDone", "Design the feature", "The design is agreed", [st("d1a", "Sketch the approach", true), st("d1b", "Get sign-off", true)], { status: "Completed", doneAt: day(-22) }),
@@ -1390,7 +1368,7 @@ function sampleData() {
   var DONE = { n1: day(6), n2: day(11), n3: day(13), a1: day(5), d1: day(-20), d2: day(-15), d3: day(-12), d4: day(-1) };
   tasks.forEach(function (t) { if (DONE[t.id]) t.doneAt = DONE[t.id]; });
   // Explicit start/due dates for every scheduled task. A start date is only
-  // set when the task's own estimate is light enough the block would otherwise look misleadingly full.
+  // set when the task's estimate is light enough the block would otherwise look misleadingly full.
   var SCHEDULE = {
     a1: { start: day(2), due: day(4) }, a2: { start: day(9), due: day(12) }, a3: { start: day(18), due: day(20) },
     a4: { start: day(25), due: day(27) }, a5: { start: day(31), due: day(34) },
@@ -1463,7 +1441,7 @@ function cleanHist(v) {
   });
   return out;
 }
-// A slip's own undo snapshot: each affected task's prior block number, so Undo can restore it exactly.
+// A slip's undo snapshot: each affected task's prior block number, so Undo can restore it exactly.
 function cleanSlip(v) {
   if (!v || typeof v !== "object" || typeof v.days !== "number" || !Array.isArray(v.snap)) return null;
   var snap = v.snap.slice(0, 500).filter(function (s) { return s && typeof s.id === "string" && typeof s.block === "number" && s.block >= 0 && s.block <= 5000; }).map(function (s) { return { id: S(s.id, 40), block: Math.round(s.block), start: isISO(s.start) ? s.start : "", due: isISO(s.due) ? s.due : "" }; });
@@ -1623,7 +1601,7 @@ function getDb() {
   return dbPromise;
 }
 
-// One write in flight at a time (the db capability's own contract); a burst
+// One write in flight at a time (the db capability's contract); a burst
 // of saves coalesces into the running write plus exactly one more carrying the latest state.
 var dbWriteInFlight = null, dbWritePending = false;
 // Nothing is written to the db until it has been read once, or an empty
@@ -1664,7 +1642,7 @@ function save() {
   try { prev = window.localStorage.getItem(KEY2); } catch (e) { prev = null; }
   var changed = json !== prev;
   if (changed || !localSavedAt) localSavedAt = new Date().toISOString(); // only a real change moves the stamp
-  if (changed && savesSeen > 0) editedAfterBoot = true; // the first save is the boot's own, not an edit
+  if (changed && savesSeen > 0) editedAfterBoot = true; // the first save comes from boot, not an edit
   savesSeen++;
   writeLocal(json, localSavedAt);
   dbSave(state);
@@ -1707,12 +1685,7 @@ function isNewerVersion(a, b) {
   for (var i = 0; i < 3; i++) { if (pb[i] > pa[i]) return true; if (pb[i] < pa[i]) return false; }
   return false;
 }
-// A separate db document from state/main -- deliberately outside the state
-// object itself, so an ordinary save() (which only ever writes state/main)
-// can never overwrite a version stamp set here from outside the app.
-// No-op (resolves null) on the web build or with no db. The stamp itself is
-// written by hand when a new sidequest.html is published; nothing in this
-// app's own code ever writes meta/version.
+// Reads the db version stamp (doc meta/version), kept outside state/main so save() cannot overwrite it. No-op on the web build; the stamp is only written by hand when sidequest.html is published.
 function checkForAppUpdate() {
   return getDb().then(function (db) {
     if (!db) return null;
@@ -1736,9 +1709,7 @@ function autoVault() {
     if (!t.doneAt) t.doneAt = iso(TODAY);
   });
 }
-// Permanently deletes Vault entries older than settings.vaultPurgeDays,
-// checked once at boot. 0 means Never; no confirmation, the Settings control itself is standing consent.
-// Removes every link that points at a quest which no longer exists.
+// Deletes Vault entries older than settings.vaultPurgeDays, checked once at boot (0 = Never, no confirmation). Also removes links to quests that no longer exist.
 function removeLinksTo(ids) {
   state.quests.forEach(function (q) { q.linkedQuestIds = q.linkedQuestIds.filter(function (id) { return ids.indexOf(id) < 0; }); });
 }
@@ -1755,10 +1726,7 @@ function purgeOldVault() {
   removeLinksTo(goneIds);
   state.workshop = state.workshop.filter(function (p) { return !old(p); });
 }
-// Shuffled-bucket randomizer: draws from state.settings.affirmationBucket (a
-// shuffled list of remaining indices), refilling and reshuffling a fresh full
-// bucket once empty, so no quote repeats until every one has shown once.
-// `count` is the live AFFIRMATIONS.length, since the list itself can change.
+// Shuffled-bucket picker: no quote repeats until every one has shown. `count` is the live AFFIRMATIONS.length.
 function nextAffirmationIndex(count) {
   var bucket = state.settings.affirmationBucket;
   if (!bucket || bucket.length === 0 || bucket.some(function (n) { return n >= count; })) {
@@ -1834,19 +1802,13 @@ function svgEl(tag, attrs, text) {
   Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
   if (text !== undefined) e.textContent = text; return e;
 }
-// Dismisses a tap-opened tooltip when the user taps anywhere that is not a chart
-// (a tap elsewhere does not blur the chart on every phone browser). Shared by
-// the SVG burndown chart and the plain-HTML Gantt's own today-line tooltip,
-// since only one tooltip is ever pinned at a time.
+// Dismisses a tap-pinned tooltip when the user taps outside a chart (a tap does not blur on every phone browser). Shared by the burndown and the Gantt today-line tooltip, since only one is pinned at a time.
 var dismissTip = null;
 if (typeof document !== "undefined") document.addEventListener("pointerdown", function (e) {
   if (dismissTip && !(e.target && e.target.closest && (e.target.closest("svg.chart") || e.target.closest(".today")))) dismissTip();
 });
 
-// Draws a burndown. cfg: { cps, planned[], actual[], total, label, marks[], tip(i) }.
-// One keyboard stop; arrows/Home/End/Esc navigate. Tooltip works on hover, tap, and focus.
-// Which charts have already drawn in on the current page visit. A repaint of the same page leaves them still;
-// moving to another page clears the list, so coming back animates again.
+// Charts already drawn in on this page visit, so a repaint does not replay the animation; moving to another page clears the list.
 var burnShown = {}, burnView = null;
 function noteBurnView(view) { if (view !== burnView) { burnShown = {}; burnView = view; } }
 
@@ -1870,7 +1832,7 @@ function renderBurn(host, wide, cfg) {
   var every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 70))));
   cps.forEach(function (ms, i) { if (i % every === 0 || i === n - 1) svg.appendChild(svgEl("text", { "class": "axis", x: x(i), y: H - 16, "text-anchor": "middle" }, fmt(ms))); });
   // Each line reveals left to right via its own clipped group (a clip-rect,
-  // not stroke-dasharray, which would fight Ideal's own dash pattern).
+  // not stroke-dasharray, which would fight Ideal's dash pattern).
   var animate = state.settings.animatedBurndown && !burnShown[cfg.key];
   var revealGroups = [];
   // x0 and w limit the reveal to part of the chart, so a line that starts partway across draws from its own start.
@@ -2068,7 +2030,7 @@ function drawChart(host, wide) {
   });
 }
 
-// One quest's own burndown.
+// One quest's burndown.
 function drawQuestChart(host, p, wide) {
   var bd = questBurn(p);
   if (!bd) { host.innerHTML = ""; return false; }
@@ -2098,7 +2060,7 @@ function thinMonthLabels(months) {
   spans.forEach(function (sp, i) { sp.hidden = kept.indexOf(i) < 0; });
 }
 // Draws a timeline: the month header, one lane per entry, the milestones lane,
-// and the today line. Shared by the all-quests Timeline and a quest's own.
+// and the today line. Shared by the all-quests Timeline and each quest's Timeline.
 function timelineNode(lanes, mss, rs, maxEnd, hint) {
   var wrap = el("div", { "class": "range" });
   mss.forEach(function (m) { if (m.date > maxEnd) maxEnd = m.date; });
@@ -2189,7 +2151,7 @@ function rangeBlock() {
   return { node: wrap, milestones: mss };
 }
 
-// A quest's own timeline: a lane per scheduled task plus that quest's
+// A quest's timeline: a lane per scheduled task plus that quest's
 // milestones. Backlog tasks have no dates, so they are counted, not drawn.
 function questRangeBlock(p) {
   var ts = questBurnTasks(p).slice().sort(function (x, y) { return taskStart(x) - taskStart(y); });
@@ -2224,7 +2186,7 @@ function questRangeBlock(p) {
 /* Client export: a single, self-contained, read-only HTML file for sharing one
    quest, with chart data precomputed here so the exported file only draws numbers, never recomputes scheduling math. */
 
-// Tasks, steps, and the quest's own fields, frozen to plain data. Does not
+// Tasks, steps, and the quest's fields, frozen to plain data. Does not
 // walk linked quests -- buildExportTree() does that, with the cycle guard.
 function snapshotTasks(p) {
   return questBurnTasksOrdered(p).map(function (t) {
@@ -2245,12 +2207,7 @@ function questBurnTasksOrdered(p) {
 }
 function fmtRange(t) { return t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)); }
 
-// Precomputed chart data for one quest: the burndown's points (with tooltip
-// text baked in) and the timeline's lanes. Milestones appear in two different
-// coordinate systems: burndownMilestones (plain date labels, for the
-// burndown's own date axis) and lanes.milestones (percent-of-range, for the
-// Timeline's Gantt) -- snapshotLanes() computes the latter since it already
-// has the lane range math the percentage needs.
+// Precomputed chart data for one quest: burndown points with baked tooltip text, and timeline lanes. Milestones use two coordinate systems: date labels for the burndown, percent-of-range in each lane.
 function snapshotCharts(p) {
   var bd = questBurn(p);
   if (!bd) return null;
@@ -2286,11 +2243,7 @@ function chartTip(bd, i, ms) {
   if (done.length) lines.push((days === 1 ? "Completed that day: " : "Completed this " + unit + ": ") + nameList(done));
   return lines.join("\n");
 }
-// One lane per scheduled task, as percentages of the lane's own date range --
-// the exported file draws these numbers directly, no month-grid math at export time.
-// Each lane also carries a pale "blk" band (the block(s) the task sits in),
-// matching the live app's own two-bars-per-lane Gantt (questRangeBlock() in
-// app/chart.js) -- the export used to draw only the task's own status bar.
+// One lane per scheduled task, as percentages of the lane's date range, so the export draws numbers directly. Each lane also carries a pale "blk" band for the task's block(s), matching questRangeBlock() in app/chart.js.
 function snapshotLanes(p, bd) {
   var ts = questBurnTasks(p).slice().sort(function (a, b) { return taskStart(a) - taskStart(b); });
   var mss = milestoneTasks(p.id).map(function (t) { return { text: t.what, ms: taskEnd(t) }; });
@@ -2557,11 +2510,7 @@ svg.echart { display: block; width: 100%; height: auto; }\
 .efoot { margin-top: 30px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }\
 ";
 
-// The chart drawing is written as real functions so it can run twice: at export time to
-// bake static markup into the file (what a no-script preview such as iOS Quick Look shows),
-// and again inside the file, where the script redraws with the hover and tap tooltips.
-// The functions are copied into the file's script by source text (see runtimeSource()), so
-// they can't use anything outside themselves; each is renamed there.
+// The chart functions run at export time (baked markup for no-script previews) and again in the file's script (with tooltips). They are copied by source text in runtimeSource(), so they cannot use anything outside themselves.
 function exportSvgEl(t, a) {
   var e = document.createElementNS("http://www.w3.org/2000/svg", t);
   for (var k in a) e.setAttribute(k, a[k]);
@@ -2688,8 +2637,8 @@ function bakedChart(draw, charts) {
   return tmp.innerHTML;
 }
 
-// The real icon's own path data (assets/sidequest-icon.svg), not invented
-// geometry, using the export's own CSS tokens so it follows light/dark mode.
+// The real icon's path data (assets/sidequest-icon.svg), not invented
+// geometry, using the export's CSS tokens so it follows light/dark mode.
 var EXPORT_BRAND = '<div class="ebrand"><svg viewBox="0 0 512 512" aria-hidden="true" focusable="false"><defs><clipPath id="eLogoClip"><rect width="512" height="512" rx="112"/></clipPath></defs><rect width="512" height="512" rx="112" fill="var(--est)"/><g clip-path="url(#eLogoClip)"><path d="M115.88-30.43l30.33,154.2" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M102.47,177.65l-23.25,4.57c-36.81,7.24-51.6,29.27-44.36,66.08l28.7,145.94" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M207.09,157.08l52.31-10.29c34.87-6.86,55.74,7.15,62.6,42.02l9.64,49.01" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M295.51,299.68l-23.25,4.57c-25.19,4.95-35.3,20.02-30.35,45.21l19.38,98.53" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><path d="M388.51,281.39l29.06-5.72c32.94-6.48,52.64,6.75,59.12,39.69l4,20.34" fill="none" stroke="var(--planned)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><circle cx="154.78" cy="167.37" r="53.31" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/><circle cx="342.01" cy="290.53" r="47.39" fill="var(--surface)" stroke="var(--planned)" stroke-width="16"/><rect x="31.22" y="387.08" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-80.82 21.45) rotate(-11.13)" fill="var(--planned)"/><rect x="227.98" y="435.92" width="77.01" height="77.01" rx="8" ry="8" transform="translate(-86.54 60.34) rotate(-11.13)" fill="var(--planned)"/><rect x="432.89" y="334.59" width="118.48" height="118.48" rx="9" ry="9" transform="translate(-109.15 582.92) rotate(-56.13)" fill="var(--burn)"/></g></svg><span>Sidequest</span></div>\n';
 
 function addrLine(v) { return '<div class="econtactaddr">' + escHtml(v).replace(/\n/g, "<br>") + "</div>"; }
@@ -2716,7 +2665,7 @@ function renderLetterColumn(heading, fields, nameKey, secondKey, brandmark) {
   return '<div class="ecol"><div class="echead">' + heading + "</div>" + lines.join("") + "</div>";
 }
 
-// "Prepared by" is the user's own Settings info; "Prepared for" is the quest's
+// "Prepared by" is the user's Settings info; "Prepared for" is the quest's
 // Quest giver info. Either side can be empty; if only one is filled, it takes the left position alone.
 function renderLetterhead(contact, client, brandmark) {
   var by = renderLetterColumn("Prepared by", contact, "company", "name", brandmark);
@@ -3280,7 +3229,7 @@ function stepDialog(prefillQuestId) {
   }
 }
 // Slips only incomplete, scheduled tasks later by N days -- Completed tasks,
-// the Backlog, and the quest's own start date are never touched.
+// the Backlog, and the quest's start date are never touched.
 function slipDialog(p) {
   openModal("Slip " + p.name + "'s schedule", function (body) {
     body.appendChild(el("p", { "class": "hint first" }, "This moves incomplete tasks later by the same number of days. Completed tasks and the Backlog are not affected."));
@@ -3639,9 +3588,7 @@ function recordQuestHistory() {
     if (total > 0 || Object.keys(p.hist).length) recordHist(p.hist, total, questRemainingUnits(p));
   });
 }
-// Auto-completion only -- runs on every changed(). Manual "Mark complete" is
-// separate. Skips a quest Reopen just reactivated, so completing() doesn't
-// immediately refire for a quest whose tasks are still all done.
+// Auto-completion only; runs on every changed(). Skips a quest Reopen just reactivated, so it does not refire.
 function sweepQuestCompletion() {
   activeQuests().forEach(function (p) {
     if (p.justReopened) { p.justReopened = false; return; }
@@ -3760,11 +3707,7 @@ function renderToday(root) {
   g.put(b.h, 2, 1); g.put(b.chart, 2, 2); g.put(progress, 2, 3);
   root.appendChild(g);
 }
-// A newer version's db stamp was found (checkForAppUpdate() in state.js, set
-// by hand when a new sidequest.html is published) -- tells the user how to
-// update this artifact themselves, since nothing in its own runtime can do
-// it. Dismissing records the version, not a plain flag, so a later update
-// still shows its own notice even if an earlier one was dismissed.
+// Shown when a newer db version stamp exists (checkForAppUpdate() in state.js). Dismissing records the version, so a later update gets its own notice.
 var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html";
 function updateBanner() {
   var box = el("div", { "class": "box updatebanner", style: "margin-bottom:22px" });
@@ -4022,7 +3965,7 @@ function buildDetail(t, inline, readOnly) {
   if (inline || !readOnly) {
     var ar = el("div", { "class": "actions", style: "margin-top:14px" });
     if (readOnly) {
-      // Nothing to offer here -- the quest page's own Restore button is the one way back to editing.
+      // Nothing to offer here -- the quest page's Restore button is the one way back to editing.
     } else {
       if (inline) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Open this task on the Tasks page" }, "Open in Tasks"), "click", function () { openTask(t.id); }));
       if (t.block === 0) {
@@ -4041,7 +3984,7 @@ function buildDetail(t, inline, readOnly) {
   return box;
 }
 
-// Bidirectional link, not a subtask hierarchy. Lists p's own direct links only, one hop.
+// Bidirectional link, not a subtask hierarchy. Lists p's direct links only, one hop.
 function linksSection(root, p) {
   // A live quest or a Candidate can add links (to live quests only); a vaulted quest keeps its links read-only.
   var links = linkedQuests(p);
@@ -4079,7 +4022,7 @@ function linksSection(root, p) {
   }
 }
 
-// Launch-critical items render as a section on a quest's own page, scoped
+// Launch-critical items render as a section on a quest's page, scoped
 // to that quest's tasks -- there's no separate standalone Launch page.
 function launchSection(root, p) {
   var readOnly = !!p.vault;
@@ -4156,9 +4099,7 @@ function questListSection(title, rows, first, term) {
 }
 function pendingSection(rows, first) { return questListSection("Pending", rows, first, ["pending", "Pending"]); }
 function completedSection(rows, first) { return questListSection("Completed", rows, first); }
-// A quest's own lifecycle status decides how much of the page renders.
-// Promotion is in-place -- the same record and id carry through, never a second record.
-// A one-row section that opens in place like a task row: a title row, then the fields. Starts collapsed.
+// A one-row section that opens in place like a task row. Starts collapsed.
 function collapsibleSection(key, summary, detail, emptyText) {
   var ul = el("ul", { "class": "tlist sectionlist" }), li = el("li");
   var open = !!ui.sectionOpen[key];
@@ -4217,7 +4158,7 @@ function renderQuestPage(root, id) {
   if (est.total > 0) metaRow.appendChild(el("span", { "class": "hint estleft" }, "Est. " + fmtHoursLong(est.left) + " remaining"));
   root.appendChild(metaRow);
   if (!readOnly && p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this quest is Complete. Reopen it to bring them back."));
-  // questTasks(), not ordered()/backlogTasks()/live() -- a quest's own page keeps
+  // questTasks(), not ordered()/backlogTasks()/live() -- a quest's page keeps
   // showing its tasks even while Complete or vaulted, when cross-quest lists exclude them.
   var ts = sortTasks(questTasks(p.id).filter(function (t) { return !t.launch; }));
   if (ts.length) {
@@ -4335,16 +4276,13 @@ function renderQuestPage(root, id) {
       askExportSides(p);
     }));
   }
-  // ar is a sibling of .questmain/.questcharts inside .questsplit, not nested
-  // in .questmain, so it naturally renders last (after Schedule/Timeline/
-  // Burndown) when stacked; CSS order puts it back at the end of the left
-  // column on a wide screen, where it visually sat before this change.
+  // Sits outside .questmain so it renders last when stacked; CSS puts it back under the left column on wide screens.
   if (split) { split.appendChild(questChartsPanel(p)); split.appendChild(ar); } else { root.appendChild(ar); }
 }
 
 // `first` zeroes the heading's top margin; `extraBtn` rides its heading row.
 function scheduleSection(host, p, readOnly, first, extraBtn) {
-  // `first` can be a plain boolean (always zero the heading's own top margin,
+  // `first` can be a plain boolean (always zero the heading's top margin,
   // e.g. the Expand modal) or the string "questcharts-head" (zero it only at
   // the wide breakpoint, via CSS, so a stacked page keeps its normal section gap).
   var cls = first === true ? "first" : first === "questcharts-head" ? "questcharts-head" : "";
@@ -4387,10 +4325,7 @@ function questChartsPanel(p) {
 }
 function questCharts(p, wide, expandBtn, first) {
   var out = el("div");
-  // Schedule keeps its own heading from scheduleSection(); Expand rides along on that same row.
-  // .questcharts-head's own CSS zeroes this heading's margin only at the wide
-  // breakpoint, where Schedule needs to sit level with Tasks -- when stacked,
-  // the normal section gap applies, since .questcharts follows real content above it.
+  // Schedule keeps its own heading from scheduleSection(), with Expand on the same row. .questcharts-head zeroes the heading margin only at the wide breakpoint.
   scheduleSection(out, p, false, "questcharts-head", expandBtn);
   var tl = questRangeBlock(p);
   if (tl.empty) {
@@ -5393,14 +5328,7 @@ function manualSaveDialog(name, text, mime, onSaved, capability) {
     more.appendChild(copyActs); more.appendChild(copyNote); body.appendChild(more);
   });
 }
-// Hands the viewer a file. Resolves "saved" (a verified save), "downloaded" (a top-level
-// download, which the browser gives no way to confirm), "manual" (a dialog now shows the text
-// to copy; nothing was saved yet).
-// Rejects on cancel or failure. A frame or a phone can't be trusted with a plain download, so
-// after the file picker it shows the save box: a Save button (the share sheet on a phone, a
-// download elsewhere) with the copy option folded under it. With the Claude downloads
-// capability the same box shows, and its Save button calls the capability. `onSaved` runs
-// when that save completes.
+// Hands the viewer a file. Resolves "saved", "downloaded" (unverifiable) or "manual" (nothing saved yet), and rejects on cancel or failure.
 function saveFile(name, text, mime, desc, ext, onSaved) {
   return downloadsReady.then(function (d) {
     if (d) { manualSaveDialog(name, text, mime, onSaved, d); return "manual"; }
@@ -5455,10 +5383,7 @@ function saveBackupFile(msg, onDone) {
     msg.textContent = err && (err.code === "declined" || err.name === "AbortError") ? "Save canceled." : "The backup could not be saved.";
   });
 }
-// Reads the chosen file, then asks before replacing everything with it.
-// Reads a Trello JSON board export into a plain summary Sidequest can act on.
-// Only name/desc/due/checklist-items survive; labels, members, comments,
-// attachments, and custom fields are dropped by design, not by oversight.
+// Reads a Trello JSON board export into a plain summary. Labels, members, comments, attachments, and custom fields are dropped by design.
 function parseTrelloExport(obj) {
   if (!obj || typeof obj !== "object" || !Array.isArray(obj.cards)) return null;
   var boardName = typeof obj.name === "string" && obj.name ? obj.name : "Imported board";
@@ -5469,7 +5394,7 @@ function parseTrelloExport(obj) {
   if ((obj.members || []).length) dropped += obj.members.length;
   var cards = (obj.cards || []).filter(function (c) { return !c.closed; }).map(function (c) {
     // Completion can live directly on a checkItem (state) or, in a real
-    // Trello export, on the card's own checkItemStates by idCheckItem -- check both.
+    // Trello export, on the card's checkItemStates by idCheckItem -- check both.
     var completedIds = {};
     (c.checkItemStates || []).forEach(function (s) { if (s.state === "complete") completedIds[s.idCheckItem] = true; });
     var steps = [];
@@ -5485,7 +5410,7 @@ function parseTrelloExport(obj) {
 }
 function isISOInstant(v) { return typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v); }
 // Builds a new quest from a parsed Trello summary: start is the earliest due
-// date found (or today, with nothing to anchor to), so every card's own due
+// date found (or today, with nothing to anchor to), so every card's due
 // date is guaranteed on or after the quest's start and never gets rejected.
 function buildQuestFromTrello(summary) {
   var dues = summary.cards.map(function (c) { return c.due; }).filter(Boolean).sort();
@@ -5582,10 +5507,7 @@ function parseTodoistExport(text) {
   return { items: items, hasSubtasks: hasSubtasks, capped: capped };
 }
 function isPlainISODate(v) { return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v); }
-// Todoist's natural-language date field: a real ISO date is used as-is;
-// "today"/"tomorrow"/"in N day(s)" are unambiguous and resolved to a real
-// date; anything else (a recurrence phrase like "every day", or unrecognized
-// text) is left unscheduled rather than guessed at.
+// Todoist's date field: an ISO date is used as is, "today", "tomorrow" and "in N days" resolve to real dates, and anything else stays unscheduled.
 function resolveTodoistDate(v) {
   if (isPlainISODate(v)) return v;
   var s = (v || "").trim().toLowerCase();
@@ -5621,7 +5543,7 @@ function importTodoistFile(file, msg) {
     openModal("Import “" + name + "”?", function (body) {
       var lines = [nt + (nt === 1 ? " task was" : " tasks were") + " found."];
       lines.push("Completed tasks are not in this file, so only what is still open comes across.");
-      if (summary.capped) lines.push("This file has 300 tasks, Todoist’s own export limit, so some tasks may be missing from the file itself.");
+      if (summary.capped) lines.push("This file has 300 tasks, Todoist’s export limit, so some tasks may be missing from the file itself.");
       if (summary.hasSubtasks) lines.push("Subtasks come in as their own tasks, not nested under their parent.");
       lines.push("This creates a new quest named “" + name + ".” Your existing quests and tasks are not changed.");
       lines.push("Labels and other Todoist-only details are not imported.");
@@ -5711,7 +5633,7 @@ function backupPanel(root, hintHost) {
 
 // ---- splash.js ----
 // Splash overlay atop the already-rendered app, gated by showSplash. Fixed,
-// hand-composed artwork (the icon's own 5 branches): blur, branches draw, title wipes into an affirmation, fade out.
+// hand-composed artwork (the icon's 5 branches): blur, branches draw, title wipes into an affirmation, fade out.
 
 var SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -5902,7 +5824,7 @@ var TIMING = {
   textDelay: 500,   // after blur starts
   holdDur: 2150,    // text fully visible before fade-out starts
   fadeOutDur: 500,
-  // Ms relative to the text-wipe when the splash sound starts (negative fires early, covering play()'s own lag).
+  // Ms relative to the text-wipe when the splash sound starts (negative fires early, covering play()'s lag).
   soundOffset: -10
 };
 
@@ -5918,12 +5840,9 @@ function schedule(pairs) {
   return drawEnd;
 }
 
-// Plays the splash sequence, then hides the overlay and calls done() once the
-// fade-out finishes. No-op if showSplash is off or the element isn't present.
-// `pickIndex`, given AFFIRMATIONS.length, returns which quote to show -- callers
-// pass a shuffled-bucket picker (state.js's pickAffirmation, which may return a promise) so quotes
-// don't repeat until the whole list has shown; defaults to plain random.
-function playSplash(showSplash, done, audio, pickIndex) {
+// Plays the splash, then hides the overlay and calls done(). No-op if showSplash is off; `pickIndex(count)` chooses the quote (possibly a promise, defaults to random), and `opts.hold` keeps the last frame instead of fading out (`opts.instant` jumps straight to it).
+function playSplash(showSplash, done, audio, pickIndex, opts) {
+  var hold = !!(opts && opts.hold), instant = hold && !!opts.instant;
   var root = $("splash");
   // Markup ships pre-blurred in plain HTML, before any JS runs -- avoids a
   // real flash-of-sharp-app bug. If the setting's off, hide it now instead.
@@ -5944,6 +5863,13 @@ function playSplash(showSplash, done, audio, pickIndex) {
   // eslint-disable-next-line no-unused-expressions
   root.offsetHeight;
 
+  if (instant) {
+    pairs.forEach(function (pair) { pair.path.style.transitionDuration = "0ms"; pair.path.classList.add("drawn"); pair.node.classList.add("shown"); });
+    root.classList.add("artBlurred", "textIn");
+    if (done) done();
+    return function cancel() {};
+  }
+
   var drawEnd = schedule(pairs);
   var artBlurAt = drawEnd + TIMING.blurDelay;
   var textAt = artBlurAt + TIMING.textDelay;
@@ -5953,14 +5879,15 @@ function playSplash(showSplash, done, audio, pickIndex) {
   pairs.forEach(function (pair) {
     pair.path.style.transitionDuration = pair.dur + "ms";
     timers.push(setTimeout(function () { pair.path.classList.add("drawn"); }, pair.start));
-    // This node is this path's own terminus.
+    // This node is this path's terminus.
     timers.push(setTimeout(function () { pair.node.classList.add("shown"); }, pair.end));
   });
   timers.push(setTimeout(function () { root.classList.add("artBlurred"); }, artBlurAt));
   // Disabled: browsers block Audio.play() here outside a real click/tap/keydown handler.
   // if (audio) timers.push(setTimeout(function () { playSfx(SFX_QUEST); }, Math.max(0, textAt + TIMING.soundOffset)));
   timers.push(setTimeout(function () { root.classList.add("textIn"); }, textAt));
-  timers.push(setTimeout(function () {
+  if (hold) timers.push(setTimeout(function () { if (done) done(); }, fadeOutAt));
+  else timers.push(setTimeout(function () {
     root.classList.add("fading");
     setTimeout(function () {
       root.hidden = true;
@@ -5970,7 +5897,7 @@ function playSplash(showSplash, done, audio, pickIndex) {
     }, TIMING.fadeOutDur);
   }, fadeOutAt));
 
-  return function cancel() { timers.forEach(clearTimeout); root.hidden = true; };
+  return function cancel() { timers.forEach(clearTimeout); if (!hold) root.hidden = true; };
 }
 
 
@@ -6056,10 +5983,7 @@ function renameCurrentQuest() {
 }
 on($("renameBtn"), "click", renameCurrentQuest);
 
-// Shown only for the installed PWA, since a normal browser tab already
-// refreshes itself (F5/pull-to-refresh) -- fixed for the whole session, so
-// computed once rather than per-render. navigator.standalone is a non-standard
-// flag some mobile browsers use instead of the display-mode query.
+// Installed PWA only (display-mode or navigator.standalone), computed once per session since it cannot change.
 var isStandaloneApp = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
 if (isStandaloneApp) {
   $("refreshBtn").hidden = false;
@@ -6067,10 +5991,7 @@ if (isStandaloneApp) {
     var btn = $("refreshBtn");
     btn.classList.add("spinning"); btn.disabled = true;
     function doRefresh() {
-      // A plain reload alone picks up new data (state.js re-reads localStorage
-      // fresh every load), but NOT a new app shell -- sw.js caches cache-first,
-      // so a stale service worker keeps serving the old index.html/app/*.js
-      // forever otherwise. Force a real update check and clear its cache first.
+      // Force a service-worker update check and clear its cache before reloading, so a new app shell is picked up.
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.getRegistrations().then(function (regs) {
           return Promise.all(regs.map(function (r) { return r.update(); }));
@@ -6152,7 +6073,7 @@ function wireMenu(btnId, menuId) {
   });
 }
 
-// Exposed so a test can cancel the splash's own pending timers after itself.
+// Exposed so a test can cancel the splash's pending timers after itself.
 var cancelSplash = function () {};
 var cancelTutorial = stopTutorial;
 
@@ -6185,7 +6106,7 @@ Promise.resolve().then(function () {
 
   // No-op on the web app, since checkForAppUpdate() resolves null with no db.
   // The stamp read here is set by hand when a new sidequest.html is published,
-  // never written by this app's own code.
+  // never written by this app's code.
   checkForAppUpdate().then(function (latest) {
     if (!latest) return;
     setAvailableUpdateVersion(latest);

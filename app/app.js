@@ -85,10 +85,7 @@ function renameCurrentQuest() {
 }
 on($("renameBtn"), "click", renameCurrentQuest);
 
-// Shown only for the installed PWA, since a normal browser tab already
-// refreshes itself (F5/pull-to-refresh) -- fixed for the whole session, so
-// computed once rather than per-render. navigator.standalone is a non-standard
-// flag some mobile browsers use instead of the display-mode query.
+// Installed PWA only (display-mode or navigator.standalone), computed once per session since it cannot change.
 var isStandaloneApp = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
 if (isStandaloneApp) {
   $("refreshBtn").hidden = false;
@@ -96,10 +93,7 @@ if (isStandaloneApp) {
     var btn = $("refreshBtn");
     btn.classList.add("spinning"); btn.disabled = true;
     function doRefresh() {
-      // A plain reload alone picks up new data (state.js re-reads localStorage
-      // fresh every load), but NOT a new app shell -- sw.js caches cache-first,
-      // so a stale service worker keeps serving the old index.html/app/*.js
-      // forever otherwise. Force a real update check and clear its cache first.
+      // Force a service-worker update check and clear its cache before reloading, so a new app shell is picked up.
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.getRegistrations().then(function (regs) {
           return Promise.all(regs.map(function (r) { return r.update(); }));
@@ -181,7 +175,7 @@ export function wireMenu(btnId, menuId) {
   });
 }
 
-// Exposed so a test can cancel the splash's own pending timers after itself.
+// Exposed so a test can cancel the splash's pending timers after itself.
 export var cancelSplash = function () {};
 export var cancelTutorial = stopTutorial;
 
@@ -214,7 +208,7 @@ Promise.resolve().then(function () {
 
   // No-op on the web app, since checkForAppUpdate() resolves null with no db.
   // The stamp read here is set by hand when a new sidequest.html is published,
-  // never written by this app's own code.
+  // never written by this app's code.
   checkForAppUpdate().then(function (latest) {
     if (!latest) return;
     setAvailableUpdateVersion(latest);

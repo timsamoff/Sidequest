@@ -8,19 +8,13 @@ export function svgEl(tag, attrs, text) {
   Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
   if (text !== undefined) e.textContent = text; return e;
 }
-// Dismisses a tap-opened tooltip when the user taps anywhere that is not a chart
-// (a tap elsewhere does not blur the chart on every phone browser). Shared by
-// the SVG burndown chart and the plain-HTML Gantt's own today-line tooltip,
-// since only one tooltip is ever pinned at a time.
+// Dismisses a tap-pinned tooltip when the user taps outside a chart (a tap does not blur on every phone browser). Shared by the burndown and the Gantt today-line tooltip, since only one is pinned at a time.
 var dismissTip = null;
 if (typeof document !== "undefined") document.addEventListener("pointerdown", function (e) {
   if (dismissTip && !(e.target && e.target.closest && (e.target.closest("svg.chart") || e.target.closest(".today")))) dismissTip();
 });
 
-// Draws a burndown. cfg: { cps, planned[], actual[], total, label, marks[], tip(i) }.
-// One keyboard stop; arrows/Home/End/Esc navigate. Tooltip works on hover, tap, and focus.
-// Which charts have already drawn in on the current page visit. A repaint of the same page leaves them still;
-// moving to another page clears the list, so coming back animates again.
+// Charts already drawn in on this page visit, so a repaint does not replay the animation; moving to another page clears the list.
 var burnShown = {}, burnView = null;
 export function noteBurnView(view) { if (view !== burnView) { burnShown = {}; burnView = view; } }
 
@@ -44,7 +38,7 @@ function renderBurn(host, wide, cfg) {
   var every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor((W - L - R) / 70))));
   cps.forEach(function (ms, i) { if (i % every === 0 || i === n - 1) svg.appendChild(svgEl("text", { "class": "axis", x: x(i), y: H - 16, "text-anchor": "middle" }, fmt(ms))); });
   // Each line reveals left to right via its own clipped group (a clip-rect,
-  // not stroke-dasharray, which would fight Ideal's own dash pattern).
+  // not stroke-dasharray, which would fight Ideal's dash pattern).
   var animate = state.settings.animatedBurndown && !burnShown[cfg.key];
   var revealGroups = [];
   // x0 and w limit the reveal to part of the chart, so a line that starts partway across draws from its own start.
@@ -242,7 +236,7 @@ export function drawChart(host, wide) {
   });
 }
 
-// One quest's own burndown.
+// One quest's burndown.
 export function drawQuestChart(host, p, wide) {
   var bd = questBurn(p);
   if (!bd) { host.innerHTML = ""; return false; }
@@ -272,7 +266,7 @@ function thinMonthLabels(months) {
   spans.forEach(function (sp, i) { sp.hidden = kept.indexOf(i) < 0; });
 }
 // Draws a timeline: the month header, one lane per entry, the milestones lane,
-// and the today line. Shared by the all-quests Timeline and a quest's own.
+// and the today line. Shared by the all-quests Timeline and each quest's Timeline.
 function timelineNode(lanes, mss, rs, maxEnd, hint) {
   var wrap = el("div", { "class": "range" });
   mss.forEach(function (m) { if (m.date > maxEnd) maxEnd = m.date; });
@@ -363,7 +357,7 @@ export function rangeBlock() {
   return { node: wrap, milestones: mss };
 }
 
-// A quest's own timeline: a lane per scheduled task plus that quest's
+// A quest's timeline: a lane per scheduled task plus that quest's
 // milestones. Backlog tasks have no dates, so they are counted, not drawn.
 export function questRangeBlock(p) {
   var ts = questBurnTasks(p).slice().sort(function (x, y) { return taskStart(x) - taskStart(y); });
