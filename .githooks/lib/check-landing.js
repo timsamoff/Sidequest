@@ -1,4 +1,4 @@
-// Landing-site parity: tavern/ pastes the same header, footer, and logo into every page and copies text from the README and tokens. This compares the copies; each function takes a read(path) callback so tests can feed it strings.
+// Landing-site parity: satchel/ pastes the same header, footer, and logo into every page and copies text from the README and tokens. This compares the copies; each function takes a read(path) callback so tests can feed it strings.
 
 "use strict";
 const common = require("./sentinel-common");
@@ -92,9 +92,9 @@ function checkPrompts(artifactPage, readme) {
     const codeRe = new RegExp("<code id=\"" + id + "\"[^>]*>([^]*?)</code>");
     const m = (artifactPage || "").match(codeRe);
     const fence = readmeFence(readme || "", heading);
-    if (!m) { violations.push(fail("tavern/artifact.html", `The #${id} block is missing.`)); return; }
+    if (!m) { violations.push(fail("satchel/artifact.html", `The #${id} block is missing.`)); return; }
     if (fence === null) { violations.push(fail("README.md", `No fenced prompt under "${heading}".`)); return; }
-    if (squash(decode(m[1])) !== squash(fence)) violations.push(fail("tavern/artifact.html", `#${id} no longer matches the prompt under "${heading}" in README.md.`));
+    if (squash(decode(m[1])) !== squash(fence)) violations.push(fail("satchel/artifact.html", `#${id} no longer matches the prompt under "${heading}" in README.md.`));
   });
   return violations;
 }
@@ -130,7 +130,7 @@ function landingViolations(read, files) {
   return [].concat(
     checkSharedBlocks(pages),
     checkThemeColor(pages, read("css/tokens.css")),
-    checkPrompts(pages["tavern/artifact.html"], readme),
+    checkPrompts(pages["satchel/artifact.html"], readme),
     checkReadmeText(pages, readme)
   );
 }

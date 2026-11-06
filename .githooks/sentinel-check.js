@@ -200,7 +200,7 @@ function runFullScan() {
   violations = violations.concat(fullScanSocialMetaDrift());
   violations = violations.concat(fullScanCssRepeatedLiteral());
   violations = violations.concat(fullScanCommentVerbosity());
-  violations = violations.concat(landing.landingViolations(common.diskRead, checks.tavernFiles([".html"])));
+  violations = violations.concat(landing.landingViolations(common.diskRead, checks.satchelFiles([".html"])));
   // README keyword map, whole-repo: every CORE/BOTTOM/pinned-page label must appear in README. The regex has to handle CORE/BOTTOM's nested [key, label] pair arrays.
   const source = common.diskRead("app/model.js");
   const readme = common.diskRead("README.md");
