@@ -4,6 +4,8 @@
 
 A lightweight project planner for juggling several projects.
 
+## I just made the perfect project management system... for me. And maybe you'll like it too!
+
 I wanted something simple. Something that would help me keep track of multiple projects, organize tasks, figure out what I should be working on, and actually get things done. I didn't want to spend more time managing my projects than working on them.
 
 So I made Sidequest.
