@@ -77,7 +77,7 @@
   --chip-ink: #1A2733;
   --badge-attention: #4F3416; --badge-attention-bg: #DDC3A5;
   --badge-priority: #4A2E00; --badge-priority-bg: #F8C15A;
-  --notice-update: #F8C15A; --notice-backup: #D3E3F6; --notice-welcome: #CFE6D5; --tutorial: #DD6200; --tutorial-dark: #C35600; --on-tutorial: #FFFFFF; --on-tutorial-btn: #1B1B1B;
+  --notice-update: #F8C15A; --notice-backup: #D3E3F6; --notice-welcome: #CFE6D5; --tutorial: #FFAC1C; --tutorial-hover: #FFBE4D; --tutorial-edge: #E39400; --on-tutorial: #1B1B1B; --on-tutorial-btn: #1B1B1B;
   --badge-active: #6B4A0F; --badge-active-bg: #F6E3C4; --bar-active: #C99A3E;
   --badge-pending: #34475A; --badge-pending-bg: #CBD6E0; --bar-pending: #8AA3BF;
   --badge-done: #315C3C; --badge-done-bg: #CFE6D5; --bar-done: #74AD85;
@@ -97,7 +97,7 @@
     --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
     --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
     --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
-    --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C; --tutorial: #FFAC1C;
+    --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C; --tutorial: #FFAC1C; --tutorial-hover: #FFBE4D;
     --badge-active: #F0D49A; --badge-active-bg: #4A3B22; --bar-active: #A98232;
     --badge-pending: #D5DEE6; --badge-pending-bg: #3A4754; --bar-pending: #6A8BAA;
     --badge-done: #B5DDBF; --badge-done-bg: #21402C; --bar-done: #4E9A68;
@@ -112,7 +112,7 @@
   --chip-idle: #26323B; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #22323F; --scrim: rgba(0, 0, 0, .6);
   --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
   --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
-  --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C; --tutorial: #FFAC1C;
+  --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C; --tutorial: #FFAC1C; --tutorial-hover: #FFBE4D;
   --badge-active: #F0D49A; --badge-active-bg: #4A3B22; --bar-active: #A98232;
   --badge-pending: #D5DEE6; --badge-pending-bg: #3A4754; --bar-pending: #6A8BAA;
   --badge-done: #B5DDBF; --badge-done-bg: #21402C; --bar-done: #4E9A68;
@@ -564,12 +564,12 @@ svg.chart.nofocusring { outline: none; }
 .confettiFx { position: fixed; inset: 0; z-index: 80; pointer-events: none; }
 
 /* first-run tutorial card: bottom right on a wide screen, under the top bar on a phone */
-.tutorial { position: fixed; right: var(--space-16); bottom: var(--space-16); width: min(340px, calc(100vw - 32px)); z-index: 55; padding: var(--space-26) var(--space-16) var(--space-14); background: var(--card); color: var(--ink); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); border-radius: var(--radius-card); box-shadow: var(--shadow-menu); outline: 3px solid var(--tutorial); outline-offset: 3px; }
+.tutorial { position: fixed; right: var(--space-16); bottom: var(--space-16); width: min(340px, calc(100vw - 32px)); z-index: 55; padding: var(--space-26) var(--space-16) var(--space-14); background: var(--card); color: var(--ink); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); border-radius: var(--radius-card); box-shadow: var(--shadow-menu); outline: 3px solid var(--tutorial-edge); outline-offset: 3px; }
 .tutorialcount { font-size: var(--text-sm); color: var(--muted); }
 .tutorial .tutorialtitle { margin: var(--space-4) 0 var(--space-6); font-size: var(--text-100); }
 .tutorial .tutorialtext { margin: 0; font-size: var(--text-sm); line-height: 1.45; }
 /* Lifted above its neighbors so a selected tab next to it cannot paint over the ring. */
-.tutorialtarget { position: relative; z-index: 1; outline: 3px solid var(--tutorial); outline-offset: 3px; }
+.tutorialtarget { position: relative; z-index: 1; outline: 3px solid var(--tutorial-edge); outline-offset: 3px; }
 /* The ring grows in from nothing when a step first points at something, and the card's ring does so on every step, then both stay put. */
 .tutorial.tutorialflash { animation: tutorialflash .9s ease-out 1 backwards; }
 /* The highlighted item's ring grows in a second after the card's does, and stays hidden until then. */
@@ -577,7 +577,7 @@ svg.chart.nofocusring { outline: none; }
 @keyframes tutorialflash { 0% { outline-width: 0; } 40% { outline-width: 9px; } 100% { outline-width: 3px; } }
 /* A highlighted candidate row: rounded like the other highlights, with its title underlined in the same weight. */
 li.tutorialtarget { border-radius: var(--radius-control); }
-li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: var(--tutorial); text-decoration-thickness: 3px; text-underline-offset: 4px; }
+li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: var(--tutorial-edge); text-decoration-thickness: 3px; text-underline-offset: 4px; }
 @media (max-width: 899px) {
   .tutorial { bottom: calc(env(safe-area-inset-bottom, 0px) + 76px); left: var(--space-12); right: var(--space-12); width: auto; padding: var(--space-22) var(--space-14) var(--space-10); }
   body:has(.tutorial) #view { padding-bottom: 230px; }
@@ -616,10 +616,10 @@ li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: va
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
 
 /* "?" help buttons: drawn small, with a 44px tap area */
-.helpq { position: relative; flex: none; width: 12px; height: 12px; min-height: 0; padding: 0; margin-left: var(--space-8); border-radius: 50%; border: 0; background: var(--tutorial); color: var(--on-tutorial); font-family: var(--font-sans); font-size: .6rem; font-weight: 700; line-height: 1; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; cursor: pointer; }
+.helpq { position: relative; flex: none; width: 12px; height: 12px; min-height: 0; padding: 0; margin-left: var(--space-8); border-radius: 50%; border: 0; box-shadow: inset 0 0 0 1px var(--tutorial-edge); background: var(--tutorial); color: var(--on-tutorial); font-family: var(--font-sans); font-size: .6rem; font-weight: 700; line-height: 1; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; cursor: pointer; }
 .helpq::before { content: "?"; }
 .helpq::after { content: ""; position: absolute; inset: -16px; }
-.helpq:hover { background: var(--tutorial-dark); }
+.helpq:hover { background: var(--tutorial-hover); }
 .hasq { display: flex; align-items: center; }
 .labelrow { display: flex; align-items: center; }
 .helpitem { scroll-margin-top: 90px; }
@@ -627,8 +627,8 @@ li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: va
 .ideamade { margin-left: var(--space-6); font-size: var(--text-sm); }
 @media (max-width: 639px) { .ideamade { display: block; margin-left: 0; } .ideadot { display: none; } }
 .dialogheading .helpq { margin-left: var(--space-8); }
-.tutorialbtn { background: var(--tutorial); border-color: var(--tutorial); color: var(--on-tutorial-btn); font-weight: 600; }
-.tutorialbtn:hover { background: var(--tutorial-dark, var(--tutorial)); border-color: var(--tutorial-dark, var(--tutorial)); filter: brightness(1.08); }
+.tutorialbtn { background: var(--tutorial); border-color: var(--tutorial-edge); color: var(--on-tutorial-btn); font-weight: 600; }
+.tutorialbtn:hover { background: var(--tutorial-hover); border-color: var(--tutorial-edge); }
 
 /* The launch splash: markup in index.html, behavior in app/splash.js. Also used inline by the landing site. */
 /* Viewport-relative sizing so the ~75% panel works in either orientation. */
@@ -1311,7 +1311,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.14.2";
+var APP_VERSION = "0.14.3";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
