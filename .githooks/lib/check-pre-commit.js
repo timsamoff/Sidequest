@@ -4,10 +4,18 @@
 const fs = require("fs");
 const path = require("path");
 const common = require("./sentinel-common");
+const landing = require("./check-landing");
 
 // Every module under app/, read from disk, so a new module cannot fall out of the check lists.
 function appModules() {
   return fs.readdirSync(common.repoPath("app")).filter((f) => f.endsWith(".js")).sort().map((f) => "app/" + f);
+}
+
+// Every landing-site file under tavern/ with one of the given extensions, read from disk so a new page or script is covered automatically.
+function tavernFiles(exts) {
+  const dir = common.repoPath("tavern");
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir).filter((f) => exts.some((e) => f.endsWith(e))).sort().map((f) => "tavern/" + f);
 }
 
 // Gate 1: CLAUDE.md touched. CLAUDE.md is gitignored, so this compares its mtime with the HEAD commit time instead of using git diff; patterns run against every file in SOURCE_FILES.
@@ -317,7 +325,8 @@ function isInsideTokenBlock(fullText, matchIndex) {
 }
 
 // Files scanned: app/*.js, css/styles.css, and css/tokens.css; the :root token block lives only in tokens.css.
-const HEX_SCAN_FILES = ["css/tokens.css", "css/styles.css", "css/splash.css"].concat(appModules());
+// The landing pages are not hex-scanned: their theme-color metas must be literal hex, and the parity check ties those to the tokens.
+const HEX_SCAN_FILES = ["css/tokens.css", "css/styles.css", "css/splash.css"].concat(appModules(), tavernFiles([".css", ".js"]));
 
 function checkHardcodedHex() {
   const violations = [];
@@ -365,7 +374,7 @@ function checkHardcodedHex() {
 
 // Comment-verbosity check: flags changelog-style tells in comments (bare dates, "confirmed <date>", "an earlier version", DESIGN.md/CLAUDE.md pointers). It is not a length check.
 
-const COMMENT_SCAN_FILES = ["css/tokens.css", "css/styles.css", "css/splash.css", "index.html"].concat(appModules());
+const COMMENT_SCAN_FILES = ["css/tokens.css", "css/styles.css", "css/splash.css", "index.html"].concat(appModules(), tavernFiles([".css", ".js", ".html"]));
 
 const COMMENT_VERBOSITY_PATTERNS = [
   { name: "dated confirmation", re: /\bconfirmed\s+20\d\d-\d\d-\d\d\b/i },
@@ -585,6 +594,13 @@ function checkSocialMetaDrift() {
 const ARTIFACT_BUNDLE = "Sidequest-Artifact/sidequest.html";
 const ARTIFACT_SOURCE_PATTERN = /^(app\/[\w-]+\.js|css\/[\w-]+\.css)$/;
 
+// Runs the landing-site parity check when the landing pages, README, or tokens are staged, reading staged content first.
+function checkLandingParity() {
+  const watched = common.stagedFiles().some((f) => f.path.startsWith("tavern/") || f.path === "README.md" || f.path === "css/tokens.css");
+  if (!watched) return [];
+  return landing.landingViolations((f) => common.stagedContent(f) || common.diskRead(f), tavernFiles([".html"]));
+}
+
 function checkArtifactBuildDrift() {
   const violations = [];
   const touchedInputs = common.stagedFiles()
@@ -639,6 +655,7 @@ module.exports = {
   SOURCE_FILES,
   HEX_SCAN_FILES,
   appModules,
+  tavernFiles,
   checkClaudeMdTouched,
   checkReadmeTouched,
   checkTodoSync,
@@ -657,6 +674,7 @@ module.exports = {
   checkDuplicatedIconMarkup,
   checkSocialMetaDrift,
   checkArtifactBuildDrift,
+  checkLandingParity,
   ARTIFACT_BUNDLE,
   runNpmTest,
   README_KEYWORDS,

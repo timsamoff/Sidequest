@@ -71,6 +71,14 @@ async function main() {
   const candResults = await new AxeBuilder({ page }).include("#view").analyze();
   ok(candResults.violations.length === 0, "a candidate's page has no axe violations" + (candResults.violations.length ? ":\n     " + candResults.violations.map(v => v.id + " (" + v.nodes.length + ")").join(", ") : ""));
 
+  // Landing site pages (static; the script-built nav toggle and splash need no fixture)
+  for (const f of fs.readdirSync(path.join(ROOT, "tavern")).filter((n) => n.endsWith(".html")).sort()) {
+    await page.goto("http://localhost:" + port + "/tavern/" + f);
+    await page.waitForTimeout(300);
+    const r = await new AxeBuilder({ page }).analyze();
+    ok(r.violations.length === 0, "tavern/" + f + " has no axe violations" + (r.violations.length ? ":\n     " + r.violations.map(v => v.id + " (" + v.nodes.length + ")").join(", ") : ""));
+  }
+
   await browser.close();
   server.close();
 }
