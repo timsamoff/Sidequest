@@ -80,6 +80,7 @@ strong { font-weight: 600; }
 }
 /* The texture keeps one fixed size per breakpoint (it only grows past that when the window is wider) and is anchored to the bottom edge. */
 .flapleather img { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: max(100%, 1280px); height: auto; max-width: none; }
+@media (max-width: 35.99rem) { .flapleather img { width: max(100%, 800px); } }
 @media (min-width: 62rem) { .flapleather img { width: max(100%, 1600px); } }
 
 /* Stitch: two 64px by 22px corner pieces and a straight run between them, all drawn in the thread color through masks. */
@@ -179,6 +180,7 @@ html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
 .band .wrap { padding-block: var(--space-10); }
 .brand { display: inline-flex; align-items: center; gap: var(--space-10); text-decoration: none; font: 600 1.45rem/1 var(--font-serif); min-height: var(--control-height); min-width: 0; }
 .brand svg { width: 36px; height: 36px; flex: none; }
+.flap .brand svg { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 
 
 /* Footer: support and source, then the copyright, all centered. */
@@ -363,5 +365,11 @@ code { font-family: var(--font-mono); font-size: .92em; }
 .heroquote { margin: 0; }
 .splash.inline { position: relative; inset: auto; z-index: auto; touch-action: auto; overscroll-behavior: auto; }
 html:has(.splash.inline:not([hidden])) { overflow: visible; }
-.splash.inline .splashpanel { width: min(100%, 26rem); margin-inline: auto; box-shadow: var(--shadow-menu); }
+/* Parchment version: the torn-edge icon shape, ink-blue paths at the icon's opacity, and an ink-blue quote box. */
+.splash.inline .splashpanel {
+  --logo-est: var(--parch-fill); --logo-planned: var(--parch-ink); --logo-surface: var(--parch-white); --logo-burn: var(--parch-red);
+  width: min(100%, 26rem); margin-inline: auto; background: transparent; overflow: visible; border-radius: 0; box-shadow: none;
+}
+.splash.inline .splashsvg { filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .3)); }
+.splash.inline .splashtextwrap { color: var(--parch-fill); border-color: var(--parch-fill); }
 html:not(.js) .splash.inline .splashtitle, html:not(.js) .splash.inline .splashaffirm { --wipe: 1; }
