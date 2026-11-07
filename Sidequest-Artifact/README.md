@@ -26,7 +26,7 @@ Muse builds Sidequest from the source file on GitHub and runs it on its own host
 
 ### First-time setup
 
-The prompt to paste is in the main [README](../README.md#muse). Muse fetches the file from the repo itself and builds it in the background. Your data lives only in your Muse environment.
+The prompt to paste is in the main [README](../README.md#muse). Muse fetches the file from the repo itself and builds it in the background, which can take up to 20 minutes. Your data lives only in your Muse environment.
 
 The first time you open the app, it asks for permission to check for updates online. Choose **Always allow** so the version check runs without asking again.
 

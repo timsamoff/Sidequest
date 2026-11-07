@@ -26,11 +26,13 @@ So give Sidequest a try! It's free, and it might become your favorite way to kee
 
 ## Getting started
 
+There's also a [Sidequest website](https://samoff.com/Sidequest/satchel/) with a tour of the features and setup guides for each of these.
+
 Pick whichever way suits you. You can switch later, but your data doesn't travel between versions on its own. You can carry it over with a backup file (see [Saving and syncing your data](#saving-and-syncing-your-data)).
 
 - **Browser:** Open Sidequest at [samoff.com/Sidequest](https://samoff.com/Sidequest) and start working. It needs no account.
 - **Installed app (PWA):** In a browser that supports it, open **Options** and choose **Install Sidequest**. It then opens in its own window and works offline. Some phones don't show an install button, so use your browser's **Add to Home Screen** instead.
-- **Claude:** Build your own copy as a Claude Artifact. See [Creating a Claude or Muse version](#creating-a-claude-or-muse-version).
+- **Claude:** Build your own copy as a Claude Artifact. See [Use as artifact](#use-as-artifact).
 - **Muse:** Build your own copy as a Muse Artifact. See the same section.
 
 A short tutorial walks you through adding a quest, giving it a task, and starting it. To run it, choose **Play tutorial** in the Welcome box or in the **Field guide**. You'll also see a few sample quests so you can look around. When you're ready for a clean slate, open **Options** and choose **Start fresh**.
@@ -87,7 +89,7 @@ Open **Options** and use **Import from Trello** or **Import from Todoist**. Each
 
 **Claude and Muse:** Your data is saved to your own account, so it's there on every device you sign in to. Claude and Muse keep separate data and don't sync with each other, and neither reads the browser version's data. To move quests between versions, save a backup in one and restore it in the other.
 
-## Creating a Claude or Muse version
+## Use as artifact
 
 Sidequest's single-file version runs as an artifact on Claude and Muse. You need an account with the one you choose, because building the app and storing its data both happen there. Copy the prompt for your platform, paste it into a new chat there, and it builds your copy. Updating, sharing, and what differs from the browser version are covered in [Sidequest-Artifact/README.md](Sidequest-Artifact/README.md).
 
@@ -116,8 +118,10 @@ Keep this Google Fonts stylesheet in the <head> of the client's index.html, and 
 When it's built, launch the app several times to confirm every launch quote fits its two-line box, and click-test every button, dialog, and import before handing it over.
 ```
 
-Muse builds the app in the background and hands you a card to open it. The first time you open it, it asks for permission to check for updates online. Choose **Always allow** so the version check runs without asking again. If fetching doesn't work, attach `sidequest.html` to the chat instead and replace the link in the prompt's first sentence with "the attached sidequest.html".
+Muse builds the app in the background, and the build can take up to 20 minutes. When it finishes it hands you a card to open it. The first time you open it, it asks for permission to check for updates online. Choose **Always allow** so the version check runs without asking again. If fetching doesn't work, attach `sidequest.html` to the chat instead and replace the link in the prompt's first sentence with "the attached sidequest.html".
 
 ## License and credits
 
 © [Tim Samoff](https://samoff.com). Licensed under [GPLv3](LICENSE).
+
+[Support Sidequest](https://www.paypal.com/paypalme/timsamoff)
