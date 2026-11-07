@@ -73,7 +73,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.16.1"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.17.0"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v) && html.includes("css/splash.css?v=" + v) && html.includes("css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2931,22 +2931,22 @@ async function exportClick(k, projectName) {
   const left = [...modal.querySelectorAll(".handpick li")].filter(li => li.querySelector("button").textContent === "Choose");
   ok(k.saved().hand.length === 3 && left.length > 0 && left.every(li => li.querySelector("button").disabled), "at three, the remaining Choose buttons are disabled");
   k.click(k.btn(modal, "Done"));
-  ok(cards().length === 3 && k.btn(v(), "Edit hand"), "the hand shows three cards and an Edit hand button");
+  ok(cards().length === 3 && !!k.btn(v(), "Edit hand"), "the hand shows three cards and an Edit hand button");
   ok(![...k.d.querySelectorAll("#view ul.jobs li")].some(li => cards().some(c => li.textContent.includes(c))), "hand cards leave the deck");
-  // edit hand
+  // edit hand is a dialog like Choose cards
   k.click(k.btn(v(), "Edit hand"));
-  ok(!!k.btn(v(), "Empty hand") && !!k.btn(v(), "Done") && !k.btn(v(), "Reroll"), "Edit hand shows Choose cards, Empty hand and Done");
+  const ed = k.$("modalBody");
+  ok(k.$("modalTitle").textContent === "Edit your hand" && ed.querySelectorAll("input[type=checkbox]").length === 0 && k.$("modalClose").hidden, "Edit hand opens a dialog with no checkboxes and no header Close");
+  ok(!!k.btn(ed, "Done") && !!k.btn(ed, "Choose cards") && !!k.btn(ed, "Empty hand"), "the Edit hand dialog offers Done, Choose cards and Empty hand");
   const first = k.saved().hand[0];
-  const cardBtns = i => [...k.d.querySelectorAll("#view .handlist > li")][i].querySelectorAll(".handedit button");
-  ok(cardBtns(0)[0].disabled && !cardBtns(0)[1].disabled && cardBtns(2)[1].disabled, "Up is off on the first card and Down on the last");
-  k.click(cardBtns(0)[1]);
+  const rowBtns = i => [...ed.querySelectorAll(".handpick li")][i].querySelectorAll("button");
+  ok(rowBtns(0)[0].disabled && !rowBtns(0)[1].disabled && rowBtns(2)[1].disabled, "Up is off on the first card and Down on the last");
+  k.click(rowBtns(0)[1]);
   ok(k.saved().hand[1] === first, "Down moves a card later");
-  k.click(cardBtns(2)[2]);
+  k.click(rowBtns(2)[2]);
   ok(k.saved().hand.length === 2 && k.saved().jobs.length === 7, "Discard returns a card to the deck and never deletes it");
-  ok(k.d.querySelectorAll("#view ul.jobs .handedit button").length > 0, "deck rows get a Choose button in Edit hand");
-  ok(![...k.d.querySelectorAll("#view .handlist input[type=checkbox], #view ul.jobs:first-of-type input[type=checkbox]")].length, "Edit hand has no checkboxes on open errands, like the chooser");
-  k.click(k.btn(v(), "Empty hand"));
-  ok(k.saved().hand.length === 0 && !!k.d.querySelector("#toast .toastbtn"), "Empty hand clears the hand and offers Undo");
+  k.click(k.btn(ed, "Empty hand"));
+  ok(k.saved().hand.length === 0 && !!k.d.querySelector("#toast .toastbtn") && k.$("overlay").hidden, "Empty hand clears the hand, closes the dialog and offers Undo");
   k.click(k.d.querySelector("#toast .toastbtn"));
   ok(k.saved().hand.length === 2, "Undo brings the hand back");
   // completing removes from the hand; restoring does not return it

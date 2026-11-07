@@ -19,6 +19,8 @@ export function openModal(title, build, opts) {
   document.querySelector("#overlay .modal").classList.toggle("full", !!(opts && opts.full));
   $("modalTitle").textContent = title;
   $("modalClose").title = "Close";
+  // A dialog with its own Done button can drop the header Close; Escape and a tap outside still close it.
+  $("modalClose").hidden = !!(opts && opts.noClose);
   var body = $("modalBody"); body.innerHTML = "";
   build(body);
   $("overlay").hidden = false;
@@ -29,7 +31,7 @@ export function openModal(title, build, opts) {
 export function openModalOver(title, build, opts) {
   if ($("overlay").hidden) { openModal(title, build, opts); return; }
   var body = $("modalBody"), modal = document.querySelector("#overlay .modal");
-  var saved = { title: $("modalTitle").textContent, nodes: Array.prototype.slice.call(body.childNodes), full: modal.classList.contains("full"), ret: modalReturn };
+  var saved = { title: $("modalTitle").textContent, nodes: Array.prototype.slice.call(body.childNodes), full: modal.classList.contains("full"), ret: modalReturn, noClose: $("modalClose").hidden };
   openModal(title, build, opts);
   modalSaved = saved;
 }
@@ -42,6 +44,7 @@ export function closeModal() {
     $("modalTitle").textContent = s.title;
     document.querySelector("#overlay .modal").classList.toggle("full", s.full);
     modalReturn = s.ret;
+    $("modalClose").hidden = s.noClose;
     var f = b.querySelector("input, textarea, select, button"); if (f) f.focus();
     return;
   }

@@ -1014,11 +1014,10 @@ export function renderJobs(root) {
   stopFlip();
   var open = openJobs(), done = state.jobs.filter(function (j) { return j.done; });
   var hand = handJobs(), deck = deckJobs();
-  if (!hand.length) ui.handEdit = false;
   if (open.length) handSection(root, hand, open);
   var ul = el("ul", { "class": "list jobs", style: "margin-top:12px" });
   if (!open.length) ul.appendChild(el("li", { "class": "hint" }, "No open errands. Add one with the Add errand button."));
-  deck.forEach(function (j) { ul.appendChild(jobRow(j, ui.handEdit ? { choose: true } : null)); });
+  deck.forEach(function (j) { ul.appendChild(jobRow(j)); });
   if (deck.length || !open.length) root.appendChild(ul);
   if (done.length) {
     root.appendChild(el("h2", null, "Completed"));
@@ -1031,16 +1030,10 @@ var CALENDAR = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stro
 function jobRow(j, opts) {
   var li = el("li", { "class": (j.done ? "done" : "") + (opts && opts.card ? " handcard" : "") }), row = el("div", { "class": "jobrow" });
   var lab = el("label", { "class": "jobmain" });
-  // Edit hand works like the chooser: open errands have no checkbox, so nothing gets completed by accident.
-  var noCheck = !!(opts && (opts.edit || opts.choose)) && !j.done;
+  var cb = el("input", { type: "checkbox", "aria-label": (j.done ? "Restore errand: " : "Complete errand: ") + j.text }); cb.checked = j.done;
+  on(cb, "change", function () { j.done = cb.checked; changed(); });
   var text = el("span", { "class": "jobtext" }, j.text);
-  if (noCheck) li.classList.add("nocheck");
-  else {
-    var cb = el("input", { type: "checkbox", "aria-label": (j.done ? "Restore errand: " : "Complete errand: ") + j.text }); cb.checked = j.done;
-    on(cb, "change", function () { j.done = cb.checked; changed(); });
-    lab.appendChild(cb);
-  }
-  lab.appendChild(text); row.appendChild(lab);
+  lab.appendChild(cb); lab.appendChild(text); row.appendChild(lab);
   var badges = el("div", { "class": "jobbadges" });
   if (isJobLate(j)) badges.appendChild(el("span", { "class": "badge" }, "Overdue"));
   var dueBtn = el("button", { type: "button", "class": "chip datechip" + (j.due ? "" : " nodue"), title: j.due ? "Change the due date" : "Add a due date" });
@@ -1071,24 +1064,6 @@ function jobRow(j, opts) {
     row.appendChild(pen);
   }
   li.appendChild(row);
-  if (opts && opts.card && opts.edit) {
-    var ed = el("div", { "class": "handedit" });
-    var eb = function (label, aria, key, fn, off) {
-      var b = el("button", { type: "button", "class": "small", "aria-label": aria + ": " + j.text, "data-focus": key + j.id }, label);
-      if (off) b.disabled = true; else on(b, "click", fn);
-      ed.appendChild(b);
-    };
-    eb(HAND.up, "Move up in hand", "hand-up-", function () { handMove(j.id, -1); }, opts.i === 0);
-    eb(HAND.down, "Move down in hand", "hand-down-", function () { handMove(j.id, 1); }, opts.i === opts.n - 1);
-    eb(HAND.discard, "Discard from hand", "hand-discard-", function () { handDiscard(j.id); });
-    li.appendChild(ed);
-  }
-  if (opts && opts.choose) {
-    var ch = el("div", { "class": "handedit" });
-    var cb2 = el("button", { type: "button", "class": "small", "aria-label": "Choose for hand: " + j.text, "data-focus": "hand-choose-" + j.id }, HAND.pick);
-    on(cb2, "click", function () { handChoose(j.id); refocus(['[data-focus="hand-discard-' + j.id + '"]', '[data-focus="hand-choose"]']); });
-    ch.appendChild(cb2); li.appendChild(ch);
-  }
   return li;
 }
 
@@ -1098,6 +1073,7 @@ var HAND = {
   reroll: "Reroll", pick: "Choose", discard: "Discard", deck: "Errands deck",
   none: "Nothing in your hand. Choose up to three errands to keep here.",
   chooserTitle: "Choose your hand", chooserHint: "Choose up to three errands. You can reorder them afterwards.",
+  editorTitle: "Edit your hand", editorHint: "Reorder your hand or discard errands from it.",
   rerolled: "Hand rerolled.", emptied: "Hand emptied.", needTwo: "Reroll needs at least two open errands."
 };
 var HAND_MAX = 3, REROLL_SFX = "assets/sfx/reroll.mp3";
@@ -1105,26 +1081,18 @@ function refocus(sels) {
   for (var i = 0; i < sels.length; i++) { var f = document.querySelector(sels[i]); if (f && !f.disabled) { f.focus(); return; } }
 }
 function handChoose(id) {
-  var h = state.hand.slice();
-  if (h.indexOf(id) >= 0) return;
-  if (h.length >= HAND_MAX) h = [id].concat(h.slice(0, HAND_MAX - 1)); else h.push(id);
-  state.hand = h; changed();
+  if (state.hand.indexOf(id) >= 0 || state.hand.length >= HAND_MAX) return;
+  state.hand = state.hand.concat([id]); changed();
 }
-function handDiscard(id) {
-  state.hand = state.hand.filter(function (x) { return x !== id; });
-  if (!state.hand.length) ui.handEdit = false;
-  changed();
-  refocus(['[data-focus="hand-discard-' + (state.hand[0] || "") + '"]', '[data-focus="hand-choose"]', '[data-focus="hand-edit"]']);
-}
+function handDiscard(id) { state.hand = state.hand.filter(function (x) { return x !== id; }); changed(); }
 function handMove(id, dir) {
   var h = state.hand.slice(), i = h.indexOf(id), k = i + dir;
   if (i < 0 || k < 0 || k >= h.length) return;
   h[i] = h[k]; h[k] = id; state.hand = h; changed();
-  refocus(['[data-focus="hand-' + (dir < 0 ? "up" : "down") + "-" + id + '"]', '[data-focus="hand-' + (dir < 0 ? "down" : "up") + "-" + id + '"]']);
 }
 function emptyHand() {
   var prev = state.hand.slice();
-  state.hand = []; ui.handEdit = false; changed();
+  state.hand = []; changed(); closeModal();
   notify(HAND.emptied, function () { state.hand = prev; changed(); });
   refocus(['[data-focus="hand-choose"]']);
 }
@@ -1137,18 +1105,18 @@ function stopFlip() {
   flip.ghosts.forEach(function (g) { if (g.parentNode) g.parentNode.removeChild(g); });
   flip = { anims: [], ghosts: [] };
 }
-function rerollHand() {
-  var open = openJobs();
-  if (open.length < 2) return;
+// Puts a new hand in place, flipping the cards over (and playing the landing sound) when animation is on. Reroll and its Undo both use it.
+function swapHand(ids, focusKey) {
   stopFlip();
-  var prev = state.hand.slice(), animate = state.settings.animatedReroll && !reduceMotion();
+  var animate = state.settings.animatedReroll && !reduceMotion();
   // The old cards are copied first because changed() rebuilds the page; the copies turn away while the new cards turn in.
   var old = animate ? Array.prototype.map.call(document.querySelectorAll("#view .handlist > li"), function (li) { return li.cloneNode(true); }) : [];
-  state.hand = rerollPick(open, prev);
-  setFocusKey("hand-reroll"); changed();
-  notify(HAND.rerolled, function () { state.hand = prev; changed(); });
+  state.hand = ids;
+  if (focusKey) setFocusKey(focusKey);
+  changed();
   var cards = document.querySelectorAll("#view .handlist > li");
-  if (!animate || !cards.length || typeof cards[0].animate !== "function") { if (state.settings.audio) playSfx(REROLL_SFX, 0.25); return; }
+  if (!cards.length) return;
+  if (!animate || typeof cards[0].animate !== "function") { if (state.settings.audio) playSfx(REROLL_SFX, 0.25); return; }
   var ul = cards[0].parentNode, persp = "perspective(900px) ";
   Array.prototype.forEach.call(cards, function (card, i) {
     var delay = i * 80, ghost = old[i];
@@ -1170,31 +1138,47 @@ function rerollHand() {
     flip.anims.push(into);
   });
 }
+function rerollHand() {
+  var open = openJobs();
+  if (open.length < 2) return;
+  var prev = state.hand.slice();
+  swapHand(rerollPick(open, prev), "hand-reroll");
+  notify(HAND.rerolled, function () { swapHand(prev); });
+}
 function handSection(root, hand, open) {
-  var head = el("div", { "class": "handhead" + (ui.handEdit ? " editing" : "") });
+  var head = el("div", { "class": "handhead" });
   head.appendChild(el("h2", { "class": "handlabel" }, HAND.label));
   var btns = el("div", { "class": "handbtns" });
-  var hb = function (label, fn, key) { var b = el("button", { type: "button", "class": "small", "data-focus": key }, label); on(b, "click", fn); btns.appendChild(b); return b; };
-  if (ui.handEdit) {
-    hb(HAND.choose, openHandChooser, "hand-choose");
-    hb(HAND.empty, emptyHand, "hand-empty");
-    hb(HAND.done, function () { ui.handEdit = false; changed(); refocus(['[data-focus="hand-edit"]']); }, "hand-done");
-  } else {
-    if (hand.length) hb(HAND.edit, function () { ui.handEdit = true; changed(); refocus(['[data-focus="hand-done"]']); }, "hand-edit");
-    else hb(HAND.choose, openHandChooser, "hand-choose");
-    var grp = el("span", { "class": "rerollgroup" });
-    var rr = el("button", { type: "button", "class": "small", "data-focus": "hand-reroll" }, HAND.reroll);
-    if (open.length < 2) { rr.disabled = true; rr.title = HAND.needTwo; } else on(rr, "click", rerollHand);
-    grp.appendChild(rr); grp.appendChild(helpLink("reroll", "Reroll")); btns.appendChild(grp);
-  }
+  var hand0 = hand.length > 0;
+  var hb = el("button", { type: "button", "class": "small", "data-focus": hand0 ? "hand-edit" : "hand-choose" }, hand0 ? HAND.edit : HAND.choose);
+  on(hb, "click", hand0 ? openHandEditor : openHandChooser); btns.appendChild(hb);
+  var grp = el("span", { "class": "rerollgroup" });
+  var rr = el("button", { type: "button", "class": "small", "data-focus": "hand-reroll" }, HAND.reroll);
+  if (open.length < 2) { rr.disabled = true; rr.title = HAND.needTwo; } else on(rr, "click", rerollHand);
+  grp.appendChild(rr); grp.appendChild(helpLink("reroll", "Reroll")); btns.appendChild(grp);
   head.appendChild(btns); root.appendChild(head);
-  if (!hand.length) root.appendChild(el("p", { "class": "hint handnone" }, HAND.none));
+  if (!hand0) root.appendChild(el("p", { "class": "hint handnone" }, HAND.none));
   else {
     var cl = el("ul", { "class": "handlist" });
-    hand.forEach(function (j, i) { cl.appendChild(jobRow(j, { card: true, edit: ui.handEdit, i: i, n: hand.length })); });
+    hand.forEach(function (j) { cl.appendChild(jobRow(j, { card: true })); });
     root.appendChild(cl);
   }
   root.appendChild(withHelp(el("h2", { "class": "handlabel decklabel" }, HAND.deck), "errands-deck", "Errands deck"));
+}
+// One row of a hand dialog: the errand, its date, and whatever buttons the dialog gives it.
+function handDialogRow(j, chosen) {
+  var li = el("li", { "class": chosen ? "chosen" : "" }), main = el("div", { "class": "hpmain" });
+  main.appendChild(el("span", { "class": "hptext" }, j.text));
+  var sub = el("span", { "class": "hpsub" });
+  if (isJobLate(j)) sub.appendChild(el("span", { "class": "badge" }, "Overdue"));
+  sub.appendChild(document.createTextNode(j.due ? "Due " + fmtY(parseISO(j.due)) : "No due date"));
+  main.appendChild(sub); li.appendChild(main);
+  return li;
+}
+function handDialogBtn(label, aria, j, key, fn, off) {
+  var b = el("button", { type: "button", "class": "small", "data-focus": key + j.id, "aria-label": aria + ": " + j.text }, label);
+  if (off) b.disabled = true; else on(b, "click", fn);
+  return b;
 }
 function openHandChooser() {
   openModal(HAND.chooserTitle, function (body) {
@@ -1205,21 +1189,13 @@ function openHandChooser() {
       list.innerHTML = "";
       var full = state.hand.length >= HAND_MAX;
       openJobs().forEach(function (j) {
-        var chosen = state.hand.indexOf(j.id) >= 0, li = el("li", { "class": chosen ? "chosen" : "" });
-        var main = el("div", { "class": "hpmain" });
-        main.appendChild(el("span", { "class": "hptext" }, j.text));
-        var sub = el("span", { "class": "hpsub" });
-        if (isJobLate(j)) sub.appendChild(el("span", { "class": "badge" }, "Overdue"));
-        sub.appendChild(document.createTextNode(j.due ? "Due " + fmtY(parseISO(j.due)) : "No due date"));
-        main.appendChild(sub); li.appendChild(main);
-        var b = el("button", { type: "button", "class": "small", "data-focus": "pick-" + j.id, "aria-label": (chosen ? "Discard from hand: " : "Choose for hand: ") + j.text }, chosen ? HAND.discard : HAND.pick);
-        if (!chosen && full) b.disabled = true;
-        on(b, "click", function () {
-          if (chosen) state.hand = state.hand.filter(function (x) { return x !== j.id; }); else handChoose(j.id);
-          changed(); paint();
+        var chosen = state.hand.indexOf(j.id) >= 0, li = handDialogRow(j, chosen);
+        li.appendChild(handDialogBtn(chosen ? HAND.discard : HAND.pick, chosen ? "Discard from hand" : "Choose for hand", j, "pick-", function () {
+          if (chosen) handDiscard(j.id); else handChoose(j.id);
+          paint();
           var f = list.querySelector('[data-focus="pick-' + j.id + '"]'); if (f && !f.disabled) f.focus(); else doneBtn.focus();
-        });
-        li.appendChild(b); list.appendChild(li);
+        }, !chosen && full));
+        list.appendChild(li);
       });
       count.textContent = state.hand.length + " of " + HAND_MAX + " in hand";
     };
@@ -1227,7 +1203,39 @@ function openHandChooser() {
     body.appendChild(list);
     on(doneBtn, "click", function () { closeModal(); refocus(['[data-focus="hand-choose"]', '[data-focus="hand-edit"]']); });
     foot.appendChild(doneBtn); foot.appendChild(count); body.appendChild(foot);
-  });
+  }, { noClose: true });
+}
+function openHandEditor() {
+  openModal(HAND.editorTitle, function (body) {
+    body.appendChild(el("p", { "class": "first hint" }, HAND.editorHint));
+    var list = el("ul", { "class": "handpick" }), foot = el("div", { "class": "handfoot" }), count = el("span", { "class": "hint handcount" });
+    var doneBtn = el("button", { type: "button", "class": "primary" }, HAND.done);
+    var paint = function (focusSels) {
+      list.innerHTML = "";
+      var hand = handJobs();
+      hand.forEach(function (j, i) {
+        var li = handDialogRow(j, true), bt = el("div", { "class": "hpbtns" });
+        bt.appendChild(handDialogBtn(HAND.up, "Move up in hand", j, "ed-up-", function () { handMove(j.id, -1); paint(['[data-focus="ed-up-' + j.id + '"]', '[data-focus="ed-down-' + j.id + '"]']); }, i === 0));
+        bt.appendChild(handDialogBtn(HAND.down, "Move down in hand", j, "ed-down-", function () { handMove(j.id, 1); paint(['[data-focus="ed-down-' + j.id + '"]', '[data-focus="ed-up-' + j.id + '"]']); }, i === hand.length - 1));
+        bt.appendChild(handDialogBtn(HAND.discard, "Discard from hand", j, "ed-discard-", function () {
+          handDiscard(j.id);
+          if (!state.hand.length) { closeModal(); refocus(['[data-focus="hand-choose"]']); return; }
+          paint(['[data-focus="ed-discard-' + state.hand[0] + '"]']);
+        }));
+        li.appendChild(bt); list.appendChild(li);
+      });
+      count.textContent = hand.length + " of " + HAND_MAX + " in hand";
+      if (focusSels) refocus(focusSels.map(function (q) { return "#modalBody " + q; }));
+    };
+    paint();
+    body.appendChild(list);
+    on(doneBtn, "click", function () { closeModal(); refocus(['[data-focus="hand-edit"]', '[data-focus="hand-choose"]']); });
+    var more = on(el("button", { type: "button" }, HAND.choose), "click", openHandChooser);
+    var clear = on(el("button", { type: "button" }, HAND.empty), "click", emptyHand);
+    var acts = el("div", { "class": "handacts" });
+    acts.appendChild(doneBtn); acts.appendChild(more); acts.appendChild(clear);
+    foot.appendChild(acts); foot.appendChild(count); body.appendChild(foot);
+  }, { noClose: true });
 }
 
 // A milestone diamond opens the task it's flagged on, same as any other task.
@@ -1412,7 +1420,7 @@ export function helpTopics() {
       "{#decision}**Decision:** A question attached to a step. Answering it completes the step. See “Inside a quest”.",
       "{#forecast}**Forecast:** The dotted burndown line estimating when you’ll finish. See “Timeline page”.",
       "{#gathering-dust}**Gathering dust:** A badge for an active quest nobody has changed for a while. See “Options page”.",
-      "{#hand}**Hand:** Up to three errands you keep at the top of the **Errands** page. See “Errands page”.",
+      "{#hand}**Your hand:** Choose up to three errands to keep in your hand. See “Errands page”.",
       "{#ideal}**Ideal:** The burndown line showing your planned pace. See “Timeline page”.",
       "{#idea}**Idea:** A note in the **Workshop** that hasn’t become a quest. See “Workshop page”.",
       "{#in-progress}**In progress:** An active quest with at least one incomplete task that has a due date. See “Quests page”.",
@@ -1432,7 +1440,7 @@ export function helpTopics() {
       "{#quest-giver}**Quest giver:** The client or contact for this quest. See “Quest giver and Quest links”.",
       "{#quest-giver-export}**Quest giver export:** A read-only page you can share with a client. See “Quest giver and Quest links”.",
       "{#quest-links}**Quest links:** Connections between quests that belong to the same job. See “Quest giver and Quest links”.",
-      "{#reroll}**Reroll:** Replaces your hand with a new one. Overdue errands come first, and you can undo it. See “Errands page”.",
+      "{#reroll}**Reroll:** Replaces your hand with a new one. Overdue errands are prioritized, and you can undo it. See “Errands page”.",
       "{#scope}**Scope:** The total amount of work in a quest. The orange line shows when that amount changes. See “Timeline page”.",
       "{#slip-schedule}**Slip schedule:** Moves a quest’s incomplete tasks to later dates. You can undo this change. See “A quest’s Schedule and Timeline”.",
       "{#step}**Step:** A smaller action that makes up a task. See “Inside a quest”.",
@@ -1507,9 +1515,9 @@ export function helpTopics() {
       "**Errands:** List for small errands that aren’t quite a quest. Errands don’t appear on the **Timeline**, the **Burndown**, or the **Tasks** page, and they don’t change any counts.",
       "**Add errand:** Type an errand and select **Add errand** or press [[Enter]]. You can also give errands a due date. Select the pencil to rename an errand.",
       ">The **Errands deck** holds your open errands that aren’t in your hand. Errands with due dates appear first, ordered by due date from earliest to latest. Errands without due dates follow, in the order they were added. Errands past their due dates display an **Overdue** badge.",
-      "**Your hand:** Up to three errands you keep at the top of the page. Select **Choose cards** to pick them from a list. Select **Edit hand** to reorder them, discard them, or choose more from the deck. **Empty hand** clears it, and you can undo that.",
-      "**Choose and Discard:** In **Edit hand**, **Choose** adds a deck errand to your hand and **Discard** returns it to the deck. **Discard** never deletes an errand. If your hand is full, **Choose** puts the new errand first and the last one leaves your hand.",
-      "**Reroll:** Replaces your whole hand, including errands you chose yourself. Overdue errands come first, and errands that weren’t in your hand are preferred, so pressing it again works through your overdue errands before repeating. Select **Undo** right away to get your old hand back. It’s turned off when you have fewer than two open errands. With **Sound effects** on, it plays a sound. To turn off the flip, use **Animated reroll** in **Options**.",
+      "**Your hand:** Up to three errands you keep at the top of the page. Select **Choose cards** to pick them from a list. Select **Edit hand** to reorder them or discard them. **Empty hand**, in **Edit hand**, clears your hand, and you can undo that.",
+      "**Choose and Discard:** **Choose** adds an errand to your hand and **Discard** returns it to the deck. **Discard** never deletes an errand. Your hand holds three errands, so **Choose** turns off when it’s full.",
+      "**Reroll:** Replaces your whole hand, including errands you chose yourself. Overdue errands come first, and errands that weren’t in your hand are preferred, so pressing it again works through your overdue errands before repeating. Select **Undo** right away to flip your old hand back. It’s turned off when you have fewer than two open errands. With **Sound effects** on, it plays a sound. To turn off the flip, use **Animated reroll** in **Options**.",
       "**Errands deck:** The rest of your open errands, in the usual order. Errands in your hand leave the deck until you discard them.",
       "**Complete errand:** Check the box next to an errand to mark it complete. It moves to the **Completed** section.",
       "**Restore errand:** Uncheck a completed errand to move it back to the list.",
