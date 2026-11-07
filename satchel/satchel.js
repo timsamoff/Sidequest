@@ -139,3 +139,22 @@
     if (!raf) raf = window.requestAnimationFrame(step);
   }, { passive: false });
 })();
+
+/* Pinned cards sit a little off true. The offsets are fixed in each card's style attribute; this only tells the CSS whether cards sit side by side or stacked. */
+(function () {
+  var grids = document.querySelectorAll(".grid");
+  Array.prototype.forEach.call(grids, function (grid) {
+    var cards = grid.querySelectorAll(":scope > .posting");
+    if (cards.length < 2) return;
+    function layout() {
+      var tops = {}, shared = false;
+      Array.prototype.forEach.call(cards, function (c) {
+        if (tops[c.offsetTop]) shared = true;
+        tops[c.offsetTop] = true;
+      });
+      grid.setAttribute("data-rows", shared ? "side" : "stacked");
+    }
+    layout();
+    window.addEventListener("resize", layout);
+  });
+})();
