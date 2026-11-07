@@ -73,7 +73,9 @@ strong { font-weight: 600; }
   position: absolute; inset: 0; z-index: 1; grid-area: 1 / 1 / 2 / -1; overflow: hidden; background: var(--leather);
   border-radius: 0 0 64px 64px / 0 0 22px 22px; box-shadow: 0 4px 10px -2px rgba(0, 0, 0, .35);
 }
-.flapleather img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: center top; }
+/* The texture keeps one fixed size per breakpoint (it only grows past that when the window is wider) and is anchored to the bottom edge. */
+.flapleather img { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: max(100%, 1280px); height: auto; max-width: none; }
+@media (min-width: 62rem) { .flapleather img { width: max(100%, 1600px); } }
 
 /* Stitch: two 64px by 22px corner pieces and a straight run between them, all drawn in the thread color through masks. */
 .flapstitch { position: absolute; inset: 0; z-index: 2; grid-area: 1 / 1 / 2 / -1; pointer-events: none; }
@@ -87,11 +89,12 @@ strong { font-weight: 600; }
   mask-repeat: round no-repeat; -webkit-mask-repeat: round no-repeat; mask-size: auto 4px; -webkit-mask-size: auto 4px;
 }
 
-/* Brand and theme patch sit 8px above the flap's true center. */
-.flap .brand { grid-column: 2; grid-row: 1; justify-self: start; align-self: center; position: relative; top: -8px; z-index: 3; color: var(--stamp); }
-.flap .brand span { text-shadow: 0 1px 0 rgba(255, 225, 170, .4); }
+/* Brand and theme patch are centered in the flap. The wordmark drops 2px because the q's descender makes it look high. */
+.flap .brand { grid-column: 2; grid-row: 1; justify-self: start; align-self: center; position: relative; z-index: 3; color: var(--stamp); }
+.flap .brand span { position: relative; top: 2px; text-shadow: 0 1px 0 rgba(255, 225, 170, .4); transition: text-shadow .2s ease; }
+.flap .brand:hover span { text-shadow: 0 1px 0 rgba(255, 238, 200, .95); }
 .themebtn {
-  grid-column: 2; grid-row: 1; justify-self: end; align-self: center; position: relative; top: -8px; z-index: 3;
+  grid-column: 2; grid-row: 1; justify-self: end; align-self: center; position: relative; z-index: 3;
   width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
   color: var(--stamp); border: 1px solid rgba(30, 16, 6, .55); border-radius: 9px; cursor: pointer;
   background-color: var(--leather);
@@ -103,12 +106,13 @@ strong { font-weight: 600; }
 
 /* Clasp: the menu button at every width. The strap tile scales with --clasp-w. */
 .clasp {
-  display: none; position: absolute; z-index: 4; left: 50%; top: calc(var(--flap-h) - var(--clasp-w) * 28 / 44);
+  display: none; position: absolute; z-index: 4; left: 50%; top: calc(var(--flap-h) - var(--clasp-w) * 46 / 44);
   width: var(--clasp-w); aspect-ratio: 44 / 72; transform: translateX(-50%); padding: 0; border: 0; background: none; cursor: pointer;
   border-radius: calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .48) calc(var(--clasp-w) * .48);
 }
 .js .clasp { display: block; }
-.claspart { position: absolute; inset: 0; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); }
+.claspart { position: absolute; inset: 0; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); transition: filter .2s ease; }
+.clasp:hover .claspart { filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .35)) brightness(1.25); }
 .strap {
   position: absolute; inset: 0; background-color: var(--strap);
   background-image: url("../assets/strap.jpg"); background-image: image-set(url("../assets/strap.webp") type("image/webp"), url("../assets/strap.jpg") type("image/jpeg"));
@@ -120,12 +124,21 @@ strong { font-weight: 600; }
 
 /* Lining: revealed behind the flap when the clasp is opened. Without JavaScript it stays open. */
 .topnav {
-  grid-column: 1 / -1; grid-row: 2; position: relative; z-index: 0; margin-top: -22px;
-  padding: calc(22px + var(--clasp-w) + var(--space-14)) 0 var(--space-20); background: var(--lining); color: var(--lining-ink);
+  grid-column: 1 / -1; grid-row: 2; position: relative; z-index: 0; margin-top: -22px; overflow: hidden;
+  padding: calc(22px + var(--clasp-w) * 26 / 44 + var(--space-14)) 0 var(--space-20); background: var(--lining); color: var(--lining-ink);
 }
 html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
-.js .topnav { display: none; }
-.js .topnav.open { display: block; }
+/* With JavaScript the lining slides open: margin, padding, and the list's row height all animate together. */
+.js .topnav {
+  display: grid; grid-template-rows: 0fr; margin-top: 0; padding-top: 0; padding-bottom: 0; visibility: hidden;
+  transition: grid-template-rows .35s ease, margin-top .35s ease, padding .35s ease, visibility 0s linear .35s;
+}
+.js .topnav > ul { min-height: 0; overflow: hidden; width: 100%; }
+.js .topnav.open {
+  grid-template-rows: 1fr; margin-top: -22px; padding-top: calc(22px + var(--clasp-w) * 26 / 44 + var(--space-14)); padding-bottom: var(--space-20); visibility: visible;
+  transition: grid-template-rows .35s ease, margin-top .35s ease, padding .35s ease, visibility 0s;
+}
+@media (prefers-reduced-motion: reduce) { .js .topnav, .js .topnav.open { transition: none; } }
 .topnav ul {
   list-style: none; margin: 0 auto; padding: 0 var(--gut); max-width: var(--wrap);
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-20);
