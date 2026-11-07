@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lifting Corner Note</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: #f1efea;
+    font-family: system-ui, sans-serif;
+    color: #333;
+  }
+  .stage { display: grid; gap: 28px; justify-items: center; }
+
+  .note {
+    position: relative;
+    width: min(280px, 80vw);
+    aspect-ratio: 1;
+    filter: drop-shadow(2px 3px 2px rgba(0,0,0,.18)) drop-shadow(4px 10px 10px rgba(0,0,0,.18));
+  }
+  .note svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .text {
+    position: absolute;
+    inset: 0;
+    padding: 20px;
+    font-family: "Segoe Print", "Bradley Hand", cursive;
+    font-size: 20px;
+    line-height: 1.35;
+    color: #4a4220;
+  }
+
+  .controls { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+  input[type=range] { width: 180px; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="note">
+      <svg viewBox="0 0 280 280" aria-hidden="true">
+        <defs>
+          <clipPath id="bodyClip"><path id="clipPath"/></clipPath>
+          <filter id="blur" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2.5"/>
+          </filter>
+          <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#fbe98d"/>
+            <stop offset="0.6" stop-color="#f8e382"/>
+            <stop offset="1" stop-color="#f3da72"/>
+          </linearGradient>
+          <linearGradient id="back" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#ecdc92"/>
+            <stop offset="0.55" stop-color="#e2cb5e"/>
+            <stop offset="1" stop-color="#c9ad38"/>
+          </linearGradient>
+        </defs>
+        <path id="body" fill="url(#paper)"/>
+        <g clip-path="url(#bodyClip)">
+          <path id="flapShadow" fill="#000" opacity="0.3" filter="url(#blur)"/>
+        </g>
+        <path id="flap" fill="url(#back)" clip-path="url(#bodyClip)"/>
+      </svg>
+      <div class="text">Buy milk.<br>Call Dana.<br>Finish the demo.</div>
+    </div>
+    <label class="controls">
+      Lift size
+      <input type="range" id="size" min="0" max="140" value="100">
+      <span id="val">100px</span>
+    </label>
+  </div>
+<script>
+  const W = 280, H = 280;
+  const $ = id => document.getElementById(id);
+  const pt = p => p[0].toFixed(2) + ' ' + p[1].toFixed(2);
+
+  function build(a) {
+    // P on the right edge, Q on the bottom edge: the ends of the crease
+    const P = [W, H - a];
+    const Q = [W - a, H];
+    // crease is nearly straight, with only a hint of curve
+    const bow = 0.05 * a * 0.7071;
+    const cc = [W - a / 2 - bow, H - a / 2 - bow];
+    // free tip of the curled-over back side
+    const t = 0.82 * a;
+    const T = [W - t, H - t];
+    // flap's two free edges curve inward (concave), giving a sharp curled tip
+    const cPT = [(P[0] + T[0]) / 2, (P[1] + T[1]) / 2 + 0.11 * a];
+    const cQT = [(Q[0] + T[0]) / 2 + 0.11 * a, (Q[1] + T[1]) / 2];
+
+    // slightly round the two corners where the crease meets the edges of the front
+    const r = 0.1 * a;
+    const u = 0.7071;
+    const P0 = [W, P[1] - r];
+    const P1 = [P[0] - u * r, P[1] + u * r];
+    const Q1 = [Q[0] + u * r, Q[1] - u * r];
+    const Q0 = [Q[0] - r, H];
+    const body = `M0 0H${W}V${P0[1].toFixed(2)}Q${pt(P)} ${pt(P1)}Q${pt(cc)} ${pt(Q1)}Q${pt(Q)} ${pt(Q0)}H0Z`;
+    const flap = `M${pt(P)}Q${pt(cc)} ${pt(Q)}Q${pt(cQT)} ${pt(T)}Q${pt(cPT)} ${pt(P)}Z`;
+
+    $('body').setAttribute('d', body);
+    $('clipPath').setAttribute('d', body);
+    $('flap').setAttribute('d', flap);
+    $('flapShadow').setAttribute('d', flap);
+
+    // back-side gradient runs from the tip to the middle of the crease
+    const cm = [0.25 * Q[0] + 0.5 * cc[0] + 0.25 * P[0], 0.25 * Q[1] + 0.5 * cc[1] + 0.25 * P[1]];
+    const g = $('back');
+    g.setAttribute('x1', T[0]); g.setAttribute('y1', T[1]);
+    g.setAttribute('x2', cm[0]); g.setAttribute('y2', cm[1]);
+  }
+
+  const size = $('size');
+  size.addEventListener('input', () => {
+    build(+size.value);
+    $('val').textContent = size.value + 'px';
+  });
+  build(+size.value);
+</script>
+</body>
+</html>

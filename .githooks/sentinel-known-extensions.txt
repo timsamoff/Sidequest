@@ -9,6 +9,7 @@
 .mjs
 .mp3
 .png
+.psd
 .svg
 .txt
 .webp
