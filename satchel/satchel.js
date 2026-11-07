@@ -48,7 +48,7 @@
       menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
     };
     menuBtn.addEventListener("click", function () { setMenu(!nav.classList.contains("open")); opened(); });
-    /* Peek: on every page the strap makes the same small lift as a press, every 15 seconds, until the menu is opened on that page. It starts after the Welcome splash finishes (or 15 seconds in, if the splash never plays), and 1.5 seconds after load on pages with no splash. */
+    /* Peek: on every page the strap makes the same small lift as a press, every 5 seconds, until the menu is opened on that page. It starts after the Welcome splash finishes (or 15 seconds in, if the splash never plays), and 1.5 seconds after load on pages with no splash. */
     var seen = false;
     var opened = function () { seen = true; };
     var peek = function () {
@@ -60,7 +60,7 @@
       if (startPeeking.done) return;
       startPeeking.done = true;
       window.setTimeout(peek, 1000);
-      window.setInterval(peek, 15000);
+      window.setInterval(peek, 5000);
     };
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       if (document.getElementById("splash")) {
