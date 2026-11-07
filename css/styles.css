@@ -42,8 +42,8 @@ button.pencil[hidden] { display: none; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 button { background: var(--control-bg); border: 1px solid var(--control-line); border-radius: var(--radius-control); padding: var(--space-8) var(--space-14); min-height: var(--control-height); cursor: pointer; }
 button:hover { border-color: var(--muted); }
-button.primary { background: var(--planned); border-color: var(--planned); color: var(--on-planned); font-weight: 600; }
-button.primary:hover { border-color: var(--planned); filter: brightness(1.15); }
+button.primary { background: var(--btn); border-color: var(--btn); color: var(--on-btn); font-weight: 600; }
+button.primary:hover { border-color: var(--btn); filter: brightness(1.15); }
 button.small { min-height: 34px; padding: var(--space-4) var(--space-10); font-size: var(--text-sm); }
 /* Fixed width so the button doesn't resize when its label swaps Pin/Unpin. */
 button.pintoggle { min-width: 64px; }
@@ -51,7 +51,7 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-10); margin-top: var(--space-14); align-items: center; }
 .field { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-10); }
 .field label { font-size: var(--text-sm); color: var(--muted); }
-.linkbtn { display: inline-flex; align-items: center; min-height: var(--control-height); padding: var(--space-8) var(--space-14); border-radius: var(--radius-control); background: var(--planned); color: var(--on-planned); font-weight: 600; text-decoration: none; }
+.linkbtn { display: inline-flex; align-items: center; min-height: var(--control-height); padding: var(--space-8) var(--space-14); border-radius: var(--radius-control); background: var(--btn); color: var(--on-btn); font-weight: 600; text-decoration: none; }
 .linkbtn:hover { filter: brightness(1.1); }
 .textbtn { background: none; border: 0; padding: var(--space-4) 0; min-height: 0; color: var(--planned); text-decoration: underline; text-align: left; }
 
@@ -59,9 +59,10 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .app { min-height: 100vh; display: grid; grid-template-columns: 220px minmax(0, 1fr); }
 .side { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; height: 100vh; height: 100dvh; padding: var(--space-22) var(--space-14); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--space-4); background: var(--surface); }
 .brandrow { display: flex; align-items: center; gap: var(--space-10); padding: 0 var(--space-6) var(--space-16); }
-/* Wood brand block: the top of the sidebar, edge to edge. */
-.side .brandrow { margin: calc(var(--space-22) * -1) calc(var(--space-14) * -1) var(--space-14); padding: var(--space-16) var(--space-20); background: var(--grain), var(--wood); color: var(--on-wood); border-bottom: 3px solid var(--brass); }
-.side .brand { color: var(--on-wood); font-size: 1.45rem; }
+/* Leather brand block: the top of the sidebar, edge to edge, with a stitched curved lower edge (css/leather.css). */
+.side .brandrow { margin: calc(var(--space-22) * -1) calc(var(--space-14) * -1) var(--space-14); padding: var(--space-16) var(--space-20) var(--space-30); color: var(--stamp); }
+.side .brand { position: relative; top: 2px; z-index: 3; color: var(--clasp-brass); font-size: 1.45rem; text-shadow: 0 1px 0 var(--engrave); }
+.side .brandrow .logo { position: relative; z-index: 3; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 .logo { width: 38px; height: 38px; flex: none; display: block; }
 .mlogo { display: none; width: 44px; height: 44px; }
 .brand { font-family: var(--font-serif); font-weight: 600; font-size: 1.25rem; line-height: 1.1; }
@@ -150,15 +151,15 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .welcomebox .hint { color: var(--ink); }
 /* Pinned notices and tutorial card: a cream card with a brass pin; each notice keeps its own color as a top edge. */
 :is(.updatebanner, .backupreminder, .welcomebox, .tutorial) { position: relative; padding-top: var(--space-26); background: var(--card); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); box-shadow: var(--shadow-menu); }
-:is(.updatebanner, .backupreminder, .welcomebox, .tutorial, .list.pinboard > li)::before { content: ""; position: absolute; top: var(--space-9); left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--scope) 85%, white), var(--brass) 55%, var(--wood)); box-shadow: var(--shadow-pin); }
+:is(.updatebanner, .backupreminder, .welcomebox, .tutorial)::before { content: ""; position: absolute; top: var(--space-9); left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--clasp-brass) 60%, white), var(--clasp-brass) 55%, var(--clasp-brass-edge)); box-shadow: var(--shadow-pin); }
 .updatebanner { border-top: 5px solid var(--notice-update); }
 .backupreminder { border-top: 5px solid var(--notice-backup); }
 .welcomebox { border-top: 5px solid var(--notice-welcome); }
 /* Workshop ideas: parchment cards pinned to a board. */
 .list.pinboard { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: var(--space-18); background: transparent; border: 0; border-radius: 0; padding: var(--space-8) 0 0; }
-.list.pinboard > li { position: relative; padding: var(--space-26) var(--space-18) var(--space-16); background: var(--card); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); border-radius: var(--radius-card); box-shadow: var(--shadow-menu); }
+.list.pinboard > li.posting, .list.pinboard > li.posting:last-child { padding: var(--space-30) var(--space-20) var(--space-20); border-bottom: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); }
+.list.pinboard > li.posting { transform: translate(calc(var(--rx, 0) * 5px), calc(var(--ry, 0) * 10px)); }
 .list.pinboard > li.hint { grid-column: 1 / -1; }
-.list.pinboard > li.hint::before { display: none; }
 .list.pinboard .crow { flex-direction: column; align-items: stretch; gap: var(--space-10); }
 .list.pinboard .li-actions { justify-content: flex-start; }
 .updateprompt { display: block; width: 100%; max-width: 100%; min-height: 0; margin-top: var(--space-10); resize: none; font-size: var(--text-sm); }
@@ -253,7 +254,7 @@ select.status[data-v="Completed"] { background: var(--badge-done-bg); color: var
 :root[data-theme="dark"] :is(input[type="checkbox"], input[type="radio"]) { color-scheme: dark; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) :is(input[type="checkbox"], input[type="radio"]) { color-scheme: dark; } }
 ::placeholder { color: var(--muted); opacity: 1; }
-input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin: var(--space-2) 0 0; flex: none; accent-color: var(--planned); }
+input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin: var(--space-2) 0 0; flex: none; accent-color: var(--btn); }
 .inline { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-10); }
 .inline input[type="text"] { flex: 1 1 180px; width: auto; }
 .only-mobile { display: none; }
@@ -441,12 +442,12 @@ svg.chart.nofocusring { outline: none; }
 .confettiFx { position: fixed; inset: 0; z-index: 80; pointer-events: none; }
 
 /* first-run tutorial card: bottom right on a wide screen, under the top bar on a phone */
-.tutorial { position: fixed; right: var(--space-16); bottom: var(--space-16); width: min(340px, calc(100vw - 32px)); z-index: 55; padding: var(--space-26) var(--space-16) var(--space-14); background: var(--card); color: var(--ink); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); border-radius: var(--radius-card); box-shadow: var(--shadow-menu); outline: 3px solid var(--tutorial-edge); outline-offset: 3px; }
+.tutorial { position: fixed; right: var(--space-16); bottom: var(--space-16); width: min(340px, calc(100vw - 32px)); z-index: 55; padding: var(--space-26) var(--space-16) var(--space-14); background: var(--card); color: var(--ink); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); border-radius: var(--radius-card); box-shadow: var(--shadow-menu); outline: 3px solid var(--tutorial); outline-offset: 3px; }
 .tutorialcount { font-size: var(--text-sm); color: var(--muted); }
 .tutorial .tutorialtitle { margin: var(--space-4) 0 var(--space-6); font-size: var(--text-100); }
 .tutorial .tutorialtext { margin: 0; font-size: var(--text-sm); line-height: 1.45; }
 /* Lifted above its neighbors so a selected tab next to it cannot paint over the ring. */
-.tutorialtarget { position: relative; z-index: 1; outline: 3px solid var(--tutorial-edge); outline-offset: 3px; }
+.tutorialtarget { position: relative; z-index: 1; outline: 3px solid var(--tutorial); outline-offset: 3px; }
 /* The ring grows in from nothing when a step first points at something, and the card's ring does so on every step, then both stay put. */
 .tutorial.tutorialflash { animation: tutorialflash .9s ease-out 1 backwards; }
 /* The highlighted item's ring grows in a second after the card's does, and stays hidden until then. */
@@ -454,7 +455,7 @@ svg.chart.nofocusring { outline: none; }
 @keyframes tutorialflash { 0% { outline-width: 0; } 40% { outline-width: 9px; } 100% { outline-width: 3px; } }
 /* A highlighted candidate row: rounded like the other highlights, with its title underlined in the same weight. */
 li.tutorialtarget { border-radius: var(--radius-control); }
-li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: var(--tutorial-edge); text-decoration-thickness: 3px; text-underline-offset: 4px; }
+li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: var(--tutorial); text-decoration-thickness: 3px; text-underline-offset: 4px; }
 @media (max-width: 899px) {
   .tutorial { bottom: calc(env(safe-area-inset-bottom, 0px) + 76px); left: var(--space-12); right: var(--space-12); width: auto; padding: var(--space-22) var(--space-14) var(--space-10); }
   body:has(.tutorial) #view { padding-bottom: 230px; }

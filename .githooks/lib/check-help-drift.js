@@ -272,7 +272,7 @@ function buildReminder(input) {
 
 function helpDriftReminder() {
   const diffs = {};
-  const files = LABEL_FILES.concat(fs.readdirSync("app").filter((f) => f.endsWith(".js")).map((f) => "app/" + f), ["css/styles.css", "css/splash.css", "css/tokens.css"]);
+  const files = LABEL_FILES.concat(fs.readdirSync("app").filter((f) => f.endsWith(".js")).map((f) => "app/" + f), ["css/styles.css", "css/splash.css", "css/leather.css", "css/tokens.css"]);
   files.forEach((f) => { if (!(f in diffs)) diffs[f] = common.isStaged(f) ? common.stagedDiff(f) : ""; });
   const { hits } = pre.classifySourceDiffs();
   return buildReminder({ diffs, triggerHits: hits, viewsSource: common.stagedContent(VIEWS_FILE) });

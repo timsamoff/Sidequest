@@ -1,42 +1,21 @@
 /* Landing site styles. Colors, spacing, radii, and type sizes come from ../css/tokens.css; only new values are defined here. */
 
 :root {
-  /* New tokens. Each one points at an app token where it can, so both themes follow the app. */
-  --parchment: var(--chip-work);
-  --page-warm: var(--bg);
-  --paper: var(--card);
-  --glow: color-mix(in srgb, var(--scope) 40%, transparent);
+  /* Landing-only tokens. Shared colors, including the leather, brass, lining, and parchment values, live in ../css/tokens.css. */
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --text-lg: 1.15rem;
   --text-xl: clamp(1.45rem, 1.15rem + 1.2vw, 1.95rem);
   --text-hero: min(clamp(2.8rem, 1.7rem + 4.4vw, 5rem), 13vw);
   --wrap: 70rem;
   --target: 48px;
-  /* Satchel header: fixed leather and brass values that do not change with the theme. */
   --flap-h: 76px;
-  --leather: #694A35;
-  --strap: #49362B;
-  --thread: #3A2312;
-  --clasp-brass: #D4BF8C;
-  --clasp-brass-edge: #7A6A3E;
-  --clasp-brass-ring: #A8935F;
-  --engrave: #2B1D0E;
-  --stamp: #2E1B0D;
-  --lining: #E0CCA8;
-  --lining-ink: #2B1A0C;
-  --lining-current: #5A1010;
-  --parch-fill: #FCF1D6;
-  --parch-edge: #CEB782;
-  --parch-ink: #2F5D8A;
-  --parch-red: #C62F2F;
-  --parch-white: #FFFFFF;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-padding-top: var(--space-24); -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
-  background: var(--page-warm);
+  background: var(--bg);
   color: var(--ink);
   font: 400 var(--text-100)/1.65 var(--font-sans);
   min-height: 100vh; display: flex; flex-direction: column; overflow-wrap: break-word;
@@ -62,7 +41,7 @@ strong { font-weight: 600; }
 /* Skip link: off-screen until focused, outside every landmark. */
 .skip {
   position: absolute; left: var(--space-12); top: -4rem; z-index: 20;
-  background: var(--scope); color: var(--scope-ink);
+  background: var(--tutorial); color: var(--on-tutorial-btn);
   padding: var(--space-10) var(--space-16); border-radius: var(--radius-control); font-weight: 600;
 }
 .skip:focus { top: var(--space-8); }
@@ -83,22 +62,12 @@ strong { font-weight: 600; }
 @media (max-width: 35.99rem) { .flapleather img { width: max(100%, 800px); } }
 @media (min-width: 62rem) { .flapleather img { width: max(100%, 1600px); } }
 
-/* Stitch: two 64px by 22px corner pieces and a straight run between them, all drawn in the thread color through masks. */
-.flapstitch { position: absolute; inset: 0; z-index: 2; grid-area: 1 / 1 / 2 / -1; pointer-events: none; }
-.flapstitch i { position: absolute; background: var(--thread); mask-repeat: no-repeat; -webkit-mask-repeat: no-repeat; }
-.flapstitch .stl, .flapstitch .str { bottom: 0; width: 64px; height: 22px; mask-size: 100% 100%; -webkit-mask-size: 100% 100%; }
-.flapstitch .stl { left: 0; mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 22' %3E%3Cpath d='M8 0 A56 14 0 0 0 64 14' fill='none' stroke='black' stroke-width='1.7' stroke-dasharray='9 5.5 8 5 10.5 5.5 9 6.5 8.5 5 10 5.5' stroke-dashoffset='86.95'/%3E%3C/svg%3E"); -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 22' %3E%3Cpath d='M8 0 A56 14 0 0 0 64 14' fill='none' stroke='black' stroke-width='1.7' stroke-dasharray='9 5.5 8 5 10.5 5.5 9 6.5 8.5 5 10 5.5' stroke-dashoffset='86.95'/%3E%3C/svg%3E"); }
-.flapstitch .str { right: 0; mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 22' %3E%3Cpath d='M56 0 A56 14 0 0 1 0 14' fill='none' stroke='black' stroke-width='1.7' stroke-dasharray='9 5.5 8 5 10.5 5.5 9 6.5 8.5 5 10 5.5' stroke-dashoffset='22.45'/%3E%3C/svg%3E"); -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 22' %3E%3Cpath d='M56 0 A56 14 0 0 1 0 14' fill='none' stroke='black' stroke-width='1.7' stroke-dasharray='9 5.5 8 5 10.5 5.5 9 6.5 8.5 5 10 5.5' stroke-dashoffset='22.45'/%3E%3C/svg%3E"); }
-.flapstitch .stm {
-  left: 64px; right: 64px; bottom: 6px; height: 4px;
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='4' viewBox='0 0 88 4' preserveAspectRatio='none'%3E%3Cline x1='0' y1='2' x2='88' y2='2' stroke='black' stroke-width='1.7' stroke-dasharray='9 5.5 8 5 10.5 5.5 9 6.5 8.5 5 10 5.5'/%3E%3C/svg%3E"); -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='4' viewBox='0 0 88 4' preserveAspectRatio='none'%3E%3Cline x1='0' y1='2' x2='88' y2='2' stroke='black' stroke-width='1.7' stroke-dasharray='9 5.5 8 5 10.5 5.5 9 6.5 8.5 5 10 5.5'/%3E%3C/svg%3E");
-  mask-repeat: round no-repeat; -webkit-mask-repeat: round no-repeat; mask-size: auto 4px; -webkit-mask-size: auto 4px;
-}
+.flapstitch { grid-area: 1 / 1 / 2 / -1; }
 
 /* Brand and theme patch are centered in the flap. The wordmark drops 2px because the q's descender makes it look high. */
 .flap .brand { grid-column: 2; grid-row: 1; justify-self: start; align-self: center; position: relative; z-index: 3; color: var(--stamp); }
-.flap .brand span { position: relative; top: 2px; text-shadow: 0 1px 0 rgba(255, 225, 170, .4); transition: color .2s ease; }
-.flap .brand:hover span { color: color-mix(in srgb, var(--stamp) 90%, white); }
+.flap .brand span { position: relative; top: 2px; color: var(--clasp-brass); text-shadow: 0 1px 0 var(--engrave); transition: color .2s ease; }
+.flap .brand:hover span { color: color-mix(in srgb, var(--clasp-brass) 85%, white); }
 .themebtn {
   grid-column: 2; grid-row: 1; justify-self: end; align-self: center; position: relative; z-index: 3;
   width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
@@ -216,7 +185,7 @@ html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
   border: 2px solid transparent;
 }
 .btn.door {
-  background: var(--scope); color: var(--scope-ink); border-color: var(--tutorial-edge);
+  background: var(--tutorial); color: var(--on-tutorial-btn); border-color: var(--tutorial-edge);
 }
 .btn.door:hover { background: var(--tutorial-hover); }
 .btn.ghost { background: transparent; color: var(--ink); border-color: var(--ink); }
@@ -276,48 +245,6 @@ main .wrap { container-type: inline-size; }
 .posting p:last-child { margin-bottom: 0; }
 .stack-gap { margin-top: var(--space-22); }
 
-/* Posting: a parchment card nailed to the quest board. The pin casts a small soft shadow below it. */
-.posting {
-  position: relative;
-  background:
-    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-20 -20 120 120'><defs><filter id='b' x='-30%25' y='-30%25' width='160%25' height='160%25'><feGaussianBlur stdDeviation='2.5'/></filter><mask id='m'><rect x='-20' y='-20' width='120' height='120' fill='%23fff'/><path d='M100 0Q46.46 46.46 0 100Q20 59 18 18Q59 20 100 0Z' fill='%23000'/></mask></defs><path d='M100 0Q46.46 46.46 0 100Q20 59 18 18Q59 20 100 0Z' fill='%23000' opacity='.22' filter='url(%23b)' mask='url(%23m)'/></svg>") right bottom / var(--bbox) var(--bbox) no-repeat,
-    var(--paper);
-  background-origin: border-box;
-  border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line));
-  border-radius: 0;
-  --bend: 62px;
-  --flap-line: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-20 -20 120 120'><path d='M100 0Q46.46 46.46 0 100Q20 59 18 18Q59 20 100 0Z' fill='none' stroke='%23CEB782' stroke-width='3' stroke-linejoin='round'/></svg>");
-  --bbox: 74px; /* the bend plus the rounding where the crease meets the card edges */
-  -webkit-mask:
-    linear-gradient(black, black) left top / 100% calc(100% - var(--bbox) + 1px) no-repeat,
-    linear-gradient(black, black) left bottom / calc(100% - var(--bbox) + 1px) var(--bbox) no-repeat,
-    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-20 -20 120 120'><path d='M-20 -20H100V-18Q100 0 87.27 12.73Q46.46 46.46 12.73 87.27Q0 100 -18 100H-20Z'/></svg>") right bottom / var(--bbox) var(--bbox) no-repeat;
-  mask:
-    linear-gradient(black, black) left top / 100% calc(100% - var(--bbox) + 1px) no-repeat,
-    linear-gradient(black, black) left bottom / calc(100% - var(--bbox) + 1px) var(--bbox) no-repeat,
-    url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-20 -20 120 120'><path d='M-20 -20H100V-18Q100 0 87.27 12.73Q46.46 46.46 12.73 87.27Q0 100 -18 100H-20Z'/></svg>") right bottom / var(--bbox) var(--bbox) no-repeat;
-}
-/* The grid casts the shadow, since a mask on the note itself would clip it. */
-.grid:has(> .posting) { align-items: start; filter: drop-shadow(0 2px 1.5px rgba(0, 0, 0, .22)) drop-shadow(0 8px 12px rgba(0, 0, 0, .18)); }
-/* The fold's outline matches the card border (baked into the image, so each theme restates it). */
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .posting { --flap-line: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-20 -20 120 120'><path d='M100 0Q46.46 46.46 0 100Q20 59 18 18Q59 20 100 0Z' fill='none' stroke='%2371613A' stroke-width='3' stroke-linejoin='round'/></svg>"); } }
-:root[data-theme="dark"] .posting { --flap-line: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-20 -20 120 120'><path d='M100 0Q46.46 46.46 0 100Q20 59 18 18Q59 20 100 0Z' fill='none' stroke='%2371613A' stroke-width='3' stroke-linejoin='round'/></svg>"); }
-.posting { padding: var(--space-26) var(--space-20) var(--space-20); }
-/* The curled-back flap sits above the note's content. */
-.posting::after {
-  content: ""; position: absolute; z-index: 2; right: -1px; bottom: -1px; width: var(--bbox); height: var(--bbox);
-  background: var(--flap-line) center / 100% 100% no-repeat,
-    linear-gradient(to bottom right, color-mix(in srgb, var(--paper) 94%, black) 33%, color-mix(in srgb, var(--paper) 82%, black) 57%);
-  -webkit-mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-20 -20 120 120'><path d='M100 0Q46.46 46.46 0 100Q20 59 18 18Q59 20 100 0Z'/></svg>") center / 100% 100% no-repeat;
-  mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-20 -20 120 120'><path d='M100 0Q46.46 46.46 0 100Q20 59 18 18Q59 20 100 0Z'/></svg>") center / 100% 100% no-repeat;
-  pointer-events: none;
-}
-.posting::before {
-  content: ""; position: absolute; top: var(--space-9); left: 50%; width: 10px; height: 10px; margin-left: -5px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--clasp-brass) 60%, white), var(--clasp-brass) 55%, var(--clasp-brass-edge));
-  box-shadow: var(--shadow-pin); z-index: 1;
-}
 .way { border-top: 5px solid var(--bar-pending); }
 .way.pwa { border-top-color: var(--bar-done); }
 .way.claude { border-top-color: var(--bar-active); }
@@ -387,7 +314,7 @@ code { font-family: var(--font-mono); font-size: .92em; }
   border: 2px dashed var(--brass); border-radius: var(--radius-card);
   background:
     repeating-linear-gradient(135deg, transparent 0 14px, color-mix(in srgb, var(--brass) 14%, transparent) 14px 15px),
-    color-mix(in srgb, var(--surface) 70%, var(--parchment));
+    color-mix(in srgb, var(--surface) 70%, var(--chip-work));
   color: var(--muted);
 }
 .shot.wide .shotframe { aspect-ratio: 21 / 9; }
@@ -399,15 +326,9 @@ code { font-family: var(--font-mono); font-size: .92em; }
 .heroquote { margin: 0; }
 .splash.inline { position: relative; inset: auto; z-index: auto; touch-action: auto; overscroll-behavior: auto; }
 html:has(.splash.inline:not([hidden])) { overflow: visible; }
-/* Parchment version: the torn-edge icon shape, ink-blue paths at the icon's opacity, and an ink-blue quote box. */
-.splash.inline .splashpanel {
-  --logo-est: var(--parch-fill); --logo-planned: var(--parch-ink); --logo-surface: var(--parch-white); --logo-burn: var(--parch-red);
-  width: min(100%, 26rem); margin-inline: auto; background: transparent; overflow: visible; border-radius: 0; box-shadow: none;
-}
-.splash.inline .splashsvg { filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .3)); }
-.splash.inline .splashtextwrap { color: var(--parch-fill); border-color: var(--parch-fill); }
+.splash.inline .splashpanel { width: min(100%, 26rem); margin-inline: auto; }
 html:not(.js) .splash.inline .splashtitle, html:not(.js) .splash.inline .splashaffirm { --wipe: 1; }
 
 /* Pinned cards sit a little off true (offsets are set by satchel.js). */
 .grid[data-rows="side"] > .posting { transform: translateY(calc(var(--ry, 0) * 10px)); }
-.grid[data-rows="stacked"] > .posting { transform: translateX(calc(var(--rx, 0) * 5px)); }
+.grid[data-rows="stacked"] > .posting { transform: translate(calc(var(--rx, 0) * 5px), calc(var(--ry, 0) * 10px)); }

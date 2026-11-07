@@ -10,7 +10,7 @@ const OUT_DIR = path.join(ROOT, "Sidequest-Artifact");
 const OUT_FILE = path.join(OUT_DIR, "sidequest.html");
 
 // A published artifact has no assets/ folder, so the favicon is rebuilt from index.html's #sqLogo symbol as a self-contained SVG data URI at build time, with the CSS variables replaced by light-theme hex values.
-var FAVICON_TOKEN_VALUES = { "logo-est": "#B9CCE0", "logo-planned": "#2F5D8A", "logo-surface": "#FFFFFF", "logo-burn": "#C62F2F" };
+var FAVICON_TOKEN_VALUES = { "parch-fill": "#FCF1D6", "parch-edge": "#CEB782", "parch-ink": "#2F5D8A", "parch-white": "#FFFFFF", "parch-red": "#C62F2F" };
 
 function buildFaviconDataUri(html) {
   var m = html.match(/<symbol id="sqLogo"[^>]*viewBox="([^"]+)">([\s\S]*?)<\/symbol>/);
@@ -91,6 +91,10 @@ function build() {
   var tokens = fs.readFileSync(path.join(ROOT, "css", "tokens.css"), "utf8");
   var styles = fs.readFileSync(path.join(ROOT, "css", "styles.css"), "utf8");
   var splashCss = fs.readFileSync(path.join(ROOT, "css", "splash.css"), "utf8");
+  var leatherCss = fs.readFileSync(path.join(ROOT, "css", "leather.css"), "utf8");
+  var leatherJpg = "data:image/jpeg;base64," + fs.readFileSync(path.join(ROOT, "assets", "header-800.jpg")).toString("base64");
+  if (leatherCss.indexOf('url("../assets/header-800.jpg")') === -1) throw new Error("build-artifact: leather.css no longer references header-800.jpg, so the texture cannot be inlined.");
+  leatherCss = leatherCss.split('url("../assets/header-800.jpg")').join('url("' + leatherJpg + '")');
 
   var scriptParts = [];
   MODULE_ORDER.forEach(function (name) {
@@ -130,8 +134,8 @@ function build() {
       function () { return '<link rel="icon" type="image/svg+xml" href="' + faviconDataUri + '">'; }
     )
     .replace(
-      /<link rel="stylesheet" href="css\/tokens\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="css\/styles\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="css\/splash\.css(?:\?v=[0-9.]+)?">/,
-      function () { return "<style>\n" + tokens + "\n" + styles + "\n" + splashCss + "\n</style>"; }
+      /<link rel="stylesheet" href="css\/tokens\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="css\/leather\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="css\/styles\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="css\/splash\.css(?:\?v=[0-9.]+)?">/,
+      function () { return "<style>\n" + tokens + "\n" + leatherCss + "\n" + styles + "\n" + splashCss + "\n</style>"; }
     )
     .replace(
       /<script type="module" src="app\/app\.js"><\/script>/,

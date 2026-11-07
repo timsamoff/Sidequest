@@ -5,7 +5,7 @@ import {
   orderedAll, taskOptions, stepOptions, stepOptionsForTask, syncFromSteps, findStep, decisionFor,
   pset, blockForDate, blockStartFor, taskStart, taskEnd, linkQuests, estimateWarning
 } from "./model.js";
-import { $, el, on, uid, notify, moneyInput, parseMoney, helpLink } from "./dom.js";
+import { $, el, on, uid, newPin, notify, moneyInput, parseMoney, helpLink } from "./dom.js";
 import { closeMenus } from "./app.js";
 
 /* modal */
@@ -268,7 +268,7 @@ export function ideaDialog(idea) {
   ], idea ? "Save idea" : "Workshop it", function (v) {
     if (!v.text) return "Enter a title for the idea.";
     if (idea) { idea.text = v.text.slice(0, 200); idea.note = v.note.slice(0, 5000); changed(); return { msg: "Idea saved." }; }
-    state.workshop.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000), created: iso(TODAY) }); changed();
+    state.workshop.push({ id: uid(), text: v.text.slice(0, 200), note: v.note.slice(0, 5000), created: iso(TODAY), pin: newPin() }); changed();
     return { msg: "“" + v.text + "” added to the Workshop." };
   }, idea ? undefined : "New ideas live in the Workshop. When ready, ideas can be made into candidate quests.");
 }

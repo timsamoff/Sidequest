@@ -954,6 +954,11 @@ export function renderQuests(root) {
   root.appendChild(candidatesSection(lead()));
   if (complete.length) root.appendChild(completedSection(complete, false));
 }
+// Each idea carries the offsets and curl size it was given when it was created (newPin in dom.js).
+function pinStyle(pin) {
+  pin = pin || { x: 0, y: 0, bend: 62 };
+  return "--rx:" + pin.x + ";--ry:" + pin.y + ";--bend:" + pin.bend + "px;--bbox:" + Math.round(pin.bend * 1.2) + "px";
+}
 export function renderWorkshop(root) {
   var hd = el("div", { "class": "sechead workshophead" });
   hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add new idea" }, "Add idea"), "click", function () { ideaDialog(); })); root.appendChild(hd);
@@ -961,7 +966,7 @@ export function renderWorkshop(root) {
   var ps = live(state.workshop);
   if (!ps.length) pl.appendChild(el("li", { "class": "hint" }, "No ideas yet. Add one with the Add idea button."));
   ps.forEach(function (p) {
-    var li = el("li"), row = el("div", { "class": "crow oneline" });
+    var li = el("li", { "class": "posting", style: pinStyle(p.pin) }), row = el("div", { "class": "crow oneline" });
     var nm = el("div", { style: "flex:1 1 200px" });
     var link = el("button", { type: "button", "class": "textbtn qlink", style: "font-weight:600", title: "Open this idea" }, p.text);
     on(link, "click", function () { ideaDialog(p); });

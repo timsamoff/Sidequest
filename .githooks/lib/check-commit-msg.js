@@ -228,7 +228,7 @@ function checkCommitMessage(rawMessage) {
 const VERSION_LINE_RE = /^\+\s*export var APP_VERSION\s*=/m;
 
 function touchesRealSource() {
-  const sourceFiles = pre.appModules().concat(["css/tokens.css", "css/styles.css", "css/splash.css"]);
+  const sourceFiles = pre.appModules().concat(["css/tokens.css", "css/styles.css", "css/splash.css", "css/leather.css"]);
   return sourceFiles.some((f) => common.isStaged(f));
 }
 

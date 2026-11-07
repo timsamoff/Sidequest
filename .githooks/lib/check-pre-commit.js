@@ -326,7 +326,7 @@ function isInsideTokenBlock(fullText, matchIndex) {
 
 // Files scanned: app/*.js, css/styles.css, and css/tokens.css; the :root token block lives only in tokens.css.
 // The landing pages are not hex-scanned: their theme-color metas must be literal hex, and the parity check ties those to the tokens.
-const HEX_SCAN_FILES = ["css/tokens.css", "css/styles.css", "css/splash.css"].concat(appModules(), satchelFiles([".css", ".js"]));
+const HEX_SCAN_FILES = ["css/tokens.css", "css/styles.css", "css/splash.css", "css/leather.css"].concat(appModules(), satchelFiles([".css", ".js"]));
 
 function checkHardcodedHex() {
   const violations = [];
@@ -374,7 +374,7 @@ function checkHardcodedHex() {
 
 // Comment-verbosity check: flags changelog-style tells in comments (bare dates, "confirmed <date>", "an earlier version", DESIGN.md/CLAUDE.md pointers). It is not a length check.
 
-const COMMENT_SCAN_FILES = ["css/tokens.css", "css/styles.css", "css/splash.css", "index.html"].concat(appModules(), satchelFiles([".css", ".js", ".html"]));
+const COMMENT_SCAN_FILES = ["css/tokens.css", "css/styles.css", "css/splash.css", "css/leather.css", "index.html"].concat(appModules(), satchelFiles([".css", ".js", ".html"]));
 
 const COMMENT_VERBOSITY_PATTERNS = [
   { name: "dated confirmation", re: /\bconfirmed\s+20\d\d-\d\d-\d\d\b/i },

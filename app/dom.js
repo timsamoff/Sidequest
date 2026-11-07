@@ -1,5 +1,7 @@
 /* dom helpers */
 export function $(id) { return document.getElementById(id); }
+// A new idea's resting pose on the Workshop board: sideways and up-down offsets from -1 to 1, and the size of the curled corner in pixels. Stored on the idea so it never changes.
+export function newPin() { return { x: Math.round((Math.random() * 2 - 1) * 100) / 100, y: Math.round((Math.random() * 2 - 1) * 100) / 100, bend: 37 + Math.floor(Math.random() * 29) }; }
 export function uid() { return Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4); }
 export function el(tag, attrs, text) {
   var e = document.createElement(tag);
