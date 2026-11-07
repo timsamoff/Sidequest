@@ -98,7 +98,7 @@ strong { font-weight: 600; }
 /* Brand and theme patch are centered in the flap. The wordmark drops 2px because the q's descender makes it look high. */
 .flap .brand { grid-column: 2; grid-row: 1; justify-self: start; align-self: center; position: relative; z-index: 3; color: var(--stamp); }
 .flap .brand span { position: relative; top: 2px; text-shadow: 0 1px 0 rgba(255, 225, 170, .4); transition: color .2s ease; }
-.flap .brand:hover span { color: color-mix(in srgb, var(--stamp) 80%, white); }
+.flap .brand:hover span { color: color-mix(in srgb, var(--stamp) 93%, white); }
 .themebtn {
   grid-column: 2; grid-row: 1; justify-self: end; align-self: center; position: relative; z-index: 3;
   width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
@@ -141,22 +141,24 @@ strong { font-weight: 600; }
   grid-column: 1 / -1; grid-row: 2; position: relative; z-index: 0; margin-top: -22px;
   padding: calc(22px + var(--clasp-w) + var(--space-14)) 0 var(--space-20); background: var(--lining); color: var(--lining-ink);
 }
-/* A tan backing that reaches up behind the flap so the page color never shows at the curved corners while the lining animates. */
-.topnav::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 100px; background: var(--lining); }
-.js .topnav::before { opacity: 0; transition: opacity .15s ease .2s; }
-.js .topnav.open::before { opacity: 1; transition: none; }
+/* The tan panel reaches 300px up behind the flap, past its curved corners. With JavaScript the panel (not the nav box) carries the color, and its bottom edge starts 22px above the nav so it begins fully hidden behind the flap. */
+.topnav::before { content: ""; position: absolute; z-index: -1; left: 0; right: 0; top: -300px; bottom: 0; background: var(--lining); }
+.js .topnav { background: none; }
+.js .topnav::before { bottom: 22px; transition: bottom .35s ease; }
+.js .topnav.open::before { bottom: 0; }
 html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
 /* With JavaScript the lining's height animates from 0 to --navh (set from the list's real height in satchel.js). The list sits at the lining's bottom edge, carrying the padding with it, so it slides down from behind the flap as the lining grows and back up as it shrinks. */
 .js .topnav {
-  display: block; height: 0; margin-top: 0; padding: 0; visibility: hidden; clip-path: inset(-120px 0 0 0);
+  display: block; height: 0; margin-top: 0; padding: 0; visibility: hidden; clip-path: inset(-400px 0 0 0);
   transition: height .35s ease, margin-top .35s ease, visibility 0s linear .35s;
 }
 .js .topnav > ul {
-  position: absolute; left: 0; right: 0; bottom: 0;
+  position: absolute; left: 0; right: 0; bottom: 22px; transition: bottom .35s ease;
   padding: calc(22px + var(--clasp-w) + var(--space-14)) var(--gut) var(--space-20);
 }
+.js .topnav.open > ul { bottom: 0; }
 .js .topnav.open { height: var(--navh, auto); margin-top: -22px; visibility: visible; transition: height .35s ease, margin-top .35s ease, visibility 0s; }
-@media (prefers-reduced-motion: reduce) { .js .topnav, .js .topnav.open { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .js .topnav, .js .topnav.open, .js .topnav::before, .js .topnav > ul { transition: none; } }
 .topnav ul {
   list-style: none; margin: 0 auto; padding: 0 var(--gut); max-width: var(--wrap);
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-20);

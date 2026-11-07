@@ -48,13 +48,9 @@
       menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
     };
     menuBtn.addEventListener("click", function () { setMenu(!nav.classList.contains("open")); opened(); });
-    /* Peek: the strap makes the same small lift as a press, every 15 seconds, until the menu has been opened in this session. It starts after the Welcome splash finishes (or 15 seconds in, if the splash never plays), and right away on pages with no splash. */
+    /* Peek: on every page the strap makes the same small lift as a press, every 15 seconds, until the menu is opened on that page. It starts after the Welcome splash finishes (or 15 seconds in, if the splash never plays), and 1.5 seconds after load on pages with no splash. */
     var seen = false;
-    try { seen = window.sessionStorage.getItem("satchel-menu-opened") === "1"; } catch (e) { seen = false; }
-    var opened = function () {
-      seen = true;
-      try { window.sessionStorage.setItem("satchel-menu-opened", "1"); } catch (e) { /* storage blocked */ }
-    };
+    var opened = function () { seen = true; };
     var peek = function () {
       if (seen || nav.classList.contains("open") || menuBtn.matches(":hover, :focus-visible")) return;
       menuBtn.classList.add("peek");
