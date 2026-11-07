@@ -73,7 +73,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.16.0"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.16.1"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v) && html.includes("css/splash.css?v=" + v) && html.includes("css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2944,6 +2944,7 @@ async function exportClick(k, projectName) {
   k.click(cardBtns(2)[2]);
   ok(k.saved().hand.length === 2 && k.saved().jobs.length === 7, "Discard returns a card to the deck and never deletes it");
   ok(k.d.querySelectorAll("#view ul.jobs .handedit button").length > 0, "deck rows get a Choose button in Edit hand");
+  ok(![...k.d.querySelectorAll("#view .handlist input[type=checkbox], #view ul.jobs:first-of-type input[type=checkbox]")].length, "Edit hand has no checkboxes on open errands, like the chooser");
   k.click(k.btn(v(), "Empty hand"));
   ok(k.saved().hand.length === 0 && !!k.d.querySelector("#toast .toastbtn"), "Empty hand clears the hand and offers Undo");
   k.click(k.d.querySelector("#toast .toastbtn"));

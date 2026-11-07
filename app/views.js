@@ -1031,10 +1031,16 @@ var CALENDAR = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stro
 function jobRow(j, opts) {
   var li = el("li", { "class": (j.done ? "done" : "") + (opts && opts.card ? " handcard" : "") }), row = el("div", { "class": "jobrow" });
   var lab = el("label", { "class": "jobmain" });
-  var cb = el("input", { type: "checkbox", "aria-label": (j.done ? "Restore errand: " : "Complete errand: ") + j.text }); cb.checked = j.done;
-  on(cb, "change", function () { j.done = cb.checked; changed(); });
+  // Edit hand works like the chooser: open errands have no checkbox, so nothing gets completed by accident.
+  var noCheck = !!(opts && (opts.edit || opts.choose)) && !j.done;
   var text = el("span", { "class": "jobtext" }, j.text);
-  lab.appendChild(cb); lab.appendChild(text); row.appendChild(lab);
+  if (noCheck) li.classList.add("nocheck");
+  else {
+    var cb = el("input", { type: "checkbox", "aria-label": (j.done ? "Restore errand: " : "Complete errand: ") + j.text }); cb.checked = j.done;
+    on(cb, "change", function () { j.done = cb.checked; changed(); });
+    lab.appendChild(cb);
+  }
+  lab.appendChild(text); row.appendChild(lab);
   var badges = el("div", { "class": "jobbadges" });
   if (isJobLate(j)) badges.appendChild(el("span", { "class": "badge" }, "Overdue"));
   var dueBtn = el("button", { type: "button", "class": "chip datechip" + (j.due ? "" : " nodue"), title: j.due ? "Change the due date" : "Add a due date" });

@@ -323,6 +323,12 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
 }
 .jobs li.done .jobtext { color: var(--muted); text-decoration: line-through; }
 /* errands hand */
+.nocheck .handedit { margin-left: 0; }
+.nocheck .jobmain { cursor: default; }
+@media (max-width: 639px) { .nocheck .jobbadges { margin-left: 0; } }
+/* The page behind an open dialog does not scroll. */
+html:has(.overlay:not([hidden])) { overflow: hidden; }
+.overlay .modal { overscroll-behavior: contain; }
 .handhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8) var(--space-10); margin-top: var(--space-22); }
 .handlabel { font-family: var(--font-sans); font-size: var(--text-92); font-weight: 700; color: var(--muted); margin: 0; }
 .decklabel { margin-top: var(--space-22); margin-bottom: var(--space-6); }
