@@ -322,6 +322,28 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
   .jobend.del { align-self: center; grid-row: 1 / span 2; }
 }
 .jobs li.done .jobtext { color: var(--muted); text-decoration: line-through; }
+/* errands hand */
+.handhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8) var(--space-10); margin-top: var(--space-22); }
+.handlabel { font-family: var(--font-sans); font-size: var(--text-92); font-weight: 700; color: var(--muted); margin: 0; }
+.decklabel { margin-top: var(--space-22); margin-bottom: var(--space-6); }
+.handbtns { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
+.handbtns button, .handedit button { margin-right: 0; }
+.handhead.editing .handbtns { flex-basis: 100%; }
+.rerollgroup { display: inline-flex; align-items: center; white-space: nowrap; }
+.handnone { margin: var(--space-8) 0 0; }
+.handlist { position: relative; list-style: none; margin: var(--space-10) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-12); }
+.handlist > li.handcard, .handghost { background: var(--card); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); border-radius: 2px; box-shadow: 0 2px 6px rgba(0, 0, 0, .18); padding: var(--space-12) var(--space-14); }
+.handghost { position: absolute; left: 0; right: 0; margin: 0; z-index: 2; pointer-events: none; backface-visibility: hidden; }
+.handedit { display: flex; flex-wrap: wrap; gap: var(--space-8); margin: var(--space-8) 0 0 30px; }
+.list.jobs li .handedit { margin-top: var(--space-6); }
+.handpick { list-style: none; margin: var(--space-10) 0 0; padding: 0; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); }
+.handpick li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); padding: var(--space-10) var(--space-12); border-bottom: 1px solid var(--line); }
+.handpick li:last-child { border-bottom: 0; }
+.handpick li.chosen { background: var(--card); }
+.handpick .hpmain { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.handpick .hpsub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); color: var(--muted); font-size: var(--text-sm); }
+.handfoot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-top: var(--space-14); }
+.handfoot .handcount { margin: 0; }
 .li-actions { display: flex; gap: var(--space-8); align-items: center; }
 .dq { font-weight: 500; }
 .dstate { font-size: var(--text-sm); color: var(--muted); margin-left: var(--space-8); }

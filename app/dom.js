@@ -30,6 +30,7 @@ export function isHosted() {
 // blocked, missing file) since a sound effect is never worth surfacing an error
 // over. `volume` is optional, 0 to 1.
 export function playSfx(src, volume) {
+  if (!src) return;
   try {
     var a = new window.Audio(src);
     if (volume !== undefined) a.volume = volume;

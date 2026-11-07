@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.15.1";
+export var APP_VERSION = "0.16.0";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -141,12 +141,21 @@ export function defaults() {
   return {
     v: 5, start: d.start, days: 7,
     tasks: d.tasks, hist: d.hist,
-    decisions: d.decisions, quests: d.quests, workshop: d.workshop, jobs: d.jobs,
+    decisions: d.decisions, quests: d.quests, workshop: d.workshop, jobs: d.jobs, hand: [],
     pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", coinFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, dustDays: 30, wipLimit: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "" }
+    settings: { theme: "auto", dateFormat: "us", coinFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, animatedReroll: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, dustDays: 30, wipLimit: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "" }
   };
 }
 
+export function cleanHand(ids, jobs) {
+  var seen = {};
+  return (Array.isArray(ids) ? ids : []).filter(function (id) {
+    if (typeof id !== "string" || seen[id]) return false;
+    var j = jobs.filter(function (x) { return x.id === id; })[0];
+    if (!j || j.done) return false;
+    seen[id] = true; return true;
+  }).slice(0, 3);
+}
 export function validVault(a) { return (a && typeof a === "object" && isISO(a.at) && (a.why === "done" || a.why === "removed")) ? { at: a.at, why: a.why } : null; }
 export function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
 // Burndown history: { "<ISO day>": [tasks in scope, tasks still open] }.
@@ -272,6 +281,8 @@ export function normalize(s) {
   if (Array.isArray(rawWorkshop)) d.workshop = rawWorkshop.filter(function (x) { return x && typeof x.id === "string"; }).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), note: S(x.note, 5000), created: isISO(x.created) ? x.created : "", pin: validPin(x.pin) ? { x: x.pin.x, y: x.pin.y, bend: Math.round(x.pin.bend) } : newPin(), vault: validVault(x.vault || x.arch) }; });
   // A save from before Odd jobs existed gets an empty list, not the sample jobs.
   d.jobs = Array.isArray(s.jobs) ? s.jobs.filter(function (x) { return x && typeof x.id === "string"; }).slice(0, 2000).map(function (x) { return { id: S(x.id, 40), text: S(x.text, 200), done: x.done === true, due: isISO(x.due) ? x.due : "" }; }) : [];
+  // The errands hand: ids of open errands, no duplicates, at most three, in display order.
+  d.hand = cleanHand(s.hand, d.jobs);
   if (s.settings && typeof s.settings === "object") {
     if (["auto", "light", "dark"].indexOf(s.settings.theme) >= 0) d.settings.theme = s.settings.theme;
     if (["us", "intl", "mdy", "dmy", "iso"].indexOf(s.settings.dateFormat) >= 0) d.settings.dateFormat = s.settings.dateFormat;
@@ -280,6 +291,7 @@ export function normalize(s) {
     if (typeof s.settings.hideWelcome === "boolean") d.settings.hideWelcome = s.settings.hideWelcome;
     if (typeof s.settings.showSplash === "boolean") d.settings.showSplash = s.settings.showSplash;
     if (typeof s.settings.animatedBurndown === "boolean") d.settings.animatedBurndown = s.settings.animatedBurndown;
+    if (typeof s.settings.animatedReroll === "boolean") d.settings.animatedReroll = s.settings.animatedReroll;
     if (isISO(s.settings.lastBackup)) d.settings.lastBackup = s.settings.lastBackup;
     if (isISO(s.settings.since)) d.settings.since = s.settings.since;
     // vaultPurgeDays used to be called archivePurgeDays; read whichever is present.
@@ -417,7 +429,7 @@ export function checkForAppUpdate() {
   });
 }
 
-export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchVault: true, notesH: {}, questOpen: {}, sectionOpen: {} };
+export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchVault: true, notesH: {}, questOpen: {}, sectionOpen: {}, handEdit: false };
 // Always opens on Today -- no-op.
 export function saveUI() { /* nothing to save */ }
 
@@ -507,6 +519,7 @@ function touchQuests() {
   });
 }
 export function changed() {
+  state.hand = cleanHand(state.hand, state.jobs);
   autoVault(); syncTaskBlocks(); sweepQuestCompletion(); touchQuests(); recordHistory(); recordQuestHistory(); save(); renderAll();
 }
 

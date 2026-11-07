@@ -26,6 +26,30 @@ export function openJobs() {
     return a.i - b.i;
   }).map(function (x) { return x.j; });
 }
+export function handJobs() {
+  return state.hand.map(function (id) { return state.jobs.filter(function (j) { return j.id === id; })[0]; }).filter(function (j) { return j && !j.done; });
+}
+export function deckJobs() { return openJobs().filter(function (j) { return state.hand.indexOf(j.id) < 0; }); }
+function shuffled(a, rnd) {
+  var b = a.slice();
+  for (var i = b.length - 1; i > 0; i--) { var k = Math.floor(rnd() * (i + 1)), t = b[i]; b[i] = b[k]; b[k] = t; }
+  return b;
+}
+// Picks a new hand: overdue first, errands not already in the hand before those that are, random order, never the same hand when it can be avoided.
+export function rerollPick(open, handIds, rnd) {
+  rnd = rnd || Math.random;
+  var n = Math.min(3, open.length);
+  function inHand(j) { return handIds.indexOf(j.id) >= 0; }
+  function out(j) { return !inHand(j); }
+  var late = open.filter(isJobLate), rest = open.filter(function (j) { return !isJobLate(j); });
+  var pools = [late.filter(out), late.filter(inHand), rest.filter(out), rest.filter(inHand)], pick = [];
+  pools.forEach(function (p) { shuffled(p, rnd).forEach(function (j) { if (pick.length < n) pick.push(j); }); });
+  var ids = shuffled(pick, rnd).map(function (j) { return j.id; });
+  function same(a) { return a.length === handIds.length && a.every(function (id, i) { return id === handIds[i]; }); }
+  for (var tries = 0; same(ids) && ids.length > 1 && tries < 50; tries++) ids = shuffled(ids, rnd);
+  if (same(ids) && ids.length > 1) ids = ids.slice().reverse();
+  return ids;
+}
 export function isJobLate(j) { return !j.done && !!j.due && parseISO(j.due) < TODAY; }
 export function liveQuests() { return live(state.quests); }
 export function activeQuests() { return liveQuests().filter(function (p) { return p.status === "active"; }); }

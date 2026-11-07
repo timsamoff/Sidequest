@@ -72,14 +72,15 @@ function stripModuleSyntax(source, filename) {
 var SFX_FILES = {
   "assets/sfx/quest.mp3": "SFX_QUEST", "assets/sfx/complete.mp3": "SFX_COMPLETE",
   "assets/sfx/refresh.mp3": "SFX_REFRESH", "assets/sfx/restoreBackup.mp3": "SFX_RESTORE_BACKUP",
-  "assets/sfx/startFresh.mp3": "SFX_START_FRESH"
+  "assets/sfx/startFresh.mp3": "SFX_START_FRESH", "assets/sfx/reroll.mp3": "SFX_REROLL"
 };
 
 function buildSfxDataUris() {
   var map = {};
   Object.keys(SFX_FILES).forEach(function (relPath) {
-    var buf = fs.readFileSync(path.join(ROOT, relPath));
-    map[relPath] = "data:audio/mpeg;base64," + buf.toString("base64");
+    // A clip that has not been supplied yet is skipped: playback stays silent instead of breaking the build.
+    var file = path.join(ROOT, relPath);
+    map[relPath] = fs.existsSync(file) ? "data:audio/mpeg;base64," + fs.readFileSync(file).toString("base64") : "";
   });
   return map;
 }

@@ -73,7 +73,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.15.1"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.16.0"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v) && html.includes("css/splash.css?v=" + v) && html.includes("css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2621,7 +2621,7 @@ async function exportClick(k, projectName) {
   const sel = k.$("set-coin");
   ok(!!sel && sel.value === "us" && [...sel.options].map(o => o.textContent).join() === "1,234.56,1.234,56", "Options has a Coin format setting that defaults to US");
   const order = [...k.d.querySelectorAll("#view .setgrid label")].map(l => l.textContent);
-  ok(order.slice(order.indexOf("Date format"), order.indexOf("Date format") + 7).join() === "Date format,Coin format,Splash screen on open,Theme,Animated burndown,Completion effects,Sound effects", "the Appearance settings read Date format, Coin, Splash screen on open, Theme, Animated burndown, Completion effects, Sound effects");
+  ok(order.slice(order.indexOf("Date format"), order.indexOf("Date format") + 8).join() === "Date format,Coin format,Splash screen on open,Theme,Animated burndown,Animated reroll,Completion effects,Sound effects", "the Appearance settings read Date format, Coin, Splash screen on open, Theme, Animated burndown, Animated reroll, Completion effects, Sound effects");
   sel.value = "eu"; k.fire(sel);
   ok(k.saved().settings.coinFormat === "eu", "choosing European saves");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Website"));
@@ -2656,7 +2656,7 @@ async function exportClick(k, projectName) {
   const { helpTopics } = await import("../app/views.js?run=" + counter);
   const topics = helpTopics(), titles = topics.map(t => t[0]);
   const termLines = topics.find(t => t[0] === "Terms")[1];
-  ok(termLines.length === 36 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 36 Terms entries read as a bold term, a definition, and a pointer");
+  ok(termLines.length === 39 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 39 Terms entries read as a bold term, a definition, and a pointer");
   ok(termLines.every(l => titles.includes(l.match(/See “([^”]+)”\.$/)[1])), "every Terms pointer names a topic that exists");
   f.value = "decision"; k.fire(f, "input");
   ok(titlesOf()[0] === "Terms" && items()[0].open, "a word that is a term puts the Terms topic first and opens it");
@@ -2910,6 +2910,68 @@ async function exportClick(k, projectName) {
   ok(!k.$("view").textContent.includes("Renew the domain name"), "jobs are not on the Timeline");
   k.tab("today");
   ok(!k.$("view").textContent.includes("Renew the domain name"), "an overdue job is not in Today's Overdue panel");
+}
+/* ---- errands hand ---- */
+{
+  const k = kit(await mk()); k.tab("jobs");
+  const v = () => k.$("view");
+  const cards = () => [...k.d.querySelectorAll("#view .handlist > li")].map(li => li.querySelector(".jobtext").textContent);
+  ok(v().textContent.includes("Your hand") && v().textContent.includes("Nothing in your hand. Choose up to three errands to keep here.") && v().textContent.includes("Errands deck"), "an empty hand shows its message and the Errands deck label");
+  ok(k.btn(v(), "Choose cards") && k.btn(v(), "Reroll") && !k.btn(v(), "Edit hand"), "an empty hand offers Choose cards and Reroll");
+  ok(!k.btn(v(), "Reroll").querySelector("svg") && !!k.d.querySelector('#view .rerollgroup .helpq[data-term="reroll"]') && !!k.d.querySelector('#view .decklabel .helpq[data-term="errands-deck"]'), "Reroll has no icon, and both help links are in place");
+  // chooser
+  k.click(k.btn(v(), "Choose cards"));
+  const modal = k.$("modalBody");
+  ok(k.$("modalTitle").textContent === "Choose your hand" && modal.querySelectorAll("input[type=checkbox]").length === 0, "the chooser opens with no checkboxes");
+  const pick = t => [...modal.querySelectorAll(".handpick li")].find(li => li.textContent.includes(t)).querySelector("button");
+  k.click(pick("Renew the domain name"));
+  ok(k.saved().hand.length === 1 && modal.textContent.includes("1 of 3 in hand"), "Choose takes effect at once and the count updates");
+  ok(pick("Renew the domain name").textContent === "Discard" && pick("Renew the domain name").getAttribute("aria-label") === "Discard from hand: Renew the domain name", "a chosen row offers Discard with the errand in its name");
+  k.click(pick("Back up the photos folder")); k.click(pick("Reply to the print shop"));
+  const left = [...modal.querySelectorAll(".handpick li")].filter(li => li.querySelector("button").textContent === "Choose");
+  ok(k.saved().hand.length === 3 && left.length > 0 && left.every(li => li.querySelector("button").disabled), "at three, the remaining Choose buttons are disabled");
+  k.click(k.btn(modal, "Done"));
+  ok(cards().length === 3 && k.btn(v(), "Edit hand"), "the hand shows three cards and an Edit hand button");
+  ok(![...k.d.querySelectorAll("#view ul.jobs li")].some(li => cards().some(c => li.textContent.includes(c))), "hand cards leave the deck");
+  // edit hand
+  k.click(k.btn(v(), "Edit hand"));
+  ok(!!k.btn(v(), "Empty hand") && !!k.btn(v(), "Done") && !k.btn(v(), "Reroll"), "Edit hand shows Choose cards, Empty hand and Done");
+  const first = k.saved().hand[0];
+  const cardBtns = i => [...k.d.querySelectorAll("#view .handlist > li")][i].querySelectorAll(".handedit button");
+  ok(cardBtns(0)[0].disabled && !cardBtns(0)[1].disabled && cardBtns(2)[1].disabled, "Up is off on the first card and Down on the last");
+  k.click(cardBtns(0)[1]);
+  ok(k.saved().hand[1] === first, "Down moves a card later");
+  k.click(cardBtns(2)[2]);
+  ok(k.saved().hand.length === 2 && k.saved().jobs.length === 7, "Discard returns a card to the deck and never deletes it");
+  ok(k.d.querySelectorAll("#view ul.jobs .handedit button").length > 0, "deck rows get a Choose button in Edit hand");
+  k.click(k.btn(v(), "Empty hand"));
+  ok(k.saved().hand.length === 0 && !!k.d.querySelector("#toast .toastbtn"), "Empty hand clears the hand and offers Undo");
+  k.click(k.d.querySelector("#toast .toastbtn"));
+  ok(k.saved().hand.length === 2, "Undo brings the hand back");
+  // completing removes from the hand; restoring does not return it
+  const hid = k.saved().hand[0], htext = cards()[0];
+  const cb = [...k.d.querySelectorAll("#view .handlist > li")][0].querySelector("input[type=checkbox]"); cb.checked = true; k.fire(cb);
+  ok(!k.saved().hand.includes(hid), "completing an errand removes it from the hand");
+  const done = [...k.d.querySelectorAll("#view ul.jobs li")].find(li => li.textContent.includes(htext)).querySelector("input[type=checkbox]"); done.checked = false; k.fire(done);
+  ok(!k.saved().hand.includes(hid), "restoring a completed errand returns it to the deck only");
+  // reroll
+  k.click(k.btn(v(), "Reroll"));
+  const rolled = k.saved().hand, ids = k.saved().jobs.filter(j => !j.done && j.due && j.due < new Date().toISOString().slice(0, 10)).map(j => j.id);
+  ok(rolled.length === 3 && new Set(rolled).size === 3 && ids.every(id => rolled.includes(id)), "Reroll fills three cards and puts overdue errands in the hand");
+  ok(k.d.querySelector("#toast").textContent.includes("Hand rerolled."), "Reroll shows the Undo toast at once");
+  const before = JSON.stringify(rolled);
+  k.click(k.btn(v(), "Reroll"));
+  ok(JSON.stringify(k.saved().hand) !== before, "Reroll never repeats the current hand");
+  k.click(k.d.querySelector("#toast .toastbtn"));
+  ok(JSON.stringify(k.saved().hand) === before, "Undo restores the previous hand exactly");
+}
+{
+  const k = kit(await mk());
+  ok(k.saved().hand === undefined || k.saved().hand.length === 0, "a fresh save has an empty hand");
+  k.tab("settings");
+  ok(k.$("set-animated-reroll").value === "on", "Animated reroll defaults on");
+  k.$("set-animated-reroll").value = "off"; k.fire(k.$("set-animated-reroll"));
+  ok(k.saved().settings.animatedReroll === false, "turning Animated reroll off saves");
 }
 {
   const k = kit(await mk()); k.menuAct("newBtn", "newJob");
