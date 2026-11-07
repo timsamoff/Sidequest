@@ -6,3 +6,6 @@ scratch/
 Sentinel-Prompts/
 /*.png
 /scratch_*
+Sentinel-Maintainer-Guide/
+.playwright-mcp/
+x/
