@@ -25,6 +25,11 @@
   --lining: #E0CCA8;
   --lining-ink: #2B1A0C;
   --lining-current: #5A1010;
+  --parch-fill: #FCF1D6;
+  --parch-edge: #CEB782;
+  --parch-ink: #2F5D8A;
+  --parch-red: #C62F2F;
+  --parch-white: #FFFFFF;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -45,7 +50,7 @@ a { color: var(--planned); text-underline-offset: 3px; }
 a:hover { text-decoration-thickness: 2px; }
 strong { font-weight: 600; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: var(--radius-input); }
-.band :focus-visible, .skip:focus-visible { outline-color: var(--on-wood); }
+.band :focus-visible, .skip:focus-visible { outline-color: var(--lining-ink); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -92,7 +97,7 @@ strong { font-weight: 600; }
 /* Brand and theme patch are centered in the flap. The wordmark drops 2px because the q's descender makes it look high. */
 .flap .brand { grid-column: 2; grid-row: 1; justify-self: start; align-self: center; position: relative; z-index: 3; color: var(--stamp); }
 .flap .brand span { position: relative; top: 2px; text-shadow: 0 1px 0 rgba(255, 225, 170, .4); transition: text-shadow .2s ease; }
-.flap .brand:hover span { text-shadow: 0 1px 0 rgba(255, 238, 200, .95); }
+.flap .brand:hover span { text-shadow: 0 1px 0 rgba(255, 228, 180, .55); }
 .themebtn {
   grid-column: 2; grid-row: 1; justify-self: end; align-self: center; position: relative; z-index: 3;
   width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
@@ -103,16 +108,19 @@ strong { font-weight: 600; }
 }
 .themebtn::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--thread); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44' %3E%3Crect x='4' y='4' width='36' height='36' rx='6' pathLength='100' fill='none' stroke='black' stroke-width='1.4' stroke-dasharray='2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62'/%3E%3C/svg%3E") center / 100% 100% no-repeat; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44' %3E%3Crect x='4' y='4' width='36' height='36' rx='6' pathLength='100' fill='none' stroke='black' stroke-width='1.4' stroke-dasharray='2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
 .themebtn svg { width: 19px; height: 19px; flex: none; }
+.themebtn { transition: filter .2s ease; }
+.themebtn:hover { filter: brightness(1.12); }
 
 /* Clasp: the menu button at every width. The strap tile scales with --clasp-w. */
 .clasp {
   display: none; position: absolute; z-index: 4; left: 50%; top: calc(var(--flap-h) - var(--clasp-w) * 46 / 44);
-  width: var(--clasp-w); aspect-ratio: 44 / 72; transform: translateX(-50%); padding: 0; border: 0; background: none; cursor: pointer;
+  width: var(--clasp-w); aspect-ratio: 44 / 90; transform: translateX(-50%); padding: 0; border: 0; background: none; cursor: pointer;
   border-radius: calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .48) calc(var(--clasp-w) * .48);
 }
 .js .clasp { display: block; }
-.claspart { position: absolute; inset: 0; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); transition: filter .2s ease; }
-.clasp:hover .claspart { filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .35)) brightness(1.25); }
+.claspart { position: absolute; inset: 0; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); }
+.knob { transition: filter .2s ease; }
+.clasp:hover .knob { filter: brightness(1.2); }
 .strap {
   position: absolute; inset: 0; background-color: var(--strap);
   background-image: url("../assets/strap.jpg"); background-image: image-set(url("../assets/strap.webp") type("image/webp"), url("../assets/strap.jpg") type("image/jpeg"));
@@ -124,9 +132,13 @@ strong { font-weight: 600; }
 
 /* Lining: revealed behind the flap when the clasp is opened. Without JavaScript it stays open. */
 .topnav {
-  grid-column: 1 / -1; grid-row: 2; position: relative; z-index: 0; margin-top: -22px; overflow: hidden;
-  padding: calc(22px + var(--clasp-w) * 26 / 44 + var(--space-14)) 0 var(--space-20); background: var(--lining); color: var(--lining-ink);
+  grid-column: 1 / -1; grid-row: 2; position: relative; z-index: 0; margin-top: -22px;
+  padding: calc(22px + var(--clasp-w) + var(--space-14)) 0 var(--space-20); background: var(--lining); color: var(--lining-ink);
 }
+/* A tan backing that reaches up behind the flap so the page color never shows at the curved corners while the lining animates. */
+.topnav::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 100px; background: var(--lining); }
+.js .topnav::before { opacity: 0; transition: opacity .15s ease .2s; }
+.js .topnav.open::before { opacity: 1; transition: none; }
 html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
 /* With JavaScript the lining slides open: margin, padding, and the list's row height all animate together. */
 .js .topnav {
@@ -135,7 +147,7 @@ html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
 }
 .js .topnav > ul { min-height: 0; overflow: hidden; width: 100%; }
 .js .topnav.open {
-  grid-template-rows: 1fr; margin-top: -22px; padding-top: calc(22px + var(--clasp-w) * 26 / 44 + var(--space-14)); padding-bottom: var(--space-20); visibility: visible;
+  grid-template-rows: 1fr; margin-top: -22px; padding-top: calc(22px + var(--clasp-w) + var(--space-14)); padding-bottom: var(--space-20); visibility: visible;
   transition: grid-template-rows .35s ease, margin-top .35s ease, padding .35s ease, visibility 0s;
 }
 @media (prefers-reduced-motion: reduce) { .js .topnav, .js .topnav.open { transition: none; } }
@@ -158,20 +170,19 @@ html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
 @media (max-width: 61.99rem) { main { padding-top: var(--space-24); } }
 @media (max-width: 35.99rem) { .brand { font-size: 1.25rem; } }
 
-/* Wood band: the footer. */
+/* Footer band: the same tan as the menu lining. */
 .band {
-  background: var(--grain), var(--wood);
-  color: var(--on-wood);
-  border-bottom: 3px solid var(--brass);
+  background: var(--lining);
+  color: var(--lining-ink);
 }
-.band a { color: var(--on-wood); }
+.band a { color: var(--lining-ink); }
 .band .wrap { padding-block: var(--space-10); }
 .brand { display: inline-flex; align-items: center; gap: var(--space-10); text-decoration: none; font: 600 1.45rem/1 var(--font-serif); min-height: var(--control-height); min-width: 0; }
 .brand svg { width: 36px; height: 36px; flex: none; }
 
 
 /* Footer: support and source, then the copyright, all centered. */
-.footband { border-top: 3px solid var(--brass); border-bottom: 0; margin-top: var(--space-30); }
+.footband { margin-top: var(--space-30); }
 .band .footrow {
   display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
   gap: var(--space-12); padding-block: var(--space-22);
@@ -182,10 +193,10 @@ html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
 .legal { margin: 0; font-size: var(--text-sm); }
 .supportlink {
   display: inline-flex; align-items: center; gap: var(--space-10); min-height: var(--target); padding: 0 var(--space-20);
-  border: 2px solid var(--on-wood); border-radius: var(--radius-card);
+  border: 2px solid var(--lining-ink); border-radius: var(--radius-card);
   font-weight: 600; text-decoration: none;
 }
-.supportlink:hover { background: color-mix(in srgb, var(--on-wood) 16%, transparent); }
+.supportlink:hover { background: color-mix(in srgb, var(--lining-ink) 12%, transparent); }
 .supportlink svg { width: 20px; height: 20px; flex: none; }
 
 /* Buttons. */
