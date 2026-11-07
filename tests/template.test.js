@@ -73,7 +73,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.17.0"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.17.1"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v) && html.includes("css/splash.css?v=" + v) && html.includes("css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2937,7 +2937,7 @@ async function exportClick(k, projectName) {
   k.click(k.btn(v(), "Edit hand"));
   const ed = k.$("modalBody");
   ok(k.$("modalTitle").textContent === "Edit your hand" && ed.querySelectorAll("input[type=checkbox]").length === 0 && k.$("modalClose").hidden, "Edit hand opens a dialog with no checkboxes and no header Close");
-  ok(!!k.btn(ed, "Done") && !!k.btn(ed, "Choose cards") && !!k.btn(ed, "Empty hand"), "the Edit hand dialog offers Done, Choose cards and Empty hand");
+  ok(!!k.btn(ed, "Done") && !k.btn(ed, "Choose cards") && !!k.btn(ed, "Empty hand"), "the Edit hand dialog offers Done and Empty hand, and Choose cards stays its own button");
   const first = k.saved().hand[0];
   const rowBtns = i => [...ed.querySelectorAll(".handpick li")][i].querySelectorAll("button");
   ok(rowBtns(0)[0].disabled && !rowBtns(0)[1].disabled && rowBtns(2)[1].disabled, "Up is off on the first card and Down on the last");

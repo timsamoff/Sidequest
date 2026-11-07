@@ -9,7 +9,7 @@ import {
   validPage, isPinned, pinPage, unpinPage, questMeta, fmtHours, fmtHoursLong, estimateWarning, questEstimate, recordHist, checkpointStep, globalActual,
   findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask, questTasks, openJobs, isJobLate, handJobs, deckJobs, rerollPick
 } from "./model.js";
-import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx, moneyInput, formatMoney, inClaude, isHosted, helpLink, setHelpOpener } from "./dom.js";
+import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx, prepareSfx, moneyInput, formatMoney, inClaude, isHosted, helpLink, setHelpOpener } from "./dom.js";
 import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
 import { playConfetti } from "./confetti.js";
 import { startTutorial } from "./tutorial.js";
@@ -1076,7 +1076,7 @@ var HAND = {
   editorTitle: "Edit your hand", editorHint: "Reorder your hand or discard errands from it.",
   rerolled: "Hand rerolled.", emptied: "Hand emptied.", needTwo: "Reroll needs at least two open errands."
 };
-var HAND_MAX = 3, REROLL_SFX = "assets/sfx/reroll.mp3";
+var HAND_MAX = 3, FLIP_GAP = 200, REROLL_SFX = "assets/sfx/reroll.mp3";
 function refocus(sels) {
   for (var i = 0; i < sels.length; i++) { var f = document.querySelector(sels[i]); if (f && !f.disabled) { f.focus(); return; } }
 }
@@ -1119,7 +1119,8 @@ function swapHand(ids, focusKey) {
   if (!animate || typeof cards[0].animate !== "function") { if (state.settings.audio) playSfx(REROLL_SFX, 0.25); return; }
   var ul = cards[0].parentNode, persp = "perspective(900px) ";
   Array.prototype.forEach.call(cards, function (card, i) {
-    var delay = i * 80, ghost = old[i];
+    var delay = i * FLIP_GAP, ghost = old[i];
+    var land = state.settings.audio ? prepareSfx(REROLL_SFX, 0.25) : null;
     if (ghost) {
       ghost.classList.add("handghost"); ghost.setAttribute("aria-hidden", "true"); ghost.setAttribute("inert", "");
       Array.prototype.forEach.call(ghost.querySelectorAll("[data-focus]"), function (n) { n.removeAttribute("data-focus"); });
@@ -1134,7 +1135,7 @@ function swapHand(ids, focusKey) {
       { transform: persp + "rotateX(0deg) translateY(-6px) scale(1.03)", offset: 0.65 },
       { transform: "none", offset: 1 }
     ], { duration: 340, delay: delay + 200, easing: "ease-out", fill: "both" });
-    into.onfinish = function () { if (state.settings.audio) playSfx(REROLL_SFX, 0.25); into.cancel(); };
+    into.onfinish = function () { if (land) land(); into.cancel(); };
     flip.anims.push(into);
   });
 }
@@ -1150,8 +1151,12 @@ function handSection(root, hand, open) {
   head.appendChild(el("h2", { "class": "handlabel" }, HAND.label));
   var btns = el("div", { "class": "handbtns" });
   var hand0 = hand.length > 0;
-  var hb = el("button", { type: "button", "class": "small", "data-focus": hand0 ? "hand-edit" : "hand-choose" }, hand0 ? HAND.edit : HAND.choose);
-  on(hb, "click", hand0 ? openHandEditor : openHandChooser); btns.appendChild(hb);
+  var cb = el("button", { type: "button", "class": "small", "data-focus": "hand-choose" }, HAND.choose);
+  on(cb, "click", openHandChooser); btns.appendChild(cb);
+  if (hand0) {
+    var eb = el("button", { type: "button", "class": "small", "data-focus": "hand-edit" }, HAND.edit);
+    on(eb, "click", openHandEditor); btns.appendChild(eb);
+  }
   var grp = el("span", { "class": "rerollgroup" });
   var rr = el("button", { type: "button", "class": "small", "data-focus": "hand-reroll" }, HAND.reroll);
   if (open.length < 2) { rr.disabled = true; rr.title = HAND.needTwo; } else on(rr, "click", rerollHand);
@@ -1230,10 +1235,9 @@ function openHandEditor() {
     paint();
     body.appendChild(list);
     on(doneBtn, "click", function () { closeModal(); refocus(['[data-focus="hand-edit"]', '[data-focus="hand-choose"]']); });
-    var more = on(el("button", { type: "button" }, HAND.choose), "click", openHandChooser);
     var clear = on(el("button", { type: "button" }, HAND.empty), "click", emptyHand);
     var acts = el("div", { "class": "handacts" });
-    acts.appendChild(doneBtn); acts.appendChild(more); acts.appendChild(clear);
+    acts.appendChild(doneBtn); acts.appendChild(clear);
     foot.appendChild(acts); foot.appendChild(count); body.appendChild(foot);
   }, { noClose: true });
 }

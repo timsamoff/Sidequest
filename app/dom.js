@@ -38,6 +38,15 @@ export function playSfx(src, volume) {
     if (p && typeof p.catch === "function") p.catch(function () {});
   } catch (e) { /* no audio support */ }
 }
+// Loads a clip ahead of time and returns a function that plays it from the start, so a sound timed to an animation is not late while the file loads.
+export function prepareSfx(src, volume) {
+  var a = null;
+  try { if (src) { a = new window.Audio(src); a.preload = "auto"; if (volume !== undefined) a.volume = volume; } } catch (e) { a = null; }
+  return function () {
+    if (!a) return;
+    try { a.currentTime = 0; var p = a.play(); if (p && typeof p.catch === "function") p.catch(function () {}); } catch (e) { /* no audio support */ }
+  };
+}
 // Cash-register money input: digits fill in from the cents, capped at 999,999.99. `style` is "us" or "eu" from the Options Coin format setting.
 function moneySeps(style) { return style === "eu" ? { group: ".", dec: "," } : { group: ",", dec: "." }; }
 export function formatMoney(n, style) {

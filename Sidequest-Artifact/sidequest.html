@@ -973,6 +973,15 @@ function playSfx(src, volume) {
     if (p && typeof p.catch === "function") p.catch(function () {});
   } catch (e) { /* no audio support */ }
 }
+// Loads a clip ahead of time and returns a function that plays it from the start, so a sound timed to an animation is not late while the file loads.
+function prepareSfx(src, volume) {
+  var a = null;
+  try { if (src) { a = new window.Audio(src); a.preload = "auto"; if (volume !== undefined) a.volume = volume; } } catch (e) { a = null; }
+  return function () {
+    if (!a) return;
+    try { a.currentTime = 0; var p = a.play(); if (p && typeof p.catch === "function") p.catch(function () {}); } catch (e) { /* no audio support */ }
+  };
+}
 // Cash-register money input: digits fill in from the cents, capped at 999,999.99. `style` is "us" or "eu" from the Options Coin format setting.
 function moneySeps(style) { return style === "eu" ? { group: ".", dec: "," } : { group: ",", dec: "." }; }
 function formatMoney(n, style) {
@@ -1454,7 +1463,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.17.0";
+var APP_VERSION = "0.17.1";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -4751,7 +4760,7 @@ var HAND = {
   editorTitle: "Edit your hand", editorHint: "Reorder your hand or discard errands from it.",
   rerolled: "Hand rerolled.", emptied: "Hand emptied.", needTwo: "Reroll needs at least two open errands."
 };
-var HAND_MAX = 3, REROLL_SFX = SFX_REROLL;
+var HAND_MAX = 3, FLIP_GAP = 200, REROLL_SFX = SFX_REROLL;
 function refocus(sels) {
   for (var i = 0; i < sels.length; i++) { var f = document.querySelector(sels[i]); if (f && !f.disabled) { f.focus(); return; } }
 }
@@ -4794,7 +4803,8 @@ function swapHand(ids, focusKey) {
   if (!animate || typeof cards[0].animate !== "function") { if (state.settings.audio) playSfx(REROLL_SFX, 0.25); return; }
   var ul = cards[0].parentNode, persp = "perspective(900px) ";
   Array.prototype.forEach.call(cards, function (card, i) {
-    var delay = i * 80, ghost = old[i];
+    var delay = i * FLIP_GAP, ghost = old[i];
+    var land = state.settings.audio ? prepareSfx(REROLL_SFX, 0.25) : null;
     if (ghost) {
       ghost.classList.add("handghost"); ghost.setAttribute("aria-hidden", "true"); ghost.setAttribute("inert", "");
       Array.prototype.forEach.call(ghost.querySelectorAll("[data-focus]"), function (n) { n.removeAttribute("data-focus"); });
@@ -4809,7 +4819,7 @@ function swapHand(ids, focusKey) {
       { transform: persp + "rotateX(0deg) translateY(-6px) scale(1.03)", offset: 0.65 },
       { transform: "none", offset: 1 }
     ], { duration: 340, delay: delay + 200, easing: "ease-out", fill: "both" });
-    into.onfinish = function () { if (state.settings.audio) playSfx(REROLL_SFX, 0.25); into.cancel(); };
+    into.onfinish = function () { if (land) land(); into.cancel(); };
     flip.anims.push(into);
   });
 }
@@ -4825,8 +4835,12 @@ function handSection(root, hand, open) {
   head.appendChild(el("h2", { "class": "handlabel" }, HAND.label));
   var btns = el("div", { "class": "handbtns" });
   var hand0 = hand.length > 0;
-  var hb = el("button", { type: "button", "class": "small", "data-focus": hand0 ? "hand-edit" : "hand-choose" }, hand0 ? HAND.edit : HAND.choose);
-  on(hb, "click", hand0 ? openHandEditor : openHandChooser); btns.appendChild(hb);
+  var cb = el("button", { type: "button", "class": "small", "data-focus": "hand-choose" }, HAND.choose);
+  on(cb, "click", openHandChooser); btns.appendChild(cb);
+  if (hand0) {
+    var eb = el("button", { type: "button", "class": "small", "data-focus": "hand-edit" }, HAND.edit);
+    on(eb, "click", openHandEditor); btns.appendChild(eb);
+  }
   var grp = el("span", { "class": "rerollgroup" });
   var rr = el("button", { type: "button", "class": "small", "data-focus": "hand-reroll" }, HAND.reroll);
   if (open.length < 2) { rr.disabled = true; rr.title = HAND.needTwo; } else on(rr, "click", rerollHand);
@@ -4905,10 +4919,9 @@ function openHandEditor() {
     paint();
     body.appendChild(list);
     on(doneBtn, "click", function () { closeModal(); refocus(['[data-focus="hand-edit"]', '[data-focus="hand-choose"]']); });
-    var more = on(el("button", { type: "button" }, HAND.choose), "click", openHandChooser);
     var clear = on(el("button", { type: "button" }, HAND.empty), "click", emptyHand);
     var acts = el("div", { "class": "handacts" });
-    acts.appendChild(doneBtn); acts.appendChild(more); acts.appendChild(clear);
+    acts.appendChild(doneBtn); acts.appendChild(clear);
     foot.appendChild(acts); foot.appendChild(count); body.appendChild(foot);
   }, { noClose: true });
 }
