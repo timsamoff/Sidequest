@@ -1069,11 +1069,10 @@ function jobRow(j, opts) {
 
 /* errands hand: up to three errands kept at the top of the page */
 var HAND = {
-  label: "Your hand", choose: "Choose cards", edit: "Edit hand", empty: "Empty hand", done: "Done", up: "Up", down: "Down",
+  label: "Your hand", edit: "Manage hand", empty: "Empty hand", done: "Done", up: "Up", down: "Down",
   reroll: "Reroll", pick: "Choose", discard: "Discard", deck: "Errands deck",
   none: "Nothing in your hand. Choose up to three errands to keep here.",
-  chooserTitle: "Choose your hand", chooserHint: "Choose up to three errands. You can reorder them afterwards.",
-  editorTitle: "Edit your hand", editorHint: "Reorder your hand or discard errands from it.",
+  editorTitle: "Manage your hand", editorHint: "Choose up to three errands. Then put them in the order you want.",
   rerolled: "Hand rerolled.", emptied: "Hand emptied.", needTwo: "Reroll needs at least two open errands."
 };
 var HAND_MAX = 3, FLIP_GAP = 200, REROLL_SFX = "assets/sfx/reroll.mp3";
@@ -1094,7 +1093,7 @@ function emptyHand() {
   var prev = state.hand.slice();
   state.hand = []; changed(); closeModal();
   notify(HAND.emptied, function () { state.hand = prev; changed(); });
-  refocus(['[data-focus="hand-choose"]']);
+  refocus(['[data-focus="hand-edit"]']);
 }
 function reduceMotion() {
   try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; }
@@ -1151,12 +1150,8 @@ function handSection(root, hand, open) {
   head.appendChild(el("h2", { "class": "handlabel" }, HAND.label));
   var btns = el("div", { "class": "handbtns" });
   var hand0 = hand.length > 0;
-  var cb = el("button", { type: "button", "class": "small", "data-focus": "hand-choose" }, HAND.choose);
-  on(cb, "click", openHandChooser); btns.appendChild(cb);
-  if (hand0) {
-    var eb = el("button", { type: "button", "class": "small", "data-focus": "hand-edit" }, HAND.edit);
-    on(eb, "click", openHandEditor); btns.appendChild(eb);
-  }
+  var eb = el("button", { type: "button", "class": "small", "data-focus": "hand-edit" }, HAND.edit);
+  on(eb, "click", openHandEditor); btns.appendChild(eb);
   var grp = el("span", { "class": "rerollgroup" });
   var rr = el("button", { type: "button", "class": "small", "data-focus": "hand-reroll" }, HAND.reroll);
   if (open.length < 2) { rr.disabled = true; rr.title = HAND.needTwo; } else on(rr, "click", rerollHand);
@@ -1185,57 +1180,41 @@ function handDialogBtn(label, aria, j, key, fn, off) {
   if (off) b.disabled = true; else on(b, "click", fn);
   return b;
 }
-function openHandChooser() {
-  openModal(HAND.chooserTitle, function (body) {
-    body.appendChild(el("p", { "class": "first hint" }, HAND.chooserHint));
-    var list = el("ul", { "class": "handpick" }), foot = el("div", { "class": "handfoot" }), count = el("span", { "class": "hint handcount" });
-    var doneBtn = el("button", { type: "button", "class": "primary" }, HAND.done);
-    var paint = function () {
-      list.innerHTML = "";
-      var full = state.hand.length >= HAND_MAX;
-      openJobs().forEach(function (j) {
-        var chosen = state.hand.indexOf(j.id) >= 0, li = handDialogRow(j, chosen);
-        li.appendChild(handDialogBtn(chosen ? HAND.discard : HAND.pick, chosen ? "Discard from hand" : "Choose for hand", j, "pick-", function () {
-          if (chosen) handDiscard(j.id); else handChoose(j.id);
-          paint();
-          var f = list.querySelector('[data-focus="pick-' + j.id + '"]'); if (f && !f.disabled) f.focus(); else doneBtn.focus();
-        }, !chosen && full));
-        list.appendChild(li);
-      });
-      count.textContent = state.hand.length + " of " + HAND_MAX + " in hand";
-    };
-    paint();
-    body.appendChild(list);
-    on(doneBtn, "click", function () { closeModal(); refocus(['[data-focus="hand-choose"]', '[data-focus="hand-edit"]']); });
-    foot.appendChild(doneBtn); foot.appendChild(count); body.appendChild(foot);
-  }, { noClose: true });
-}
+// One dialog for the whole hand: the cards in it (reorder or discard) with the rest of the open errands below (choose).
 function openHandEditor() {
   openModal(HAND.editorTitle, function (body) {
     body.appendChild(el("p", { "class": "first hint" }, HAND.editorHint));
     var list = el("ul", { "class": "handpick" }), foot = el("div", { "class": "handfoot" }), count = el("span", { "class": "hint handcount" });
     var doneBtn = el("button", { type: "button", "class": "primary" }, HAND.done);
+    var clear = on(el("button", { type: "button" }, HAND.empty), "click", emptyHand);
     var paint = function (focusSels) {
       list.innerHTML = "";
-      var hand = handJobs();
+      var hand = handJobs(), full = hand.length >= HAND_MAX;
       hand.forEach(function (j, i) {
         var li = handDialogRow(j, true), bt = el("div", { "class": "hpbtns" });
         bt.appendChild(handDialogBtn(HAND.up, "Move up in hand", j, "ed-up-", function () { handMove(j.id, -1); paint(['[data-focus="ed-up-' + j.id + '"]', '[data-focus="ed-down-' + j.id + '"]']); }, i === 0));
         bt.appendChild(handDialogBtn(HAND.down, "Move down in hand", j, "ed-down-", function () { handMove(j.id, 1); paint(['[data-focus="ed-down-' + j.id + '"]', '[data-focus="ed-up-' + j.id + '"]']); }, i === hand.length - 1));
         bt.appendChild(handDialogBtn(HAND.discard, "Discard from hand", j, "ed-discard-", function () {
           handDiscard(j.id);
-          if (!state.hand.length) { closeModal(); refocus(['[data-focus="hand-choose"]']); return; }
-          paint(['[data-focus="ed-discard-' + state.hand[0] + '"]']);
+          paint(['[data-focus="pick-' + j.id + '"]', '[data-focus="ed-discard-' + (state.hand[0] || "") + '"]']);
         }));
         li.appendChild(bt); list.appendChild(li);
       });
+      deckJobs().forEach(function (j) {
+        var li = handDialogRow(j, false);
+        li.appendChild(handDialogBtn(HAND.pick, "Choose for hand", j, "pick-", function () {
+          handChoose(j.id);
+          paint(['[data-focus="ed-discard-' + j.id + '"]']);
+        }, full));
+        list.appendChild(li);
+      });
+      clear.hidden = !hand.length;
       count.textContent = hand.length + " of " + HAND_MAX + " in hand";
-      if (focusSels) refocus(focusSels.map(function (q) { return "#modalBody " + q; }));
+      if (focusSels) refocus(focusSels.map(function (q) { return "#modalBody " + q; }).concat(["#modalBody .primary"]));
     };
     paint();
     body.appendChild(list);
-    on(doneBtn, "click", function () { closeModal(); refocus(['[data-focus="hand-edit"]', '[data-focus="hand-choose"]']); });
-    var clear = on(el("button", { type: "button" }, HAND.empty), "click", emptyHand);
+    on(doneBtn, "click", function () { closeModal(); refocus(['[data-focus="hand-edit"]']); });
     var acts = el("div", { "class": "handacts" });
     acts.appendChild(doneBtn); acts.appendChild(clear);
     foot.appendChild(acts); foot.appendChild(count); body.appendChild(foot);
@@ -1519,7 +1498,7 @@ export function helpTopics() {
       "**Errands:** List for small errands that aren’t quite a quest. Errands don’t appear on the **Timeline**, the **Burndown**, or the **Tasks** page, and they don’t change any counts.",
       "**Add errand:** Type an errand and select **Add errand** or press [[Enter]]. You can also give errands a due date. Select the pencil to rename an errand.",
       ">The **Errands deck** holds your open errands that aren’t in your hand. Errands with due dates appear first, ordered by due date from earliest to latest. Errands without due dates follow, in the order they were added. Errands past their due dates display an **Overdue** badge.",
-      "**Your hand:** Up to three errands you keep at the top of the page. Select **Choose cards** to pick them from a list. Select **Edit hand** to reorder them or discard them. **Empty hand**, in **Edit hand**, clears your hand, and you can undo that.",
+      "**Your hand:** Up to three errands you keep at the top of the page. Select **Manage hand** to choose errands, put them in order, or discard them. **Empty hand**, in **Manage hand**, clears your hand, and you can undo that.",
       "**Choose and Discard:** **Choose** adds an errand to your hand and **Discard** returns it to the deck. **Discard** never deletes an errand. Your hand holds three errands, so **Choose** turns off when it’s full.",
       "**Reroll:** Replaces your whole hand, including errands you chose yourself. Overdue errands come first, and errands that weren’t in your hand are preferred, so pressing it again works through your overdue errands before repeating. Select **Undo** right away to flip your old hand back. It’s turned off when you have fewer than two open errands. With **Sound effects** on, it plays a sound. To turn off the flip, use **Animated reroll** in **Options**.",
       "**Errands deck:** The rest of your open errands, in the usual order. Errands in your hand leave the deck until you discard them.",
