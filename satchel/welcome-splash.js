@@ -11,7 +11,7 @@ function pick(count) {
   if (quoteEl) quoteEl.textContent = AFFIRMATIONS[i];
   return i;
 }
-function play() { playSplash(true, null, false, pick, { hold: true, instant: reduce }); }
+function play() { playSplash(true, function () { document.dispatchEvent(new Event("splashdone")); }, false, pick, { hold: true, instant: reduce }); }
 
 if (panel) {
   if ("IntersectionObserver" in window && !reduce) {

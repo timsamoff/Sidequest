@@ -17,9 +17,9 @@
   --leather: #694A35;
   --strap: #49362B;
   --thread: #3A2312;
-  --clasp-brass: #D9A21B;
-  --clasp-brass-edge: #7A5510;
-  --clasp-brass-ring: #B8860B;
+  --clasp-brass: #D4BF8C;
+  --clasp-brass-edge: #7A6A3E;
+  --clasp-brass-ring: #A8935F;
   --engrave: #2B1D0E;
   --stamp: #2E1B0D;
   --lining: #E0CCA8;
@@ -97,8 +97,8 @@ strong { font-weight: 600; }
 
 /* Brand and theme patch are centered in the flap. The wordmark drops 2px because the q's descender makes it look high. */
 .flap .brand { grid-column: 2; grid-row: 1; justify-self: start; align-self: center; position: relative; z-index: 3; color: var(--stamp); }
-.flap .brand span { position: relative; top: 2px; text-shadow: 0 1px 0 rgba(255, 225, 170, .4); transition: text-shadow .2s ease; }
-.flap .brand:hover span { text-shadow: 0 1px 0 rgba(255, 228, 180, .7); }
+.flap .brand span { position: relative; top: 2px; text-shadow: 0 1px 0 rgba(255, 225, 170, .4); transition: color .2s ease; }
+.flap .brand:hover span { color: color-mix(in srgb, var(--stamp) 80%, white); }
 .themebtn {
   grid-column: 2; grid-row: 1; justify-self: end; align-self: center; position: relative; z-index: 3;
   width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
@@ -119,11 +119,11 @@ strong { font-weight: 600; }
   border-radius: calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .48) calc(var(--clasp-w) * .48);
 }
 .js .clasp { display: block; }
-.claspart { position: absolute; inset: 0; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); transform-origin: 50% 0; transition: transform .45s cubic-bezier(.3, 1.5, .5, 1); }
-/* Opening pulls the strap free: it drops 8px and settles, and closing lets it spring back. The peek hint is the same pull, then back. */
-.clasp[aria-expanded="true"] .claspart { transform: translateY(8px); }
-.clasp.peek .claspart { animation: pull .7s ease; }
-@keyframes pull { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(8px) rotate(-2deg); } 65% { transform: translateY(5px) rotate(1deg); } }
+.claspart { position: absolute; inset: 0; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); transition: transform .2s linear; }
+/* Pressing lifts the strap 3px while the menu is open. The peek hint is the same lift, then back. */
+.clasp[aria-expanded="true"] .claspart { transform: translateY(-3px); }
+.clasp.peek .claspart { animation: lift .8s linear; }
+@keyframes lift { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .claspart { transition: none; } .clasp.peek .claspart { animation: none; } }
 .knob { transition: filter .2s ease; }
 .clasp:hover .knob { filter: brightness(1.2); }
@@ -146,17 +146,16 @@ strong { font-weight: 600; }
 .js .topnav::before { opacity: 0; transition: opacity .15s ease .2s; }
 .js .topnav.open::before { opacity: 1; transition: none; }
 html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
-/* With JavaScript the lining slides open: margin, padding, and the list's row height all animate together. */
+/* With JavaScript the lining's height animates from 0 to --navh (set from the list's real height in satchel.js). The list sits at the lining's bottom edge, carrying the padding with it, so it slides down from behind the flap as the lining grows and back up as it shrinks. */
 .js .topnav {
-  display: grid; grid-template-rows: 0fr; margin-top: 0; padding-top: 0; padding-bottom: 0; visibility: hidden;
-  transition: grid-template-rows .35s ease, margin-top .35s ease, padding .35s ease, visibility 0s linear .35s;
+  display: block; height: 0; margin-top: 0; padding: 0; visibility: hidden; clip-path: inset(-120px 0 0 0);
+  transition: height .35s ease, margin-top .35s ease, visibility 0s linear .35s;
 }
-/* The list is anchored to the lining's bottom edge, so it slides up behind the flap as the lining shortens instead of being wiped away. */
-.js .topnav > ul { min-height: 0; overflow: hidden; width: 100%; align-content: end; align-items: flex-end; }
-.js .topnav.open {
-  grid-template-rows: 1fr; margin-top: -22px; padding-top: calc(22px + var(--clasp-w) + var(--space-14) + 8px); padding-bottom: var(--space-20); visibility: visible;
-  transition: grid-template-rows .35s ease, margin-top .35s ease, padding .35s ease, visibility 0s;
+.js .topnav > ul {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: calc(22px + var(--clasp-w) + var(--space-14)) var(--gut) var(--space-20);
 }
+.js .topnav.open { height: var(--navh, auto); margin-top: -22px; visibility: visible; transition: height .35s ease, margin-top .35s ease, visibility 0s; }
 @media (prefers-reduced-motion: reduce) { .js .topnav, .js .topnav.open { transition: none; } }
 .topnav ul {
   list-style: none; margin: 0 auto; padding: 0 var(--gut); max-width: var(--wrap);
@@ -287,7 +286,7 @@ main .wrap { container-type: inline-size; }
 .posting::before {
   content: ""; position: absolute; top: var(--space-9); left: 50%; width: 10px; height: 10px; margin-left: -5px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--scope) 85%, white), var(--brass) 55%, var(--wood));
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--clasp-brass) 60%, white), var(--clasp-brass) 55%, var(--clasp-brass-edge));
   box-shadow: var(--shadow-pin);
 }
 .way { border-top: 5px solid var(--bar-pending); }

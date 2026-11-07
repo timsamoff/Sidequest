@@ -39,12 +39,16 @@
   var menuBtn = document.getElementById("menuBtn");
   var nav = document.getElementById("mainNav");
   if (menuBtn && nav) {
+    var list = nav.querySelector("ul");
+    var sizeNav = function () { if (list) nav.style.setProperty("--navh", list.offsetHeight + "px"); };
+    window.addEventListener("resize", function () { if (nav.classList.contains("open")) sizeNav(); });
     var setMenu = function (open) {
+      if (open) sizeNav();
       nav.classList.toggle("open", open);
       menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
     };
     menuBtn.addEventListener("click", function () { setMenu(!nav.classList.contains("open")); opened(); });
-    /* Peek: the strap makes the same small pull as a click, once after load and then every 15 seconds, until the menu has been opened in this session. */
+    /* Peek: the strap makes the same small lift as a press, every 15 seconds, until the menu has been opened in this session. It starts after the Welcome splash finishes (or 15 seconds in, if the splash never plays), and right away on pages with no splash. */
     var seen = false;
     try { seen = window.sessionStorage.getItem("satchel-menu-opened") === "1"; } catch (e) { seen = false; }
     var opened = function () {
@@ -56,9 +60,17 @@
       menuBtn.classList.add("peek");
     };
     menuBtn.addEventListener("animationend", function () { menuBtn.classList.remove("peek"); });
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      window.setTimeout(peek, 1500);
+    var startPeeking = function () {
+      if (startPeeking.done) return;
+      startPeeking.done = true;
+      window.setTimeout(peek, 1000);
       window.setInterval(peek, 15000);
+    };
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      if (document.getElementById("splash")) {
+        document.addEventListener("splashdone", startPeeking);
+        window.setTimeout(startPeeking, 15000);
+      } else window.setTimeout(startPeeking, 1500);
     }
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && nav.classList.contains("open")) { setMenu(false); menuBtn.focus(); }
