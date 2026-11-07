@@ -43,7 +43,23 @@
       nav.classList.toggle("open", open);
       menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
     };
-    menuBtn.addEventListener("click", function () { setMenu(!nav.classList.contains("open")); });
+    menuBtn.addEventListener("click", function () { setMenu(!nav.classList.contains("open")); opened(); });
+    /* Peek: the strap makes the same small pull as a click, once after load and then every 15 seconds, until the menu has been opened in this session. */
+    var seen = false;
+    try { seen = window.sessionStorage.getItem("satchel-menu-opened") === "1"; } catch (e) { seen = false; }
+    var opened = function () {
+      seen = true;
+      try { window.sessionStorage.setItem("satchel-menu-opened", "1"); } catch (e) { /* storage blocked */ }
+    };
+    var peek = function () {
+      if (seen || nav.classList.contains("open") || menuBtn.matches(":hover, :focus-visible")) return;
+      menuBtn.classList.add("peek");
+    };
+    menuBtn.addEventListener("animationend", function () { menuBtn.classList.remove("peek"); });
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      window.setTimeout(peek, 1500);
+      window.setInterval(peek, 15000);
+    }
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && nav.classList.contains("open")) { setMenu(false); menuBtn.focus(); }
     });

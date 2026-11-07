@@ -98,7 +98,7 @@ strong { font-weight: 600; }
 /* Brand and theme patch are centered in the flap. The wordmark drops 2px because the q's descender makes it look high. */
 .flap .brand { grid-column: 2; grid-row: 1; justify-self: start; align-self: center; position: relative; z-index: 3; color: var(--stamp); }
 .flap .brand span { position: relative; top: 2px; text-shadow: 0 1px 0 rgba(255, 225, 170, .4); transition: text-shadow .2s ease; }
-.flap .brand:hover span { text-shadow: 0 1px 0 rgba(255, 228, 180, .55); }
+.flap .brand:hover span { text-shadow: 0 1px 0 rgba(255, 228, 180, .7); }
 .themebtn {
   grid-column: 2; grid-row: 1; justify-self: end; align-self: center; position: relative; z-index: 3;
   width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
@@ -119,7 +119,12 @@ strong { font-weight: 600; }
   border-radius: calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .48) calc(var(--clasp-w) * .48);
 }
 .js .clasp { display: block; }
-.claspart { position: absolute; inset: 0; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); }
+.claspart { position: absolute; inset: 0; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); transform-origin: 50% 0; transition: transform .45s cubic-bezier(.3, 1.5, .5, 1); }
+/* Opening pulls the strap free: it drops 8px and settles, and closing lets it spring back. The peek hint is the same pull, then back. */
+.clasp[aria-expanded="true"] .claspart { transform: translateY(8px); }
+.clasp.peek .claspart { animation: pull .7s ease; }
+@keyframes pull { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(8px) rotate(-2deg); } 65% { transform: translateY(5px) rotate(1deg); } }
+@media (prefers-reduced-motion: reduce) { .claspart { transition: none; } .clasp.peek .claspart { animation: none; } }
 .knob { transition: filter .2s ease; }
 .clasp:hover .knob { filter: brightness(1.2); }
 .strap {
@@ -146,9 +151,10 @@ html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
   display: grid; grid-template-rows: 0fr; margin-top: 0; padding-top: 0; padding-bottom: 0; visibility: hidden;
   transition: grid-template-rows .35s ease, margin-top .35s ease, padding .35s ease, visibility 0s linear .35s;
 }
-.js .topnav > ul { min-height: 0; overflow: hidden; width: 100%; }
+/* The list is anchored to the lining's bottom edge, so it slides up behind the flap as the lining shortens instead of being wiped away. */
+.js .topnav > ul { min-height: 0; overflow: hidden; width: 100%; align-content: end; align-items: flex-end; }
 .js .topnav.open {
-  grid-template-rows: 1fr; margin-top: -22px; padding-top: calc(22px + var(--clasp-w) + var(--space-14)); padding-bottom: var(--space-20); visibility: visible;
+  grid-template-rows: 1fr; margin-top: -22px; padding-top: calc(22px + var(--clasp-w) + var(--space-14) + 8px); padding-bottom: var(--space-20); visibility: visible;
   transition: grid-template-rows .35s ease, margin-top .35s ease, padding .35s ease, visibility 0s;
 }
 @media (prefers-reduced-motion: reduce) { .js .topnav, .js .topnav.open { transition: none; } }
