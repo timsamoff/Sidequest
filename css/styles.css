@@ -157,7 +157,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .welcomebox { border-top: 5px solid var(--notice-welcome); }
 /* Workshop ideas: parchment cards pinned to a board. */
 .list.pinboard { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: var(--space-18); background: transparent; border: 0; border-radius: 0; padding: var(--space-8) 0 0; }
-.list.pinboard > li.posting, .list.pinboard > li.posting:last-child { padding: var(--space-30) var(--space-20) var(--space-20); border-bottom: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); }
+.list.pinboard > li.posting, .list.pinboard > li.posting:last-child { padding: var(--space-30) var(--space-20) var(--space-20); border-bottom: 1px solid transparent; }
 .list.pinboard > li.posting { transform: translate(calc(var(--rx, 0) * 5px), calc(var(--ry, 0) * 10px)); }
 .list.pinboard > li.hint { grid-column: 1 / -1; }
 .list.pinboard .crow { flex-direction: column; align-items: stretch; gap: var(--space-10); }

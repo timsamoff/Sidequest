@@ -48,6 +48,7 @@
   --clasp-brass: #D4BF8C; --clasp-brass-edge: #7A6A3E; --clasp-brass-ring: #A8935F;
   --engrave: #2B1D0E; --stamp: #2E1B0D;
   --lining: #E0CCA8; --lining-ink: #2B1A0C; --lining-current: #5A1010;
+  --pin-edge: #CEB782;
   --parch-fill: #FCF1D6; --parch-edge: #CEB782; --parch-ink: #2F5D8A; --parch-red: #C62F2F; --parch-white: #FFFFFF;
   /* The icon's blue paths are ink blue at 65% over parchment; the light blues (Not started, selection, estimates) are tints of that slate. */
   --slate: #778FA5;
@@ -90,9 +91,9 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #161C22; --surface: #1E2428; --card: #2F2E28; --control-bg: #171B1F; --control-line: #6F808B; --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
-    --btn: #D4B48A; --on-btn: #2A1B0E; --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
-    --chip-idle: #2A2924; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #33302A; --scrim: rgba(0, 0, 0, .6);
+    --bg: #1C1814; --surface: #26211C; --card: #342D25; --control-bg: #1C1814; --control-line: #7C6F60; --ink: #EDE6DA; --muted: #B3A898; --line: #3B332B;
+    --btn: #D4B48A; --on-btn: #2A1B0E; --pin-edge: #71613A; --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
+    --chip-idle: #302A23; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #EDE6DA; --est: #34506B; --sel: #3B3228; --scrim: rgba(0, 0, 0, .6);
     --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
     --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
     --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C; --tutorial: #E39A2D; --tutorial-hover: #EBAA48;
@@ -105,9 +106,9 @@
   }
 }
 :root[data-theme="dark"] {
-  --bg: #161C22; --surface: #1E2428; --card: #2F2E28; --control-bg: #171B1F; --control-line: #6F808B; --ink: #E6ECEF; --muted: #9AABB5; --line: #2C3843;
-  --btn: #D4B48A; --on-btn: #2A1B0E; --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
-  --chip-idle: #2A2924; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #E6ECEF; --est: #34506B; --sel: #33302A; --scrim: rgba(0, 0, 0, .6);
+  --bg: #1C1814; --surface: #26211C; --card: #342D25; --control-bg: #1C1814; --control-line: #7C6F60; --ink: #EDE6DA; --muted: #B3A898; --line: #3B332B;
+  --btn: #D4B48A; --on-btn: #2A1B0E; --pin-edge: #71613A; --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
+  --chip-idle: #302A23; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #EDE6DA; --est: #34506B; --sel: #3B3228; --scrim: rgba(0, 0, 0, .6);
   --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
   --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
   --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C; --tutorial: #E39A2D; --tutorial-hover: #EBAA48;
