@@ -45,7 +45,7 @@
   --brass: var(--bar-active);
   /* Leather, brass, lining, and parchment: fixed values, the same in both themes, shared by the app and the landing site. */
   --leather: #694A35; --strap: #49362B; --thread: #3A2312;
-  --clasp-brass: #D4BF8C; --clasp-brass-edge: #7A6A3E; --clasp-brass-ring: #A8935F;
+  --clasp-brass: #D4BF8C; --clasp-brass-edge: #7A6A3E; --clasp-brass-ring: #A8935F; --wordmark-stamp: #B09E66;
   --engrave: #2B1D0E; --stamp: #2E1B0D;
   --lining: #E0CCA8; --lining-ink: #2B1A0C; --lining-current: #5A1010;
   --pin-edge: #CEB782;

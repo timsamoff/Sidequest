@@ -55,7 +55,7 @@
   --brass: var(--bar-active);
   /* Leather, brass, lining, and parchment: fixed values, the same in both themes, shared by the app and the landing site. */
   --leather: #694A35; --strap: #49362B; --thread: #3A2312;
-  --clasp-brass: #D4BF8C; --clasp-brass-edge: #7A6A3E; --clasp-brass-ring: #A8935F;
+  --clasp-brass: #D4BF8C; --clasp-brass-edge: #7A6A3E; --clasp-brass-ring: #A8935F; --wordmark-stamp: #B09E66;
   --engrave: #2B1D0E; --stamp: #2E1B0D;
   --lining: #E0CCA8; --lining-ink: #2B1A0C; --lining-current: #5A1010;
   --pin-edge: #CEB782;
@@ -264,7 +264,7 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .brandrow { display: flex; align-items: center; gap: var(--space-10); padding: 0 var(--space-6) var(--space-16); }
 /* Leather brand block: the top of the sidebar, edge to edge, with a stitched curved lower edge (css/leather.css). */
 .side .brandrow { margin: calc(var(--space-22) * -1) calc(var(--space-14) * -1) var(--space-14); padding: var(--space-16) var(--space-20) var(--space-30); color: var(--stamp); }
-.side .brand { position: relative; top: 2px; z-index: 3; color: var(--clasp-brass); font-size: 1.45rem; text-shadow: 0 1px 0 var(--engrave); }
+.side .brand { position: relative; top: 2px; z-index: 3; color: var(--wordmark-stamp); font-size: 1.45rem; text-shadow: 0 1px 0 rgba(255, 235, 190, .35); -webkit-text-stroke: 2px var(--stamp); paint-order: stroke fill; }
 .side .brandrow .logo { position: relative; z-index: 3; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 .logo { width: 38px; height: 38px; flex: none; display: block; }
 .mlogo { display: none; width: 44px; height: 44px; }
@@ -1466,7 +1466,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.18.4";
+var APP_VERSION = "0.18.5";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }

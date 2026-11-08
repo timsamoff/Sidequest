@@ -66,8 +66,8 @@ strong { font-weight: 600; }
 
 /* Brand and theme patch are centered in the flap. The wordmark drops 2px because the q's descender makes it look high. */
 .flap .brand { grid-column: 2; grid-row: 1; justify-self: start; align-self: center; position: relative; z-index: 3; color: var(--stamp); }
-.flap .brand span { position: relative; top: 2px; color: var(--clasp-brass); text-shadow: 0 1px 0 var(--engrave); transition: color .2s ease; }
-.flap .brand:hover span { color: color-mix(in srgb, var(--clasp-brass) 85%, white); }
+.flap .brand span { position: relative; top: 2px; color: var(--wordmark-stamp); text-shadow: 0 1px 0 rgba(255, 235, 190, .35); -webkit-text-stroke: 2px var(--stamp); paint-order: stroke fill; transition: color .2s ease; }
+.flap .brand:hover span { color: color-mix(in srgb, var(--wordmark-stamp) 85%, white); }
 .themebtn {
   grid-column: 2; grid-row: 1; justify-self: end; align-self: center; position: relative; z-index: 3;
   width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
