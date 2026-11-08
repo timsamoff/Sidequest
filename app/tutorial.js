@@ -5,7 +5,13 @@ import { el, on } from "./dom.js";
 function questOf(c) { return state.quests.filter(function (p) { return p.id === c.questId; })[0]; }
 function hasTask(c) { return !!c.questId && state.tasks.some(function (t) { return t.questId === c.questId; }); }
 function promoted(c) { return state.quests.some(function (p) { return p.status === "active" && c.baseActive.indexOf(p.id) < 0; }); }
-function onQuestPage(c) { return !!c.questId && ui.view === "quest:" + c.questId; }
+// With no recorded quest (step 2 skipped, or the quest existed before the walkthrough), the first quest page opened becomes the one it follows.
+function adopt(c) {
+  if (c.questId || ui.view.indexOf("quest:") !== 0) return;
+  var q = state.quests.filter(function (p) { return p.id === ui.view.slice(6) && p.status === "candidate" && !p.arch; })[0];
+  if (q) c.questId = q.id;
+}
+function onQuestPage(c) { adopt(c); return !!c.questId && ui.view === "quest:" + c.questId; }
 function tab(view) { return document.querySelector('.tab[data-view="' + view + '"]'); }
 // The new quest's row in Candidate quests, when the Quests page is showing.
 function candidateRow(c) {
@@ -51,7 +57,7 @@ var STEPS = [
         : "Open **Today** to see what to work on next across all your quests. Your task has no due date, so it sits in the quest’s Backlog and is not on **Timeline**. Give a task a due date to schedule it." };
     },
     done: function () { return ui.view === "today"; } },
-  { title: "Welcome to the adventure!", view: function () { return { text: "Everything else is in the Field guide. To run this walkthrough again, open the Field guide and select **Play tutorial**." }; } }
+  { title: "Welcome, adventurer!", view: function () { return { text: "Everything else is in the Field guide. To run this walkthrough again, open the Field guide and select **Play tutorial**." }; } }
 ];
 
 var panel = null, textHost = null, shownText = "", timer = null, index = 0, ctx = null, lit = null, flashed = "";

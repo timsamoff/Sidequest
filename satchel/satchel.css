@@ -9,6 +9,10 @@
   --wrap: 70rem;
   --target: 48px;
   --flap-h: 76px;
+  --icon-brand: 36px; --icon-md: 20px; --icon-glyph: 19px; --diamond: 9px;
+  --rule: 2px;
+  --section-pad: 3.25rem; --hero-pad: 3.5rem;
+  --text-h3: 1.25rem; --text-brand: 1.45rem; --text-brand-sm: 1.25rem;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -46,7 +50,7 @@ strong { font-weight: 600; }
 }
 .skip:focus { top: var(--space-8); }
 
-/* Satchel flap: a leather strip with a curved bottom edge. The leather layer is clipped to the curve so the clasp can hang below it. The stitch, brand, theme patch, and clasp are all placed from this one frame. */
+/* Satchel flap: a leather strip with a curved bottom edge, clipped to the curve so the clasp can hang below it. The stitch, brand, theme patch, and clasp are all placed from this one frame. */
 .flap { position: relative; z-index: 10; --gut: max(var(--space-16), env(safe-area-inset-left, 0px)); --clasp-w: 44px; }
 .flapframe {
   position: relative; isolation: isolate; display: grid;
@@ -59,8 +63,8 @@ strong { font-weight: 600; }
 }
 /* The texture keeps one fixed size per breakpoint (it only grows past that when the window is wider) and is anchored to the bottom edge. */
 .flapleather img { position: absolute; left: 0; bottom: 0; width: max(100%, 1280px); height: auto; max-width: none; }
-@media (max-width: 35.99rem) { .flapleather img { width: max(100%, 800px); } }
-@media (min-width: 62rem) { .flapleather img { width: max(100%, 1600px); } }
+@media (width < 36rem) { .flapleather img { width: max(100%, 800px); } }
+@media (width >= 62rem) { .flapleather img { width: max(100%, 1600px); } }
 
 .flapstitch { grid-area: 1 / 1 / 2 / -1; }
 
@@ -77,7 +81,7 @@ strong { font-weight: 600; }
   background-size: 190px auto; background-position: -36px -14px;
 }
 .themebtn::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--thread); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44' %3E%3Crect x='4' y='4' width='36' height='36' rx='6' pathLength='100' fill='none' stroke='black' stroke-width='1.4' stroke-dasharray='2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62'/%3E%3C/svg%3E") center / 100% 100% no-repeat; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44' %3E%3Crect x='4' y='4' width='36' height='36' rx='6' pathLength='100' fill='none' stroke='black' stroke-width='1.4' stroke-dasharray='2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
-.themebtn svg { width: 19px; height: 19px; flex: none; }
+.themebtn svg { width: var(--icon-glyph); height: var(--icon-glyph); flex: none; }
 .themebtn { transition: filter .2s ease; }
 .themebtn:hover { filter: brightness(1.12); }
 
@@ -139,13 +143,13 @@ html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
 }
 .topnav a:hover { background: color-mix(in srgb, white 25%, transparent); }
 .topnav a[aria-current="page"] { color: var(--lining-current); font-weight: 600; }
-.topnav a[aria-current="page"]::before { content: ""; width: 9px; height: 9px; flex: none; background: var(--burn); border-radius: 2px; transform: rotate(45deg); }
-@media (min-width: 62rem) {
+.topnav a[aria-current="page"]::before { content: ""; width: var(--diamond); height: var(--diamond); flex: none; background: var(--burn); border-radius: 2px; transform: rotate(45deg); }
+@media (width >= 62rem) {
   .topnav ul { display: flex; justify-content: center; gap: var(--space-20); }
   .topnav li { flex: 0 0 auto; }
 }
-@media (max-width: 61.99rem) { main { padding-top: var(--space-24); } }
-@media (max-width: 35.99rem) { .brand { font-size: 1.25rem; } }
+@media (width < 62rem) { main { padding-top: var(--space-24); } }
+@media (width < 36rem) { .brand { font-size: var(--text-brand-sm); } }
 
 /* Footer band: the same tan as the menu lining. */
 .band {
@@ -154,8 +158,8 @@ html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
 }
 .band a { color: var(--lining-ink); }
 .band .wrap { padding-block: var(--space-10); }
-.brand { display: inline-flex; align-items: center; gap: var(--space-10); text-decoration: none; font: 600 1.45rem/1 var(--font-serif); min-height: var(--control-height); min-width: 0; }
-.brand svg { width: 36px; height: 36px; flex: none; }
+.brand { display: inline-flex; align-items: center; gap: var(--space-10); text-decoration: none; font: 600 var(--text-brand)/1 var(--font-serif); min-height: var(--control-height); min-width: 0; }
+.brand svg { width: var(--icon-brand); height: var(--icon-brand); flex: none; }
 .flap .brand svg { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 
 
@@ -171,18 +175,18 @@ html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
 .legal { margin: 0; font-size: var(--text-sm); }
 .supportlink {
   display: inline-flex; align-items: center; gap: var(--space-10); min-height: var(--target); padding: 0 var(--space-20);
-  border: 2px solid var(--lining-ink); border-radius: var(--radius-card);
+  border: var(--rule) solid var(--lining-ink); border-radius: var(--radius-card);
   font-weight: 600; text-decoration: none;
 }
 .supportlink:hover { background: color-mix(in srgb, var(--lining-ink) 12%, transparent); }
-.supportlink svg { width: 20px; height: 20px; flex: none; }
+.supportlink svg { width: var(--icon-md); height: var(--icon-md); flex: none; }
 
 /* Buttons. */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-8);
   min-height: var(--target); padding: 0 var(--space-24); border-radius: var(--radius-card);
   font: 600 var(--text-100)/1 var(--font-sans); text-decoration: none; cursor: pointer;
-  border: 2px solid transparent;
+  border: var(--rule) solid transparent;
 }
 .btn.door {
   background: var(--tutorial); color: var(--on-tutorial-btn); border-color: var(--tutorial-edge);
@@ -204,27 +208,27 @@ html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
   letter-spacing: .12em; text-transform: uppercase; color: var(--badge-active);
 }
 .kicker::before {
-  content: ""; width: 9px; height: 9px; flex: none; background: var(--burn);
+  content: ""; width: var(--diamond); height: var(--diamond); flex: none; background: var(--burn);
   border-radius: 2px; transform: rotate(45deg);
 }
 
 /* Hero (home) and page heads (every other page). */
-.hero { padding-block: var(--space-30) 3.5rem; }
+.hero { padding-block: var(--space-30) var(--hero-pad); }
 .hero h1 { font-size: var(--text-hero); letter-spacing: -.01em; }
 .pagehead { padding-block: var(--space-30) var(--space-8); }
 .pagehead h1 { font-size: var(--text-hero); letter-spacing: -.01em; }
 .pagehead p:not(.kicker) { font-size: var(--text-lg); margin-top: var(--space-12); }
 .lede { font-size: var(--text-xl); font-family: var(--font-serif); line-height: 1.3; margin-top: var(--space-14); }
 .hero-grid { display: grid; gap: var(--space-30); align-items: center; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 56rem) { .hero-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); } }
+@media (width >= 56rem) { .hero-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); } }
 
 /* Sections. */
-.section { padding-block: 3.25rem 1rem; }
+.section { padding-block: var(--section-pad) 1rem; }
 .section > .wrap > header { margin-bottom: var(--space-24); }
 .section h2 { font-size: var(--text-xl); }
-.section h3 { font-size: 1.25rem; margin-bottom: var(--space-10); }
+.section h3 { font-size: var(--text-h3); margin-bottom: var(--space-10); }
 .section::before {
-  content: ""; display: block; max-width: var(--wrap); height: 2px; margin: 0 auto var(--space-30);
+  content: ""; display: block; max-width: var(--wrap); height: var(--rule); margin: 0 auto var(--space-30);
   background: linear-gradient(90deg, transparent, var(--brass) 18%, var(--brass) 82%, transparent);
 }
 .pagehead + .section { padding-top: var(--space-22); }
@@ -233,12 +237,13 @@ main .wrap { container-type: inline-size; }
 .grid { --gap: var(--space-18); --n: 1; display: flex; flex-wrap: wrap; justify-content: center; gap: var(--gap); }
 .grid > * { flex: 0 0 calc((100% - (var(--n) - 1) * var(--gap)) / var(--n)); min-width: 0; }
 .grid.two, .grid.ways { --n: 1; }
-@container (min-width: 36.2rem) { .grid { --n: 2; } }
-@container (min-width: 54.8rem) { .grid { --n: 3; } }
-@container (min-width: 49.2rem) { .grid.two { --n: 2; } }
-@container (min-width: 31.2rem) { .grid.ways { --n: 2; } }
-@container (min-width: 47.3rem) { .grid.ways { --n: 3; } }
-@container (min-width: 63.4rem) { .grid.ways { --n: 4; } }
+/* A grid gets n columns once its container fits n cards at the card minimum plus (n - 1) gaps of 1.125rem (--gap). The card minimum is 17.5rem for .grid, 24rem for .grid.two, and 15rem for .grid.ways; container conditions cannot read custom properties. */
+@container (width >= calc(2 * 17.5rem + 1.125rem)) { .grid { --n: 2; } }
+@container (width >= calc(3 * 17.5rem + 2 * 1.125rem)) { .grid { --n: 3; } }
+@container (width >= calc(2 * 24rem + 1.125rem)) { .grid.two { --n: 2; } }
+@container (width >= calc(2 * 15rem + 1.125rem)) { .grid.ways { --n: 2; } }
+@container (width >= calc(3 * 15rem + 2 * 1.125rem)) { .grid.ways { --n: 3; } }
+@container (width >= calc(4 * 15rem + 3 * 1.125rem)) { .grid.ways { --n: 4; } }
 .posting ul, .perks { margin: 0; padding-left: var(--space-18); }
 .posting li, .perks li { margin-bottom: var(--space-8); }
 .posting li:last-child { margin-bottom: 0; }
@@ -277,12 +282,12 @@ main .wrap { container-type: inline-size; }
 details { margin: var(--space-14) 0 var(--space-20); }
 summary {
   display: inline-flex; align-items: center; gap: var(--space-10); cursor: pointer; list-style: none;
-  min-height: var(--target); padding: 0 var(--space-20); border: 2px solid var(--ink); border-radius: var(--radius-card);
+  min-height: var(--target); padding: 0 var(--space-20); border: var(--rule) solid var(--ink); border-radius: var(--radius-card);
   background: var(--surface); font-weight: 600;
 }
 summary::-webkit-details-marker { display: none; }
 summary::before {
-  content: ""; width: 8px; height: 8px; flex: none; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  content: ""; width: 8px; height: 8px; flex: none; border-right: var(--rule) solid currentColor; border-bottom: var(--rule) solid currentColor;
   transform: translateY(-2px) rotate(-45deg);
 }
 details[open] > summary::before { transform: translateY(-3px) rotate(45deg); }
@@ -295,7 +300,7 @@ pre {
 }
 code { font-family: var(--font-mono); font-size: .92em; }
 .copystatus { margin-left: var(--space-10); font-size: var(--text-sm); color: var(--muted); }
-.section .posting h2 { font-size: 1.25rem; margin-bottom: var(--space-10); }
+.section .posting h2 { font-size: var(--text-h3); margin-bottom: var(--space-10); }
 
 /* Split: prose with a screenshot beside it from 56rem. */
 .split { display: grid; gap: var(--space-24); grid-template-columns: minmax(0, 1fr); align-items: start; }
@@ -304,7 +309,7 @@ code { font-family: var(--font-mono); font-size: .92em; }
 .prose > .quotehead { width: fit-content; max-width: 100%; margin: 0 0 var(--space-18); }
 .quotehead > h2.lede { margin: 0; }
 .quotehead > .byline { margin: var(--space-8) 0 0; color: var(--muted); text-align: right; }
-@media (min-width: 56rem) {
+@media (width >= 56rem) {
   .split { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
   .shot.side { position: sticky; top: var(--space-24); }
 }
@@ -314,7 +319,7 @@ code { font-family: var(--font-mono); font-size: .92em; }
 .shotframe {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-4);
   aspect-ratio: 16 / 10; width: 100%; padding: var(--space-16); text-align: center;
-  border: 2px dashed var(--brass); border-radius: var(--radius-card);
+  border: var(--rule) dashed var(--brass); border-radius: var(--radius-card);
   background:
     repeating-linear-gradient(135deg, transparent 0 14px, color-mix(in srgb, var(--brass) 14%, transparent) 14px 15px),
     color-mix(in srgb, var(--surface) 70%, var(--chip-work));

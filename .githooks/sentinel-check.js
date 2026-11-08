@@ -7,6 +7,7 @@ const common = require("./lib/sentinel-common");
 const checks = require("./lib/check-pre-commit");
 const extCheck = require("./lib/check-new-extension");
 const helpDrift = require("./lib/check-help-drift");
+const commentLength = require("./lib/check-comment-length");
 const landing = require("./lib/check-landing");
 const { checkCommitMessage } = require("./lib/check-commit-msg");
 const { execSync } = require("child_process");
@@ -200,6 +201,7 @@ function runFullScan() {
   violations = violations.concat(fullScanSocialMetaDrift());
   violations = violations.concat(fullScanCssRepeatedLiteral());
   violations = violations.concat(fullScanCommentVerbosity());
+  violations = violations.concat(commentLength.fullScanCommentLength());
   violations = violations.concat(landing.landingViolations(common.diskRead, checks.satchelFiles([".html"])));
   // README keyword map, whole-repo: every CORE/BOTTOM/pinned-page label must appear in README. The regex has to handle CORE/BOTTOM's nested [key, label] pair arrays.
   const source = common.diskRead("app/model.js");
@@ -251,6 +253,7 @@ function main() {
     violations = violations.concat(checks.checkNormalizeDefaultsPairing());
     violations = violations.concat(checks.checkHardcodedHex());
     violations = violations.concat(checks.checkCommentVerbosity());
+    violations = violations.concat(commentLength.checkCommentLength());
     violations = violations.concat(checks.checkCssTokenValue());
     violations = violations.concat(checks.checkDuplicatedIconMarkup());
     violations = violations.concat(checks.checkSocialMetaDrift());
@@ -264,6 +267,8 @@ function main() {
     }
     const helpReminder = helpDrift.helpDriftReminder();
     if (helpReminder) console.log("[Sentinel] " + helpReminder);
+    const designReminder = checks.designDocReminder();
+    if (designReminder) console.log("[Sentinel] " + designReminder);
     lastCommitNotice();
     console.log("Sentinel: diff-scoped check passed, no violations.");
     process.exitCode = 0;

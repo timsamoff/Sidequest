@@ -5,6 +5,7 @@ const common = require("./lib/sentinel-common");
 const checks = require("./lib/check-pre-commit");
 const extCheck = require("./lib/check-new-extension");
 const helpDrift = require("./lib/check-help-drift");
+const commentLength = require("./lib/check-comment-length");
 
 function main() {
   let violations = [];
@@ -17,6 +18,7 @@ function main() {
   violations = violations.concat(checks.checkNormalizeDefaultsPairing());
   violations = violations.concat(checks.checkHardcodedHex());
   violations = violations.concat(checks.checkCommentVerbosity());
+  violations = violations.concat(commentLength.checkCommentLength());
   violations = violations.concat(checks.checkCssTokenValue());
   violations = violations.concat(checks.checkDuplicatedIconMarkup());
   violations = violations.concat(checks.checkSocialMetaDrift());
@@ -39,6 +41,9 @@ function main() {
 
   const helpReminder = helpDrift.helpDriftReminder();
   if (helpReminder) process.stderr.write("\n[Sentinel] " + helpReminder + "\n");
+
+  const designReminder = checks.designDocReminder();
+  if (designReminder) process.stderr.write("\n[Sentinel] " + designReminder + "\n");
 
   const reminder = checks.todoBacklogReminder();
   if (reminder) process.stderr.write("\n[Sentinel] " + reminder + "\n");

@@ -217,10 +217,17 @@ function checkTodoSync() {
 function todoBacklogReminder() {
   const raw = common.diskRead(path.join("Sentinel-Notes", "TODO.md"));
   if (!raw) return null;
-  const openSection = raw.split(/^## Done/m)[0];
+  const openSection = raw.split(/^## (?:Shelved|Done)/m)[0];
   const openItems = (openSection.match(/^-\s*\[ \]/gm) || []).length;
   if (!openItems) return null;
   return `${openItems} open TODO item(s) in Sentinel-Notes/TODO.md untouched since before this session started. (Non-blocking reminder.)`;
+}
+
+// Design-document reminder (non-blocking, since whether DESIGN.md still matches the code is a judgment call): a staged change that adds a page, state field, or dialog, with DESIGN.md not in the commit.
+function designDocReminder() {
+  const { touchedFiles, hits } = classifySourceDiffs();
+  if (!touchedFiles.length || !hits.length || common.isStaged("DESIGN.md")) return null;
+  return `This commit touches ${hits.join("; ")}, but DESIGN.md is not in it. Check whether DESIGN.md still describes the architecture. (Non-blocking reminder.)`;
 }
 
 // normalize()/defaults() pairing: every top-level key of defaults()'s returned object must be referenced in normalize()'s body as d.<key>. A name-presence check, not an interpreter.
@@ -372,7 +379,7 @@ function checkHardcodedHex() {
   return violations;
 }
 
-// Comment-verbosity check: flags changelog-style tells in comments (bare dates, "confirmed <date>", "an earlier version", DESIGN.md/CLAUDE.md pointers). It is not a length check.
+// Comment-verbosity check: flags changelog-style tells in comments (bare dates, "confirmed <date>", "an earlier version", DESIGN.md/CLAUDE.md pointers). Length is checked separately in check-comment-length.js.
 
 const COMMENT_SCAN_FILES = ["css/tokens.css", "css/styles.css", "css/splash.css", "css/leather.css", "index.html"].concat(appModules(), satchelFiles([".css", ".js", ".html"]));
 
@@ -660,6 +667,7 @@ module.exports = {
   checkReadmeTouched,
   checkTodoSync,
   todoBacklogReminder,
+  designDocReminder,
   checkNormalizeDefaultsPairing,
   extractDefaultsKeys,
   extractNormalizeBody,
