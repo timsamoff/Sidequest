@@ -1075,7 +1075,7 @@ var HAND = {
   editorTitle: "Manage your hand", editorHint: "Choose up to three errands. Then put them in the order you want.",
   rerolled: "Hand rerolled.", emptied: "Hand emptied.", needTwo: "Reroll needs at least two open errands."
 };
-var HAND_MAX = 3, FLIP_GAP = 200, REROLL_SFX = "assets/sfx/reroll.mp3";
+var HAND_MAX = 3, FLIP_GAP = 140, REROLL_SFX = "assets/sfx/reroll.mp3";
 function refocus(sels) {
   for (var i = 0; i < sels.length; i++) { var f = document.querySelector(sels[i]); if (f && !f.disabled) { f.focus(); return; } }
 }

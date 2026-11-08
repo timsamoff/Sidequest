@@ -551,7 +551,7 @@ html { scrollbar-gutter: stable; }
 @media (max-width: 639px) { .handpick li:has(.hpbtns) { flex-wrap: wrap; } .handpick .hpmain { flex: 1 1 100%; } .hpbtns { flex-basis: 100%; } }
 .handacts { display: flex; flex-wrap: wrap; gap: var(--space-8); }
 .handacts button { margin-right: 0; }
-.handfoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-12); margin-top: var(--space-14); }
+.handfoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-12); margin-top: var(--space-14); position: sticky; bottom: calc(-1 * var(--space-20)); margin-bottom: calc(-1 * var(--space-20)); padding: var(--space-12) 0 var(--space-20); background: var(--surface); border-top: 1px solid var(--line); z-index: 2; }
 .handfoot .handcount { margin: 0; }
 .li-actions { display: flex; gap: var(--space-8); align-items: center; }
 .dq { font-weight: 500; }
@@ -664,7 +664,7 @@ svg.chart.nofocusring { outline: none; }
 /* modal and toast */
 .overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 50; display: flex; align-items: center; justify-content: center; padding: var(--space-16); }
 .modal { width: 100%; max-width: 520px; max-height: calc(100vh - 32px); overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: var(--space-18) var(--space-20) var(--space-20); }
-.mhead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-bottom: var(--space-4); }
+.mhead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); margin-bottom: var(--space-4); position: sticky; top: calc(-1 * var(--space-18)); margin-top: calc(-1 * var(--space-18)); padding-top: var(--space-18); padding-bottom: var(--space-4); background: var(--surface); z-index: 2; }
 .mhead h2 { margin: 0; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); background: var(--ink); color: var(--bg); padding: var(--space-10) var(--space-16); border-radius: var(--radius-card); z-index: 60; font-size: var(--text-sm); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-12); text-align: left; }
 .toast:empty { display: none; }
@@ -1463,7 +1463,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.18.0";
+var APP_VERSION = "0.18.1";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -4759,7 +4759,7 @@ var HAND = {
   editorTitle: "Manage your hand", editorHint: "Choose up to three errands. Then put them in the order you want.",
   rerolled: "Hand rerolled.", emptied: "Hand emptied.", needTwo: "Reroll needs at least two open errands."
 };
-var HAND_MAX = 3, FLIP_GAP = 200, REROLL_SFX = SFX_REROLL;
+var HAND_MAX = 3, FLIP_GAP = 140, REROLL_SFX = SFX_REROLL;
 function refocus(sels) {
   for (var i = 0; i < sels.length; i++) { var f = document.querySelector(sels[i]); if (f && !f.disabled) { f.focus(); return; } }
 }
