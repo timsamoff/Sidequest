@@ -1466,7 +1466,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.18.3";
+var APP_VERSION = "0.18.4";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -1876,8 +1876,23 @@ function isNewerVersion(a, b) {
   for (var i = 0; i < 3; i++) { if (pb[i] > pa[i]) return true; if (pb[i] < pa[i]) return false; }
   return false;
 }
-// Reads the db version stamp (doc meta/version), kept outside state/main so save() cannot overwrite it. No-op on the web build; the stamp is only written by hand when sidequest.html is published.
-function checkForAppUpdate() {
+var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-App/sidequest.html";
+// The single-file build has no manifest link (the build strips it); the web app does and never needs an update notice.
+function isSingleFileBuild() { return typeof document !== "undefined" && !document.querySelector('link[rel=manifest]'); }
+// Reads APP_VERSION out of the published file on GitHub. Resolves null on any failure.
+function fetchPublishedVersion() {
+  try {
+    if (typeof fetch !== "function" || !isSingleFileBuild()) return Promise.resolve(null);
+    return fetch(SIDEQUEST_RAW_URL + "?vcheck=" + APP_VERSION).then(function (r) {
+      return r.ok ? r.text() : null;
+    }).then(function (text) {
+      var m = text && /var APP_VERSION = "(\d+\.\d+\.\d+)";/.exec(text);
+      return m && isNewerVersion(APP_VERSION, m[1]) ? m[1] : null;
+    }).catch(function () { return null; });
+  } catch (e) { return Promise.resolve(null); }
+}
+// Reads the db version stamp (doc meta/version), kept outside state/main so save() cannot overwrite it. Resolves null without a db.
+function fetchStampVersion() {
   return getDb().then(function (db) {
     if (!db) return null;
     return db.doc("meta/version").get().then(function (snap) {
@@ -1885,7 +1900,14 @@ function checkForAppUpdate() {
       var latest = data && typeof data.latest === "string" ? data.latest : null;
       return latest && isNewerVersion(APP_VERSION, latest) ? latest : null;
     }).catch(function () { return null; });
-  });
+  }).catch(function () { return null; });
+}
+// The newer of the db stamp and the published file's version, or null. Never rejects.
+function checkForAppUpdate() {
+  return Promise.all([fetchStampVersion(), fetchPublishedVersion()]).then(function (v) {
+    if (v[0] && v[1]) return isNewerVersion(v[0], v[1]) ? v[1] : v[0];
+    return v[0] || v[1] || null;
+  }).catch(function () { return null; });
 }
 
 var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchVault: true, notesH: {}, questOpen: {}, sectionOpen: {} };
@@ -3903,7 +3925,6 @@ function renderToday(root) {
   root.appendChild(g);
 }
 // Shown when a newer db version stamp exists (checkForAppUpdate() in state.js). Dismissing records the version, so a later update gets its own notice.
-var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html";
 function updateBanner() {
   var box = el("div", { "class": "box updatebanner", style: "margin-bottom:22px" });
   box.appendChild(el("h2", { "class": "first", style: "margin-bottom:4px" }, "Sidequest has leveled up!"));
@@ -5076,7 +5097,7 @@ function helpTopics() {
     ["How Sidequest works", [
       "**Web and installed version:** Your quest data is stored in the browser and on the device you’re using. This means your data is available on that device, including when you’re offline. Installing Sidequest does not create a separate set of quests from the browser version.",
       "**Backups:** If your browser’s local storage is cleared, you will lose all of your quest data, so back up your quests periodically.",
-      "**Artifact version:** The Artifact version works in Claude and Muse. When you use Sidequest as an Artifact, your quest data is stored with your account. You can access your quests from the web, the app, or a mobile device where you’re signed in. You need an internet connection.",
+      "**Artifact version:** The Artifact version works as a Claude artifact or a Muse space. When you use Sidequest this way, your quest data is stored with your account. You can access your quests from the web, the app, or a mobile device where you’re signed in. You need an internet connection.",
       "**Artifact updates:** The Artifact version tells you when an update is available and how to install it without losing any data."
     ]],
     ["Terms", [
@@ -5085,23 +5106,22 @@ function helpTopics() {
       "{#badge-added}**Added badge:** Marks a task added after the quest started. See “Inside a quest”.",
       "{#adventurer}**Adventurer:** Your contact information and brandmark, used on exports. See “Options page”.",
       "{#backlog}**Backlog:** Open tasks without a due date. See “Tasks page”.",
+      "{#before-you-launch}**Before you launch:** The section that lists a quest’s **Launch critical** tasks. These tasks must be completed before launch. See “Inside a quest”.",
       "{#bounty}**Bounty:** The amount a quest pays. This does not appear on exports. See “Quest giver and Quest links”.",
       "{#candidate-quest}**Candidate quest:** A quest you’re considering but haven’t started. See “Quests page”.",
       "{#decision}**Decision:** A question attached to a step. Answering it completes the step. See “Inside a quest”.",
+      "{#errand}**Errand:** One item on the **Errands** page. See “Errands page”.",
+      "{#errands-deck}**Errands deck:** Incomplete errands you can add to your hand to give them higher priority. See “Errands page”.",
       "{#forecast}**Forecast:** The dotted burndown line estimating when you’ll finish. See “Timeline page”.",
       "{#gathering-dust}**Gathering dust:** A badge for an active quest nobody has changed for a while. See “Options page”.",
       "{#hand}**Your hand:** Choose up to three errands to keep in your hand. See “Errands page”.",
-      "{#ideal}**Ideal:** The burndown line showing your planned pace. See “Timeline page”.",
       "{#idea}**Idea:** A note in the **Workshop** that hasn’t become a quest. See “Workshop page”.",
+      "{#ideal}**Ideal:** The burndown line showing your planned pace. See “Timeline page”.",
       "{#in-progress}**In progress:** An active quest with at least one incomplete task that has a due date. See “Quests page”.",
-      "{#errand}**Errand:** One item on the **Errands** page. See “Errands page”.",
       "{#launch-critical}**Launch critical:** A task that must be completed before launch. These tasks are grouped in the **Before you launch** section. See “Inside a quest”.",
-      "{#before-you-launch}**Before you launch:** The section that lists a quest’s **Launch critical** tasks. These tasks must be completed before launch. See “Inside a quest”.",
       "{#make-candidate}**Make candidate:** Turns an idea into a candidate quest. See “The quest lifecycle”.",
       "{#milestone}**Milestone:** A task with a date that appears on the **Timeline**. See “Inside a quest”.",
       "{#next-up}**Next up:** The earliest-starting incomplete task across all open quests. See “Today page”.",
-      "{#errands-deck}**Errands deck:** The errands that aren’t in your hand. See “Errands page”.",
-      "{#errands}**Errands:** List of small errands that aren’t quite a quest. Errands never appear on the Timeline or in the burndown. See “Errands page”.",
       "{#pending}**Pending:** An active quest with no incomplete tasks that have due dates. See “Quests page”.",
       "{#pin}**Pin:** Adds a shortcut to a quest in the sidebar. See “Quests page”.",
       "{#prepared}**Prepared by and Prepared for:** The export’s letterhead, showing your information first and the Quest giver’s second. See “Quest giver and Quest links”.",
@@ -5110,7 +5130,7 @@ function helpTopics() {
       "{#quest-giver}**Quest giver:** The client or contact for this quest. See “Quest giver and Quest links”.",
       "{#quest-giver-export}**Quest giver export:** A read-only page you can share with a client. See “Quest giver and Quest links”.",
       "{#quest-links}**Quest links:** Connections between quests that belong to the same job. See “Quest giver and Quest links”.",
-      "{#reroll}**Reroll:** Replaces your hand with a new one. Overdue errands are prioritized, and you can undo it. See “Errands page”.",
+      "{#reroll}**Reroll:** Replaces your hand of errands with a new one. Overdue errands are prioritized, and you can undo it. See “Errands page”.",
       "{#scope}**Scope:** The total amount of work in a quest. The orange line shows when that amount changes. See “Timeline page”.",
       "{#slip-schedule}**Slip schedule:** Moves a quest’s incomplete tasks to later dates. You can undo this change. See “A quest’s Schedule and Timeline”.",
       "{#step}**Step:** A smaller action that makes up a task. See “Inside a quest”.",
@@ -5184,14 +5204,13 @@ function helpTopics() {
     ["Errands page", [
       "**Errands:** List for small errands that aren’t quite a quest. Errands don’t appear on the **Timeline**, the **Burndown**, or the **Tasks** page, and they don’t change any counts.",
       "**Add errand:** Type an errand and select **Add errand** or press [[Enter]]. You can also give errands a due date. Select the pencil to rename an errand.",
-      ">The **Errands deck** holds your open errands that aren’t in your hand. Errands with due dates appear first, ordered by due date from earliest to latest. Errands without due dates follow, in the order they were added. Errands past their due dates display an **Overdue** badge.",
+      "**Errands deck:** Contains open errands that aren’t in your hand. Errands with due dates appear first, earliest due date first. The rest follow in the order they were added. Overdue errands display an **Overdue** badge.",
       "**Your hand:** Up to three errands you keep at the top of the page. Select **Manage hand** to choose errands, put them in order, or discard them. **Empty hand**, in **Manage hand**, clears your hand, and you can undo that.",
-      "**Choose and Discard:** **Choose** adds an errand to your hand and **Discard** returns it to the deck. **Discard** never deletes an errand. Your hand holds three errands, so **Choose** turns off when it’s full.",
-      "**Reroll:** Replaces your whole hand, including errands you chose yourself. Overdue errands come first, and errands that weren’t in your hand are preferred, so pressing it again works through your overdue errands before repeating. Select **Undo** right away to flip your old hand back. It’s turned off when you have fewer than two open errands. With **Sound effects** on, it plays a sound. To turn off the flip, use **Animated reroll** in **Options**.",
-      "**Errands deck:** The rest of your open errands, in the usual order. Errands in your hand leave the deck until you discard them.",
+      "**Choose** and **Discard:** **Choose** adds an errand to your hand and **Discard** returns it to the deck. **Discard** never deletes an errand. Your hand holds three errands, so **Choose** turns off when it’s full.",
+      "**Reroll:** Replaces your whole hand, including errands you chose yourself. Overdue errands get priority, followed by other errands not currently in your hand. This helps you work through overdue errands before repeating them. Select **Undo** right away to restore your previous hand. Reroll is disabled when fewer than two open errands remain. With **Sound effects** on, it plays a sound. Turn off the **Animated reroll** in **Options**.",
       "**Complete errand:** Check the box next to an errand to mark it complete. It moves to the **Completed** section.",
-      "**Restore errand:** Uncheck a completed errand to move it back to the list.",
-      "**Delete forever:** Deletes an errand at once. Select **Undo** right away if you change your mind."
+      "**Restore errand:** Uncheck a completed errand to move it back to the **Errands deck**.",
+      "**Delete forever:** Permanently deletes an errand. Select **Undo** right away to restore it."
     ]],
     ["Workshop page", [
       "All ideas live here. Use them to think through new quests or prospects. You can either select **Make candidate** to turn an idea into a candidate quest or **Vault** it."
@@ -6473,9 +6492,7 @@ Promise.resolve().then(function () {
     renderAll();
   });
 
-  // No-op on the web app, since checkForAppUpdate() resolves null with no db.
-  // The stamp read here is set by hand when a new sidequest.html is published,
-  // never written by this app's code.
+  // No-op on the web app. Checks the db stamp and the published file on GitHub; both fail silently.
   checkForAppUpdate().then(function (latest) {
     if (!latest) return;
     setAvailableUpdateVersion(latest);

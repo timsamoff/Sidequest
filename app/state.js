@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.18.3";
+export var APP_VERSION = "0.18.4";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -417,8 +417,23 @@ function isNewerVersion(a, b) {
   for (var i = 0; i < 3; i++) { if (pb[i] > pa[i]) return true; if (pb[i] < pa[i]) return false; }
   return false;
 }
-// Reads the db version stamp (doc meta/version), kept outside state/main so save() cannot overwrite it. No-op on the web build; the stamp is only written by hand when sidequest.html is published.
-export function checkForAppUpdate() {
+export var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-App/sidequest.html";
+// The single-file build has no manifest link (the build strips it); the web app does and never needs an update notice.
+function isSingleFileBuild() { return typeof document !== "undefined" && !document.querySelector('link[rel=manifest]'); }
+// Reads APP_VERSION out of the published file on GitHub. Resolves null on any failure.
+function fetchPublishedVersion() {
+  try {
+    if (typeof fetch !== "function" || !isSingleFileBuild()) return Promise.resolve(null);
+    return fetch(SIDEQUEST_RAW_URL + "?vcheck=" + APP_VERSION).then(function (r) {
+      return r.ok ? r.text() : null;
+    }).then(function (text) {
+      var m = text && /var APP_VERSION = "(\d+\.\d+\.\d+)";/.exec(text);
+      return m && isNewerVersion(APP_VERSION, m[1]) ? m[1] : null;
+    }).catch(function () { return null; });
+  } catch (e) { return Promise.resolve(null); }
+}
+// Reads the db version stamp (doc meta/version), kept outside state/main so save() cannot overwrite it. Resolves null without a db.
+function fetchStampVersion() {
   return getDb().then(function (db) {
     if (!db) return null;
     return db.doc("meta/version").get().then(function (snap) {
@@ -426,7 +441,14 @@ export function checkForAppUpdate() {
       var latest = data && typeof data.latest === "string" ? data.latest : null;
       return latest && isNewerVersion(APP_VERSION, latest) ? latest : null;
     }).catch(function () { return null; });
-  });
+  }).catch(function () { return null; });
+}
+// The newer of the db stamp and the published file's version, or null. Never rejects.
+export function checkForAppUpdate() {
+  return Promise.all([fetchStampVersion(), fetchPublishedVersion()]).then(function (v) {
+    if (v[0] && v[1]) return isNewerVersion(v[0], v[1]) ? v[1] : v[0];
+    return v[0] || v[1] || null;
+  }).catch(function () { return null; });
 }
 
 export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchVault: true, notesH: {}, questOpen: {}, sectionOpen: {} };

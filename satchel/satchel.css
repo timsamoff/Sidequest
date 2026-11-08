@@ -118,7 +118,7 @@ strong { font-weight: 600; }
 html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
 /* With JavaScript the lining's height animates from 0 to --navh (set from the list's real height in satchel.js). The list sits at the lining's bottom edge, carrying the padding with it, so it slides down from behind the flap as the lining grows and back up as it shrinks. */
 .js .topnav {
-  display: block; height: 0; margin-top: 0; padding: 0; visibility: hidden; clip-path: inset(-400px 0 0 0);
+  display: block; position: absolute; top: 100%; left: 0; right: 0; height: 0; margin-top: 0; padding: 0; visibility: hidden; clip-path: inset(-400px 0 0 0);
   transition: height .35s ease, margin-top .35s ease, visibility 0s linear .35s;
 }
 .js .topnav > ul {
@@ -301,6 +301,9 @@ code { font-family: var(--font-mono); font-size: .92em; }
 .split { display: grid; gap: var(--space-24); grid-template-columns: minmax(0, 1fr); align-items: start; }
 .prose > :last-child { margin-bottom: 0; }
 .prose > h2.lede { margin: 0 0 var(--space-18); font-weight: 400; }
+.prose > .quotehead { width: fit-content; max-width: 100%; margin: 0 0 var(--space-18); }
+.quotehead > h2.lede { margin: 0; }
+.quotehead > .byline { margin: var(--space-8) 0 0; color: var(--muted); text-align: right; }
 @media (min-width: 56rem) {
   .split { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
   .shot.side { position: sticky; top: var(--space-24); }

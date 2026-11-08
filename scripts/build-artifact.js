@@ -6,7 +6,7 @@ const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
 const APP_DIR = path.join(ROOT, "app");
-const OUT_DIR = path.join(ROOT, "Sidequest-Artifact");
+const OUT_DIR = path.join(ROOT, "Sidequest-App");
 const OUT_FILE = path.join(OUT_DIR, "sidequest.html");
 
 // A published artifact has no assets/ folder, so the favicon is rebuilt from index.html's #sqLogo symbol as a self-contained SVG data URI at build time, with the CSS variables replaced by light-theme hex values.

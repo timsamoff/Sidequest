@@ -589,9 +589,9 @@ function checkSocialMetaDrift() {
   return violations;
 }
 
-// Artifact-build drift: Sidequest-Artifact/sidequest.html is generated and committed, so a commit that changes a build input without staging the rebuilt file is blocked. A presence check, not a rebuild-and-diff.
+// Artifact-build drift: Sidequest-App/sidequest.html is generated and committed, so a commit that changes a build input without staging the rebuilt file is blocked. A presence check, not a rebuild-and-diff.
 
-const ARTIFACT_BUNDLE = "Sidequest-Artifact/sidequest.html";
+const ARTIFACT_BUNDLE = "Sidequest-App/sidequest.html";
 const ARTIFACT_SOURCE_PATTERN = /^(app\/[\w-]+\.js|css\/[\w-]+\.css)$/;
 
 // Runs the landing-site parity check when the landing pages, README, or tokens are staged, reading staged content first.

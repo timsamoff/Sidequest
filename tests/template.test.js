@@ -73,7 +73,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.18.3"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.18.4"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v) && html.includes("css/splash.css?v=" + v) && html.includes("css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -1351,7 +1351,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     const k = kit(await mk(null, f.claude)); await wait();
     ok(k.$("view").textContent.includes("Sidequest has leveled up!"), "a newer version's stamp in meta/version shows the update banner on Today");
     const prompt = k.d.querySelector(".updatebanner textarea.updateprompt");
-    ok(!!prompt && prompt.readOnly && prompt.value === "Please update my Sidequest artifact with the latest version, keeping all of my existing data.\nhttps://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-Artifact/sidequest.html?v=9.9.9", "the banner holds a read-only copy field with the prompt and the real raw GitHub URL plus a ?v= version suffix");
+    ok(!!prompt && prompt.readOnly && prompt.value === "Please update my Sidequest artifact with the latest version, keeping all of my existing data.\nhttps://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-App/sidequest.html?v=9.9.9", "the banner holds a read-only copy field with the prompt and the real raw GitHub URL plus a ?v= version suffix");
     ok(/You are questing in version \d+\.\d+\.\d+, and Sidequest version 9\.9\.9 is ready to go\. To update, copy the prompt below and paste it into your AI chat\./.test(k.$("view").textContent) && !!k.btn(k.$("view"), "Copy prompt"), "the banner names the current and new versions, tells the user to copy the prompt, and has a Copy prompt button");
     ok(k.$("view").textContent.includes("None of your data will be touched."), "the banner reassures about data safety");
     k.click(k.btn(k.$("view"), "Dismiss"));
@@ -1368,6 +1368,37 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "0.2.4" } });
     const k = kit(await mk(null, f.claude)); await wait();
     ok(!k.$("view").textContent.includes("Sidequest has leveled up!"), "a stamp equal to the current version shows no banner");
+  }
+  {
+    // the published file on GitHub is a second version source (single-file build only: no manifest link)
+    const noManifest = (w) => { const l = w.document.querySelector('link[rel="manifest"]'); if (l) l.remove(); };
+    const realFetch = global.fetch;
+    const banner = (k) => k.$("view").textContent.includes("Sidequest has leveled up!");
+    let urls = [];
+    global.fetch = (u) => { urls.push(u); return Promise.resolve({ ok: true, text: () => Promise.resolve('x\nvar APP_VERSION = "9.8.7";\ny') }); };
+    let k = kit(await mk(null, null, null, null, null, noManifest)); await wait();
+    ok(banner(k) && k.d.querySelector(".updatebanner textarea.updateprompt").value.endsWith("sidequest.html?v=9.8.7"), "a newer APP_VERSION in the published file shows the banner with that version in the prompt");
+    ok(/\?vcheck=\d+\.\d+\.\d+$/.test(urls[0]), "the version fetch appends ?vcheck= with the running version");
+    k.click(k.btn(k.$("view"), "Dismiss"));
+    ok(!banner(k) && k.saved().settings.dismissedUpdateVersion === "9.8.7", "dismissing suppresses that version");
+    global.fetch = () => Promise.reject(new Error("offline"));
+    k = kit(await mk(null, null, null, null, null, noManifest)); await wait();
+    ok(!banner(k), "a failed fetch is silent and launch is unaffected");
+    global.fetch = () => Promise.resolve({ ok: false, text: () => Promise.resolve("") });
+    k = kit(await mk(null, null, null, null, null, noManifest)); await wait();
+    ok(!banner(k), "a non-200 response is silent");
+    global.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve("<html>no version here</html>") });
+    k = kit(await mk(null, null, null, null, null, noManifest)); await wait();
+    ok(!banner(k), "a response with no version line is silent");
+    urls = [];
+    global.fetch = (u) => { urls.push(u); return Promise.resolve({ ok: true, text: () => Promise.resolve('var APP_VERSION = "9.8.7";') }); };
+    k = kit(await mk(null)); await wait();
+    ok(!banner(k) && urls.length === 0, "the web app (manifest present) never fetches or shows the banner");
+    global.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('var APP_VERSION = "1.0.0";') });
+    const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "9.9.9" } });
+    k = kit(await mk(null, f.claude, null, null, null, noManifest)); await wait();
+    ok(banner(k) && k.d.querySelector(".updatebanner textarea.updateprompt").value.endsWith("?v=9.9.9"), "with both sources, the newer one wins (stamp 9.9.9 over fetched 1.0.0)");
+    global.fetch = realFetch;
   }
 }
 {
@@ -2656,7 +2687,7 @@ async function exportClick(k, projectName) {
   const { helpTopics } = await import("../app/views.js?run=" + counter);
   const topics = helpTopics(), titles = topics.map(t => t[0]);
   const termLines = topics.find(t => t[0] === "Terms")[1];
-  ok(termLines.length === 39 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 39 Terms entries read as a bold term, a definition, and a pointer");
+  ok(termLines.length === 38 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 38 Terms entries read as a bold term, a definition, and a pointer");
   ok(termLines.every(l => titles.includes(l.match(/See “([^”]+)”\.$/)[1])), "every Terms pointer names a topic that exists");
   f.value = "decision"; k.fire(f, "input");
   ok(titlesOf()[0] === "Terms" && items()[0].open, "a word that is a term puts the Terms topic first and opens it");

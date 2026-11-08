@@ -206,9 +206,7 @@ Promise.resolve().then(function () {
     renderAll();
   });
 
-  // No-op on the web app, since checkForAppUpdate() resolves null with no db.
-  // The stamp read here is set by hand when a new sidequest.html is published,
-  // never written by this app's code.
+  // No-op on the web app. Checks the db stamp and the published file on GitHub; both fail silently.
   checkForAppUpdate().then(function (latest) {
     if (!latest) return;
     setAvailableUpdateVersion(latest);
