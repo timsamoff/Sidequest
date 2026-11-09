@@ -28,11 +28,11 @@ So give Sidequest a try! It's free, and it might become your favorite way to kee
 
 ## Getting started
 
-Ready to give it a try? Choose where you want to use Sidequest. There's also a [feature tour and setup guides](https://samoff.com/Sidequest/satchel/) if you'd like a closer look before getting started.
+Ready to give it a try? Choose where you want to use Sidequest. There's also a [feature tour and setup guides](https://samoff.com/sidequest/satchel/) if you'd like a closer look before getting started.
 
 You can switch between versions later, but your data won't move between them automatically. To carry it over, use a backup file (see [Saving and syncing your data](#saving-and-syncing-your-data)).
 
-- **Browser:** Use [samoff.com/Sidequest](https://samoff.com/Sidequest) directly in your browser. No account needed, and your data stays in the browser on that device.
+- **Browser:** Use [samoff.com/sidequest](https://samoff.com/sidequest) directly in your browser. No account needed, and your data stays in the browser on that device.
 - **Installed app (PWA):** In a supported browser, open **Options** and choose **Install Sidequest**. It opens in its own window and works offline. On some phones, you'll need to use your browser's **Add to Home Screen** option instead.
 - **Claude:** Build Sidequest as a Claude Artifact. See [Use as app](#use-as-app).
 - **Muse:** Build Sidequest as a Muse space. See the same section.
@@ -100,7 +100,7 @@ The [Sidequest-App/README.md](Sidequest-App/README.md) covers updating your app,
 Start a new conversation with Claude and send this prompt. Sidequest needs the `db` capability to save your data and the `downloads` capability to make **Save backup** work.
 
 ```
-Please fetch this file and publish it as an artifact: https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-App/sidequest.html. It needs the `db` capability for storage and the `downloads` capability so Save backup works.
+Please fetch this file and publish it as an artifact: https://raw.githubusercontent.com/timsamoff/sidequest/main/Sidequest-App/sidequest.html. It needs the `db` capability for storage and the `downloads` capability so Save backup works.
 ```
 If Claude asks for permission during the build, choose **Allow once** to let it fetch the file and create the artifact. It asks again when you update.
 
@@ -113,7 +113,7 @@ If Claude can't fetch the file, download `sidequest.html` from the `Sidequest-Ap
 Start a new chat with your Muse and paste this prompt. It asks Muse to build Sidequest from the repository and save your data in its database.
 
 ```
-Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-App/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty.
+Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://raw.githubusercontent.com/timsamoff/sidequest/main/Sidequest-App/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty.
 
 Keep every feature as is, including the sound effects and the GitHub version check, and keep its update prompt word for word. Set window.sidequestHosted = true before the app starts, so it shows its hosted wording about where your data is saved.
 

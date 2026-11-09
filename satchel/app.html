@@ -12,14 +12,14 @@ gtag('config', 'G-JM2CZ1DLQ4');
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Use as app | Sidequest</title>
 <meta name="description" content="Build your own Sidequest as a Claude artifact or a Muse space, with account-based storage and access across devices. Copy the prompt, paste it into a chat, and make it yours.">
-<link rel="canonical" href="https://samoff.com/Sidequest/satchel/app.html">
+<link rel="canonical" href="https://samoff.com/sidequest/satchel/app.html">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#4F3416" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#4D3428" media="(prefers-color-scheme: dark)">
 <meta property="og:title" content="Use as app | Sidequest">
 <meta property="og:description" content="Build your own Sidequest as a Claude artifact or a Muse space, with account-based storage and access across devices. Copy the prompt, paste it into a chat, and make it yours.">
-<meta property="og:image" content="https://samoff.com/Sidequest/assets/sidequest-icon-512.png">
-<meta property="og:url" content="https://samoff.com/Sidequest/satchel/app.html">
+<meta property="og:image" content="https://samoff.com/sidequest/assets/sidequest-icon-512.png">
+<meta property="og:url" content="https://samoff.com/sidequest/satchel/app.html">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Sidequest">
 <meta property="og:locale" content="en_US">
@@ -29,7 +29,7 @@ gtag('config', 'G-JM2CZ1DLQ4');
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Use as app | Sidequest">
 <meta name="twitter:description" content="Build your own Sidequest as a Claude artifact or a Muse space, with account-based storage and access across devices. Copy the prompt, paste it into a chat, and make it yours.">
-<meta name="twitter:image" content="https://samoff.com/Sidequest/assets/sidequest-icon-512.png">
+<meta name="twitter:image" content="https://samoff.com/sidequest/assets/sidequest-icon-512.png">
 <link rel="icon" type="image/svg+xml" href="../assets/sidequest-icon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
 <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -102,7 +102,7 @@ gtag('config', 'G-JM2CZ1DLQ4');
     <h1 id="top-title">Use as app</h1>
     <p>You can also run Sidequest as a Claude artifact or a Muse space. Both versions use the same single-file app, but save your data to your own account instead of your browser.</p>
     <p>You’ll need an account with whichever platform you choose, since both building the app and storing its data happen there. Copy the prompt for your platform below, paste it into a new chat, and let it build your copy.</p>
-    <p>The <a href="https://github.com/timsamoff/Sidequest/blob/main/Sidequest-App/README.md">Sidequest-App README</a> covers updating your app, sharing it, and the differences between the artifact and browser versions.</p>
+    <p>The <a href="https://github.com/timsamoff/sidequest/blob/main/Sidequest-App/README.md">Sidequest-App README</a> covers updating your app, sharing it, and the differences between the artifact and browser versions.</p>
   </div>
 </div>
 <section class="section" id="build" aria-labelledby="build-h">
@@ -113,7 +113,7 @@ gtag('config', 'G-JM2CZ1DLQ4');
         <p>Start a new conversation with Claude and send this prompt. Sidequest needs the <code>db</code> capability to save your data and the <code>downloads</code> capability to make <strong>Save backup</strong> work.</p>
         <details>
           <summary>Show the Claude prompt</summary>
-          <pre><code id="claudePrompt" data-parity="claude-prompt">Please fetch this file and publish it as an artifact: https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-App/sidequest.html. It needs the `db` capability for storage and the `downloads` capability so Save backup works.</code></pre>
+          <pre><code id="claudePrompt" data-parity="claude-prompt">Please fetch this file and publish it as an artifact: https://raw.githubusercontent.com/timsamoff/sidequest/main/Sidequest-App/sidequest.html. It needs the `db` capability for storage and the `downloads` capability so Save backup works.</code></pre>
           <p><button class="btn ghost small" type="button" data-copy="claudePrompt" hidden>Copy prompt</button><span class="copystatus" role="status"></span></p>
         </details>
         <p>If Claude asks for permission during the build, choose <strong>Allow once</strong> to let it fetch the file and create the artifact. It asks again when you update.</p>
@@ -125,7 +125,7 @@ gtag('config', 'G-JM2CZ1DLQ4');
         <p>Start a new chat with your Muse and paste this prompt. It asks Muse to build Sidequest from the repository and save your data in its database.</p>
         <details>
           <summary>Show the Muse prompt</summary>
-          <pre><code id="musePrompt" data-parity="muse-prompt">Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://raw.githubusercontent.com/timsamoff/Sidequest/main/Sidequest-App/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty.
+          <pre><code id="musePrompt" data-parity="muse-prompt">Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://raw.githubusercontent.com/timsamoff/sidequest/main/Sidequest-App/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty.
 
 Keep every feature as is, including the sound effects and the GitHub version check, and keep its update prompt word for word. Set window.sidequestHosted = true before the app starts, so it shows its hosted wording about where your data is saved.
 
@@ -145,10 +145,10 @@ When it's built, launch the app several times to confirm every launch quote fits
 </main>
 <footer class="band footband">
   <div class="wrap footrow">
-    <p class="legal" data-parity="license">© <a href="https://samoff.com">Tim Samoff</a>. Licensed under <a href="https://github.com/timsamoff/Sidequest/blob/main/LICENSE">GPLv3</a>.</p>
+    <p class="legal" data-parity="license">© <a href="https://samoff.com">Tim Samoff</a>. Licensed under <a href="https://github.com/timsamoff/sidequest/blob/main/LICENSE">GPLv3</a>.</p>
     <div class="footlinks">
       <a class="supportlink" href="https://www.paypal.com/paypalme/timsamoff" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="2" x2="6" y2="4"></line><line x1="10" y1="2" x2="10" y2="4"></line><line x1="14" y1="2" x2="14" y2="4"></line></svg><span>Support Sidequest<span class="sr"> (opens in a new tab)</span></span></a>
-      <a href="https://github.com/timsamoff/Sidequest">Source on GitHub</a>
+      <a href="https://github.com/timsamoff/sidequest">Source on GitHub</a>
     </div>
   </div>
 </footer>
