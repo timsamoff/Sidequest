@@ -1,11 +1,12 @@
 html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 72px); }
 *, *::before, *::after { box-sizing: inherit; }
-body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 16px; line-height: 1.5; }
-h1, h2, h3 { font-family: var(--font-serif); font-weight: 600; line-height: 1.2; margin: 0; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 19px; line-height: 1.5; }
+h1, h2, h3 { font-family: var(--font-serif); font-weight: 400; line-height: 1.2; margin: 0; }
+h1 { font-family: var(--font-display); }
 .dialogheading { margin-top: var(--space-16); }
-h1 { font-size: 1.5rem; }
-h2 { font-size: 1.3rem; margin-top: var(--space-22); margin-bottom: var(--space-6); }
-h3 { font-size: 1.05rem; margin-top: var(--space-22); }
+h1 { font-size: calc(1.5rem + 1px); }
+h2 { font-size: calc(1.3rem + 1px); margin-top: var(--space-22); margin-bottom: var(--space-6); }
+h3 { font-size: calc(1.05rem + 1px); margin-top: var(--space-22); }
 p { margin: 0; }
 [hidden] { display: none !important; }
 .hint { color: var(--muted); font-size: var(--text-sm); margin-top: var(--space-6); }
@@ -65,7 +66,7 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .side .brandrow .logo { position: relative; z-index: 3; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 .logo { width: 38px; height: 38px; flex: none; display: block; }
 .mlogo { display: none; width: 44px; height: 44px; }
-.brand { font-family: var(--font-serif); font-weight: 600; font-size: 1.25rem; line-height: 1.1; }
+.brand { font-family: var(--font-display); font-weight: 400; font-size: calc(1.25rem + 1px); line-height: 1.1; }
 .nav { display: flex; flex-direction: column; gap: var(--space-2); overflow-y: visible; min-height: 0; }
 /* Only the pinned-quest list scrolls -- CORE above it and navBottom below
    always keep their own full, fixed height (see renderChrome() in app.js). */
@@ -155,6 +156,8 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .updatebanner { border-top: 5px solid var(--notice-update); }
 .backupreminder { border-top: 5px solid var(--notice-backup); }
 .welcomebox { border-top: 5px solid var(--notice-welcome); }
+.updatebanner { background: var(--notice-update-bg); }
+.backupreminder { background: var(--notice-backup-bg); }
 /* Workshop ideas: parchment cards pinned to a board. */
 .list.pinboard { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: var(--space-18); background: transparent; border: 0; border-radius: 0; padding: var(--space-8) 0 0; }
 .list.pinboard > li.posting, .list.pinboard > li.posting:last-child { padding: var(--space-30) var(--space-20) var(--space-20); border-bottom: 1px solid transparent; }
@@ -182,7 +185,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 
 .panel { padding: var(--space-16) var(--space-18); border-left: 5px solid var(--planned); }
 .box { padding: var(--space-14) var(--space-16); }
-.ptitle { font-family: var(--font-serif); font-size: 1.3rem; font-weight: 600; line-height: 1.3; }
+.ptitle { font-family: var(--font-serif); font-size: calc(1.3rem + 1px); font-weight: 400; line-height: 1.3; }
 .pmeta { margin-top: var(--space-6); color: var(--muted); }
 .pmeta b { color: var(--ink); font-weight: 600; }
 .pline { margin-top: var(--space-8); }
@@ -235,7 +238,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
    highlight blue a quest page's expanded task gets -- the user's call. */
 .detailpane .detail { background: var(--sel); }
 .detail { padding: var(--space-18) var(--space-20); }
-.detail .what { font-family: var(--font-serif); font-size: 1.25rem; font-weight: 600; line-height: 1.3; margin-top: var(--space-8); }
+.detail .what { font-family: var(--font-serif); font-size: calc(1.25rem + 1px); font-weight: 400; line-height: 1.3; margin-top: var(--space-8); }
 .detail .dmeta { color: var(--muted); margin-top: var(--space-4); }
 select.status { border: 1px solid var(--line); border-radius: var(--radius-pill); padding: var(--space-5) var(--space-12); min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
 select.status[data-v="Not started"] { background: var(--badge-pending-bg); color: var(--badge-pending); }

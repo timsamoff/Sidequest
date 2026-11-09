@@ -1069,10 +1069,10 @@ function jobRow(j, opts) {
 /* errands hand: up to three errands kept at the top of the page */
 var HAND = {
   label: "Your hand", edit: "Manage hand", empty: "Empty hand", done: "Done", up: "Up", down: "Down",
-  reroll: "Reroll", pick: "Choose", discard: "Discard", deck: "Errands deck",
+  reroll: "Reroll", roll: "Roll", pick: "Choose", discard: "Discard", deck: "Errands deck",
   none: "Nothing in your hand. Choose up to three errands to keep here.",
   editorTitle: "Manage your hand", editorHint: "Choose up to three errands. Then put them in the order you want.",
-  rerolled: "Hand rerolled.", emptied: "Hand emptied.", needTwo: "Reroll needs at least two open errands."
+  rerolled: "Hand rerolled.", rolled: "Hand rolled.", emptied: "Hand emptied.", needTwo: "Reroll needs at least two open errands.", needOne: "Roll needs at least one open errand."
 };
 var HAND_MAX = 3, FLIP_GAP = 140, REROLL_SFX = "assets/sfx/reroll.mp3";
 function refocus(sels) {
@@ -1138,11 +1138,10 @@ function swapHand(ids, focusKey) {
   });
 }
 function rerollHand() {
-  var open = openJobs();
-  if (open.length < 2) return;
-  var prev = state.hand.slice();
+  var open = openJobs(), prev = state.hand.slice();
+  if (open.length < (prev.length ? 2 : 1)) return;
   swapHand(rerollPick(open, prev), "hand-reroll");
-  notify(HAND.rerolled, function () { swapHand(prev); });
+  notify(prev.length ? HAND.rerolled : HAND.rolled, function () { swapHand(prev); });
 }
 function handSection(root, hand, open) {
   var head = el("div", { "class": "handhead" });
@@ -1152,9 +1151,9 @@ function handSection(root, hand, open) {
   var eb = el("button", { type: "button", "class": "small", "data-focus": "hand-edit" }, HAND.edit);
   on(eb, "click", openHandEditor); btns.appendChild(eb);
   var grp = el("span", { "class": "rerollgroup" });
-  var rr = el("button", { type: "button", "class": "small", "data-focus": "hand-reroll" }, HAND.reroll);
-  if (open.length < 2) { rr.disabled = true; rr.title = HAND.needTwo; } else on(rr, "click", rerollHand);
-  grp.appendChild(rr); grp.appendChild(helpLink("reroll", "Reroll")); btns.appendChild(grp);
+  var rr = el("button", { type: "button", "class": "small", "data-focus": "hand-reroll" }, hand0 ? HAND.reroll : HAND.roll);
+  if (open.length < (hand0 ? 2 : 1)) { rr.disabled = true; rr.title = hand0 ? HAND.needTwo : HAND.needOne; } else on(rr, "click", rerollHand);
+  grp.appendChild(rr); grp.appendChild(helpLink("reroll", "Reroll and Roll")); btns.appendChild(grp);
   head.appendChild(btns); root.appendChild(head);
   if (!hand0) root.appendChild(el("p", { "class": "hint handnone" }, HAND.none));
   else {
@@ -1421,7 +1420,7 @@ export function helpTopics() {
       "{#quest-giver}**Quest giver:** The client or contact for this quest. See “Quest giver and Quest links”.",
       "{#quest-giver-export}**Quest giver export:** A read-only page you can share with a client. See “Quest giver and Quest links”.",
       "{#quest-links}**Quest links:** Connections between quests that belong to the same job. See “Quest giver and Quest links”.",
-      "{#reroll}**Reroll:** Replaces your hand of errands with a new one. Overdue errands are prioritized, and you can undo it. See “Errands page”.",
+      "{#reroll}**Reroll and Roll:** Reroll replaces your hand of errands with a new one. Roll deals a first hand when your hand is empty. Overdue errands are prioritized, and you can undo either. See “Errands page”.",
       "{#scope}**Scope:** The total amount of work in a quest. The orange line shows when that amount changes. See “Timeline page”.",
       "{#slip-schedule}**Slip schedule:** Moves a quest’s incomplete tasks to later dates. You can undo this change. See “A quest’s Schedule and Timeline”.",
       "{#step}**Step:** A smaller action that makes up a task. See “Inside a quest”.",
@@ -1498,7 +1497,7 @@ export function helpTopics() {
       "**Errands deck:** Contains open errands that aren’t in your hand. Errands with due dates appear first, earliest due date first. The rest follow in the order they were added. Overdue errands display an **Overdue** badge.",
       "**Your hand:** Up to three errands you keep at the top of the page. Select **Manage hand** to choose errands, put them in order, or discard them. **Empty hand**, in **Manage hand**, clears your hand, and you can undo that.",
       "**Choose** and **Discard:** **Choose** adds an errand to your hand and **Discard** returns it to the deck. **Discard** never deletes an errand. Your hand holds three errands, so **Choose** turns off when it’s full.",
-      "**Reroll:** Replaces your whole hand, including errands you chose yourself. Overdue errands get priority, followed by other errands not currently in your hand. This helps you work through overdue errands before repeating them. Select **Undo** right away to restore your previous hand. Reroll is disabled when fewer than two open errands remain. With **Sound effects** on, it plays a sound. Turn off the **Animated reroll** in **Options**.",
+      "**Reroll** and **Roll:** Once you have a hand, the button reads **Reroll** and replaces your whole hand, including errands you chose yourself. With an empty hand, it reads **Roll** and deals a first hand. Overdue errands get priority, followed by other errands not currently in your hand. This helps you work through overdue errands before repeating them. Select **Undo** right away to restore your previous hand. **Reroll** is disabled when fewer than two open errands remain, and **Roll** needs only one. With **Sound effects** on, it plays a sound. Turn off the **Animated reroll** in **Options**.",
       "**Complete errand:** Check the box next to an errand to mark it complete. It moves to the **Completed** section.",
       "**Restore errand:** Uncheck a completed errand to move it back to the **Errands deck**.",
       "**Delete forever:** Permanently deletes an errand. Select **Undo** right away to restore it."

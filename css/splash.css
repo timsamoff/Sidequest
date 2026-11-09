@@ -14,12 +14,12 @@ html:has(.splash:not([hidden])) { overflow: hidden; }
 .splash.artBlurred .splashart { filter: blur(5px); }
 /* The quote box is fixed and two lines tall: --q is its width in em (measured in the Georgia fallback), so every active affirmation fits two lines. Title and quote stack in one cell; only the text is masked and blurred. */
 .splashpanel { container-type: inline-size; }
-.splashtextwrap { --q: 11.5; position: relative; z-index: 1; box-sizing: border-box; display: grid; align-items: center; width: calc(var(--q) * 1em + 32px); height: calc(2.8em + 2 * var(--space-12) + 4px); padding: var(--space-12) var(--space-14); text-align: center; color: var(--parch-fill); background: var(--brown); border: 2px solid var(--parch-fill); border-radius: 14px; font-family: var(--font-serif); font-size: min(1.15rem, calc((94cqw - 32px) / var(--q))); font-weight: 600; line-height: 1.4; }
+.splashtextwrap { --q: 11.5; position: relative; z-index: 1; box-sizing: border-box; display: grid; align-items: center; width: calc(var(--q) * 1em + 32px); height: calc(2.8em + 2 * var(--space-12) + 4px); padding: var(--space-12) var(--space-14); text-align: center; color: var(--parch-fill); background: var(--brown); border: 2px solid var(--parch-fill); border-radius: 14px; font-family: var(--font-serif); font-size: min(1.15rem, calc((94cqw - 32px) / var(--q))); font-weight: 400; line-height: 1.4; }
 .splashtitle, .splashaffirm { grid-area: 1 / 1; margin: 0; }
 /* Balances the two lines so a quote never ends on a single word. */
 .splashaffirm { text-wrap: balance; }
 /* Sidequest grows to the same height as the two-line quote box, vertically centered. */
-.splashtitle { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 1.45em; }
+.splashtitle { font-family: var(--font-display); display: flex; align-items: center; justify-content: center; height: 100%; font-size: 1.45em; }
 /* --wipe moves a wide, soft mask edge across the text, left to right, while
    the text blurs. Registered because gradients and calc() inside filter
    can't be transitioned any other way. */

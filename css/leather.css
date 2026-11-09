@@ -64,7 +64,8 @@
 @media (max-width: 899px) {
   .app .topbar { isolation: isolate; padding: var(--space-10) var(--space-16) var(--space-30); background: var(--leather) url("../assets/header-800.jpg") left bottom / 800px auto no-repeat; border-bottom: 0; border-radius: 0 0 64px 64px / 0 0 22px 22px; box-shadow: 0 4px 10px -2px rgba(0, 0, 0, .35); }
   .app .topbar .flapstitch { display: block; }
-  .app .topbar > .tbleft, .app .topbar > .topact { position: relative; z-index: 3; }
+  .app .topbar > .tbleft, .app .topbar > .topact { position: relative; top: 4px; z-index: 3; }
   .app .topbar #viewTitle { position: relative; top: 2px; color: var(--clasp-brass); text-shadow: 0 1px 0 var(--engrave); }
+  .app .topbar #newBtn { --btn: var(--btn-tan); --on-btn: var(--on-btn-tan); }
   .app .topbar .mlogo { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 }

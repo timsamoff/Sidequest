@@ -2,17 +2,18 @@
 
 :root {
   /* Landing-only tokens. Shared colors, including the leather, brass, lining, and parchment values, live in ../css/tokens.css. */
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --text-lg: 1.15rem;
-  --text-xl: clamp(1.45rem, 1.15rem + 1.2vw, 1.95rem);
-  --text-hero: min(clamp(2.8rem, 1.7rem + 4.4vw, 5rem), 13vw);
+  --font-mono:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --text-80: calc(.8rem + 3px); --text-sm: calc(.9rem + 3px); --text-100: calc(1rem + 3px);
+  --text-lg: calc(1.15rem + 3px);
+  --text-xl: calc(clamp(1.45rem, 1.15rem + 1.2vw, 1.95rem) + 2pt);
+  --text-hero: calc(min(clamp(2.8rem, 1.7rem + 4.4vw, 5rem), 13vw) + 2pt);
   --wrap: 70rem;
   --target: 48px;
   --flap-h: 76px;
   --icon-brand: 36px; --icon-md: 20px; --icon-glyph: 19px; --diamond: 9px;
   --rule: 2px;
   --section-pad: 3.25rem; --hero-pad: 3.5rem;
-  --text-h3: 1.25rem; --text-brand: 1.45rem; --text-brand-sm: 1.25rem;
+  --text-h3: calc(1.25rem + 2pt + 4px); --text-brand: calc(1.45rem + 2pt); --text-brand-sm: calc(1.25rem + 2pt);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -21,13 +22,14 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font: 400 var(--text-100)/1.65 var(--font-sans);
+  font: 400 var(--text-100)/1.5 var(--font-sans);
   min-height: 100vh; display: flex; flex-direction: column; overflow-wrap: break-word;
 }
 main { flex: 1 0 auto; }
 [hidden] { display: none !important; }
 img, svg { max-width: 100%; }
-h1, h2, h3 { font-family: var(--font-serif); font-weight: 600; line-height: 1.15; margin: 0; overflow-wrap: anywhere; }
+h1, h2, h3 { font-family: var(--font-serif); font-weight: 400; line-height: 1.15; margin: 0; overflow-wrap: anywhere; }
+h1 { font-family: var(--font-display); }
 p { margin: 0 0 var(--space-14); }
 a { color: var(--planned); text-underline-offset: 3px; }
 a:hover { text-decoration-thickness: 2px; }
@@ -115,7 +117,7 @@ strong { font-weight: 600; }
   padding: calc(22px + var(--clasp-w) + var(--space-14)) 0 var(--space-20); background: var(--lining); color: var(--lining-ink);
 }
 /* The tan panel reaches 300px up behind the flap, past its curved corners. With JavaScript the panel (not the nav box) carries the color, and its bottom edge starts 22px above the nav so it begins fully hidden behind the flap. */
-.topnav::before { content: ""; position: absolute; z-index: -1; left: 0; right: 0; top: -300px; bottom: 0; background: var(--lining); }
+.topnav::before { content: ""; position: absolute; z-index: -1; left: 0; right: 0; top: -300px; bottom: 0; background: var(--lining); border-radius: 0 0 64px 64px / 0 0 22px 22px; box-shadow: inset 0 -4px 6px -3px rgba(0, 0, 0, .3); }
 .js .topnav { background: none; }
 .js .topnav::before { bottom: 22px; transition: bottom .35s ease; }
 .js .topnav.open::before { bottom: 0; }
@@ -150,15 +152,17 @@ html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
 }
 @media (width < 62rem) { main { padding-top: var(--space-24); } }
 @media (width < 36rem) { .brand { font-size: var(--text-brand-sm); } }
+@media (width < 62rem) { .flap .brand, .themebtn { top: -3px; } }
 
 /* Footer band: the same tan as the menu lining. */
 .band {
   background: var(--lining);
   color: var(--lining-ink);
+  box-shadow: inset 0 4px 6px -3px rgba(0, 0, 0, .3);
 }
 .band a { color: var(--lining-ink); }
 .band .wrap { padding-block: var(--space-10); }
-.brand { display: inline-flex; align-items: center; gap: var(--space-10); text-decoration: none; font: 600 var(--text-brand)/1 var(--font-serif); min-height: var(--control-height); min-width: 0; }
+.brand { display: inline-flex; align-items: center; gap: var(--space-10); text-decoration: none; font: 400 var(--text-brand)/1 var(--font-display); min-height: var(--control-height); min-width: 0; }
 .brand svg { width: var(--icon-brand); height: var(--icon-brand); flex: none; }
 .flap .brand svg { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 
@@ -204,7 +208,7 @@ html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
 /* Kicker: small label above a heading, led by the milestone diamond from the icon. */
 .kicker {
   display: flex; align-items: center; gap: var(--space-10);
-  margin: 0 0 var(--space-8); font: 600 var(--text-80)/1.2 var(--font-sans);
+  margin: 0 0 var(--space-8); font: 600 calc(var(--text-80) - 2px)/1.2 var(--font-sans);
   letter-spacing: .12em; text-transform: uppercase; color: var(--badge-active);
 }
 .kicker::before {
@@ -326,8 +330,8 @@ code { font-family: var(--font-mono); font-size: .92em; }
   color: var(--muted);
 }
 .shot.wide .shotframe { aspect-ratio: 21 / 9; }
-.shotlabel { font: 600 var(--text-80)/1.2 var(--font-sans); letter-spacing: .12em; text-transform: uppercase; }
-.shotname { font: 600 1.1rem/1.3 var(--font-serif); color: var(--ink); }
+.shotlabel { font: 600 calc(var(--text-80) - 2px)/1.2 var(--font-sans); letter-spacing: .12em; text-transform: uppercase; }
+.shotname { font: 400 calc(1.1rem + 2pt)/1.3 var(--font-serif); color: var(--ink); }
 .posting .shot { margin-top: var(--space-16); }
 
 /* The launch splash, played inline in the hero: not an overlay, no scroll lock, the same shadow as the cards. */

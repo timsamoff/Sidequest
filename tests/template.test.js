@@ -73,7 +73,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.18.6"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.19.0"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v) && html.includes("css/splash.css?v=" + v) && html.includes("css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2948,8 +2948,8 @@ async function exportClick(k, projectName) {
   const v = () => k.$("view");
   const cards = () => [...k.d.querySelectorAll("#view .handlist > li")].map(li => li.querySelector(".jobtext").textContent);
   ok(v().textContent.includes("Your hand") && v().textContent.includes("Nothing in your hand. Choose up to three errands to keep here.") && v().textContent.includes("Errands deck"), "an empty hand shows its message and the Errands deck label");
-  ok(!!k.btn(v(), "Manage hand") && !!k.btn(v(), "Reroll") && !k.btn(v(), "Choose cards"), "the hand has one Manage hand button and Reroll, with no separate Choose step");
-  ok(!k.btn(v(), "Reroll").querySelector("svg") && !!k.d.querySelector('#view .rerollgroup .helpq[data-term="reroll"]') && !!k.d.querySelector('#view .decklabel .helpq[data-term="errands-deck"]'), "Reroll has no icon, and both help links are in place");
+  ok(!!k.btn(v(), "Manage hand") && !!k.btn(v(), "Roll") && !k.btn(v(), "Reroll") && !k.btn(v(), "Choose cards"), "an empty hand has one Manage hand button and Roll, with no separate Choose step");
+  ok(!k.btn(v(), "Roll").querySelector("svg") && !!k.d.querySelector('#view .rerollgroup .helpq[data-term="reroll"]') && !!k.d.querySelector('#view .decklabel .helpq[data-term="errands-deck"]'), "Reroll has no icon, and both help links are in place");
   // one dialog for choosing and editing
   k.click(k.btn(v(), "Manage hand"));
   const ed = k.$("modalBody");
@@ -2995,6 +2995,14 @@ async function exportClick(k, projectName) {
   ok(JSON.stringify(k.saved().hand) !== before, "Reroll never repeats the current hand");
   k.click(k.d.querySelector("#toast .toastbtn"));
   ok(JSON.stringify(k.saved().hand) === before, "Undo restores the previous hand exactly");
+}
+{
+  const k = kit(await mk()); k.tab("jobs");
+  const v = () => k.$("view");
+  k.click(k.btn(v(), "Roll"));
+  ok(k.saved().hand.length === 3 && k.d.querySelector("#toast").textContent.includes("Hand rolled.") && !!k.btn(v(), "Reroll") && !k.btn(v(), "Roll"), "Roll deals a first hand, says rolled, and the button becomes Reroll");
+  k.click(k.d.querySelector("#toast .toastbtn"));
+  ok(k.saved().hand.length === 0 && !!k.btn(v(), "Roll"), "Undo after a first roll empties the hand and the button reads Roll again");
 }
 {
   const k = kit(await mk());

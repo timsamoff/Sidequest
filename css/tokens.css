@@ -2,8 +2,9 @@
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  --font-serif: "Spectral", Georgia, "Times New Roman", serif;
-  --font-sans: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "IM Fell English SC", Georgia, "Times New Roman", serif;
+  --font-serif: "IM Fell English", Georgia, "Times New Roman", serif;
+  --font-sans: "Alegreya Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   /* Spacing scale: margin/padding/gap only, named by their own pixel value. */
   --space-1: 1px;
   --space-2: 2px;
@@ -32,14 +33,14 @@
   /* Shared height for text/date/number inputs, select, and buttons. */
   --control-height: 40px;
   /* Small-text scale: a label size, a body-small size, and full body size. */
-  --text-80: .8rem;
-  --text-sm: .9rem;
-  --text-100: 1rem;
+  --text-80: calc(.8rem + 3px);
+  --text-sm: calc(.9rem + 3px);
+  --text-100: calc(1rem + 3px);
   --shadow-menu: 0 8px 24px rgba(0, 0, 0, .18);
   --bg: #F5EFDC;
   --surface: #FAF6E6;
   --card: #FCF1D6;
-  --control-bg: #FFFFFF; --control-line: var(--line);
+  --control-bg: #FFFAEA; --control-line: #D8CCAF;
   /* Brand colors for the landing site cards (approximate, from each logo). */
   --brand-trello: #1457B7; --brand-todoist: #E44C3C; --brand-muse: #0A66E6;
   --brass: var(--bar-active);
@@ -60,7 +61,7 @@
   --on-planned: #FFFFFF;
   /* Dark brown, the same in both themes, for objects that stay leather-like (the splash quote box). Buttons use --btn: dark brown in light mode, light brown in dark mode. */
   --brown: #5B3F2A;
-  --btn: var(--brown); --on-btn: #FCF1D6;
+  --btn: var(--brown); --on-btn: #FCF1D6; --btn-tan: #D4B48A; --on-btn-tan: #2A1B0E;
   --actual: #C8631A;
   --scope: #FFAC1C; --scope-ink: #1B252D;
   --burn: #C62F2F; --forecast: #8F1F1F;
@@ -76,7 +77,7 @@
   --chip-ink: #1A2733;
   --badge-attention: #4F3416; --badge-attention-bg: #DDC3A5;
   --badge-priority: #4A2E00; --badge-priority-bg: #F8C15A;
-  --notice-update: #F8C15A; --notice-backup: #D0DBE5; --notice-welcome: #CFE6D5; --tutorial: #E39A2D; --tutorial-hover: #EBAA48; --tutorial-edge: #B87718; --on-tutorial: #1B1B1B; --on-tutorial-btn: #1B1B1B;
+  --notice-update: #F8C15A; --notice-backup: #D0DBE5; --notice-welcome: #CFE6D5; --notice-update-bg: color-mix(in srgb, var(--notice-update) 40%, white); --notice-backup-bg: color-mix(in srgb, var(--notice-backup) 45%, white); --tutorial: #E39A2D; --tutorial-hover: #EBAA48; --tutorial-edge: #B87718; --on-tutorial: #1B1B1B; --on-tutorial-btn: #1B1B1B;
   --badge-active: #6B4A0F; --badge-active-bg: #F6E3C4; --bar-active: #C99A3E;
   --badge-pending: #34475A; --badge-pending-bg: #D0DBE5; --bar-pending: #7E97AD;
   --badge-done: #315C3C; --badge-done-bg: #CFE6D5; --bar-done: #74AD85;
@@ -96,7 +97,7 @@
     --chip-idle: #302A23; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #EDE6DA; --est: #34506B; --sel: #3B3228; --scrim: rgba(0, 0, 0, .6);
     --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
     --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
-    --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C; --tutorial: #E39A2D; --tutorial-hover: #EBAA48;
+    --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C; --notice-update-bg: color-mix(in srgb, var(--notice-update) 60%, var(--bg)); --notice-backup-bg: color-mix(in srgb, var(--notice-backup) 60%, var(--bg)); --tutorial: #E39A2D; --tutorial-hover: #EBAA48;
     --badge-active: #F0D49A; --badge-active-bg: #4A3B22; --bar-active: #A98232;
     --badge-pending: #D5DEE6; --badge-pending-bg: #3A4754; --bar-pending: #6A8BAA;
     --badge-done: #B5DDBF; --badge-done-bg: #21402C; --bar-done: #4E9A68;
@@ -111,7 +112,7 @@
   --chip-idle: #302A23; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #EDE6DA; --est: #34506B; --sel: #3B3228; --scrim: rgba(0, 0, 0, .6);
   --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
   --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
-  --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C; --tutorial: #E39A2D; --tutorial-hover: #EBAA48;
+  --notice-update: #6E4410; --notice-backup: #2A4560; --notice-welcome: #21402C; --notice-update-bg: color-mix(in srgb, var(--notice-update) 60%, var(--bg)); --notice-backup-bg: color-mix(in srgb, var(--notice-backup) 60%, var(--bg)); --tutorial: #E39A2D; --tutorial-hover: #EBAA48;
   --badge-active: #F0D49A; --badge-active-bg: #4A3B22; --bar-active: #A98232;
   --badge-pending: #D5DEE6; --badge-pending-bg: #3A4754; --bar-pending: #6A8BAA;
   --badge-done: #B5DDBF; --badge-done-bg: #21402C; --bar-done: #4E9A68;
