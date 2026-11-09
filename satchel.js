@@ -139,6 +139,14 @@
   }, { passive: false });
 })();
 
+/* Screenshots load lazily and fade in once ready. Without JavaScript they just show. */
+(function () {
+  Array.prototype.forEach.call(document.querySelectorAll(".shotbox img"), function (img) {
+    var show = function () { img.classList.add("loaded"); };
+    if (img.complete && img.naturalWidth) show(); else img.addEventListener("load", show);
+  });
+})();
+
 /* Pinned cards sit a little off true. The offsets are fixed in each card's style attribute; this only tells the CSS whether cards sit side by side or stacked. */
 (function () {
   var grids = document.querySelectorAll(".grid");

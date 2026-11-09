@@ -344,6 +344,19 @@ code { font-family: var(--font-mono); font-size: .92em; }
   color: var(--muted);
 }
 .shot.wide .shotframe { aspect-ratio: 21 / 9; }
+/* A real screenshot: the parchment frame shows until the image loads, then the image fades in. */
+.shotbox {
+  position: relative; width: 100%; aspect-ratio: var(--ar); overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--radius-card);
+  background:
+    repeating-linear-gradient(135deg, transparent 0 14px, color-mix(in srgb, var(--brass) 14%, transparent) 14px 15px),
+    color-mix(in srgb, var(--surface) 70%, var(--chip-work));
+}
+.shotbox img { display: block; width: 100%; height: 100%; }
+.js .shotbox img { opacity: 0; }
+.js .shotbox img.loaded { opacity: 1; transition: opacity .5s ease; }
+.shot.side .shotbox { max-width: 22rem; margin-inline: auto; }
+@media (prefers-reduced-motion: reduce) { .js .shotbox img.loaded { transition: none; } }
 .shotlabel { font: 600 calc(var(--text-80) - 2px)/1.2 var(--font-sans); letter-spacing: .12em; text-transform: uppercase; }
 .shotname { font: 400 calc(1.1rem + 2pt)/1.3 var(--font-serif); color: var(--ink); }
 .posting .shot { margin-top: var(--space-16); }
