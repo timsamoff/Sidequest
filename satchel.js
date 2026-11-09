@@ -139,11 +139,45 @@
   }, { passive: false });
 })();
 
-/* Screenshots load lazily and fade in once ready. Without JavaScript they just show. */
+/* Screenshots load lazily: a thread stitches around each frame as it scrolls into view, then the image
+   fades in. Without JavaScript or with reduced motion, the image just shows. */
 (function () {
-  Array.prototype.forEach.call(document.querySelectorAll(".shotbox img"), function (img) {
-    var show = function () { img.classList.add("loaded"); };
-    if (img.complete && img.naturalWidth) show(); else img.addEventListener("load", show);
+  var NS = "http://www.w3.org/2000/svg", count = 0;
+  var still = !("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var make = function (name, attrs) {
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  };
+  // A dashed thread and a masking stroke that is drawn along the same rounded rectangle.
+  var addThread = function (box) {
+    var r = box.getBoundingClientRect(), w = Math.round(r.width), h = Math.round(r.height), inset = 7, id = "stitchmask" + (++count);
+    var geom = { x: inset, y: inset, width: w - 2 * inset, height: h - 2 * inset, rx: 5 };
+    var svg = make("svg", { "class": "stitch", "aria-hidden": "true", focusable: "false", width: w, height: h, viewBox: "0 0 " + w + " " + h });
+    var mask = make("mask", { id: id, maskUnits: "userSpaceOnUse", x: 0, y: 0, width: w, height: h });
+    mask.appendChild(make("rect", Object.assign({ "class": "sweep", pathLength: 1 }, geom)));
+    var defs = make("defs", {});
+    defs.appendChild(mask);
+    svg.appendChild(defs);
+    svg.appendChild(make("rect", Object.assign({ "class": "thread", mask: "url(#" + id + ")" }, geom)));
+    box.appendChild(svg);
+  };
+  Array.prototype.forEach.call(document.querySelectorAll(".shotbox"), function (box) {
+    var img = box.querySelector("img");
+    var ready = !!(img.complete && img.naturalWidth), drawn = still;
+    var reveal = function () { if (ready && drawn) box.classList.add("shown"); };
+    if (!ready) img.addEventListener("load", function () { ready = true; reveal(); });
+    if (still) { reveal(); return; }
+    var io = new IntersectionObserver(function (entries) {
+      if (!entries[0].isIntersecting) return;
+      io.disconnect();
+      addThread(box);
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(function () { box.classList.add("stitching"); });
+      });
+      window.setTimeout(function () { drawn = true; reveal(); }, 1300);
+    }, { threshold: 0.2 });
+    io.observe(box);
   });
 })();
 
