@@ -700,13 +700,15 @@ li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: va
 }
 @media (max-width: 899px) {
   .app { display: block; }
-  .side { position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: auto; z-index: 20; padding: var(--space-4) var(--space-4) calc(4px + env(safe-area-inset-bottom, 0px)); border-right: 0; border-top: 1px solid var(--line); flex-direction: row; }
+  .side { position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: auto; z-index: 20; padding: var(--space-4) var(--space-4) calc(4px + env(safe-area-inset-bottom, 0px) * .4); border-right: 0; border-top: 1px solid var(--line); flex-direction: row; }
+  /* Some mobile browsers show the page below the bar when their toolbar collapses; the bar's color continues past the bottom edge. */
+  .side::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 200px; background: var(--surface); pointer-events: none; }
   .brandrow, .navbottom, .searchwrap, .pinnedwrap { display: none; }
   .mlogo { display: block; }
   .nav { flex-direction: row; width: 100%; gap: 0; overflow: hidden; }
   .navlabel { display: none; }
   .tab.pinnedtab { display: none; }
-  .tab { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: var(--space-2); padding: var(--space-6) var(--space-2); min-height: 52px; font-size: .875rem; text-align: center; justify-content: flex-start; padding-top: var(--space-8); border-radius: var(--radius-control); }
+  .tab { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: var(--space-2); padding: var(--space-6) var(--space-2); min-height: 52px; font-size: 1rem; text-align: center; justify-content: flex-start; padding-top: var(--space-8); border-radius: var(--radius-control); }
   .tab[aria-current="page"] { box-shadow: inset 0 3px 0 var(--planned); }
   .topbar { padding: var(--space-10) var(--space-16); }
   .content { padding: var(--space-16) var(--space-16) 120px; }
@@ -1464,7 +1466,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.99.1";
+var APP_VERSION = "0.99.2";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -5610,7 +5612,7 @@ function renderSettings(page) {
       // These devices have no Install button, so they get their own steps.
       installBox.appendChild(el("p", { "class": "hint first" }, "On iPhone or iPad: tap Share, then Add to Home Screen."));
     } else {
-      var installNote = el("p", { "class": "hint first" }, "Sidequest is already installed as an app, or your browser does not show an Install button. If it is not installed, look in your browser’s menu for Install or Add to Home Screen.");
+      var installNote = el("p", { "class": "hint first" }, "Sidequest can’t tell whether it is installed on this device, and your browser did not offer an Install button. If it is not installed, look in your browser’s menu for Install, Add to Dock, or Add to Home Screen.");
       installBox.appendChild(installNote);
       installBox.appendChild(uninstallLine());
       detectInstalledApp().then(function (yes) { if (yes) installNote.textContent = "Sidequest is installed. Open it from your apps or desktop."; });
