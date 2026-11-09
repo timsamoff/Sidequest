@@ -139,10 +139,11 @@
   }, { passive: false });
 })();
 
-/* Screenshots load lazily: a thread stitches around each frame as it scrolls into view, then the image
-   fades in. Without JavaScript or with reduced motion, the image just shows. */
+/* Screenshots load lazily and are stitched in (or inked in, with ?shots=ink) as they scroll into view.
+   Without JavaScript or with reduced motion the image just shows. */
 (function () {
   var NS = "http://www.w3.org/2000/svg", count = 0;
+  var ink = /[?&]shots=ink\b/.test(window.location.search);
   var still = !("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var make = function (name, attrs) {
     var e = document.createElementNS(NS, name);
@@ -162,15 +163,79 @@
     svg.appendChild(make("rect", Object.assign({ "class": "thread", mask: "url(#" + id + ")" }, geom)));
     box.appendChild(svg);
   };
+  // Smooth random noise on a grid, three octaves, values 0 to 1.
+  var noiseField = function (w, h) {
+    var out = new Float32Array(w * h), amp = 1, total = 0;
+    for (var o = 0; o < 3; o++) {
+      var cell = 28 / (1 << o), gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2, g = [];
+      for (var i = 0; i < gw * gh; i++) g.push(Math.random());
+      for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+        var fx = x / cell, fy = y / cell, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+        tx = tx * tx * (3 - 2 * tx); ty = ty * ty * (3 - 2 * ty);
+        var a = g[iy * gw + ix], b2 = g[iy * gw + ix + 1], c = g[(iy + 1) * gw + ix], d = g[(iy + 1) * gw + ix + 1];
+        out[y * w + x] += amp * ((a + (b2 - a) * tx) * (1 - ty) + (c + (d - c) * tx) * ty);
+      }
+      total += amp; amp *= 0.5;
+    }
+    for (var n = 0; n < out.length; n++) out[n] /= total;
+    return out;
+  };
+  // Ink spreads from a few drops across the frame with a ragged, darker wet edge, then the real image takes over.
+  var inkIn = function (box, img, done) {
+    var r = box.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var W = Math.round(r.width * dpr), H = Math.round(r.height * dpr), lw = Math.ceil(r.width / 4), lh = Math.ceil(r.height / 4);
+    var cv = document.createElement("canvas");
+    cv.className = "inkcanvas"; cv.width = W; cv.height = H; cv.setAttribute("aria-hidden", "true");
+    box.appendChild(cv);
+    var ctx = cv.getContext("2d");
+    var maskCv = document.createElement("canvas"), edgeCv = document.createElement("canvas"), tintCv = document.createElement("canvas");
+    maskCv.width = edgeCv.width = lw; maskCv.height = edgeCv.height = lh; tintCv.width = lw; tintCv.height = lh;
+    var mctx = maskCv.getContext("2d"), ectx = edgeCv.getContext("2d"), tctx = tintCv.getContext("2d");
+    var mimg = mctx.createImageData(lw, lh), eimg = ectx.createImageData(lw, lh), noise = noiseField(lw, lh);
+    var seeds = [], diag = Math.sqrt(lw * lw + lh * lh);
+    for (var i = 0; i < 3; i++) seeds.push({ x: lw * (0.2 + 0.6 * Math.random()), y: lh * (0.2 + 0.6 * Math.random()), delay: 0.18 * i * Math.random() });
+    var inkColor = window.getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "black";
+    var start = null, DURATION = 2300;
+    var frame = function (now) {
+      if (start === null) start = now;
+      var t = Math.min((now - start) / DURATION, 1), e = 1 - Math.pow(1 - t, 1.7), thr = -0.12 + e * 1.1;
+      var md = mimg.data, ed = eimg.data;
+      for (var y = 0; y < lh; y++) for (var x = 0; x < lw; x++) {
+        var k = y * lw + x, dmin = 9;
+        for (var s = 0; s < 3; s++) {
+          var dx = x - seeds[s].x, dy = y - seeds[s].y, dd = Math.sqrt(dx * dx + dy * dy) / diag + seeds[s].delay;
+          if (dd < dmin) dmin = dd;
+        }
+        var f = dmin * 1.15 + (noise[k] - 0.5) * 0.7, a = Math.max(0, Math.min(1, (thr - f) / 0.07));
+        var band = Math.max(0, 1 - Math.abs(thr - f - 0.015) / 0.045) * (1 - t * 0.6);
+        md[k * 4 + 3] = a * 255;
+        ed[k * 4 + 3] = band * a * 215;
+      }
+      mctx.putImageData(mimg, 0, 0); ectx.putImageData(eimg, 0, 0);
+      tctx.globalCompositeOperation = "source-over"; tctx.clearRect(0, 0, lw, lh);
+      tctx.fillStyle = inkColor; tctx.fillRect(0, 0, lw, lh);
+      tctx.globalCompositeOperation = "destination-in"; tctx.drawImage(edgeCv, 0, 0);
+      ctx.globalCompositeOperation = "source-over"; ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(img, 0, 0, W, H);
+      ctx.globalCompositeOperation = "destination-in"; ctx.drawImage(maskCv, 0, 0, W, H);
+      ctx.globalCompositeOperation = "source-atop"; ctx.drawImage(tintCv, 0, 0, W, H);
+      if (t < 1) window.requestAnimationFrame(frame);
+      else { box.classList.add("inked", "shown"); window.requestAnimationFrame(function () { cv.remove(); done(); }); }
+    };
+    window.requestAnimationFrame(frame);
+  };
   Array.prototype.forEach.call(document.querySelectorAll(".shotbox"), function (box) {
     var img = box.querySelector("img");
-    var ready = !!(img.complete && img.naturalWidth), drawn = still;
+    var ready = !!(img.complete && img.naturalWidth), drawn = still, started = false;
     var reveal = function () { if (ready && drawn) box.classList.add("shown"); };
-    if (!ready) img.addEventListener("load", function () { ready = true; reveal(); });
+    var go = function () { if (ink && started && ready && !still && !box.inkRan) { box.inkRan = true; inkIn(box, img, function () {}); } };
+    if (!ready) img.addEventListener("load", function () { ready = true; if (ink) go(); else reveal(); });
     if (still) { reveal(); return; }
     var io = new IntersectionObserver(function (entries) {
       if (!entries[0].isIntersecting) return;
       io.disconnect();
+      started = true;
+      if (ink) { go(); return; }
       addThread(box);
       window.requestAnimationFrame(function () {
         window.requestAnimationFrame(function () { box.classList.add("stitching"); });

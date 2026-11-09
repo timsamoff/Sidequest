@@ -361,6 +361,8 @@ code { font-family: var(--font-mono); font-size: .92em; }
 .stitch .thread { fill: none; stroke: var(--brass); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 7 6; }
 .stitch .sweep { fill: none; stroke: var(--parch-white); stroke-width: 8; stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 1.2s ease-in-out; }
 .shotbox.stitching .stitch .sweep { stroke-dashoffset: 0; }
+.inkcanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.js .shotbox.inked img { transition: none; }
 .shot.side .shotbox { max-width: 22rem; margin-inline: auto; }
 @media (prefers-reduced-motion: reduce) { .js .shotbox.shown img { transition: none; } .stitch { display: none; } }
 .shotlabel { font: 600 calc(var(--text-80) - 2px)/1.2 var(--font-sans); letter-spacing: .12em; text-transform: uppercase; }
