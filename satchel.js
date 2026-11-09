@@ -207,9 +207,9 @@
           if (dd < dmin) dmin = dd;
         }
         var f = dmin * 1.15 + (noise[k] - 0.5) * 0.7, a = Math.max(0, Math.min(1, (thr - f) / 0.07));
-        var band = Math.max(0, 1 - Math.abs(thr - f - 0.065) / 0.035) * (1 - t * 0.4);
+        var band = Math.max(0, 1 - Math.abs(thr - f - 0.058) / 0.042) * (1 - t * 0.45);
         md[k * 4 + 3] = a * 255;
-        ed[k * 4 + 3] = Math.min(1, band * 1.5) * a * 235;
+        ed[k * 4 + 3] = Math.min(1, band * 1.5) * a * 215;
       }
       mctx.putImageData(mimg, 0, 0); ectx.putImageData(eimg, 0, 0);
       tctx.globalCompositeOperation = "source-over"; tctx.clearRect(0, 0, lw, lh);
