@@ -263,6 +263,7 @@ main .wrap { container-type: inline-size; }
 .posting ul, .perks { margin: 0; padding-left: var(--space-18); }
 .posting li, .perks li { margin-bottom: var(--space-8); }
 .posting li:last-child { margin-bottom: 0; }
+.posting ul + p { margin-top: var(--space-12); }
 .posting p:last-child { margin-bottom: 0; }
 .stack-gap { margin-top: var(--space-22); }
 
