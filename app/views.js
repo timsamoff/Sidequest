@@ -1735,6 +1735,18 @@ function detectInstalledApp() {
     return navigator.getInstalledRelatedApps().then(function (apps) { return apps.some(function (a) { return a.platform === "webapp"; }); }, function () { return false; });
   } catch (e) { return Promise.resolve(false); }
 }
+// Browser checks for install tips only; install status itself never depends on them.
+function userAgentText() { return typeof navigator !== "undefined" && navigator.userAgent ? navigator.userAgent : ""; }
+// iPadOS reports a Mac user agent, so a Mac with a touch screen counts as an iPad.
+function isIosDevice() {
+  var ua = userAgentText();
+  return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+}
+function isSafariOnMac() {
+  var ua = userAgentText();
+  return !isIosDevice() && /Macintosh/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg|OPR|Firefox|CriOS|FxiOS/.test(ua);
+}
+function isFirefoxOnDesktop() { var ua = userAgentText(); return /Firefox\//.test(ua) && !/Android|Mobile|Tablet/.test(ua); }
 // Set by app.js after checkForAppUpdate() resolves; null unless a newer
 // version's stamp was found in meta/version (Claude artifact build only).
 var availableUpdateVersion = null;
@@ -1889,18 +1901,42 @@ export function renderSettings(page) {
       installBox.appendChild(el("p", { "class": "hint first" }, "Sidequest is installed. Open it from your apps or desktop."));
       installBox.appendChild(uninstallLine());
     } else if (deferredInstallPrompt) {
-      installBox.appendChild(el("p", { "class": "hint first" }, "Install Sidequest as an app on your computer or mobile device. PWA installation is not supported by all browsers or devices."));
+      installBox.appendChild(el("p", { "class": "hint first", style: "margin-bottom:12px" }, "Install Sidequest as an app on your computer or mobile device. PWA installation is not supported by all browsers or devices."));
       installBox.appendChild(on(el("button", { type: "button", id: "installBtn" }, "Install Sidequest"), "click", triggerInstall));
-    } else if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+    } else if (isIosDevice()) {
       // These devices have no Install button, so they get their own steps.
-      installBox.appendChild(el("p", { "class": "hint first" }, "On iPhone or iPad: tap Share, then Add to Home Screen."));
+      var iosNote = el("p", { "class": "hint first" });
+      iosNote.appendChild(document.createTextNode("On iPhone or iPad, tap "));
+      iosNote.appendChild(el("strong", null, "Share"));
+      iosNote.appendChild(document.createTextNode(", then "));
+      iosNote.appendChild(el("strong", null, "Add to Home Screen"));
+      iosNote.appendChild(document.createTextNode("."));
+      installBox.appendChild(iosNote);
     } else {
       var installNote = el("p", { "class": "hint first" }, "Sidequest can’t verify whether it’s installed in this browser. If it isn’t installed, check your browser’s menu for an option such as Install, Add to Dock, or Add to Home Screen. Available options vary by browser.");
       installBox.appendChild(installNote);
+      var browserTips = [];
+      if (isSafariOnMac()) {
+        var safariTip = el("p", { "class": "hint" });
+        safariTip.appendChild(document.createTextNode("In Safari, choose "));
+        safariTip.appendChild(el("strong", null, "File"));
+        safariTip.appendChild(document.createTextNode(" > "));
+        safariTip.appendChild(el("strong", null, "Add to Dock"));
+        safariTip.appendChild(document.createTextNode("."));
+        browserTips.push(safariTip);
+      } else if (isFirefoxOnDesktop()) {
+        var ffTip = el("p", { "class": "hint" });
+        ffTip.appendChild(document.createTextNode("Firefox does not install web apps by itself. The "));
+        ffTip.appendChild(el("a", { href: "https://pwasforfirefox.filips.si/", target: "_blank", rel: "noopener" }, "Progressive Web Apps for Firefox"));
+        ffTip.appendChild(document.createTextNode(" extension adds that. It also needs a small companion program, and the extension walks you through installing it."));
+        browserTips.push(ffTip);
+      }
+      browserTips.forEach(function (tip) { installBox.appendChild(tip); });
       // Uninstall steps only appear once an install is confirmed, so unknown status never implies one.
       detectInstalledApp().then(function (yes) {
         if (!yes) return;
         installNote.textContent = "Sidequest is installed. Open it from your apps or desktop.";
+        browserTips.forEach(function (tip) { tip.remove(); });
         installBox.appendChild(uninstallLine());
       });
     }

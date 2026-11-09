@@ -73,7 +73,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.99.2"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.99.3"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("../css/tokens.css?v=" + v) && html.includes("../css/styles.css?v=" + v) && html.includes("../css/splash.css?v=" + v) && html.includes("../css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -2188,12 +2188,32 @@ async function exportClick(k, projectName) {
     ok(JSON.parse(fs.readFileSync(path.join(__dirname, "..", "app", "manifest.json"), "utf8")).related_applications.some(a => a.platform === "webapp" && a.url === "manifest.json"), "the manifest lists the web app so detection can work");
   }
   // iPhone and iPad have no Install button, so they alone get their own steps
+  // Browser-specific install tips: Safari on a Mac, Firefox on a computer, and an iPad that reports a Mac user agent
+  {
+    const tipsFor = async (ua, touch) => {
+      const keep = Object.getOwnPropertyDescriptor(global, "navigator");
+      Object.defineProperty(global, "navigator", { value: { userAgent: ua, maxTouchPoints: touch }, configurable: true, writable: true });
+      const kk = kit(await mk(null, null, null, null, notStandaloneMM)); kk.tab("settings");
+      const out = { text: kk.$("view").textContent, link: kk.$("view").querySelector('a[href*="pwasforfirefox"]') };
+      if (keep) Object.defineProperty(global, "navigator", keep); else delete global.navigator;
+      return out;
+    };
+    const macUa = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15";
+    const safari = await tipsFor(macUa, 0);
+    const ipad = await tipsFor(macUa, 5);
+    const fx = await tipsFor("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0", 0);
+    const chrome = await tipsFor("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36", 0);
+    ok(safari.text.includes("In Safari, choose File > Add to Dock.") && !safari.link, "Safari on a Mac is told to use File > Add to Dock");
+    ok(!ipad.text.includes("File > Add to Dock") && ipad.text.includes("On iPhone or iPad, tap Share, then Add to Home Screen."), "an iPad with a Mac user agent gets the Share steps, not the Mac ones");
+    ok(!!fx.link && fx.text.includes("Progressive Web Apps for Firefox") && !fx.text.includes("File > Add to Dock"), "Firefox on a computer is pointed to the Progressive Web Apps for Firefox extension");
+    ok(!chrome.link && !chrome.text.includes("File > Add to Dock") && chrome.text.includes("Available options vary by browser"), "other browsers get only the neutral copy");
+  }
   const realNav = Object.getOwnPropertyDescriptor(global, "navigator");
   Object.defineProperty(global, "navigator", { value: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)" }, configurable: true, writable: true });
   const kIos = kit(await mk()); kIos.tab("settings");
   const iosText = kIos.$("view").textContent;
   if (realNav) Object.defineProperty(global, "navigator", realNav); else delete global.navigator;
-  ok(iosText.includes("On iPhone or iPad: tap Share, then Add to Home Screen.") && !iosText.includes("Available options vary by browser"), "an iPhone or iPad sees the Share, then Add to Home Screen steps instead of the generic line");
+  ok(iosText.includes("On iPhone or iPad, tap Share, then Add to Home Screen.") && !iosText.includes("Available options vary by browser"), "an iPhone or iPad sees the Share, then Add to Home Screen steps instead of the generic line");
 }
 
 {
