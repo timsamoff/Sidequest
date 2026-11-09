@@ -109,9 +109,8 @@ strong { font-weight: 600; }
 .clasp.peek .claspart { animation: lift .8s linear; }
 @keyframes lift { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .claspart { transition: none; } .clasp.peek .claspart { animation: none; } }
-/* The knob brightens by changing its fill, not with a filter, because Safari draws a halo around a filtered SVG group. */
-.knob circle:first-child { transition: fill .2s ease; }
-@media (hover: hover) { .clasp:hover .knob circle:first-child { fill: color-mix(in srgb, var(--clasp-brass) 70%, white); } }
+.knob { transition: filter .2s ease; }
+@media (hover: hover) { .clasp:hover .knob { filter: brightness(1.2); } }
 .strap {
   position: absolute; inset: 0; background-color: var(--strap);
   background-image: url("assets/strap.jpg"); background-image: image-set(url("assets/strap.webp") type("image/webp"), url("assets/strap.jpg") type("image/jpeg"));
@@ -360,3 +359,7 @@ html:not(.js) .splash.inline .splashtitle, html:not(.js) .splash.inline .splasha
 /* Pinned cards sit a little off true (offsets are set by satchel.js). */
 .grid[data-rows="side"] > .posting { transform: translateY(calc(var(--ry, 0) * 10px)); }
 .grid[data-rows="stacked"] > .posting { transform: translate(calc(var(--rx, 0) * 5px), calc(var(--ry, 0) * 10px)); }
+
+/* Hero splash: the shadow sits on a wrapper around the SVG because Safari clips a CSS filter on an inline SVG to its box. */
+.splash.inline .splashsvg { filter: none; }
+.splash.inline .splashshadow { position: absolute; inset: 0; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .3)); }
