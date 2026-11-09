@@ -47,12 +47,11 @@
       nav.classList.toggle("open", open);
       menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
     };
-    menuBtn.addEventListener("click", function () { setMenu(!nav.classList.contains("open")); opened(); });
-    /* Peek: on every page the strap makes the same small lift as a press, every 5 seconds, until the menu is opened on that page. It starts after the Welcome splash finishes (or 15 seconds in, if the splash never plays), and 1.5 seconds after load on pages with no splash. */
-    var seen = false;
-    var opened = function () { seen = true; };
+    menuBtn.addEventListener("click", function () { setMenu(!nav.classList.contains("open")); });
+    /* Peek: the strap makes the same small lift as a press every 5 seconds while the menu is closed. It starts after the Welcome splash (or 15 seconds in), and 1.5 seconds after load on pages with no splash. */
     var peek = function () {
-      if (seen || nav.classList.contains("open") || menuBtn.matches(":hover, :focus-visible")) return;
+      if (nav.classList.contains("open") || menuBtn.matches(":focus-visible")) return;
+      if (window.matchMedia("(hover: hover)").matches && menuBtn.matches(":hover")) return;
       menuBtn.classList.add("peek");
     };
     menuBtn.addEventListener("animationend", function () { menuBtn.classList.remove("peek"); });
