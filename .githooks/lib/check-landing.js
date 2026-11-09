@@ -92,9 +92,9 @@ function checkPrompts(artifactPage, readme) {
     const codeRe = new RegExp("<code id=\"" + id + "\"[^>]*>([^]*?)</code>");
     const m = (artifactPage || "").match(codeRe);
     const fence = readmeFence(readme || "", heading);
-    if (!m) { violations.push(fail("app.html", `The #${id} block is missing.`)); return; }
+    if (!m) { violations.push(fail("use-as-app.html", `The #${id} block is missing.`)); return; }
     if (fence === null) { violations.push(fail("README.md", `No fenced prompt under "${heading}".`)); return; }
-    if (squash(decode(m[1])) !== squash(fence)) violations.push(fail("app.html", `#${id} no longer matches the prompt under "${heading}" in README.md.`));
+    if (squash(decode(m[1])) !== squash(fence)) violations.push(fail("use-as-app.html", `#${id} no longer matches the prompt under "${heading}" in README.md.`));
   });
   return violations;
 }
@@ -130,7 +130,7 @@ function landingViolations(read, files) {
   return [].concat(
     checkSharedBlocks(pages),
     checkThemeColor(pages, read("css/tokens.css")),
-    checkPrompts(pages["app.html"], readme),
+    checkPrompts(pages["use-as-app.html"], readme),
     checkReadmeText(pages, readme)
   );
 }
