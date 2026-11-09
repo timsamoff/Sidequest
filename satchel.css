@@ -357,6 +357,7 @@ html:not(.js) .splash.inline .splashtitle, html:not(.js) .splash.inline .splasha
 .grid[data-rows="side"] > .posting { transform: translateY(calc(var(--ry, 0) * 10px)); }
 .grid[data-rows="stacked"] > .posting { transform: translate(calc(var(--rx, 0) * 5px), calc(var(--ry, 0) * 10px)); }
 
-/* Hero splash: a box-shadow on a rounded wrapper stands in for the SVG's drop-shadow, which Safari clips. The radius matches the icon's corners. */
+/* Hero splash: a blurred rounded box behind the SVG stands in for its drop-shadow, which Safari clips, and still shows through the torn notches. */
 .splash.inline .splashsvg { filter: none; }
-.splash.inline .splashshadow { position: absolute; inset: 0; border-radius: 21.7%; box-shadow: 0 8px 28px rgba(0, 0, 0, .3); }
+.splash.inline .splashshadow::before { content: ""; position: absolute; inset: 0; border-radius: 21.7%; background: rgba(0, 0, 0, .3); transform: translateY(8px); filter: blur(14px); }
+.splash.inline .splashshadow { position: absolute; inset: 0; }
