@@ -94,10 +94,9 @@ strong { font-weight: 600; }
   border-radius: calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .48) calc(var(--clasp-w) * .48);
 }
 .js .clasp { display: block; }
-.claspart {
-  position: absolute; inset: 0; transition: transform .2s linear; box-shadow: 0 3px 6px rgba(0, 0, 0, .35);
-  border-radius: calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .48) calc(var(--clasp-w) * .48);
-}
+/* The shadow sits on the button itself because Safari clips a button's contents to its box. */
+.clasp { box-shadow: 0 3px 6px rgba(0, 0, 0, .35); }
+.claspart { position: absolute; inset: 0; transition: transform .2s linear; }
 /* Hovering lifts the strap 3px, and pressing keeps it lifted until the menu closes. The peek hint is the same lift, then back. */
 .clasp[aria-expanded="true"] .claspart { transform: translateY(-3px); }
 @media (hover: hover) { .clasp:hover .claspart { transform: translateY(-3px); } }
