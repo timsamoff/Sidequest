@@ -100,9 +100,6 @@ strong { font-weight: 600; }
   position: absolute; inset: var(--clasp-pad-t) var(--clasp-pad-x) var(--clasp-pad-b); transition: transform .2s linear; box-shadow: 0 3px 6px rgba(0, 0, 0, .35);
   border-radius: calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .48) calc(var(--clasp-w) * .48);
 }
-/* Keyboard focus lifts the strap like a hover, so there is no outline ring. */
-.flap .clasp:focus-visible { outline: none; box-shadow: none; }
-.clasp:focus-visible .claspart { transform: translateY(-3px); }
 /* Hovering lifts the strap 3px, and pressing keeps it lifted until the menu closes. The peek hint is the same lift, then back. */
 .clasp[aria-expanded="true"] .claspart { transform: translateY(-3px); }
 @media (hover: hover) { .clasp:hover .claspart { transform: translateY(-3px); } }
@@ -360,6 +357,6 @@ html:not(.js) .splash.inline .splashtitle, html:not(.js) .splash.inline .splasha
 .grid[data-rows="side"] > .posting { transform: translateY(calc(var(--ry, 0) * 10px)); }
 .grid[data-rows="stacked"] > .posting { transform: translate(calc(var(--rx, 0) * 5px), calc(var(--ry, 0) * 10px)); }
 
-/* Hero splash: the shadow sits on a wrapper around the SVG because Safari clips a CSS filter on an inline SVG to its box. */
+/* Hero splash: a box-shadow on a rounded wrapper stands in for the SVG's drop-shadow, which Safari clips. The radius matches the icon's corners. */
 .splash.inline .splashsvg { filter: none; }
-.splash.inline .splashshadow { position: absolute; inset: 0; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .3)); }
+.splash.inline .splashshadow { position: absolute; inset: 0; border-radius: 21.7%; box-shadow: 0 8px 28px rgba(0, 0, 0, .3); }
