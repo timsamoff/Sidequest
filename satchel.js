@@ -194,7 +194,9 @@
     var mimg = mctx.createImageData(lw, lh), eimg = ectx.createImageData(lw, lh), noise = noiseField(lw, lh);
     var seeds = [], diag = Math.sqrt(lw * lw + lh * lh);
     for (var i = 0; i < 3; i++) seeds.push({ x: lw * (0.2 + 0.6 * Math.random()), y: lh * (0.2 + 0.6 * Math.random()), delay: 0.18 * i * Math.random() });
-    var inkColor = window.getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "black";
+    // The ink is a darker shade of the hero icon's border color, --parch-edge.
+    var edge = /^#([0-9a-f]{6})$/i.exec(window.getComputedStyle(document.documentElement).getPropertyValue("--parch-edge").trim());
+    var inkColor = edge ? "rgb(" + [0, 2, 4].map(function (i) { return Math.round(parseInt(edge[1].substr(i, 2), 16) * 0.45); }).join(",") + ")" : "black";
     var start = null, DURATION = 2300;
     var frame = function (now) {
       if (start === null) start = now;
