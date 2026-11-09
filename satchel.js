@@ -139,30 +139,10 @@
   }, { passive: false });
 })();
 
-/* Screenshots load lazily and are stitched in (or inked in, with ?shots=ink) as they scroll into view.
+/* Screenshots load lazily and are inked in as they scroll into view.
    Without JavaScript or with reduced motion the image just shows. */
 (function () {
-  var NS = "http://www.w3.org/2000/svg", count = 0;
-  var ink = /[?&]shots=ink\b/.test(window.location.search);
   var still = !("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var make = function (name, attrs) {
-    var e = document.createElementNS(NS, name);
-    for (var k in attrs) e.setAttribute(k, attrs[k]);
-    return e;
-  };
-  // A dashed thread and a masking stroke that is drawn along the same rounded rectangle.
-  var addThread = function (box) {
-    var r = box.getBoundingClientRect(), w = Math.round(r.width), h = Math.round(r.height), inset = 7, id = "stitchmask" + (++count);
-    var geom = { x: inset, y: inset, width: w - 2 * inset, height: h - 2 * inset, rx: 5 };
-    var svg = make("svg", { "class": "stitch", "aria-hidden": "true", focusable: "false", width: w, height: h, viewBox: "0 0 " + w + " " + h });
-    var mask = make("mask", { id: id, maskUnits: "userSpaceOnUse", x: 0, y: 0, width: w, height: h });
-    mask.appendChild(make("rect", Object.assign({ "class": "sweep", pathLength: 1 }, geom)));
-    var defs = make("defs", {});
-    defs.appendChild(mask);
-    svg.appendChild(defs);
-    svg.appendChild(make("rect", Object.assign({ "class": "thread", mask: "url(#" + id + ")" }, geom)));
-    box.appendChild(svg);
-  };
   // Smooth random noise on a grid, three octaves, values 0 to 1.
   var noiseField = function (w, h) {
     var out = new Float32Array(w * h), amp = 1, total = 0;
@@ -181,7 +161,7 @@
     return out;
   };
   // Ink spreads from a few drops across the frame with a ragged, darker wet edge, then the real image takes over.
-  var inkIn = function (box, img, done) {
+  var inkIn = function (box, img) {
     var r = box.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
     var W = Math.round(r.width * dpr), H = Math.round(r.height * dpr), lw = Math.ceil(r.width / 4), lh = Math.ceil(r.height / 4);
     var cv = document.createElement("canvas");
@@ -222,27 +202,24 @@
       ctx.globalCompositeOperation = "destination-in"; ctx.drawImage(maskCv, 0, 0, W, H);
       ctx.globalCompositeOperation = "source-atop"; ctx.drawImage(tintCv, 0, 0, W, H);
       if (t < 1) window.requestAnimationFrame(frame);
-      else { box.classList.add("inked", "shown"); window.requestAnimationFrame(function () { cv.remove(); done(); }); }
+      else { box.classList.add("inked", "shown"); window.requestAnimationFrame(function () { cv.remove(); }); }
     };
     window.requestAnimationFrame(frame);
   };
   Array.prototype.forEach.call(document.querySelectorAll(".shotbox"), function (box) {
     var img = box.querySelector("img");
-    var ready = !!(img.complete && img.naturalWidth), drawn = still, started = false;
-    var reveal = function () { if (ready && drawn) box.classList.add("shown"); };
-    var go = function () { if (ink && started && ready && !still && !box.inkRan) { box.inkRan = true; inkIn(box, img, function () {}); } };
-    if (!ready) img.addEventListener("load", function () { ready = true; if (ink) go(); else reveal(); });
-    if (still) { reveal(); return; }
+    var ready = !!(img.complete && img.naturalWidth), seen = false, ran = false;
+    var go = function () {
+      if (still) { if (ready) box.classList.add("shown"); return; }
+      if (seen && ready && !ran) { ran = true; inkIn(box, img); }
+    };
+    if (!ready) img.addEventListener("load", function () { ready = true; go(); });
+    if (still) { go(); return; }
     var io = new IntersectionObserver(function (entries) {
       if (!entries[0].isIntersecting) return;
       io.disconnect();
-      started = true;
-      if (ink) { go(); return; }
-      addThread(box);
-      window.requestAnimationFrame(function () {
-        window.requestAnimationFrame(function () { box.classList.add("stitching"); });
-      });
-      window.setTimeout(function () { drawn = true; reveal(); }, 1300);
+      seen = true;
+      go();
     }, { threshold: 0.2 });
     io.observe(box);
   });
