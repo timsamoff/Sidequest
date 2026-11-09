@@ -99,12 +99,13 @@ strong { font-weight: 600; }
   border-radius: calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .48) calc(var(--clasp-w) * .48);
 }
 /* Hovering lifts the strap 3px, and pressing keeps it lifted until the menu closes. The peek hint is the same lift, then back. */
-.clasp:hover .claspart, .clasp[aria-expanded="true"] .claspart { transform: translateY(-3px); }
+.clasp[aria-expanded="true"] .claspart { transform: translateY(-3px); }
+@media (hover: hover) { .clasp:hover .claspart { transform: translateY(-3px); } }
 .clasp.peek .claspart { animation: lift .8s linear; }
 @keyframes lift { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .claspart { transition: none; } .clasp.peek .claspart { animation: none; } }
 .knob { transition: filter .2s ease; }
-.clasp:hover .knob { filter: brightness(1.2); }
+@media (hover: hover) { .clasp:hover .knob { filter: brightness(1.2); } }
 .strap {
   position: absolute; inset: 0; background-color: var(--strap);
   background-image: url("assets/strap.jpg"); background-image: image-set(url("assets/strap.webp") type("image/webp"), url("assets/strap.jpg") type("image/jpeg"));
