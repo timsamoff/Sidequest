@@ -1,7 +1,7 @@
-/* Landing site styles. Colors, spacing, radii, and type sizes come from ../css/tokens.css; only new values are defined here. */
+/* Landing site styles. Colors, spacing, radii, and type sizes come from css/tokens.css; only new values are defined here. */
 
 :root {
-  /* Landing-only tokens. Shared colors, including the leather, brass, lining, and parchment values, live in ../css/tokens.css. */
+  /* Landing-only tokens. Shared colors, including the leather, brass, lining, and parchment values, live in css/tokens.css. */
   --font-mono:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --text-80: calc(.8rem + 3px); --text-sm: calc(.9rem + 3px); --text-100: calc(1rem + 3px);
   --text-lg: calc(1.15rem + 3px);
@@ -79,7 +79,7 @@ strong { font-weight: 600; }
   width: 44px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
   color: var(--stamp); border: 1px solid rgba(30, 16, 6, .55); border-radius: 9px; cursor: pointer;
   background-color: var(--leather);
-  background-image: url("../assets/header-800.jpg"); background-image: image-set(url("../assets/header-800.webp") type("image/webp"), url("../assets/header-800.jpg") type("image/jpeg"));
+  background-image: url("assets/header-800.jpg"); background-image: image-set(url("assets/header-800.webp") type("image/webp"), url("assets/header-800.jpg") type("image/jpeg"));
   background-size: 190px auto; background-position: -36px -14px;
 }
 .themebtn::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--thread); mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44' %3E%3Crect x='4' y='4' width='36' height='36' rx='6' pathLength='100' fill='none' stroke='black' stroke-width='1.4' stroke-dasharray='2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62'/%3E%3C/svg%3E") center / 100% 100% no-repeat; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44' %3E%3Crect x='4' y='4' width='36' height='36' rx='6' pathLength='100' fill='none' stroke='black' stroke-width='1.4' stroke-dasharray='2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
@@ -104,7 +104,7 @@ strong { font-weight: 600; }
 .clasp:hover .knob { filter: brightness(1.2); }
 .strap {
   position: absolute; inset: 0; background-color: var(--strap);
-  background-image: url("../assets/strap.jpg"); background-image: image-set(url("../assets/strap.webp") type("image/webp"), url("../assets/strap.jpg") type("image/jpeg"));
+  background-image: url("assets/strap.jpg"); background-image: image-set(url("assets/strap.webp") type("image/webp"), url("assets/strap.jpg") type("image/jpeg"));
   background-size: calc(var(--clasp-w) * 4) calc(var(--clasp-w) * 4); background-repeat: repeat;
   clip-path: inset(0 round calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .48) calc(var(--clasp-w) * .48));
 }

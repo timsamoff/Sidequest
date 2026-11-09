@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { register } = require("module");
 const { pathToFileURL } = require("url");
-const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+const html = fs.readFileSync(path.join(__dirname, "..", "app", "index.html"), "utf8");
 
 // Each test window is its own jsdom instance, and the app's module graph is loaded through Node's native ESM loader (tests/isolate-loader.mjs) with that window's document and localStorage set as temporary globals. A query string on the entry import alone would not isolate state.js, which is why the loader exists.
 register(pathToFileURL(path.join(__dirname, "isolate-loader.mjs")));
@@ -73,9 +73,9 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.19.3"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.20.0"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
-  ok(html.includes("css/tokens.css?v=" + v) && html.includes("css/styles.css?v=" + v) && html.includes("css/splash.css?v=" + v) && html.includes("css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
+  ok(html.includes("../css/tokens.css?v=" + v) && html.includes("../css/styles.css?v=" + v) && html.includes("../css/splash.css?v=" + v) && html.includes("../css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
   ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
 }
@@ -85,7 +85,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const fsx = require("fs"), pathx = require("path");
   const root = pathx.join(__dirname, "..");
   for (const f of ["assets/sidequest-icon.svg", "assets/favicon-32.png", "assets/apple-touch-icon.png"]) ok(fsx.existsSync(pathx.join(root, f)), f + " exists");
-  ok(html.includes('rel="icon" type="image/svg+xml" href="assets/sidequest-icon.svg"') && html.includes('rel="apple-touch-icon" href="assets/apple-touch-icon.png"') && html.includes('sizes="32x32" href="assets/favicon-32.png"'), "page links the favicon and home screen icons");
+  ok(html.includes('rel="icon" type="image/svg+xml" href="../assets/sidequest-icon.svg"') && html.includes('rel="apple-touch-icon" href="../assets/apple-touch-icon.png"') && html.includes('sizes="32x32" href="../assets/favicon-32.png"'), "page links the favicon and home screen icons");
   ok(/<title>HQ \| Sidequest<\/title>/.test(html), "page title is HQ | Sidequest");
   const png = b => b.slice(0, 8).toString("hex") === "89504e470d0a1a0a";
   ok(png(fsx.readFileSync(pathx.join(root, "assets/apple-touch-icon.png"))) && /#c62f2f/i.test(fsx.readFileSync(pathx.join(root, "assets/sidequest-icon.svg"), "utf8")), "icons are valid: a real PNG, and the SVG uses the logo red");
@@ -350,7 +350,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     k.w.Audio = function (src) { played = src; const o = { play: function () { return Promise.resolve(); } }; ended = o; return o; };
     k.tab("settings"); k.click(k.$("startFresh"));
     const a = k.$("freshAck"); a.checked = true; k.fire(a); k.click(k.$("freshGo"));
-    ok(audio ? played === "assets/sfx/startFresh.mp3" : played === null, "Erase everything " + (audio ? "plays the Start fresh sound" : "is silent") + " when Sound effects is " + (audio ? "on" : "off"));
+    ok(audio ? played === "../assets/sfx/startFresh.mp3" : played === null, "Erase everything " + (audio ? "plays the Start fresh sound" : "is silent") + " when Sound effects is " + (audio ? "on" : "off"));
   }
 }
 
@@ -2057,7 +2057,7 @@ async function exportClick(k, projectName) {
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sound Quest"));
   k.click(k.btn(k.$("view"), "Mark complete"));
   k.w.Audio = RealAudio;
-  ok(played === "assets/sfx/complete.mp3", "Mark complete plays the completion sound when Audio is on (" + played + ")");
+  ok(played === "../assets/sfx/complete.mp3", "Mark complete plays the completion sound when Audio is on (" + played + ")");
 }
 {
   const saved = {
@@ -2086,7 +2086,7 @@ async function exportClick(k, projectName) {
   k.tab("projects");
   k.click(k.btn(k.$("view"), "Promote"));
   k.w.Audio = RealAudio;
-  ok(played === "assets/sfx/quest.mp3", "promoting a candidate plays the quest sound when Audio is on (" + played + ")");
+  ok(played === "../assets/sfx/quest.mp3", "promoting a candidate plays the quest sound when Audio is on (" + played + ")");
   ok(k.saved().quests.find((q) => q.id === "pCand").status === "active", "and the quest is actually promoted");
 }
 {
@@ -2111,7 +2111,7 @@ async function exportClick(k, projectName) {
   k.tab("projects"); k.click(k.btn(k.$("view"), "Reopen Quest"));
   k.click(k.btn(k.$("view"), "Reopen"));
   k.w.Audio = RealAudio;
-  ok(played === "assets/sfx/quest.mp3", "reopening a Complete quest plays the quest sound when Audio is on (" + played + ")");
+  ok(played === "../assets/sfx/quest.mp3", "reopening a Complete quest plays the quest sound when Audio is on (" + played + ")");
   ok(k.saved().quests.find((q) => q.id === "pReo").status === "active", "and the quest is actually reopened");
 }
 {
@@ -2183,7 +2183,7 @@ async function exportClick(k, projectName) {
     if (realNav0) Object.defineProperty(global, "navigator", realNav0); else delete global.navigator;
     ok(yes.includes("Sidequest is installed. Open it from your apps or desktop.") && !yes.includes("does not show an Install button"), "a browser that reports an installed copy says Sidequest is installed");
     ok(none.includes("does not show an Install button") && boom.includes("does not show an Install button"), "an empty answer or an error keeps the generic install message");
-    ok(JSON.parse(fs.readFileSync(path.join(__dirname, "..", "manifest.json"), "utf8")).related_applications.some(a => a.platform === "webapp" && a.url === "manifest.json"), "the manifest lists the web app so detection can work");
+    ok(JSON.parse(fs.readFileSync(path.join(__dirname, "..", "app", "manifest.json"), "utf8")).related_applications.some(a => a.platform === "webapp" && a.url === "manifest.json"), "the manifest lists the web app so detection can work");
   }
   // iPhone and iPad have no Install button, so they alone get their own steps
   const realNav = Object.getOwnPropertyDescriptor(global, "navigator");
@@ -2209,7 +2209,7 @@ async function exportClick(k, projectName) {
     ok(played === null, "choosing the file alone plays no sound (the confirm button does)");
     k.click(k.btn(k.$("modalBody"), "Restore backup"));
     k.w.Audio = RealAudio;
-    ok(audio ? played === "assets/sfx/restoreBackup.mp3" : played === null, "confirming a restore " + (audio ? "plays the restore sound" : "is silent") + " when Sound effects is " + (audio ? "on" : "off") + " (" + played + ")");
+    ok(audio ? played === "../assets/sfx/restoreBackup.mp3" : played === null, "confirming a restore " + (audio ? "plays the restore sound" : "is silent") + " when Sound effects is " + (audio ? "on" : "off") + " (" + played + ")");
   }
 }
 {
@@ -2224,7 +2224,7 @@ async function exportClick(k, projectName) {
     k.click(k.$("refreshBtn"));
     k.w.Audio = RealAudio;
     if (audio) ok(vol === 0.25, "the refresh sound plays at quarter volume (" + vol + ")");
-    ok(audio ? played === "assets/sfx/refresh.mp3" : played === null, "Refresh " + (audio ? "plays the refresh sound" : "is silent") + " when Sound effects is " + (audio ? "on" : "off") + " (" + played + ")");
+    ok(audio ? played === "../assets/sfx/refresh.mp3" : played === null, "Refresh " + (audio ? "plays the refresh sound" : "is silent") + " when Sound effects is " + (audio ? "on" : "off") + " (" + played + ")");
   }
 }
 

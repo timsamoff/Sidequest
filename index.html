@@ -1,12 +1,26 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-JM2CZ1DLQ4"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-JM2CZ1DLQ4');
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>HQ | Sidequest</title>
-<meta name="description" content="A free project planner that runs in your browser. Add quests, tasks, and steps, and see what to work on next. No account needed.">
-<meta property="og:title" content="HQ | Sidequest">
-<meta property="og:description" content="A lightweight project planner for juggling several projects.">
+<title>Sidequest | A lightweight project planner for juggling several projects</title>
+<meta name="description" content="Sidequest is a free, lightweight project planner for juggling several projects. Organize quests and tasks, decide what to work on next, and keep everything in one place.">
+<link rel="canonical" href="https://samoff.com/sidequest/">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://samoff.com/"},{"@type":"ListItem","position":2,"name":"Sidequest","item":"https://samoff.com/sidequest/"}]}
+</script>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#4F3416" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#4D3428" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="Sidequest | A lightweight project planner for juggling several projects">
+<meta property="og:description" content="Sidequest is a free, lightweight project planner for juggling several projects. Organize quests and tasks, decide what to work on next, and keep everything in one place.">
 <meta property="og:image" content="https://samoff.com/sidequest/assets/sidequest-icon-512.png">
 <meta property="og:url" content="https://samoff.com/sidequest/">
 <meta property="og:type" content="website">
@@ -16,22 +30,21 @@
 <meta property="og:image:height" content="512">
 <meta property="og:image:alt" content="The Sidequest icon, a branching path with a milestone node.">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="HQ | Sidequest">
-<meta name="twitter:description" content="A lightweight project planner for juggling several projects.">
+<meta name="twitter:title" content="Sidequest | A lightweight project planner for juggling several projects">
+<meta name="twitter:description" content="Sidequest is a free, lightweight project planner for juggling several projects. Organize quests and tasks, decide what to work on next, and keep everything in one place.">
 <meta name="twitter:image" content="https://samoff.com/sidequest/assets/sidequest-icon-512.png">
-<link rel="canonical" href="https://samoff.com/sidequest/">
 <link rel="icon" type="image/svg+xml" href="assets/sidequest-icon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2F5D8A">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English&family=Alegreya+Sans:wght@400;500;700&display=swap">
-<link rel="stylesheet" href="css/tokens.css?v=0.19.3">
-<link rel="stylesheet" href="css/leather.css?v=0.19.3">
-<link rel="stylesheet" href="css/styles.css?v=0.19.3">
-<link rel="stylesheet" href="css/splash.css?v=0.19.3">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/leather.css">
+<link rel="stylesheet" href="css/splash.css">
+<link rel="stylesheet" href="satchel.css">
+<script>document.documentElement.className+=" js";try{var t=localStorage.getItem("sidequest-landing-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to the content</a>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="sqLogo" viewBox="0 0 512 512">
     <defs>
@@ -56,84 +69,121 @@
     </g>
   </symbol>
 </svg>
-<div class="app">
-  <aside class="side">
-    <div class="brandrow leatherpanel"><span class="flapstitch" aria-hidden="true"><i class="stl"></i><i class="stm"></i><i class="str"></i></span><svg class="logo" aria-hidden="true" focusable="false"><use href="#sqLogo"></use></svg><span class="brand" id="brand">Sidequest</span></div>
-    <div class="searchwrap"><label for="searchBox" class="sr-only">Search</label><input type="search" id="searchBox" placeholder="Search  ( / )" autocomplete="off"></div>
-    <nav class="nav" aria-label="Views" id="nav"></nav>
-    <nav class="nav navbottom" id="navBottom" aria-label="Vault and settings"></nav>
-  </aside>
-  <div class="column">
-    <header class="topbar">
-      <span class="flapstitch" aria-hidden="true"><i class="stl"></i><i class="stm"></i><i class="str"></i></span>
-      <div class="tbleft">
-        <svg class="logo mlogo" id="mlogo" aria-hidden="true" focusable="false"><use href="#sqLogo"></use></svg>
-        <h1 id="viewTitle">Today</h1>
-        <button id="renameBtn" type="button" class="pencil" hidden aria-label="Rename this quest" title="Rename this quest"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
-      </div>
-      <div class="topact">
-        <button id="searchBtn" type="button" class="iconbtn only-mobile" aria-label="Search" title="Search"></button>
-        <button id="refreshBtn" type="button" class="iconbtn" hidden aria-label="Refresh to pull data from the web" title="Refresh to pull data from the web"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 3v6h-6"></path></svg></button>
-        <div class="menuwrap">
-          <button class="iconbtn primary" id="newBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="newMenu" aria-label="Add item" title="Add item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg></button>
-          <div class="menu" id="newMenu" role="menu" hidden>
-            <button type="button" role="menuitem" data-act="newQuest" title="Add a new candidate quest">New candidate quest</button>
-            <button type="button" role="menuitem" data-act="newTask" title="Add a new task">New task</button>
-            <button type="button" role="menuitem" data-act="newStep" title="Add a new step">New step</button>
-            <button type="button" role="menuitem" data-act="newDecision" title="Add a new decision">New decision</button>
-            <hr>
-            <button type="button" role="menuitem" data-act="newJob" title="Add an errand to Errands">New errand</button>
-            <button type="button" role="menuitem" data-act="newIdea" title="Add a new idea to the Workshop">New idea</button>
+<header class="flap">
+  <div class="flapframe">
+    <div class="flapleather">
+      <picture>
+        <source type="image/webp" sizes="(min-width: 62rem) max(100vw, 1600px), (min-width: 36rem) max(100vw, 1280px), max(100vw, 800px)" srcset="assets/header-800.webp 800w, assets/header-1280.webp 1280w, assets/header-1920.webp 1920w, assets/header-2560.webp 2560w">
+        <img src="assets/header-1280.jpg" sizes="(min-width: 62rem) max(100vw, 1600px), (min-width: 36rem) max(100vw, 1280px), max(100vw, 800px)" srcset="assets/header-800.jpg 800w, assets/header-1280.jpg 1280w, assets/header-1920.jpg 1920w, assets/header-2560.jpg 2560w" alt="" aria-hidden="true" width="2560" height="400" fetchpriority="high">
+      </picture>
+    </div>
+    <span class="flapstitch" aria-hidden="true"><i class="stl"></i><i class="stm"></i><i class="str"></i></span>
+    <a class="brand" href="index.html"><svg aria-hidden="true" focusable="false"><use href="#sqLogo"/></svg><span>Sidequest</span></a>
+    <button class="clasp" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="mainNav"><span class="claspart"><span class="strap"></span>
+        <svg viewBox="0 0 44 90" aria-hidden="true" focusable="false">
+          <path d="M7 4H37A3 3 0 0 1 40 7V69A17 17 0 0 1 23 86H21A17 17 0 0 1 4 69V7A3 3 0 0 1 7 4Z" pathLength="100" fill="none" stroke="var(--thread)" stroke-width="1.4" stroke-dasharray="2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62 2.7 1.6 2.36 1.44 2.87 1.52 2.53 1.77 2.36 1.44 2.79 1.62"/>
+          <g transform="translate(0 18)"><rect x="10" y="-1" width="24" height="8" rx="2" fill="var(--clasp-brass)" stroke="var(--clasp-brass-edge)" stroke-width="1"/>
+          <g class="knob"><circle cx="22" cy="46" r="13" fill="var(--clasp-brass)" stroke="var(--clasp-brass-edge)" stroke-width="1"/>
+          <circle cx="22" cy="46" r="10" fill="none" stroke="var(--clasp-brass-ring)" stroke-width="1"/>
+          <path d="M16 42.5H28M16 46H28M16 49.5H28" stroke="var(--engrave)" stroke-width="1.8" stroke-linecap="round"/></g></g>
+        </svg></span></button>
+    <nav class="topnav" id="mainNav" aria-label="Main">
+      <ul>
+        <li><a href="index.html" aria-current="page">Welcome</a></li>
+        <li><a href="why.html">Why Sidequest</a></li>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="get-started.html">Get started</a></li>
+        <li><a href="import.html">Import</a></li>
+        <li><a href="app.html">Use as app</a></li>
+      </ul>
+    </nav>
+    <button class="themebtn" id="themeToggle" type="button" hidden></button>
+  </div>
+</header>
+<main id="main" tabindex="-1">
+<section class="hero" aria-labelledby="top-title">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="kicker">Welcome, adventurer!</p>
+      <h1 id="top-title">Sidequest</h1>
+      <p class="lede" data-parity="tagline">A lightweight project planner for juggling several projects.</p>
+      <p>Keep track of projects, organize tasks, and decide what to work on next, without spending more time managing work than actually doing it.</p>
+      <div class="cta-row">
+  <a class="btn door" href="app/">Open Sidequest</a>
+  <a class="btn ghost" href="features.html">See what it does</a>
+</div>
+    </div>
+    <figure class="heroquote" data-parity="quote">
+      <div class="splash inline" id="splash" aria-hidden="true">
+        <div class="splashpanel">
+          <svg class="splashsvg" id="splashSvg" viewBox="0 0 512 512" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+            <defs><clipPath id="splashMaskClip"><path d="M510,375.47h-17.92l12.24,12.23-1.29,8.05,6.97.2v3.49c0,61.62-49.75,111.56-111.12,111.56H113.12c-61.38,0-111.12-49.94-111.12-111.56V112.56C2,50.94,51.75,1,113.12,1h285.75c61.38,0,111.12,49.94,111.12,111.56v262.91Z"/></clipPath></defs>
+            <path d="M511,157.87l-34.74,1.7,34.74,2.09v39.89l-5.92,3.66,5.92,2.88v168.36h-16.55s10.93,10.91,10.93,10.91l-1.19,7.42,6.8.21v4.43c0,59.09-45.94,107.44-104.05,111.29l-1.91-12.6-.88,12.86c-1.97.11-2.72,0-4.72,0h-13.11l-5.63-31.05-4.94,31.05H112.56c-20.57,0-39.84-5.57-56.39-15.29l-3.42-5.65-8.06-2.08c-1.8-1.36-3.57-2.81-5.28-4.29l5.07-6.53-8.63,3.31c-.86-.82-1.7-1.64-2.54-2.49l3.28-5.9-7.88.96c-2.19-2.48-4.27-5.07-6.23-7.75l.38-6.44-6.46-2.82c-9.79-16.58-15.41-35.93-15.41-56.58v-31.9l27.77-2.42-27.77-2.93v-202.76l7.57-2.83-7.57-4.02v-40c0-29.26,11.28-55.9,29.7-75.8l13.35,13.47-9.28-17.65C54.87,13.07,82.31,1.02,112.56,1.02h98.27l2.46,22.06,1.78-12.97,1.4,4.13,2.1-13.22h124.8l1.28,5.98,4.32-1.33,2.54,11.06,4.01-12.78,5.23,5.28,4.5-3.82h7.63l2.54,5.98,4.27-10.36h19.74c61.62,0,111.56,49.94,111.56,111.55v45.3Z" fill="var(--logo-est)" stroke="var(--parch-edge)" stroke-width="2" stroke-miterlimit="10"/>
+            <g opacity=".65" clip-path="url(#splashMaskClip)">
+              <g class="splashart" id="splashArt">
+                <g id="splashLines" fill="none" stroke="var(--logo-planned)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"></g>
+                <g id="splashNodes"></g>
+              </g>
+            </g>
+          </svg>
+          <div class="splashtextwrap">
+            <p class="splashtitle" id="splashTitle">Sidequest</p>
+            <p class="splashaffirm" id="splashText">Even the smallest step carrieth thee onward.</p>
           </div>
         </div>
-        <div class="menuwrap">
-          <button class="iconbtn" id="moreBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="moreMenu" aria-label="Main menu" title="Main menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"></path></svg></button>
-          <div class="menu" id="moreMenu" role="menu" hidden></div>
-        </div>
       </div>
-    </header>
-    <main class="content" id="view"></main>
+      <blockquote class="sr"><p id="questQuote">Even the smallest step carrieth thee onward.</p></blockquote>
+    </figure>
   </div>
-</div>
-
-<div class="overlay" id="overlay" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="mhead"><h2 id="modalTitle"></h2><button type="button" class="small" id="modalClose">Close</button></div>
-    <div id="modalBody"></div>
+</section>
+<section class="section" aria-label="Sidequest in use">
+  <div class="wrap">
+    <figure class="shot wide"><div class="shotframe" role="img" aria-label="Screenshot placeholder: Today page"><span class="shotlabel">Screenshot</span><span class="shotname">Today page</span></div></figure>
   </div>
-</div>
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-<div class="splash backdropBlurred" id="splash" aria-hidden="true">
-  <div class="splashbackdrop"></div>
-  <div class="splashpanel">
-    <svg class="splashsvg" id="splashSvg" viewBox="0 0 512 512" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
-                <defs><clipPath id="splashMaskClip"><path d="M510,375.47h-17.92l12.24,12.23-1.29,8.05,6.97.2v3.49c0,61.62-49.75,111.56-111.12,111.56H113.12c-61.38,0-111.12-49.94-111.12-111.56V112.56C2,50.94,51.75,1,113.12,1h285.75c61.38,0,111.12,49.94,111.12,111.56v262.91Z"/></clipPath></defs>
-                <path d="M511,157.87l-34.74,1.7,34.74,2.09v39.89l-5.92,3.66,5.92,2.88v168.36h-16.55s10.93,10.91,10.93,10.91l-1.19,7.42,6.8.21v4.43c0,59.09-45.94,107.44-104.05,111.29l-1.91-12.6-.88,12.86c-1.97.11-2.72,0-4.72,0h-13.11l-5.63-31.05-4.94,31.05H112.56c-20.57,0-39.84-5.57-56.39-15.29l-3.42-5.65-8.06-2.08c-1.8-1.36-3.57-2.81-5.28-4.29l5.07-6.53-8.63,3.31c-.86-.82-1.7-1.64-2.54-2.49l3.28-5.9-7.88.96c-2.19-2.48-4.27-5.07-6.23-7.75l.38-6.44-6.46-2.82c-9.79-16.58-15.41-35.93-15.41-56.58v-31.9l27.77-2.42-27.77-2.93v-202.76l7.57-2.83-7.57-4.02v-40c0-29.26,11.28-55.9,29.7-75.8l13.35,13.47-9.28-17.65C54.87,13.07,82.31,1.02,112.56,1.02h98.27l2.46,22.06,1.78-12.97,1.4,4.13,2.1-13.22h124.8l1.28,5.98,4.32-1.33,2.54,11.06,4.01-12.78,5.23,5.28,4.5-3.82h7.63l2.54,5.98,4.27-10.36h19.74c61.62,0,111.56,49.94,111.56,111.55v45.3Z" fill="var(--logo-est)" stroke="var(--parch-edge)" stroke-width="2" stroke-miterlimit="10"/>
-                <g opacity=".65" clip-path="url(#splashMaskClip)">
-                  <g class="splashart" id="splashArt">
-                    <g id="splashLines" fill="none" stroke="var(--logo-planned)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"></g>
-                    <g id="splashNodes"></g>
-                  </g>
-                </g>
-              </svg>
-    <div class="splashtextwrap">
-      <p class="splashtitle" id="splashTitle">Sidequest</p>
-      <p class="splashaffirm" id="splashText"></p>
+</section>
+<section class="section" id="explore" aria-labelledby="explore-h">
+  <div class="wrap">
+    <header><h2 id="explore-h">Find your way around</h2></header>
+    <div class="grid two">
+      <article class="posting" style="--rx:0.9;--ry:1.0;--bend:37px;--bbox:44px">
+        <h3>Why Sidequest</h3>
+        <p>The story behind Sidequest, and the thinking behind how it works.</p>
+        <a class="postlink" href="why.html">Read the story</a>
+      </article>
+      <article class="posting" style="--rx:0.1;--ry:-0.37;--bend:38px;--bbox:46px">
+        <h3>Features</h3>
+        <p>Quests, tasks, steps, and the tools that help you decide what to work on.</p>
+        <a class="postlink" href="features.html">See the features<span class="sr"> page</span></a>
+      </article>
+      <article class="posting" style="--rx:-0.6;--ry:-0.1;--bend:54px;--bbox:65px">
+        <h3>Getting started</h3>
+        <p>Browser, installed app, Claude, or Muse. Pick whichever suits you.</p>
+        <a class="postlink" href="get-started.html">Get started<span class="sr"> page</span></a>
+      </article>
+      <article class="posting" style="--rx:0.2;--ry:0.33;--bend:48px;--bbox:58px">
+        <h3>Importing existing projects</h3>
+        <p>Bring your projects over from Trello or Todoist.</p>
+        <a class="postlink" href="import.html">How importing works</a>
+      </article>
+      <article class="posting" style="--rx:-0.9;--ry:-0.14;--bend:69px;--bbox:83px">
+        <h3>Use as app</h3>
+        <p>Create your own personal copy in Claude or Muse. No coding or technical setup required. Your data saves to your account and syncs across your devices.</p>
+        <a class="postlink" href="app.html">Get the prompts</a>
+      </article>
     </div>
   </div>
-</div>
-<script>
-  // Runs before first paint -- the only way to hide the splash if it's turned off.
-  try {
-    var raw = window.localStorage.getItem("sidequest-template-v1");
-    var saved = raw ? JSON.parse(raw) : null;
-    if (saved && saved.settings && saved.settings.showSplash === false) {
-      document.getElementById("splash").hidden = true;
-    }
-  } catch (e) { /* storage unavailable/unreadable: default to showing the splash */ }
-</script>
-
-<script type="module" src="app/app.js"></script>
+</section>
+</main>
+<footer class="band footband">
+  <div class="wrap footrow">
+    <p class="legal" data-parity="license">© <a href="https://samoff.com">Tim Samoff</a>. Licensed under <a href="https://github.com/timsamoff/sidequest/blob/main/LICENSE">GPLv3</a>.</p>
+    <div class="footlinks">
+      <a class="supportlink" href="https://www.paypal.com/paypalme/timsamoff" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="2" x2="6" y2="4"></line><line x1="10" y1="2" x2="10" y2="4"></line><line x1="14" y1="2" x2="14" y2="4"></line></svg><span>Support Sidequest<span class="sr"> (opens in a new tab)</span></span></a>
+      <a href="https://github.com/timsamoff/sidequest">Source on GitHub</a>
+    </div>
+  </div>
+</footer>
+<script src="satchel.js"></script>
+<script type="module" src="welcome-splash.js"></script>
 </body>
 </html>

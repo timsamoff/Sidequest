@@ -9,8 +9,8 @@
   "theme_color": "#2F5D8A",
   "related_applications": [{ "platform": "webapp", "url": "manifest.json" }],
   "icons": [
-    { "src": "assets/favicon-32.png", "sizes": "32x32", "type": "image/png" },
-    { "src": "assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "assets/sidequest-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "../assets/favicon-32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "../assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "../assets/sidequest-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }

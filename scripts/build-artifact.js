@@ -86,7 +86,7 @@ function buildSfxDataUris() {
 }
 
 function build() {
-  var htmlPath = path.join(ROOT, "index.html");
+  var htmlPath = path.join(APP_DIR, "index.html");
   var html = fs.readFileSync(htmlPath, "utf8");
 
   var tokens = fs.readFileSync(path.join(ROOT, "css", "tokens.css"), "utf8");
@@ -113,7 +113,7 @@ function build() {
   bundledScript = bundledScript.replace(/<\/script/gi, "<\\/script");
 
   Object.keys(SFX_FILES).forEach(function (relPath) {
-    var literal = '"' + relPath + '"';
+    var literal = '"../' + relPath + '"';
     if (bundledScript.indexOf(literal) === -1) throw new Error("build-artifact: expected to find " + literal + " in the bundled script to inline as a sound effect, but it wasn't there -- check the reference hasn't changed.");
     bundledScript = bundledScript.split(literal).join(SFX_FILES[relPath]);
   });
@@ -121,7 +121,7 @@ function build() {
   // Verify every app/*.js file was actually included -- a file added to app/
   // later but not added to MODULE_ORDER above must fail the build loudly,
   // not silently ship an incomplete bundle.
-  var actualFiles = fs.readdirSync(APP_DIR).filter(function (f) { return f.endsWith(".js"); });
+  var actualFiles = fs.readdirSync(APP_DIR).filter(function (f) { return f.endsWith(".js") && f !== "sw.js"; });
   var missing = actualFiles.filter(function (f) { return MODULE_ORDER.indexOf(f) === -1; });
   if (missing.length) {
     throw new Error("build-artifact: app/ contains file(s) not listed in MODULE_ORDER: " + missing.join(", ") + ". Add them to the build script before building.");
@@ -131,15 +131,15 @@ function build() {
 
   var out = html
     .replace(
-      /<link rel="icon" type="image\/svg\+xml" href="assets\/sidequest-icon\.svg">\s*\n<link rel="icon" type="image\/png" sizes="32x32" href="assets\/favicon-32\.png">\s*\n<link rel="apple-touch-icon" href="assets\/apple-touch-icon\.png">\s*\n<link rel="manifest" href="manifest\.json">/,
+      /<link rel="icon" type="image\/svg\+xml" href="\.\.\/assets\/sidequest-icon\.svg">\s*\n<link rel="icon" type="image\/png" sizes="32x32" href="\.\.\/assets\/favicon-32\.png">\s*\n<link rel="apple-touch-icon" href="\.\.\/assets\/apple-touch-icon\.png">\s*\n<link rel="manifest" href="manifest\.json">/,
       function () { return '<link rel="icon" type="image/svg+xml" href="' + faviconDataUri + '">'; }
     )
     .replace(
-      /<link rel="stylesheet" href="css\/tokens\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="css\/leather\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="css\/styles\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="css\/splash\.css(?:\?v=[0-9.]+)?">/,
+      /<link rel="stylesheet" href="\.\.\/css\/tokens\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="\.\.\/css\/leather\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="\.\.\/css\/styles\.css(?:\?v=[0-9.]+)?">\s*\n<link rel="stylesheet" href="\.\.\/css\/splash\.css(?:\?v=[0-9.]+)?">/,
       function () { return "<style>\n" + tokens + "\n" + leatherCss + "\n" + styles + "\n" + splashCss + "\n</style>"; }
     )
     .replace(
-      /<script type="module" src="app\/app\.js"><\/script>/,
+      /<script type="module" src="app\.js"><\/script>/,
       function () { return "<script>\n" + bundledScript + "</script>"; }
     );
 
@@ -156,12 +156,12 @@ function build() {
   // Only flag a RELATIVE assets/ reference (href="assets/..." / src="assets/...")
   // -- the og:image meta tag's absolute https://samoff.com/sidequest/assets/...
   // URL is fine as-is and must not trip this check.
-  if (/(href|src)="assets\//.test(out)) throw new Error("build-artifact: a relative assets/ reference survived into the bundle -- these don't resolve on a published artifact with no adjacent asset folder.");
-  if (/"assets\/sfx\//.test(out)) throw new Error("build-artifact: a relative assets/sfx/ string literal survived into the bundle -- the sound-effect inlining above didn't replace it.");
+  if (/(href|src)="(?:\.\.\/)?assets\//.test(out)) throw new Error("build-artifact: a relative assets/ reference survived into the bundle -- these don't resolve on a published artifact with no adjacent asset folder.");
+  if (/"(?:\.\.\/)?assets\/sfx\//.test(out)) throw new Error("build-artifact: a relative assets/sfx/ string literal survived into the bundle -- the sound-effect inlining above didn't replace it.");
   if (/rel="manifest"/.test(out)) throw new Error("build-artifact: a manifest <link> survived into the bundle -- a published artifact has no manifest.json alongside it.");
   if (bundledScript.search(/<\/script/i) !== -1) throw new Error("build-artifact: an unescaped </script> sequence survived in the bundled script -- it would close the tag early and truncate the rest of the file.");
   if (out.indexOf(faviconDataUri) === -1) throw new Error("build-artifact: favicon <link> tags not found/replaced -- check index.html's <head> hasn't changed shape.");
-  if (/href="css\//.test(out)) throw new Error("build-artifact: a css <link> survived into the bundle -- the stylesheets must be inlined.");
+  if (/href="\.\.\/css\//.test(out)) throw new Error("build-artifact: a css <link> survived into the bundle -- the stylesheets must be inlined.");
   if (out.indexOf("<style>") === -1) throw new Error("build-artifact: css <link> tags not found/replaced -- check index.html's <head> hasn't changed shape.");
   if (out.indexOf(bundledScript) === -1) throw new Error("build-artifact: script tag not found/replaced -- check index.html's closing <body> hasn't changed shape.");
 

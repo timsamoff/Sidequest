@@ -349,7 +349,7 @@ export function playSplash(showSplash, done, audio, pickIndex, opts) {
   });
   timers.push(setTimeout(function () { root.classList.add("artBlurred"); }, artBlurAt));
   // Disabled: browsers block Audio.play() here outside a real click/tap/keydown handler.
-  // if (audio) timers.push(setTimeout(function () { playSfx("assets/sfx/quest.mp3"); }, Math.max(0, textAt + TIMING.soundOffset)));
+  // if (audio) timers.push(setTimeout(function () { playSfx("../assets/sfx/quest.mp3"); }, Math.max(0, textAt + TIMING.soundOffset)));
   timers.push(setTimeout(function () { root.classList.add("textIn"); }, textAt));
   if (hold) timers.push(setTimeout(function () { if (done) done(); }, fadeOutAt));
   else timers.push(setTimeout(function () {

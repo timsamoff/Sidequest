@@ -1,5 +1,5 @@
 // Plays the app's launch splash inline in the hero and leaves the quote showing (app/splash.js, css/splash.css).
-import { AFFIRMATIONS, playSplash } from "../app/splash.js";
+import { AFFIRMATIONS, playSplash } from "./app/splash.js";
 
 var quoteEl = document.getElementById("questQuote");
 var panel = document.getElementById("splash");

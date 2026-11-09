@@ -8,19 +8,19 @@ const landing = require("./check-landing");
 
 // Every module under app/, read from disk, so a new module cannot fall out of the check lists.
 function appModules() {
-  return fs.readdirSync(common.repoPath("app")).filter((f) => f.endsWith(".js")).sort().map((f) => "app/" + f);
+  return fs.readdirSync(common.repoPath("app")).filter((f) => f.endsWith(".js") && f !== "sw.js").sort().map((f) => "app/" + f);
 }
 
-// Every landing-site file under satchel/ with one of the given extensions, read from disk so a new page or script is covered automatically.
+// Every landing-site file at the repo root with one of the given extensions, read from disk so a new page is covered automatically.
+const LANDING_ASSETS = ["satchel.css", "satchel.js", "welcome-splash.js"];
 function satchelFiles(exts) {
-  const dir = common.repoPath("satchel");
-  if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir).filter((f) => exts.some((e) => f.endsWith(e))).sort().map((f) => "satchel/" + f);
+  const dir = common.repoPath(".");
+  return fs.readdirSync(dir).filter((f) => exts.some((e) => f.endsWith(e)) && (f.endsWith(".html") || LANDING_ASSETS.includes(f))).sort();
 }
 
 // Gate 1: CLAUDE.md touched. CLAUDE.md is gitignored, so this compares its mtime with the HEAD commit time instead of using git diff; patterns run against every file in SOURCE_FILES.
 
-const SOURCE_FILES = ["index.html"].concat(appModules());
+const SOURCE_FILES = ["app/index.html"].concat(appModules());
 
 const TRIGGER_PATTERNS = [
   { name: "CORE array (new view/page)", re: /^\+.*\bCORE\s*=/m },
@@ -381,7 +381,7 @@ function checkHardcodedHex() {
 
 // Comment-verbosity check: flags changelog-style tells in comments (bare dates, "confirmed <date>", "an earlier version", DESIGN.md/CLAUDE.md pointers). Length is checked separately in check-comment-length.js.
 
-const COMMENT_SCAN_FILES = ["css/tokens.css", "css/styles.css", "css/splash.css", "css/leather.css", "index.html"].concat(appModules(), satchelFiles([".css", ".js", ".html"]));
+const COMMENT_SCAN_FILES = ["css/tokens.css", "css/styles.css", "css/splash.css", "css/leather.css", "app/index.html"].concat(appModules(), satchelFiles([".css", ".js", ".html"]));
 
 const COMMENT_VERBOSITY_PATTERNS = [
   { name: "dated confirmation", re: /\bconfirmed\s+20\d\d-\d\d-\d\d\b/i },
@@ -515,8 +515,8 @@ function extractPathData(svgMarkup) {
 function checkDuplicatedIconMarkup() {
   const violations = [];
   // ICON_SEARCH/ICON_CANCEL live in app/app.js; their path data is read from the staged file, or from disk if it is not part of the commit.
-  if (!common.isStaged("index.html")) return violations;
-  const diff = common.stagedDiff("index.html") || "";
+  if (!common.isStaged("app/index.html")) return violations;
+  const diff = common.stagedDiff("app/index.html") || "";
   const iconSource = common.isStaged("app/app.js") ? common.stagedContent("app/app.js") : common.diskRead("app/app.js");
   const icons = extractIconConstants(iconSource || "");
   const knownPathData = new Set();
@@ -532,7 +532,7 @@ function checkDuplicatedIconMarkup() {
         violations.push(
           common.violation(
             "duplicated-icon-markup",
-            "index.html",
+            "app/index.html",
             null,
             `A newly-added static <svg> block's path data exactly matches an existing ICON_* JS constant's path data ` +
             `("${d.slice(0, 40)}..."). This is the same shape as the search-icon duplication bug fixed on 2026-09-21 ` +
@@ -565,14 +565,14 @@ function extractReadmeOpeningParagraph(readmeText) {
 
 function checkSocialMetaDrift() {
   const violations = [];
-  const touchesIndex = common.isStaged("index.html");
+  const touchesIndex = common.isStaged("app/index.html");
   const touchesReadme = common.isStaged("README.md");
   if (!touchesIndex && !touchesReadme) return violations;
 
   const exception = common.findException("social-meta-drift");
   if (exception) return violations;
 
-  const indexSource = common.stagedContent("index.html");
+  const indexSource = common.stagedContent("app/index.html");
   const readmeSource = common.stagedContent("README.md");
   if (indexSource === null || readmeSource === null) return violations; // one of the files was deleted in this commit
 
@@ -584,9 +584,9 @@ function checkSocialMetaDrift() {
     violations.push(
       common.violation(
         "social-meta-drift",
-        "index.html",
+        "app/index.html",
         null,
-        `index.html's <meta property="og:description"> content ("${ogDesc.slice(0, 60)}...") no longer matches the ` +
+        `app/index.html's <meta property="og:description"> content ("${ogDesc.slice(0, 60)}...") no longer matches the ` +
         `start of README.md's opening paragraph. This tag was deliberately copied from README's intro so shared links ` +
         `show an accurate description -- update og:description to match README's current wording (it can be a ` +
         `shortened prefix of the README sentence, but must start the same way).`
@@ -603,7 +603,7 @@ const ARTIFACT_SOURCE_PATTERN = /^(app\/[\w-]+\.js|css\/[\w-]+\.css)$/;
 
 // Runs the landing-site parity check when the landing pages, README, or tokens are staged, reading staged content first.
 function checkLandingParity() {
-  const watched = common.stagedFiles().some((f) => f.path.startsWith("satchel/") || f.path === "README.md" || f.path === "css/tokens.css");
+  const watched = common.stagedFiles().some((f) => satchelFiles([".html", ".css", ".js"]).includes(f.path) || f.path === "README.md" || f.path === "css/tokens.css");
   if (!watched) return [];
   return landing.landingViolations((f) => common.stagedContent(f) || common.diskRead(f), satchelFiles([".html"]));
 }

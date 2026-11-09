@@ -139,7 +139,7 @@ export function completionDialog(p) {
   // dialog), remembered via wasPinned so Reopen can restore it.
   var key = "quest:" + p.id;
   if (isPinned(key)) { p.wasPinned = true; state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); }
-  if (state.settings.audio) playSfx("assets/sfx/complete.mp3");
+  if (state.settings.audio) playSfx("../assets/sfx/complete.mp3");
   if (state.settings.completionFx) playConfetti();
   openModal("Quest complete", function (body) {
     body.appendChild(el("p", { "class": "first" }, "“" + p.name + "” is marked complete. Send it to the Vault now, or leave it in Quests."));
@@ -775,7 +775,7 @@ export function renderQuestPage(root, id) {
         // Restore a pin completionDialog() auto-removed on completion.
         if (p.wasPinned) { var key = "quest:" + p.id; if (!isPinned(key)) state.pins.push(key); p.wasPinned = false; }
         changed(); notify("Reopened.");
-        if (state.settings.audio) playSfx("assets/sfx/quest.mp3");
+        if (state.settings.audio) playSfx("../assets/sfx/quest.mp3");
       }));
     }
     ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Send this quest to the Vault" }, "Vault"), "click", function () { vaultQuest(p); }));
@@ -871,7 +871,7 @@ function doPromote(p) {
   // Tasks added while it was a Candidate were part of the plan from the start, not scope added later.
   state.tasks.forEach(function (x) { if (x.questId === p.id) x.added = ""; });
   changed();
-  if (state.settings.audio) playSfx("assets/sfx/quest.mp3");
+  if (state.settings.audio) playSfx("../assets/sfx/quest.mp3");
 }
 // Sends an active quest back to Candidates. Its links are kept, shown read-only, and live again on promotion.
 export function demoteToCandidate(id) {
@@ -1074,7 +1074,7 @@ var HAND = {
   editorTitle: "Manage your hand", editorHint: "Choose up to three errands. Then put them in the order you want.",
   rerolled: "Hand rerolled.", rolled: "Hand rolled.", emptied: "Hand emptied.", needTwo: "Reroll needs at least two open errands.", needOne: "Roll needs at least one open errand."
 };
-var HAND_MAX = 3, FLIP_GAP = 140, REROLL_SFX = "assets/sfx/reroll.mp3";
+var HAND_MAX = 3, FLIP_GAP = 140, REROLL_SFX = "../assets/sfx/reroll.mp3";
 function refocus(sels) {
   for (var i = 0; i < sels.length; i++) { var f = document.querySelector(sels[i]); if (f && !f.disabled) { f.focus(); return; } }
 }
@@ -1668,7 +1668,7 @@ export function startFreshDialog() {
       keep.since = iso(TODAY); keep.lastBackup = ""; // new data, so the backup reminder clock starts over
       if (picked === "original") { setState(defaults()); state.settings = keep; } else { setState(blankState()); }
       ui.sel = null; ui.detail = false; ui.vaultFilter = "all"; applyTheme(); save(); closeModal(); go("today"); notify("Started fresh.");
-      if (state.settings.audio) playSfx("assets/sfx/startFresh.mp3");
+      if (state.settings.audio) playSfx("../assets/sfx/startFresh.mp3");
     });
     acts.appendChild(on(el("button", { type: "button", title: "Cancel" }, "Cancel"), "click", closeModal)); acts.appendChild(go1); body.appendChild(acts);
   });
@@ -2276,7 +2276,7 @@ function restoreBackupFile(file, msg) {
     confirmDialog("Restore this backup?",
       "This backup holds " + np + (np === 1 ? " quest" : " quests") + " and " + nt + (nt === 1 ? " task" : " tasks") + ". Restoring replaces everything in Sidequest" + (isHosted() ? "" : " on this device") + ": all current quests, tasks, notes, history, and settings. You will have a few seconds to undo it.",
       "Restore backup", function () {
-        if (state.settings.audio) playSfx("assets/sfx/restoreBackup.mp3");
+        if (state.settings.audio) playSfx("../assets/sfx/restoreBackup.mp3");
         var before = JSON.stringify(state);
         setState(next); ui.sel = null; ui.detail = false; applyTheme(); save(); renderAll();
         replaySplash();

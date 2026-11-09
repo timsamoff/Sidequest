@@ -107,7 +107,7 @@ if (isStandaloneApp) {
     // The reload would cut the sound off, so it waits out the 2.4s clip; with
     // sound off it waits one 0.6s spin (reduced motion skips the spin only).
     var sound = state.settings.audio;
-    if (sound) playSfx("assets/sfx/refresh.mp3", 0.25);
+    if (sound) playSfx("../assets/sfx/refresh.mp3", 0.25);
     setTimeout(doRefresh, sound ? 2400 : 600);
   });
 }

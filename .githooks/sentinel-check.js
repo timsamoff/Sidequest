@@ -37,7 +37,7 @@ function writeBaseline(violations) {
 
 function fullScanNormalizeDefaultsPairing() {
   // defaults()/normalize() moved to app/state.js in the JS module split
-  // (2026-09-21) -- was index.html, read via common.diskRead("index.html").
+  // (2026-09-21) -- was index.html, read via common.diskRead("app/index.html").
   const source = common.diskRead("app/state.js");
   const defaultsKeys = checks.extractDefaultsKeys(source);
   const normalizeBody = checks.extractNormalizeBody(source);
@@ -100,7 +100,7 @@ function fullScanCrossListPairing() {
 }
 
 function fullScanSocialMetaDrift() {
-  const indexSource = common.diskRead("index.html");
+  const indexSource = common.diskRead("app/index.html");
   const readmeSource = common.diskRead("README.md");
   if (!indexSource || !readmeSource) return [];
   const ogMatch = indexSource.match(/<meta\s+property="og:description"\s+content="([^"]*)"/);
@@ -113,7 +113,7 @@ function fullScanSocialMetaDrift() {
     if (t && !t.startsWith("#") && !t.startsWith("<")) { readmeOpening = t; break; }
   }
   if (readmeOpening === null || !readmeOpening.startsWith(ogDesc)) {
-    return [common.violation("social-meta-drift", "index.html", null, `og:description ("${ogDesc.slice(0, 60)}...") no longer matches the start of README's opening paragraph.`)];
+    return [common.violation("social-meta-drift", "app/index.html", null, `og:description ("${ogDesc.slice(0, 60)}...") no longer matches the start of README's opening paragraph.`)];
   }
   return [];
 }

@@ -5,7 +5,7 @@ const fs = require("fs");
 const common = require("./sentinel-common");
 const pre = require("./check-pre-commit");
 
-const LABEL_FILES = ["app/views.js", "app/dialogs.js", "app/app.js", "index.html"];
+const LABEL_FILES = ["app/views.js", "app/dialogs.js", "app/app.js", "app/index.html"];
 const VIEWS_FILE = "app/views.js";
 
 // Returns the index of the bracket that closes the one at openIdx, skipping over
@@ -272,7 +272,7 @@ function buildReminder(input) {
 
 function helpDriftReminder() {
   const diffs = {};
-  const files = LABEL_FILES.concat(fs.readdirSync("app").filter((f) => f.endsWith(".js")).map((f) => "app/" + f), ["css/styles.css", "css/splash.css", "css/leather.css", "css/tokens.css"]);
+  const files = LABEL_FILES.concat(fs.readdirSync("app").filter((f) => f.endsWith(".js") && f !== "sw.js").map((f) => "app/" + f), ["css/styles.css", "css/splash.css", "css/leather.css", "css/tokens.css"]);
   files.forEach((f) => { if (!(f in diffs)) diffs[f] = common.isStaged(f) ? common.stagedDiff(f) : ""; });
   const { hits } = pre.classifySourceDiffs();
   return buildReminder({ diffs, triggerHits: hits, viewsSource: common.stagedContent(VIEWS_FILE) });

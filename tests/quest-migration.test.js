@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { register } = require("module");
 const { pathToFileURL } = require("url");
-const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+const html = fs.readFileSync(path.join(__dirname, "..", "app", "index.html"), "utf8");
 
 register(pathToFileURL(path.join(__dirname, "isolate-loader.mjs")));
 
