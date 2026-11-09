@@ -140,7 +140,7 @@ function checkReadmeTouched() {
   return violations;
 }
 
-// Gate 3 (design document): not implemented.
+// Gate 3 (design document): a non-blocking reminder, see designDocReminder() below.
 
 // Gate 4: TODO.md completion sync. A change to a Sentinel-Notes design brief needs a matching TODO.md change; both are gitignored, so this compares disk times against the HEAD commit instead of using git diff.
 
@@ -228,6 +228,39 @@ function designDocReminder() {
   const { touchedFiles, hits } = classifySourceDiffs();
   if (!touchedFiles.length || !hits.length || common.isStaged("DESIGN.md")) return null;
   return `This commit touches ${hits.join("; ")}, but DESIGN.md is not in it. Check whether DESIGN.md still describes the architecture. (Non-blocking reminder.)`;
+}
+
+// Maintainer-guide reminder (non-blocking; chosen 2026-11-02): staged source in an area the guide's coverage map names, with no guide file edited since the last commit. The guide is gitignored, so this compares disk mtimes, and it proves only that the guide was touched, not that it is right.
+const GUIDE_DIR = "Sentinel-Maintainer-Guide";
+const GUIDE_EXCLUDE = [/^tests\//, /package-lock\.json$/, /^app\/sidequest\.html$/, /^Sidequest-App\/sidequest\.html$/, /^Sentinel-/];
+
+function coveredPatterns(readme) {
+  const section = (readme.split(/^## Coverage map/m)[1] || "").split(/^## /m)[0];
+  const out = [];
+  section.split("\n").filter((l) => l.startsWith("|")).forEach((row) => {
+    const cells = row.split("|").map((c) => c.trim());
+    if (!cells[1] || !cells[2] || /^(Area|-+)$/.test(cells[1]) || /^Not covered/i.test(cells[2])) return;
+    (cells[1].match(/`([^`]+)`/g) || []).forEach((t) => out.push(t.slice(1, -1)));
+  });
+  return out;
+}
+
+function matchesPattern(file, pattern) {
+  if (pattern.endsWith("/")) return file.startsWith(pattern);
+  const re = new RegExp("^" + pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*") + "$");
+  return re.test(file);
+}
+
+function guideDriftReminder() {
+  const readme = common.diskRead(path.join(GUIDE_DIR, "00-README.md"));
+  if (!readme) return null;
+  const patterns = coveredPatterns(readme);
+  const hit = common.stagedFiles().map((e) => e.path).filter((f) => !GUIDE_EXCLUDE.some((re) => re.test(f)) && patterns.some((p) => matchesPattern(f, p)));
+  if (!hit.length) return null;
+  const head = common.headCommitTimeMs();
+  const newest = fs.readdirSync(common.repoPath(GUIDE_DIR)).reduce((m, f) => Math.max(m, common.diskMTimeMs(path.join(GUIDE_DIR, f)) || 0), 0);
+  if (head !== null && newest > head) return null;
+  return `This commit changes ${hit.slice(0, 3).join(", ")}${hit.length > 3 ? ` and ${hit.length - 3} more` : ""}, an area the maintainer guide covers, but nothing in ${GUIDE_DIR}/ has changed since the last commit. Update the matching part and the changelog, or confirm none is needed. (Non-blocking reminder.)`;
 }
 
 // normalize()/defaults() pairing: every top-level key of defaults()'s returned object must be referenced in normalize()'s body as d.<key>. A name-presence check, not an interpreter.
@@ -668,6 +701,7 @@ module.exports = {
   checkTodoSync,
   todoBacklogReminder,
   designDocReminder,
+  guideDriftReminder,
   checkNormalizeDefaultsPairing,
   extractDefaultsKeys,
   extractNormalizeBody,

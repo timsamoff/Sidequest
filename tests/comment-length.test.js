@@ -16,7 +16,12 @@ ok(n("// eslint-disable-next-line a. b. c.") === 0, "directives are exempt");
 ok(n('// "one. two. three."') === 0, "commented-out data is exempt");
 ok(n("// `a. b. c.` is code. Done.") === 0, "inline code is not counted");
 ok(gate.countSentences("What? Yes! Fine.") === 3, "? and ! end sentences");
-ok(gate.fullScanCommentLength().length === 0, "no comment in the repo runs past the limit");
+const L = (t) => gate.lineLimitBlocks(t).length;
+ok(L("// a\n// b\nvar x;") === 0, "two short lines pass the line limit");
+ok(L("// a\n// b\n// c\nvar x;") === 1, "three comment lines fail the line limit");
+ok(L("// " + "x".repeat(230) + "\nvar x;") === 1, "one very long line fails the character limit");
+ok(L("// " + "x".repeat(150) + "\nvar x;") === 0, "a 150-character line passes");
+ok(gate.fullScanCommentLength().every((v) => !v.message.includes(" sentences (the limit")), "no comment in the repo runs past the sentence limit");
 
 console.log(fails ? fails + " failed" : "all passed");
 process.exitCode = fails ? 1 : 0;

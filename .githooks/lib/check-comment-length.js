@@ -1,4 +1,4 @@
-// Comment-length check: a comment is one or two sentences. Longer background goes in CLAUDE.md, not in the code. Directives, commented-out code, and data are exempt.
+// Comment-length check: a comment is one or two sentences, on at most two lines of about 100 characters. Longer background goes in CLAUDE.md, not in the code. Directives, commented-out code, and data are exempt.
 
 "use strict";
 
@@ -6,6 +6,8 @@ const common = require("./sentinel-common");
 const checks = require("./check-pre-commit");
 
 const MAX_SENTENCES = 2;
+const MAX_LINES = 2;
+const MAX_CHARS = 220;
 
 // Pragmas, shebangs, license headers, and build magic comments are not prose.
 const DIRECTIVE_RE = /^(?:eslint|prettier|istanbul|c8|@ts-|#!|!|global\s|jshint|webpack|copyright|license|spdx|\/\/#)/i;
@@ -69,6 +71,32 @@ function overlongBlocks(source) {
   return out;
 }
 
+// Blocks that run past the line limit: more than two comment lines, or more than about 220 characters of text.
+function lineLimitBlocks(source) {
+  const out = [];
+  commentBlocks(source).forEach((b) => {
+    const parts = b.lines.map(stripMarkers).filter(Boolean);
+    if (!parts.length) return;
+    const text = parts.join(" ");
+    if (DIRECTIVE_RE.test(parts[0]) || looksLikeCode(parts[0])) return;
+    if (b.lines.some((l) => /^\s*\/\/\s*["'`]/.test(l))) return;
+    if (parts.length > MAX_LINES || text.length > MAX_CHARS) out.push({ line: b.line, lines: parts.length, chars: text.length, text });
+  });
+  return out;
+}
+
+// Both limits, one entry per block, for the checks below.
+function allOverlong(source) {
+  const byLine = new Map();
+  overlongBlocks(source).forEach((b) => byLine.set(b.line, { line: b.line, text: b.text, why: `${b.count} sentences (the limit is ${MAX_SENTENCES})` }));
+  lineLimitBlocks(source).forEach((b) => {
+    const why = `${b.lines} lines, ${b.chars} characters (the limit is ${MAX_LINES} lines, about ${MAX_CHARS} characters)`;
+    const prev = byLine.get(b.line);
+    byLine.set(b.line, prev ? { ...prev, why: prev.why + "; " + why } : { line: b.line, text: b.text, why });
+  });
+  return [...byLine.values()];
+}
+
 function addedLineNumbers(diff) {
   const added = new Set();
   let cur = 0;
@@ -82,8 +110,8 @@ function addedLineNumbers(diff) {
   return added;
 }
 
-function message(count, text) {
-  return `Comment runs ${count} sentences (the limit is ${MAX_SENTENCES}): "${text.slice(0, 90)}". Cut it to one or two sentences and put the background in CLAUDE.md.`;
+function message(why, text) {
+  return `Comment runs ${why}: "${text.slice(0, 90)}". Cut it to one or two short sentences and put the background in CLAUDE.md.`;
 }
 
 // Diff-scoped: only blocks that contain a line this commit added.
@@ -97,11 +125,11 @@ function checkCommentLength() {
     if (!source) return;
     const added = addedLineNumbers(common.stagedDiff(file));
     const lines = source.replace(/\r\n/g, "\n").split("\n");
-    overlongBlocks(source).forEach((b) => {
+    allOverlong(source).forEach((b) => {
       const span = lines.slice(b.line - 1).findIndex((l, k) => k > 0 && !/^\s*(?:\/\/|\*|\/\*|<!--)/.test(l) && !l.includes("*/") && !l.includes("-->"));
       const end = b.line + (span === -1 ? lines.length : span) - 1;
       for (let n = b.line; n <= end; n++) {
-        if (added.has(n)) { violations.push(common.violation("comment-length", file, b.line, message(b.count, b.text))); return; }
+        if (added.has(n)) { violations.push(common.violation("comment-length", file, b.line, message(b.why, b.text))); return; }
       }
     });
   });
@@ -113,9 +141,9 @@ function fullScanCommentLength() {
   checks.COMMENT_SCAN_FILES.forEach((file) => {
     const source = common.diskRead(file);
     if (!source) return;
-    overlongBlocks(source).forEach((b) => violations.push(common.violation("comment-length", file, b.line, message(b.count, b.text))));
+    allOverlong(source).forEach((b) => violations.push(common.violation("comment-length", file, b.line, message(b.why, b.text))));
   });
   return violations;
 }
 
-module.exports = { MAX_SENTENCES, commentBlocks, countSentences, overlongBlocks, checkCommentLength, fullScanCommentLength };
+module.exports = { MAX_SENTENCES, MAX_LINES, MAX_CHARS, lineLimitBlocks, commentBlocks, countSentences, overlongBlocks, checkCommentLength, fullScanCommentLength };

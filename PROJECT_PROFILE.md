@@ -57,7 +57,7 @@ A working, project-built gate-check system, not generic tooling:
 - Hooks tracked in `.githooks/` (`pre-commit`, `commit-msg`, `lib/`), installed via `git config core.hooksPath .githooks`.
 - Manual commands: `npm run sentinel:check` (diff-scoped) and `npm run sentinel:check:full` (whole repo, baseline in `Sentinel-Notes/sentinel-baseline.json`). Exceptions in `Sentinel-Notes/sentinel-exceptions.json`. New-extension manifest at `.githooks/sentinel-known-extensions.txt`.
 - Checks include: CLAUDE.md touched, README touched, TODO sync, normalize/defaults pairing, hardcoded hex, CSS token value and repeated literal, comment verbosity, duplicated icon markup, social-meta drift, artifact-build drift, version bump, trailer allowlist, agent-voice phrases, an after-the-fact check of the latest commit message, and a non-blocking Help-drift reminder, a comment length limit (two sentences), a landing-page check, and a non-blocking design-document reminder.
-- **Re-validation:** the trailer allowlist, agent-voice check and after-the-fact commit check from 1.3.0 and 1.1.0 are now present in the hook, so the earlier gaps are closed. A guide now exists (1.7.0), so the proposed guide check from `04`, Part 5 applies. Already present if the hook mentions `Sentinel-Maintainer-Guide`; it does not, so list it for `03`. The session-start hook sits in the tracked `.claude/settings.json`, as 1.4.0 asks, and it now also runs the weekly Sentinel version check from 1.6.0 (`.claude/sentinel-version-check.js`, last-check time in `Sentinel-Notes/.sentinel-update-check`; added 2026-11-02, tested).
+- **Re-validation:** the trailer allowlist, agent-voice check and after-the-fact commit check from 1.3.0 and 1.1.0 are now present in the hook, so the earlier gaps are closed. The guide-change reminder from `04`, Part 5 was built 2026-11-08 (`guideDriftReminder()`, non-blocking, mtime-based because the guide is gitignored). The comment-length check also enforces the 1.8.0 two-line limit (about 220 characters); 20 older comments are recorded in the baseline. The session-start hook sits in the tracked `.claude/settings.json`, as 1.4.0 asks, and it now also runs the weekly Sentinel version check from 1.6.0 (`.claude/sentinel-version-check.js`, last-check time in `Sentinel-Notes/.sentinel-update-check`; added 2026-11-02, tested).
 
 ## Existing docs and scaffolding
 
@@ -74,7 +74,7 @@ A working, project-built gate-check system, not generic tooling:
 
 ## Sentinel version and run type
 
-Sentinel 1.8.0 (updated from 1.7.1 on 2026-11-08; the six prompt files were replaced and `competitive-audit.md` was left in place). Update run from 1.7.0. 1.8.0 adds a two-line limit to the terse comment rule; it is now in `CLAUDE.md` and the tracked `.claude/CLAUDE.md`. The comment-length hook still counts sentences only; adding a line count is a gate change for `03`. The 1.7.1 change is applied: the guide's changelog now has a "History to date" entry.
+Sentinel 1.8.0 (updated from 1.7.1 on 2026-11-08; the six prompt files were replaced and `competitive-audit.md` was left in place). Update run from 1.7.0. 1.8.0 adds a two-line limit to the terse comment rule; it is now in `CLAUDE.md` and the tracked `.claude/CLAUDE.md`. The comment-length hook now counts lines and characters as well as sentences. The 1.7.1 change is applied: the guide's changelog now has a "History to date" entry.
 
 ## Blank/near-empty project status
 
@@ -84,12 +84,11 @@ Not applicable.
 
 - **Leftover prompt file:** resolved. `03-gate-check-implementation.md` is no longer in `Sentinel-Prompts/`.
 - **Extra prompt file:** `Sentinel-Prompts/competitive-audit.md` (version 1.0, optional module) is not part of the suite. The 1.8.0 update left it alone, but a folder-wide replace would delete it.
-- **Gate gap:** no check flags source changes with no guide change (see Existing automation).
 - **Remote (phone) sessions:** resolved in part. The tracked `.claude/CLAUDE.md` and tracked `.claude/settings.json` give a remote session the key rules and the handoff hook. `CLAUDE.md` and `Sentinel-Notes/` stay private on purpose.
 - **The Artifact's stamp** (the `meta/version` record in the published artifact's database) is written with `ArtifactData` after an approved push; recorded in `CLAUDE.md`'s end-of-session checklist.
 
 ## How to use this
 
-Worth running next: `03`, to add the guide-change check (the maintainer guide was re-verified on 2026-11-08). The landing site is a new surface that `01` and `02` have not audited; run them only if you want it covered.  This profile is tracked and an established commit convention exists; say if you want it committed.
+The gate is current as of 2026-11-08 and the maintainer guide was re-verified the same day. The landing site is a new surface that `01` and `02` have not audited; run them only if you want it covered. This profile is tracked and an established commit convention exists; say if you want it committed.
 
 Maintainer guide: full, local, last verified 2026-11-08 at 95ee047 (verify run)

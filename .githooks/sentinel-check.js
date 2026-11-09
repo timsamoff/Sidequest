@@ -269,6 +269,8 @@ function main() {
     if (helpReminder) console.log("[Sentinel] " + helpReminder);
     const designReminder = checks.designDocReminder();
     if (designReminder) console.log("[Sentinel] " + designReminder);
+    const guideReminder = checks.guideDriftReminder();
+    if (guideReminder) console.log("[Sentinel] " + guideReminder);
     lastCommitNotice();
     console.log("Sentinel: diff-scoped check passed, no violations.");
     process.exitCode = 0;

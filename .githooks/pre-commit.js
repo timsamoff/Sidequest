@@ -45,6 +45,9 @@ function main() {
   const designReminder = checks.designDocReminder();
   if (designReminder) process.stderr.write("\n[Sentinel] " + designReminder + "\n");
 
+  const guideReminder = checks.guideDriftReminder();
+  if (guideReminder) process.stderr.write("\n[Sentinel] " + guideReminder + "\n");
+
   const reminder = checks.todoBacklogReminder();
   if (reminder) process.stderr.write("\n[Sentinel] " + reminder + "\n");
 
