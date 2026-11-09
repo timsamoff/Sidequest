@@ -100,20 +100,20 @@ The [Sidequest-App/README.md](Sidequest-App/README.md) covers updating your app,
 Start a new conversation with Claude and send this prompt. Sidequest needs the `db` capability to save your data and the `downloads` capability to make **Save backup** work.
 
 ```
-Please fetch this file and publish it as an artifact: https://raw.githubusercontent.com/timsamoff/sidequest/main/Sidequest-App/sidequest.html. It needs the `db` capability for storage and the `downloads` capability so Save backup works.
+Please fetch this file and publish it as an artifact: https://raw.githubusercontent.com/timsamoff/sidequest/main/app/sidequest.html. It needs the `db` capability for storage and the `downloads` capability so Save backup works.
 ```
 If Claude asks for permission during the build, choose **Allow once** to let it fetch the file and create the artifact. It asks again when you update.
 
 Open the artifact Claude creates. If you pin it, it will appear in the Claude sidebar.
 
-If Claude can't fetch the file, download `sidequest.html` from the `Sidequest-App` folder in the repository, upload it to a new conversation, and ask Claude to publish it as an artifact with the `db` and `downloads` capabilities.
+If Claude can't fetch the file, download `sidequest.html` from the `app` folder in the repository, upload it to a new conversation, and ask Claude to publish it as an artifact with the `db` and `downloads` capabilities.
 
 ### Muse
 
 Start a new chat with your Muse and paste this prompt. It asks Muse to build Sidequest from the repository and save your data in its database.
 
 ```
-Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://raw.githubusercontent.com/timsamoff/sidequest/main/Sidequest-App/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty.
+Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://raw.githubusercontent.com/timsamoff/sidequest/main/app/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty.
 
 Keep every feature as is, including the sound effects and the GitHub version check, and keep its update prompt word for word. Set window.sidequestHosted = true before the app starts, so it shows its hosted wording about where your data is saved.
 

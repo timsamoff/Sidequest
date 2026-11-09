@@ -6,8 +6,9 @@ const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
 const APP_DIR = path.join(ROOT, "app");
-const OUT_DIR = path.join(ROOT, "Sidequest-App");
-const OUT_FILE = path.join(OUT_DIR, "sidequest.html");
+const OUT_FILE = path.join(APP_DIR, "sidequest.html");
+// Artifacts published before the build moved to app/ fetch this path for updates, so it is kept in step.
+const LEGACY_FILE = path.join(ROOT, "Sidequest-App", "sidequest.html");
 
 // A published artifact has no assets/ folder, so the favicon is rebuilt from index.html's #sqLogo symbol as a self-contained SVG data URI at build time, with the CSS variables replaced by light-theme hex values.
 var FAVICON_TOKEN_VALUES = { "parch-fill": "#FCF1D6", "parch-edge": "#CEB782", "parch-ink": "#2F5D8A", "parch-white": "#FFFFFF", "parch-red": "#C62F2F" };
@@ -165,9 +166,10 @@ function build() {
   if (out.indexOf("<style>") === -1) throw new Error("build-artifact: css <link> tags not found/replaced -- check index.html's <head> hasn't changed shape.");
   if (out.indexOf(bundledScript) === -1) throw new Error("build-artifact: script tag not found/replaced -- check index.html's closing <body> hasn't changed shape.");
 
-  fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(OUT_FILE, out, "utf8");
-  console.log("Built " + path.relative(ROOT, OUT_FILE) + " (" + Buffer.byteLength(out, "utf8") + " bytes) from " + MODULE_ORDER.length + " app modules.");
+  fs.mkdirSync(path.dirname(LEGACY_FILE), { recursive: true });
+  fs.writeFileSync(LEGACY_FILE, out, "utf8");
+  console.log("Built " + path.relative(ROOT, OUT_FILE) + " and " + path.relative(ROOT, LEGACY_FILE) + " (" + Buffer.byteLength(out, "utf8") + " bytes) from " + MODULE_ORDER.length + " app modules.");
 }
 
 build();

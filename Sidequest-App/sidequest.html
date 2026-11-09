@@ -1464,7 +1464,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.20.0";
+var APP_VERSION = "0.20.1";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -1874,7 +1874,7 @@ function isNewerVersion(a, b) {
   for (var i = 0; i < 3; i++) { if (pb[i] > pa[i]) return true; if (pb[i] < pa[i]) return false; }
   return false;
 }
-var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/sidequest/main/Sidequest-App/sidequest.html";
+var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/sidequest/main/app/sidequest.html";
 // The single-file build has no manifest link (the build strips it); the web app does and never needs an update notice.
 function isSingleFileBuild() { return typeof document !== "undefined" && !document.querySelector('link[rel=manifest]'); }
 // Reads APP_VERSION out of the published file on GitHub. Resolves null on any failure.
