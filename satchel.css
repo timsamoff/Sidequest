@@ -100,16 +100,18 @@ strong { font-weight: 600; }
   position: absolute; inset: var(--clasp-pad-t) var(--clasp-pad-x) var(--clasp-pad-b); transition: transform .2s linear; box-shadow: 0 3px 6px rgba(0, 0, 0, .35);
   border-radius: calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .48) calc(var(--clasp-w) * .48);
 }
-.clasp:focus-visible { outline: none; box-shadow: none; }
-.clasp:focus-visible .claspart { outline: 2px solid var(--stamp); outline-offset: 2px; box-shadow: 0 0 0 2px var(--lining), 0 3px 6px rgba(0, 0, 0, .35); }
+/* Keyboard focus lifts the strap like a hover, so there is no outline ring. */
+.flap .clasp:focus-visible { outline: none; box-shadow: none; }
+.clasp:focus-visible .claspart { transform: translateY(-3px); }
 /* Hovering lifts the strap 3px, and pressing keeps it lifted until the menu closes. The peek hint is the same lift, then back. */
 .clasp[aria-expanded="true"] .claspart { transform: translateY(-3px); }
 @media (hover: hover) { .clasp:hover .claspart { transform: translateY(-3px); } }
 .clasp.peek .claspart { animation: lift .8s linear; }
 @keyframes lift { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .claspart { transition: none; } .clasp.peek .claspart { animation: none; } }
-.knob { transition: filter .2s ease; }
-@media (hover: hover) { .clasp:hover .knob { filter: brightness(1.2); } }
+/* The knob brightens by changing its fill, not with a filter, because Safari draws a halo around a filtered SVG group. */
+.knob circle:first-child { transition: fill .2s ease; }
+@media (hover: hover) { .clasp:hover .knob circle:first-child { fill: color-mix(in srgb, var(--clasp-brass) 70%, white); } }
 .strap {
   position: absolute; inset: 0; background-color: var(--strap);
   background-image: url("assets/strap.jpg"); background-image: image-set(url("assets/strap.webp") type("image/webp"), url("assets/strap.jpg") type("image/jpeg"));
