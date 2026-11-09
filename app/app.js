@@ -206,7 +206,7 @@ Promise.resolve().then(function () {
     renderAll();
   });
 
-  // No-op on the web app. Checks the db stamp and the published file on GitHub; both fail silently.
+  // No-op on the web app. Checks the db stamp and the latest GitHub release; both fail silently.
   checkForAppUpdate().then(function (latest) {
     if (!latest) return;
     setAvailableUpdateVersion(latest);

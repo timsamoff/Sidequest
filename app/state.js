@@ -418,16 +418,17 @@ function isNewerVersion(a, b) {
   return false;
 }
 export var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/sidequest/main/app/sidequest.html";
+var SIDEQUEST_RELEASES_URL = "https://api.github.com/repos/timsamoff/sidequest/releases?per_page=1";
 // The single-file build has no manifest link (the build strips it); the web app does and never needs an update notice.
 function isSingleFileBuild() { return typeof document !== "undefined" && !document.querySelector('link[rel=manifest]'); }
-// Reads APP_VERSION out of the published file on GitHub. Resolves null on any failure.
+// Reads the newest GitHub release tag, prereleases included. Resolves null on any failure.
 function fetchPublishedVersion() {
   try {
     if (typeof fetch !== "function" || !isSingleFileBuild()) return Promise.resolve(null);
-    return fetch(SIDEQUEST_RAW_URL + "?vcheck=" + APP_VERSION).then(function (r) {
-      return r.ok ? r.text() : null;
-    }).then(function (text) {
-      var m = text && /var APP_VERSION = "(\d+\.\d+\.\d+)";/.exec(text);
+    return fetch(SIDEQUEST_RELEASES_URL).then(function (r) {
+      return r.ok ? r.json() : null;
+    }).then(function (list) {
+      var m = /^v?(\d+\.\d+\.\d+)$/.exec(list && list[0] && typeof list[0].tag_name === "string" ? list[0].tag_name : "");
       return m && isNewerVersion(APP_VERSION, m[1]) ? m[1] : null;
     }).catch(function () { return null; });
   } catch (e) { return Promise.resolve(null); }
@@ -443,7 +444,7 @@ function fetchStampVersion() {
     }).catch(function () { return null; });
   }).catch(function () { return null; });
 }
-// The newer of the db stamp and the published file's version, or null. Never rejects.
+// The newer of the db stamp and the latest release's version, or null. Never rejects.
 export function checkForAppUpdate() {
   return Promise.all([fetchStampVersion(), fetchPublishedVersion()]).then(function (v) {
     if (v[0] && v[1]) return isNewerVersion(v[0], v[1]) ? v[1] : v[0];

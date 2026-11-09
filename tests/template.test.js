@@ -1371,31 +1371,31 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     ok(!k.$("view").textContent.includes("Sidequest has leveled up!"), "a stamp equal to the current version shows no banner");
   }
   {
-    // the published file on GitHub is a second version source (single-file build only: no manifest link)
+    // the latest GitHub release is a second version source (single-file build only: no manifest link)
     const noManifest = (w) => { const l = w.document.querySelector('link[rel="manifest"]'); if (l) l.remove(); };
     const realFetch = global.fetch;
     const banner = (k) => k.$("view").textContent.includes("Sidequest has leveled up!");
     let urls = [];
-    global.fetch = (u) => { urls.push(u); return Promise.resolve({ ok: true, text: () => Promise.resolve('x\nvar APP_VERSION = "9.8.7";\ny') }); };
+    global.fetch = (u) => { urls.push(u); return Promise.resolve({ ok: true, json: () => Promise.resolve([{ tag_name: "v9.8.7" }]) }); };
     let k = kit(await mk(null, null, null, null, null, noManifest)); await wait();
-    ok(banner(k) && k.d.querySelector(".updatebanner textarea.updateprompt").value.endsWith("sidequest.html?v=9.8.7"), "a newer APP_VERSION in the published file shows the banner with that version in the prompt");
-    ok(/\?vcheck=\d+\.\d+\.\d+$/.test(urls[0]), "the version fetch appends ?vcheck= with the running version");
+    ok(banner(k) && k.d.querySelector(".updatebanner textarea.updateprompt").value.endsWith("sidequest.html?v=9.8.7"), "a newer release tag shows the banner with that version in the prompt");
+    ok(urls[0].indexOf("https://api.github.com/repos/timsamoff/sidequest/releases") === 0, "the version fetch asks the GitHub releases API");
     k.click(k.btn(k.$("view"), "Dismiss"));
     ok(!banner(k) && k.saved().settings.dismissedUpdateVersion === "9.8.7", "dismissing suppresses that version");
     global.fetch = () => Promise.reject(new Error("offline"));
     k = kit(await mk(null, null, null, null, null, noManifest)); await wait();
     ok(!banner(k), "a failed fetch is silent and launch is unaffected");
-    global.fetch = () => Promise.resolve({ ok: false, text: () => Promise.resolve("") });
+    global.fetch = () => Promise.resolve({ ok: false, json: () => Promise.resolve([]) });
     k = kit(await mk(null, null, null, null, null, noManifest)); await wait();
     ok(!banner(k), "a non-200 response is silent");
-    global.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve("<html>no version here</html>") });
+    global.fetch = () => Promise.resolve({ ok: true, json: () => Promise.resolve([{ tag_name: "nightly" }]) });
     k = kit(await mk(null, null, null, null, null, noManifest)); await wait();
-    ok(!banner(k), "a response with no version line is silent");
+    ok(!banner(k), "a release tag that is not a version is silent");
     urls = [];
-    global.fetch = (u) => { urls.push(u); return Promise.resolve({ ok: true, text: () => Promise.resolve('var APP_VERSION = "9.8.7";') }); };
+    global.fetch = (u) => { urls.push(u); return Promise.resolve({ ok: true, json: () => Promise.resolve([{ tag_name: "v9.8.7" }]) }); };
     k = kit(await mk(null)); await wait();
     ok(!banner(k) && urls.length === 0, "the web app (manifest present) never fetches or shows the banner");
-    global.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve('var APP_VERSION = "1.0.0";') });
+    global.fetch = () => Promise.resolve({ ok: true, json: () => Promise.resolve([{ tag_name: "v1.0.0" }]) });
     const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "9.9.9" } });
     k = kit(await mk(null, f.claude, null, null, null, noManifest)); await wait();
     ok(banner(k) && k.d.querySelector(".updatebanner textarea.updateprompt").value.endsWith("?v=9.9.9"), "with both sources, the newer one wins (stamp 9.9.9 over fetched 1.0.0)");
