@@ -305,7 +305,8 @@ function schedule(pairs) {
   return drawEnd;
 }
 
-// Plays the splash, then hides the overlay and calls done(). No-op if showSplash is off; `pickIndex(count)` chooses the quote (possibly a promise, defaults to random), and `opts.hold` keeps the last frame instead of fading out (`opts.instant` jumps straight to it).
+// Plays the splash, then hides the overlay and calls done(). No-op if showSplash is off.
+// `opts.hold` keeps the last frame, `opts.instant` jumps to it, and `pickIndex(count)` may return a promise.
 export function playSplash(showSplash, done, audio, pickIndex, opts) {
   var hold = !!(opts && opts.hold), instant = hold && !!opts.instant;
   var root = $("splash");

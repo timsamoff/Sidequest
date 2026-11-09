@@ -201,9 +201,8 @@ export function totalUnits() { return burnTasks().length; }
 export function remainingUnits() { return burnTasks().filter(isOpen).length; }
 export function planned(ms) { var d = 0; burnTasks().forEach(function (t) { if (taskEnd(t) <= ms) d++; }); return totalUnits() - d; }
 export function sortTasks(list) {
-  // Completed tasks sink to the bottom -- a finished task stays in this list
-  // rather than archiving away, so it needs somewhere to settle.
-  // Scheduled tasks go by start date, then due date, then creation order; Backlog tasks follow in creation order.
+  // Completed tasks sink to the bottom. Scheduled tasks go by start, then due date, then creation order;
+  // Backlog tasks follow in creation order.
   return list.map(function (t) { return { t: t, i: state.tasks.indexOf(t) }; }).sort(function (a, b) {
     var aDone = a.t.status === "Completed" ? 1 : 0, bDone = b.t.status === "Completed" ? 1 : 0;
     if (aDone !== bDone) return aDone - bDone;
@@ -233,8 +232,7 @@ export function velocityForecast(tasks, blockDays, sinceMs) {
   return { open: open, done: done, rate: rate, windowDays: windowDays, finish: TODAY + Math.ceil(open / rate) * DAY };
 }
 // --- One quest's burndown ---
-// From counted(), not burnTasks() -- a Complete quest's page keeps
-// showing its burndown even while its tasks are hidden cross-quest.
+// Uses counted(), so a Complete quest's page keeps its burndown while its tasks are hidden elsewhere.
 export function questBurnTasks(p) { return counted().filter(function (t) { return t.block > 0 && t.questId === p.id; }); }
 export function questTotalUnits(p) { return questBurnTasks(p).length; }
 export function questRemainingUnits(p) { return questBurnTasks(p).filter(isOpen).length; }

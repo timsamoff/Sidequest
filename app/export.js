@@ -334,7 +334,7 @@ svg.echart { display: block; width: 100%; height: auto; }\
 .efoot { margin-top: 30px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }\
 ";
 
-// The chart functions run at export time (baked markup for no-script previews) and again in the file's script (with tooltips). They are copied by source text in runtimeSource(), so they cannot use anything outside themselves.
+// Copied by source text in runtimeSource(), so these chart functions cannot use anything outside themselves.
 function exportSvgEl(t, a) {
   var e = document.createElementNS("http://www.w3.org/2000/svg", t);
   for (var k in a) e.setAttribute(k, a[k]);

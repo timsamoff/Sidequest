@@ -226,9 +226,8 @@ Promise.resolve().then(function () {
     // The event can arrive after Options is already drawn, which would leave the unknown-status copy up.
     if (ui.view === "settings") renderAll(); else renderChrome();
   });
-  // Chrome may move the open page into the new app window without reloading it,
-  // leaving the app on Options with no splash: reload for a normal first launch.
-  // A page that stays in the browser tab just redraws Options as installed.
+  // Chrome may move the open page into the app window without a reload, so reload for a normal launch.
+  // A page that stays in a browser tab just redraws Options as installed.
   window.addEventListener("appinstalled", function () {
     setDeferredInstallPrompt(null);
     setTimeout(function () {

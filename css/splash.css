@@ -20,9 +20,7 @@ html:has(.splash:not([hidden])) { overflow: hidden; }
 .splashaffirm { text-wrap: balance; }
 /* Sidequest grows to the same height as the two-line quote box, vertically centered. */
 .splashtitle { font-family: var(--font-display); display: flex; align-items: center; justify-content: center; height: 100%; font-size: 1.45em; }
-/* --wipe moves a wide, soft mask edge across the text, left to right, while
-   the text blurs. Registered because gradients and calc() inside filter
-   can't be transitioned any other way. */
+/* --wipe is registered so the mask edge and the blur can transition together. */
 @property --wipe { syntax: "<number>"; inherits: false; initial-value: 0; }
 .splashtitle, .splashaffirm { transition: --wipe .9s ease; }
 .splashtitle { filter: blur(calc(var(--wipe) * 6px)); -webkit-mask-image: linear-gradient(to right, transparent calc(var(--wipe) * 150% - 50%), black calc(var(--wipe) * 150%)); mask-image: linear-gradient(to right, transparent calc(var(--wipe) * 150% - 50%), black calc(var(--wipe) * 150%)); }

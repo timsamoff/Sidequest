@@ -26,9 +26,7 @@ export function inClaude() {
 export function isHosted() {
   try { return inClaude() || window.sidequestHosted === true; } catch (e) { return false; }
 }
-// Plays a short sound effect, silently giving up on any failure (autoplay
-// blocked, missing file) since a sound effect is never worth surfacing an error
-// over. `volume` is optional, 0 to 1.
+// Plays a short sound effect and silently gives up on any failure. `volume` is optional, 0 to 1.
 export function playSfx(src, volume) {
   if (!src) return;
   try {
@@ -57,9 +55,8 @@ export function formatMoney(n, style) {
   for (var i = 0; i < whole.length; i++) { if (i > 0 && (whole.length - i) % 3 === 0) out += sep.group; out += whole.charAt(i); }
   return out + sep.dec + frac;
 }
-// Reads a typed or pasted amount as a number, or "" if it is not one. Either style is accepted:
-// when both separators appear the later one is the decimal point, and a lone separator followed
-// by exactly three digits is the style's thousands separator.
+// Reads a typed or pasted amount as a number, or "" if it is not one.
+// With both separators the later one is the decimal; a lone one before three digits is thousands.
 export function parseMoney(s, style) {
   var t = String(s || "").replace(/[^0-9.,]/g, "");
   var lastDot = t.lastIndexOf("."), lastCom = t.lastIndexOf(","), dec = "";

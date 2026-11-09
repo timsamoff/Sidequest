@@ -2127,9 +2127,8 @@ function parseTrelloExport(obj) {
   return { boardName: boardName, cards: cards, droppedCount: dropped };
 }
 function isISOInstant(v) { return typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v); }
-// Builds a new quest from a parsed Trello summary: start is the earliest due
-// date found (or today, with nothing to anchor to), so every card's due
-// date is guaranteed on or after the quest's start and never gets rejected.
+// Builds a quest from a parsed Trello summary. Start is the earliest due date found (or today),
+// so no card's due date falls before it.
 function buildQuestFromTrello(summary) {
   var dues = summary.cards.map(function (c) { return c.due; }).filter(Boolean).sort();
   var start = dues.length ? dues[0] : iso(TODAY);
@@ -2198,9 +2197,8 @@ function parseCsv(text) {
   return rows;
 }
 var TODOIST_HEADER_FIELDS = ["TYPE", "CONTENT", "DESCRIPTION", "PRIORITY", "INDENT", "DATE", "DEADLINE"];
-// Reads a Todoist per-project CSV export into a plain summary. Sections are
-// informational only; subtasks (INDENT > 1) flatten to their own tasks,
-// since Sidequest has no sub-task-of-a-task concept, only Task -> Step.
+// Reads a Todoist per-project CSV export into a plain summary. Sections are informational;
+// subtasks (INDENT > 1) flatten to tasks, since Sidequest has only Task and Step.
 function parseTodoistExport(text) {
   var rows = parseCsv(text).filter(function (r) { return r.length > 1 || (r.length === 1 && r[0] !== ""); });
   if (!rows.length) return null;

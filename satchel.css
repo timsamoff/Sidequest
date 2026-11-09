@@ -122,13 +122,13 @@ strong { font-weight: 600; }
   grid-column: 1 / -1; grid-row: 2; position: relative; z-index: 0; margin-top: -22px;
   padding: calc(22px + var(--clasp-w) + var(--space-14)) 0 var(--space-20); background: var(--lining); color: var(--lining-ink);
 }
-/* The tan panel reaches 300px up behind the flap, past its curved corners. With JavaScript the panel (not the nav box) carries the color, and its bottom edge starts 22px above the nav so it begins fully hidden behind the flap. */
+/* The tan panel reaches 300px up behind the flap. With JavaScript it carries the color and starts 22px up. */
 .topnav::before { content: ""; position: absolute; z-index: -1; left: 0; right: 0; top: -300px; bottom: 0; background: var(--lining); border-radius: 0 0 64px 64px / 0 0 22px 22px; box-shadow: inset 0 -4px 6px -3px rgba(0, 0, 0, .3); }
 .js .topnav { background: none; }
 .js .topnav::before { bottom: 22px; transition: bottom .35s ease; }
 .js .topnav.open::before { bottom: 0; }
 html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
-/* With JavaScript the lining's height animates from 0 to --navh (set from the list's real height in satchel.js). The list sits at the lining's bottom edge, carrying the padding with it, so it slides down from behind the flap as the lining grows and back up as it shrinks. */
+/* With JavaScript the lining grows from 0 to --navh (set in satchel.js) and the list slides with its edge. */
 .js .topnav {
   display: block; position: absolute; top: 100%; left: 0; right: 0; height: 0; margin-top: 0; padding: 0; visibility: hidden; clip-path: inset(-400px 0 0 0);
   transition: height .35s ease, margin-top .35s ease, visibility 0s linear .35s;
@@ -253,7 +253,8 @@ main .wrap { container-type: inline-size; }
 .grid { --gap: var(--space-18); --n: 1; display: flex; flex-wrap: wrap; justify-content: center; gap: var(--gap); }
 .grid > * { flex: 0 0 calc((100% - (var(--n) - 1) * var(--gap)) / var(--n)); min-width: 0; }
 .grid.two, .grid.ways { --n: 1; }
-/* A grid gets n columns once its container fits n cards at the card minimum plus (n - 1) gaps of 1.125rem (--gap). The card minimum is 17.5rem for .grid, 24rem for .grid.two, and 15rem for .grid.ways; container conditions cannot read custom properties. */
+/* A grid gets n columns when its container fits n cards at the card minimum plus gaps (1.125rem).
+   Minimums: 17.5rem .grid, 24rem .grid.two, 15rem .grid.ways; container queries cannot read custom properties. */
 @container (width >= calc(2 * 17.5rem + 1.125rem)) { .grid { --n: 2; } }
 @container (width >= calc(3 * 17.5rem + 2 * 1.125rem)) { .grid { --n: 3; } }
 @container (width >= calc(2 * 24rem + 1.125rem)) { .grid.two { --n: 2; } }

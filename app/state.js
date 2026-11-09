@@ -242,15 +242,12 @@ export function normalize(s) {
       });
       var b = typeof t.block === "number" ? Math.round(t.block) : 1;
       b = Math.min(5000, Math.max(0, b));
-      // The dates are independent: only a due date makes a task scheduled, and a
-      // start date may stand alone. A start after its due date is dropped, and the
-      // block is re-derived from the due date on load.
+      // Dates are independent: only a due date schedules a task. A start after its due date is
+      // dropped, and the block is re-derived from the due date on load.
       var tdue = b > 0 && isISO(t.due) ? t.due : "", tstart = isISO(t.start) ? t.start : "";
       if (tstart && tdue && tstart > tdue) tstart = "";
       var test = typeof t.est === "number" && t.est > 0 && t.est <= 9999 ? Math.round(t.est * 100) / 100 : 0;
-      // The launch checklist now holds whole tasks, not steps -- a task with
-      // any step that used to be flagged launch becomes a launch task itself,
-      // so an old saved checklist isn't silently emptied.
+      // A task with a launch-flagged step becomes a launch task, so an old checklist is not emptied.
       var wasStepLaunch = Array.isArray(t.steps) && t.steps.some(function (x) { return x && x.launch === true; });
       ts.push({
         id: S(t.id, 40), block: b, questId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
@@ -500,8 +497,7 @@ export function nextAffirmationIndex(count) {
   try { window.localStorage.setItem(KEY2, JSON.stringify(state)); } catch (e) { /* ignore */ }
   return next;
 }
-// Hosted copies keep the bucket in its own db document, outside state/main, so a draw
-// never moves the sync stamp and survives a relaunch where local storage does not.
+// Hosted copies keep the bucket in a separate db document, so a draw never moves the sync stamp.
 // Resolves a quote index; with no db (or a slow one) it is the plain local draw above.
 export function pickAffirmation(count) {
   return new Promise(function (resolve) {

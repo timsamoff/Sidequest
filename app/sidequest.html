@@ -501,9 +501,7 @@ button.small.on { background: var(--sel); border-color: var(--planned); color: v
 .crow.oneline { align-items: center; }
 .crow label { display: flex; gap: var(--space-10); align-items: flex-start; font-weight: 600; cursor: pointer; flex: 1 1 200px; }
 .notetext { white-space: pre-line; }
-/* List rows show at most two lines of a note, ending in an ellipsis. The full
-   note is one click away (an idea's title opens its dialog, a quest's title
-   opens its page). */
+/* List rows show two lines of a note; the full note is one click away. */
 .noteclamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .cnote { color: var(--muted); font-size: var(--text-sm); margin: var(--space-2) 0 0 var(--space-30); }
 .cfields { display: flex; flex-wrap: wrap; gap: var(--space-12); margin: var(--space-6) 0 0 var(--space-30); }
@@ -631,9 +629,7 @@ svg.chart.nofocusring { outline: none; }
   .questcharts { grid-area: charts; }
   .questactions { grid-area: actions; }
   .questexpand { display: inline-block; }
-  /* Schedule sits level with Tasks only at this width -- zeroing its heading's
-     own margin here, not unconditionally, keeps the normal section gap on a
-     stacked page where .questcharts follows real content above it. */
+  /* Zeroed only at this width, so a stacked page keeps the normal section gap above it. */
   .sechead.questcharts-head, .sechead .questcharts-head { margin-top: 0; }
   /* .setside comes first in the markup so it stacks above .setmain on a
      phone; order swaps it to the right on a wide screen without touching
@@ -641,9 +637,7 @@ svg.chart.nofocusring { outline: none; }
   .setsplit { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); column-gap: var(--space-22); align-items: start; }
   .setmain { order: 1; }
   .setside { order: 2; }
-  /* Schedule defaults only leads its own column at this width -- zeroing its
-     heading's margin unconditionally left it flush against the contact box
-     above it when stacked, since the two sections are DOM siblings there. */
+  /* Zeroed only at this width; stacked, it would sit flush against the contact box above. */
   .setmain-head { margin-top: 0; }
 }
 .ms { position: absolute; top: 4px; width: 14px; height: 14px; background: var(--milestone-bg); border: 2px solid var(--milestone); box-sizing: border-box; transform: translateX(-7px) rotate(45deg); border-radius: 2px; cursor: pointer; }
@@ -764,9 +758,7 @@ html:has(.splash:not([hidden])) { overflow: hidden; }
 .splashaffirm { text-wrap: balance; }
 /* Sidequest grows to the same height as the two-line quote box, vertically centered. */
 .splashtitle { font-family: var(--font-display); display: flex; align-items: center; justify-content: center; height: 100%; font-size: 1.45em; }
-/* --wipe moves a wide, soft mask edge across the text, left to right, while
-   the text blurs. Registered because gradients and calc() inside filter
-   can't be transitioned any other way. */
+/* --wipe is registered so the mask edge and the blur can transition together. */
 @property --wipe { syntax: "<number>"; inherits: false; initial-value: 0; }
 .splashtitle, .splashaffirm { transition: --wipe .9s ease; }
 .splashtitle { filter: blur(calc(var(--wipe) * 6px)); -webkit-mask-image: linear-gradient(to right, transparent calc(var(--wipe) * 150% - 50%), black calc(var(--wipe) * 150%)); mask-image: linear-gradient(to right, transparent calc(var(--wipe) * 150% - 50%), black calc(var(--wipe) * 150%)); }
@@ -964,9 +956,7 @@ function inClaude() {
 function isHosted() {
   try { return inClaude() || window.sidequestHosted === true; } catch (e) { return false; }
 }
-// Plays a short sound effect, silently giving up on any failure (autoplay
-// blocked, missing file) since a sound effect is never worth surfacing an error
-// over. `volume` is optional, 0 to 1.
+// Plays a short sound effect and silently gives up on any failure. `volume` is optional, 0 to 1.
 function playSfx(src, volume) {
   if (!src) return;
   try {
@@ -995,9 +985,8 @@ function formatMoney(n, style) {
   for (var i = 0; i < whole.length; i++) { if (i > 0 && (whole.length - i) % 3 === 0) out += sep.group; out += whole.charAt(i); }
   return out + sep.dec + frac;
 }
-// Reads a typed or pasted amount as a number, or "" if it is not one. Either style is accepted:
-// when both separators appear the later one is the decimal point, and a lone separator followed
-// by exactly three digits is the style's thousands separator.
+// Reads a typed or pasted amount as a number, or "" if it is not one.
+// With both separators the later one is the decimal; a lone one before three digits is thousands.
 function parseMoney(s, style) {
   var t = String(s || "").replace(/[^0-9.,]/g, "");
   var lastDot = t.lastIndexOf("."), lastCom = t.lastIndexOf(","), dec = "";
@@ -1307,9 +1296,8 @@ function totalUnits() { return burnTasks().length; }
 function remainingUnits() { return burnTasks().filter(isOpen).length; }
 function planned(ms) { var d = 0; burnTasks().forEach(function (t) { if (taskEnd(t) <= ms) d++; }); return totalUnits() - d; }
 function sortTasks(list) {
-  // Completed tasks sink to the bottom -- a finished task stays in this list
-  // rather than archiving away, so it needs somewhere to settle.
-  // Scheduled tasks go by start date, then due date, then creation order; Backlog tasks follow in creation order.
+  // Completed tasks sink to the bottom. Scheduled tasks go by start, then due date, then creation order;
+  // Backlog tasks follow in creation order.
   return list.map(function (t) { return { t: t, i: state.tasks.indexOf(t) }; }).sort(function (a, b) {
     var aDone = a.t.status === "Completed" ? 1 : 0, bDone = b.t.status === "Completed" ? 1 : 0;
     if (aDone !== bDone) return aDone - bDone;
@@ -1339,8 +1327,7 @@ function velocityForecast(tasks, blockDays, sinceMs) {
   return { open: open, done: done, rate: rate, windowDays: windowDays, finish: TODAY + Math.ceil(open / rate) * DAY };
 }
 // --- One quest's burndown ---
-// From counted(), not burnTasks() -- a Complete quest's page keeps
-// showing its burndown even while its tasks are hidden cross-quest.
+// Uses counted(), so a Complete quest's page keeps its burndown while its tasks are hidden elsewhere.
 function questBurnTasks(p) { return counted().filter(function (t) { return t.block > 0 && t.questId === p.id; }); }
 function questTotalUnits(p) { return questBurnTasks(p).length; }
 function questRemainingUnits(p) { return questBurnTasks(p).filter(isOpen).length; }
@@ -1701,15 +1688,12 @@ function normalize(s) {
       });
       var b = typeof t.block === "number" ? Math.round(t.block) : 1;
       b = Math.min(5000, Math.max(0, b));
-      // The dates are independent: only a due date makes a task scheduled, and a
-      // start date may stand alone. A start after its due date is dropped, and the
-      // block is re-derived from the due date on load.
+      // Dates are independent: only a due date schedules a task. A start after its due date is
+      // dropped, and the block is re-derived from the due date on load.
       var tdue = b > 0 && isISO(t.due) ? t.due : "", tstart = isISO(t.start) ? t.start : "";
       if (tstart && tdue && tstart > tdue) tstart = "";
       var test = typeof t.est === "number" && t.est > 0 && t.est <= 9999 ? Math.round(t.est * 100) / 100 : 0;
-      // The launch checklist now holds whole tasks, not steps -- a task with
-      // any step that used to be flagged launch becomes a launch task itself,
-      // so an old saved checklist isn't silently emptied.
+      // A task with a launch-flagged step becomes a launch task, so an old checklist is not emptied.
       var wasStepLaunch = Array.isArray(t.steps) && t.steps.some(function (x) { return x && x.launch === true; });
       ts.push({
         id: S(t.id, 40), block: b, questId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
@@ -1959,8 +1943,7 @@ function nextAffirmationIndex(count) {
   try { window.localStorage.setItem(KEY2, JSON.stringify(state)); } catch (e) { /* ignore */ }
   return next;
 }
-// Hosted copies keep the bucket in its own db document, outside state/main, so a draw
-// never moves the sync stamp and survives a relaunch where local storage does not.
+// Hosted copies keep the bucket in a separate db document, so a draw never moves the sync stamp.
 // Resolves a quote index; with no db (or a slow one) it is the plain local draw above.
 function pickAffirmation(count) {
   return new Promise(function (resolve) {
@@ -2726,7 +2709,7 @@ svg.echart { display: block; width: 100%; height: auto; }\
 .efoot { margin-top: 30px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }\
 ";
 
-// The chart functions run at export time (baked markup for no-script previews) and again in the file's script (with tooltips). They are copied by source text in runtimeSource(), so they cannot use anything outside themselves.
+// Copied by source text in runtimeSource(), so these chart functions cannot use anything outside themselves.
 function exportSvgEl(t, a) {
   var e = document.createElementNS("http://www.w3.org/2000/svg", t);
   for (var k in a) e.setAttribute(k, a[k]);
@@ -5844,9 +5827,8 @@ function parseTrelloExport(obj) {
   return { boardName: boardName, cards: cards, droppedCount: dropped };
 }
 function isISOInstant(v) { return typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v); }
-// Builds a new quest from a parsed Trello summary: start is the earliest due
-// date found (or today, with nothing to anchor to), so every card's due
-// date is guaranteed on or after the quest's start and never gets rejected.
+// Builds a quest from a parsed Trello summary. Start is the earliest due date found (or today),
+// so no card's due date falls before it.
 function buildQuestFromTrello(summary) {
   var dues = summary.cards.map(function (c) { return c.due; }).filter(Boolean).sort();
   var start = dues.length ? dues[0] : iso(TODAY);
@@ -5915,9 +5897,8 @@ function parseCsv(text) {
   return rows;
 }
 var TODOIST_HEADER_FIELDS = ["TYPE", "CONTENT", "DESCRIPTION", "PRIORITY", "INDENT", "DATE", "DEADLINE"];
-// Reads a Todoist per-project CSV export into a plain summary. Sections are
-// informational only; subtasks (INDENT > 1) flatten to their own tasks,
-// since Sidequest has no sub-task-of-a-task concept, only Task -> Step.
+// Reads a Todoist per-project CSV export into a plain summary. Sections are informational;
+// subtasks (INDENT > 1) flatten to tasks, since Sidequest has only Task and Step.
 function parseTodoistExport(text) {
   var rows = parseCsv(text).filter(function (r) { return r.length > 1 || (r.length === 1 && r[0] !== ""); });
   if (!rows.length) return null;
@@ -6373,7 +6354,8 @@ function schedule(pairs) {
   return drawEnd;
 }
 
-// Plays the splash, then hides the overlay and calls done(). No-op if showSplash is off; `pickIndex(count)` chooses the quote (possibly a promise, defaults to random), and `opts.hold` keeps the last frame instead of fading out (`opts.instant` jumps straight to it).
+// Plays the splash, then hides the overlay and calls done(). No-op if showSplash is off.
+// `opts.hold` keeps the last frame, `opts.instant` jumps to it, and `pickIndex(count)` may return a promise.
 function playSplash(showSplash, done, audio, pickIndex, opts) {
   var hold = !!(opts && opts.hold), instant = hold && !!opts.instant;
   var root = $("splash");
@@ -6657,9 +6639,8 @@ Promise.resolve().then(function () {
     // The event can arrive after Options is already drawn, which would leave the unknown-status copy up.
     if (ui.view === "settings") renderAll(); else renderChrome();
   });
-  // Chrome may move the open page into the new app window without reloading it,
-  // leaving the app on Options with no splash: reload for a normal first launch.
-  // A page that stays in the browser tab just redraws Options as installed.
+  // Chrome may move the open page into the app window without a reload, so reload for a normal launch.
+  // A page that stays in a browser tab just redraws Options as installed.
   window.addEventListener("appinstalled", function () {
     setDeferredInstallPrompt(null);
     setTimeout(function () {
