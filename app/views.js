@@ -1,4 +1,4 @@
-import { state, ui, save, changed, autoVault, STATUSES, APP_NAME, APP_VERSION, SIDEQUEST_RAW_URL, isISO, defaults, setState, normalize, makeQuest, task, st, S, removeLinksTo } from "./state.js";
+import { state, ui, save, changed, autoVault, STATUSES, APP_NAME, APP_VERSION, releaseFileUrl, isISO, defaults, setState, normalize, makeQuest, task, st, S, removeLinksTo } from "./state.js";
 import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart, addDays } from "./dates.js";
 import {
   WORDS, wd, wl, pset, questDueLimit, dateProblems, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
@@ -221,7 +221,7 @@ function updateBanner() {
   box.appendChild(el("h2", { "class": "first", style: "margin-bottom:4px" }, "Sidequest has leveled up!"));
   box.appendChild(el("p", { "class": "hint first" }, "You are questing in version " + APP_VERSION + ", and Sidequest version " + availableUpdateVersion + " is ready to go. To update, copy the prompt below and paste it into your AI chat."));
   // The ?v= suffix makes the link a new address, so a fetch tool that cached an older copy cannot reuse it.
-  var promptText = "Please update my Sidequest artifact with the latest version, keeping all of my existing data.\n" + SIDEQUEST_RAW_URL + "?v=" + availableUpdateVersion;
+  var promptText = "Please update my Sidequest artifact with the latest version, keeping all of my existing data.\n" + releaseFileUrl(availableUpdateVersion);
   var field = el("textarea", { "class": "updateprompt", readonly: "readonly", rows: "1", "aria-label": "Update prompt to paste into your AI chat" });
   field.value = promptText;
   on(field, "focus", function () { field.select(); });

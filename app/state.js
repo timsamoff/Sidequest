@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.99.0";
+export var APP_VERSION = "0.99.1";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -417,7 +417,8 @@ function isNewerVersion(a, b) {
   for (var i = 0; i < 3; i++) { if (pb[i] > pa[i]) return true; if (pb[i] < pa[i]) return false; }
   return false;
 }
-export var SIDEQUEST_RAW_URL = "https://raw.githubusercontent.com/timsamoff/sidequest/main/app/sidequest.html";
+// The single-file build attached to a GitHub release; the tag is v plus the version.
+export function releaseFileUrl(version) { return "https://github.com/timsamoff/sidequest/releases/download/v" + version + "/sidequest.html"; }
 var SIDEQUEST_RELEASES_URL = "https://api.github.com/repos/timsamoff/sidequest/releases?per_page=1";
 // The single-file build has no manifest link (the build strips it); the web app does and never needs an update notice.
 function isSingleFileBuild() { return typeof document !== "undefined" && !document.querySelector('link[rel=manifest]'); }

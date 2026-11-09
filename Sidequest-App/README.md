@@ -9,7 +9,7 @@ Sidequest itself has no account. These versions do need an account with the buil
 The prompts in this README use this raw link to the file:
 
 ```
-https://raw.githubusercontent.com/timsamoff/sidequest/main/app/sidequest.html
+https://github.com/timsamoff/sidequest/releases/download/v0.99.1/sidequest.html
 ```
 
 ## Claude
@@ -24,7 +24,7 @@ If Claude asks for permission during the build, choose **Allow once** so it can 
 
 Open the artifact Claude creates. That link is yours, so bookmark it or pin it. If you pin it, it appears in the Claude sidebar, and it's how you get back to your data.
 
-If Claude can't fetch the file, download `sidequest.html` from the `app` folder in the repository, upload it to a new conversation, and ask Claude to publish it as an artifact with the `db` and `downloads` capabilities.
+If Claude can't fetch the file, download `sidequest.html` from the [latest release](https://github.com/timsamoff/sidequest/releases), upload it to a new conversation, and ask Claude to publish it as an artifact with the `db` and `downloads` capabilities.
 
 ## Muse
 
@@ -43,7 +43,7 @@ If Muse can't fetch the file, attach `sidequest.html` to the chat instead and re
 When a new version is released, a banner on the **Today** page says so. It holds a prompt you can copy, and the same prompt works in both builders:
 
 > Please update my Sidequest artifact with the latest version, keeping all of my existing data.
-> https://raw.githubusercontent.com/timsamoff/sidequest/main/app/sidequest.html
+> https://github.com/timsamoff/sidequest/releases/download/v0.99.1/sidequest.html
 
 1. Copy the prompt from the banner.
 2. Paste it into the conversation where you built your app, or give the builder the link to your artifact.

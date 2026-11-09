@@ -73,7 +73,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.99.0"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.99.1"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("../css/tokens.css?v=" + v) && html.includes("../css/styles.css?v=" + v) && html.includes("../css/splash.css?v=" + v) && html.includes("../css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -1352,7 +1352,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     const k = kit(await mk(null, f.claude)); await wait();
     ok(k.$("view").textContent.includes("Sidequest has leveled up!"), "a newer version's stamp in meta/version shows the update banner on Today");
     const prompt = k.d.querySelector(".updatebanner textarea.updateprompt");
-    ok(!!prompt && prompt.readOnly && prompt.value === "Please update my Sidequest artifact with the latest version, keeping all of my existing data.\nhttps://raw.githubusercontent.com/timsamoff/sidequest/main/app/sidequest.html?v=9.9.9", "the banner holds a read-only copy field with the prompt and the real raw GitHub URL plus a ?v= version suffix");
+    ok(!!prompt && prompt.readOnly && prompt.value === "Please update my Sidequest artifact with the latest version, keeping all of my existing data.\nhttps://github.com/timsamoff/sidequest/releases/download/v9.9.9/sidequest.html", "the banner holds a read-only copy field with the prompt and the release download URL for that version");
     ok(/You are questing in version \d+\.\d+\.\d+, and Sidequest version 9\.9\.9 is ready to go\. To update, copy the prompt below and paste it into your AI chat\./.test(k.$("view").textContent) && !!k.btn(k.$("view"), "Copy prompt"), "the banner names the current and new versions, tells the user to copy the prompt, and has a Copy prompt button");
     ok(k.$("view").textContent.includes("None of your data will be touched."), "the banner reassures about data safety");
     k.click(k.btn(k.$("view"), "Dismiss"));
@@ -1378,7 +1378,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     let urls = [];
     global.fetch = (u) => { urls.push(u); return Promise.resolve({ ok: true, json: () => Promise.resolve([{ tag_name: "v9.8.7" }]) }); };
     let k = kit(await mk(null, null, null, null, null, noManifest)); await wait();
-    ok(banner(k) && k.d.querySelector(".updatebanner textarea.updateprompt").value.endsWith("sidequest.html?v=9.8.7"), "a newer release tag shows the banner with that version in the prompt");
+    ok(banner(k) && k.d.querySelector(".updatebanner textarea.updateprompt").value.endsWith("/releases/download/v9.8.7/sidequest.html"), "a newer release tag shows the banner with that version in the prompt");
     ok(urls[0].indexOf("https://api.github.com/repos/timsamoff/sidequest/releases") === 0, "the version fetch asks the GitHub releases API");
     k.click(k.btn(k.$("view"), "Dismiss"));
     ok(!banner(k) && k.saved().settings.dismissedUpdateVersion === "9.8.7", "dismissing suppresses that version");
@@ -1398,7 +1398,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     global.fetch = () => Promise.resolve({ ok: true, json: () => Promise.resolve([{ tag_name: "v1.0.0" }]) });
     const f = fake({ "state/main": { json: realJson }, "meta/version": { latest: "9.9.9" } });
     k = kit(await mk(null, f.claude, null, null, null, noManifest)); await wait();
-    ok(banner(k) && k.d.querySelector(".updatebanner textarea.updateprompt").value.endsWith("?v=9.9.9"), "with both sources, the newer one wins (stamp 9.9.9 over fetched 1.0.0)");
+    ok(banner(k) && k.d.querySelector(".updatebanner textarea.updateprompt").value.endsWith("/releases/download/v9.9.9/sidequest.html"), "with both sources, the newer one wins (stamp 9.9.9 over fetched 1.0.0)");
     global.fetch = realFetch;
   }
 }
