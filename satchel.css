@@ -94,7 +94,8 @@ strong { font-weight: 600; }
   border-radius: calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .48) calc(var(--clasp-w) * .48);
 }
 .js .clasp { display: block; }
-.claspart { position: absolute; inset: 0; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); transition: transform .2s linear; }
+.clasp { filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); }
+.claspart { position: absolute; inset: 0; transition: transform .2s linear; }
 /* Hovering lifts the strap 3px, and pressing keeps it lifted until the menu closes. The peek hint is the same lift, then back. */
 .clasp:hover .claspart, .clasp[aria-expanded="true"] .claspart { transform: translateY(-3px); }
 .clasp.peek .claspart { animation: lift .8s linear; }
@@ -204,6 +205,12 @@ html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
   .btn.door:hover { transform: translateY(-1px); }
 }
 .cta-row { display: flex; flex-wrap: wrap; gap: var(--space-12); margin-top: var(--space-22); }
+.cta-pair { display: contents; }
+/* Narrow: the first two buttons share a centered line and the third sits centered below. */
+@media (width < 36rem) {
+  .cta-row { flex-direction: column; align-items: center; }
+  .cta-pair { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-12); }
+}
 
 /* Kicker: small label above a heading, led by the milestone diamond from the icon. */
 .kicker {
