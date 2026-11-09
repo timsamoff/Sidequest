@@ -89,14 +89,19 @@ strong { font-weight: 600; }
 
 /* Clasp: the menu button at every width. The strap tile scales with --clasp-w. */
 .clasp {
-  display: none; position: absolute; z-index: 4; left: 50%; top: calc(var(--flap-h) - var(--clasp-w) * 46 / 44);
-  width: var(--clasp-w); aspect-ratio: 44 / 90; transform: translateX(-50%); padding: 0; border: 0; background: none; cursor: pointer;
-  border-radius: calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .48) calc(var(--clasp-w) * .48);
+  display: none; position: absolute; z-index: 4; left: 50%; top: calc(var(--flap-h) - var(--clasp-w) * 46 / 44 - var(--clasp-pad-t));
+  width: calc(var(--clasp-w) + var(--clasp-pad-x) * 2); height: calc(var(--clasp-w) * 90 / 44 + var(--clasp-pad-t) + var(--clasp-pad-b));
+  transform: translateX(-50%); padding: 0; border: 0; background: none; cursor: pointer;
 }
 .js .clasp { display: block; }
-/* The shadow sits on the button itself because Safari clips a button's contents to its box. */
-.clasp { box-shadow: 0 3px 6px rgba(0, 0, 0, .35); }
-.claspart { position: absolute; inset: 0; transition: transform .2s linear; }
+/* The button is padded around the strap so Safari, which clips a button's contents to its box, leaves room for the shadow and the lift. */
+.clasp { --clasp-pad-x: 12px; --clasp-pad-t: 8px; --clasp-pad-b: 14px; }
+.claspart {
+  position: absolute; inset: var(--clasp-pad-t) var(--clasp-pad-x) var(--clasp-pad-b); transition: transform .2s linear; box-shadow: 0 3px 6px rgba(0, 0, 0, .35);
+  border-radius: calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .11) calc(var(--clasp-w) * .48) calc(var(--clasp-w) * .48);
+}
+.clasp:focus-visible { outline: none; box-shadow: none; }
+.clasp:focus-visible .claspart { outline: 2px solid var(--stamp); outline-offset: 2px; box-shadow: 0 0 0 2px var(--lining), 0 3px 6px rgba(0, 0, 0, .35); }
 /* Hovering lifts the strap 3px, and pressing keeps it lifted until the menu closes. The peek hint is the same lift, then back. */
 .clasp[aria-expanded="true"] .claspart { transform: translateY(-3px); }
 @media (hover: hover) { .clasp:hover .claspart { transform: translateY(-3px); } }
