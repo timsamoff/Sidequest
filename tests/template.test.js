@@ -1075,7 +1075,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const pick = async (text) => {
     const input = k.$("restoreFile");
     Object.defineProperty(input, "files", { value: [new k.w.File([text], "b.json")], configurable: true });
-    k.fire(input, "change"); await new Promise(r => setTimeout(r, 40));
+    k.fire(input, "change"); await new Promise(r => setTimeout(r, 150));
   };
   await pick("this is not json");
   ok(k.$("overlay").hidden && k.$("view").textContent.includes("That is not a Sidequest backup file."), "a file that is not a backup is refused without a warning dialog");
