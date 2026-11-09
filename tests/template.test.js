@@ -2157,7 +2157,7 @@ async function exportClick(k, projectName) {
   k.tab("settings");
   const box = k.$("view");
   ok(box.textContent.includes("To uninstall Sidequest, open the title bar menu and select Uninstall Sidequest...") && !box.textContent.includes("chrome://apps"), "running standalone points to the app window's menu for uninstalling");
-  ok(!box.textContent.includes("Install Sidequest as an app") && !box.textContent.includes("tell whether it is installed on this device"), "the normal install-prompt and unsupported-browser copy are not shown while standalone");
+  ok(!box.textContent.includes("Install Sidequest as an app") && !box.textContent.includes("verify whether it"), "the normal install-prompt and unsupported-browser copy are not shown while standalone");
   ok(!box.textContent.includes("Refresh"), "Options itself no longer offers a Refresh button -- it moved to the top bar");
 }
 {
@@ -2167,7 +2167,8 @@ async function exportClick(k, projectName) {
   ok(k.$("refreshBtn").hidden, "the top-bar Refresh button stays hidden outside standalone mode");
   k.tab("settings");
   const box = k.$("view");
-  ok(box.textContent.includes("tell whether it is installed on this device") && !/iPhone|iPad/.test(box.textContent) && box.textContent.includes("Add to Home Screen"), "a normal (non-standalone) browser tab shows generic install copy that names no phone");
+  ok(!box.textContent.includes("To uninstall Sidequest"), "unknown install status shows no uninstall steps");
+  ok(box.textContent.includes("verify whether it") && !/iPhone|iPad/.test(box.textContent) && box.textContent.includes("Install, Add to Dock, or Add to Home Screen") && !box.textContent.includes("already installed"), "a normal (non-standalone) browser tab shows neutral unknown-status copy that names no phone and never claims an install");
   // A Chromium browser that reports an installed copy gets the installed message; no answer or an error keeps the generic one
   {
     const realNav0 = Object.getOwnPropertyDescriptor(global, "navigator");
@@ -2181,8 +2182,9 @@ async function exportClick(k, projectName) {
     const none = await withNav(() => Promise.resolve([]));
     const boom = await withNav(() => Promise.reject(new Error("blocked")));
     if (realNav0) Object.defineProperty(global, "navigator", realNav0); else delete global.navigator;
-    ok(yes.includes("Sidequest is installed. Open it from your apps or desktop.") && !yes.includes("did not offer an Install button"), "a browser that reports an installed copy says Sidequest is installed");
-    ok(none.includes("did not offer an Install button") && boom.includes("did not offer an Install button"), "an empty answer or an error keeps the generic install message");
+    ok(yes.includes("To uninstall Sidequest") && !none.includes("To uninstall Sidequest") && !boom.includes("To uninstall Sidequest"), "uninstall steps appear only when an installed copy is confirmed");
+    ok(yes.includes("Sidequest is installed. Open it from your apps or desktop.") && !yes.includes("Available options vary by browser"), "a browser that reports an installed copy says Sidequest is installed");
+    ok(none.includes("Available options vary by browser") && boom.includes("Available options vary by browser"), "an empty answer or an error keeps the generic install message");
     ok(JSON.parse(fs.readFileSync(path.join(__dirname, "..", "app", "manifest.json"), "utf8")).related_applications.some(a => a.platform === "webapp" && a.url === "manifest.json"), "the manifest lists the web app so detection can work");
   }
   // iPhone and iPad have no Install button, so they alone get their own steps
@@ -2191,7 +2193,7 @@ async function exportClick(k, projectName) {
   const kIos = kit(await mk()); kIos.tab("settings");
   const iosText = kIos.$("view").textContent;
   if (realNav) Object.defineProperty(global, "navigator", realNav); else delete global.navigator;
-  ok(iosText.includes("On iPhone or iPad: tap Share, then Add to Home Screen.") && !iosText.includes("did not offer an Install button"), "an iPhone or iPad sees the Share, then Add to Home Screen steps instead of the generic line");
+  ok(iosText.includes("On iPhone or iPad: tap Share, then Add to Home Screen.") && !iosText.includes("Available options vary by browser"), "an iPhone or iPad sees the Share, then Add to Home Screen steps instead of the generic line");
 }
 
 {
@@ -2246,6 +2248,15 @@ async function exportClick(k, projectName) {
   off.fire(inp2, "change"); await new Promise(r => setTimeout(r, 40));
   off.click(off.btn(off.$("modalBody"), "Restore backup"));
   ok(off.$("splash").hidden, "a restored backup with the splash turned off does not replay it");
+}
+
+{
+  // An install prompt that arrives after Options is drawn replaces the unknown-status copy with the Install button.
+  const k = kit(await mk());
+  k.tab("settings");
+  ok(k.$("view").textContent.includes("Available options vary by browser") && !k.$("installBtn"), "with no install prompt yet, Options shows the unknown-status copy");
+  k.w.dispatchEvent(new k.w.Event("beforeinstallprompt", { cancelable: true }));
+  ok(!!k.$("installBtn") && !k.$("view").textContent.includes("Available options vary by browser"), "a late install prompt redraws Options with the Install button");
 }
 
 {

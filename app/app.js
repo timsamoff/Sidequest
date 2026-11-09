@@ -223,7 +223,8 @@ Promise.resolve().then(function () {
   window.addEventListener("beforeinstallprompt", function (e) {
     e.preventDefault();
     setDeferredInstallPrompt(e);
-    renderChrome();
+    // The event can arrive after Options is already drawn, which would leave the unknown-status copy up.
+    if (ui.view === "settings") renderAll(); else renderChrome();
   });
   // Chrome may move the open page into the new app window without reloading it,
   // leaving the app on Options with no splash: reload for a normal first launch.

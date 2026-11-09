@@ -1895,10 +1895,14 @@ export function renderSettings(page) {
       // These devices have no Install button, so they get their own steps.
       installBox.appendChild(el("p", { "class": "hint first" }, "On iPhone or iPad: tap Share, then Add to Home Screen."));
     } else {
-      var installNote = el("p", { "class": "hint first" }, "Sidequest can’t tell whether it is installed on this device, and your browser did not offer an Install button. If it is not installed, look in your browser’s menu for Install, Add to Dock, or Add to Home Screen.");
+      var installNote = el("p", { "class": "hint first" }, "Sidequest can’t verify whether it’s installed in this browser. If it isn’t installed, check your browser’s menu for an option such as Install, Add to Dock, or Add to Home Screen. Available options vary by browser.");
       installBox.appendChild(installNote);
-      installBox.appendChild(uninstallLine());
-      detectInstalledApp().then(function (yes) { if (yes) installNote.textContent = "Sidequest is installed. Open it from your apps or desktop."; });
+      // Uninstall steps only appear once an install is confirmed, so unknown status never implies one.
+      detectInstalledApp().then(function (yes) {
+        if (!yes) return;
+        installNote.textContent = "Sidequest is installed. Open it from your apps or desktop.";
+        installBox.appendChild(uninstallLine());
+      });
     }
     root.appendChild(installBox);
   }
