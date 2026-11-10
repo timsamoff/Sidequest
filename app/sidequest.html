@@ -1453,7 +1453,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.99.3";
+var APP_VERSION = "0.99.4";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -2626,8 +2626,8 @@ function renderSection(node) {
 }
 
 var EXPORT_CSS = "\
-:root { --parch-fill:#FCF1D6; --parch-edge:#CEB782; --parch-ink:#2F5D8A; --parch-red:#C62F2F; --parch-white:#FFFFFF; --bg:#F5EFDC; --surface:#FAF6E6; --ink:#1A2733; --muted:#566772; --line:#D3DAD5; --planned:#2F5D8A; --burn:#C62F2F; --scope:#FFAC1C; --est:#C5D1DC; --chip-idle:#E7ECE8; --chip-work:#F6E3C4; --chip-done:#CFE6D5; --chip-new:#D0DBE5; --chip-ink:#1A2733; --late:#A8261C; --late-bg:#F8DDD9; --milestone:#694C80; --milestone-bg:#E8DFF1; --badge-attention:#4F3416; --badge-attention-bg:#DDC3A5; --badge-priority:#4A2E00; --badge-priority-bg:#F8C15A; --badge-active:#6B4A0F; --badge-active-bg:#F6E3C4; --bar-active:#C99A3E; --badge-pending:#34475A; --badge-pending-bg:#D0DBE5; --bar-pending:#7E97AD; --badge-done:#315C3C; --badge-done-bg:#CFE6D5; --bar-done:#74AD85; --badge-neutral:#47433E; --badge-neutral-bg:#D4D1CD; --badge-info:#275568; --badge-info-bg:#CFE3EC; }\
-@media (prefers-color-scheme: dark) { :root { --bg:#1C1814; --surface:#26211C; --ink:#EDE6DA; --muted:#B3A898; --line:#3B332B; --planned:#86B4E0; --burn:#E5534B; --scope:#FFAC1C; --est:#34506B; --chip-idle:#26323B; --chip-work:#4A3B22; --chip-done:#21402C; --chip-new:#2A4560; --chip-ink:#E6ECEF; --late:#F2A29B; --late-bg:#4A2723; --milestone:#D0B6E1; --milestone-bg:#382D43; --badge-attention:#E8C6A6; --badge-attention-bg:#4D3428; --badge-priority:#FFCB80; --badge-priority-bg:#6E4410; --badge-active:#F0D49A; --badge-active-bg:#4A3B22; --bar-active:#A98232; --badge-pending:#D5DEE6; --badge-pending-bg:#3A4754; --bar-pending:#6A8BAA; --badge-done:#B5DDBF; --badge-done-bg:#21402C; --bar-done:#4E9A68; --badge-neutral:#D8D4CF; --badge-neutral-bg:#403C38; --badge-info:#C8DFE9; --badge-info-bg:#2F4E5C; } }\
+:root { --parch-fill:#FCF1D6; --parch-edge:#CEB782; --parch-ink:#2F5D8A; --parch-red:#C62F2F; --parch-white:#FFFFFF; --bg:#F5EFDC; --surface:#FAF6E6; --ink:#1A2733; --muted:#566772; --line:#D3DAD5; --planned:#2F5D8A; --burn:#C62F2F; --scope:#FFAC1C; --est:#C5D1DC; --chip-idle:#F4ECD8; --chip-work:#F6E3C4; --chip-done:#CFE6D5; --chip-new:#D0DBE5; --chip-ink:#1A2733; --late:#A8261C; --late-bg:#F8DDD9; --milestone:#694C80; --milestone-bg:#E8DFF1; --badge-attention:#4F3416; --badge-attention-bg:#DDC3A5; --badge-priority:#4A2E00; --badge-priority-bg:#F8C15A; --badge-active:#6B4A0F; --badge-active-bg:#F6E3C4; --bar-active:#C99A3E; --badge-pending:#34475A; --badge-pending-bg:#D0DBE5; --bar-pending:#7E97AD; --badge-done:#315C3C; --badge-done-bg:#CFE6D5; --bar-done:#74AD85; --badge-neutral:#47433E; --badge-neutral-bg:#D4D1CD; --badge-info:#275568; --badge-info-bg:#CFE3EC; }\
+@media (prefers-color-scheme: dark) { :root { --bg:#1C1814; --surface:#26211C; --ink:#EDE6DA; --muted:#B3A898; --line:#3B332B; --planned:#86B4E0; --burn:#E5534B; --scope:#FFAC1C; --est:#34506B; --chip-idle:#302A23; --chip-work:#4A3B22; --chip-done:#21402C; --chip-new:#2A4560; --chip-ink:#EDE6DA; --late:#F2A29B; --late-bg:#4A2723; --milestone:#D0B6E1; --milestone-bg:#382D43; --badge-attention:#E8C6A6; --badge-attention-bg:#4D3428; --badge-priority:#FFCB80; --badge-priority-bg:#6E4410; --badge-active:#F0D49A; --badge-active-bg:#4A3B22; --bar-active:#A98232; --badge-pending:#D5DEE6; --badge-pending-bg:#3A4754; --bar-pending:#6A8BAA; --badge-done:#B5DDBF; --badge-done-bg:#21402C; --bar-done:#4E9A68; --badge-neutral:#D8D4CF; --badge-neutral-bg:#403C38; --badge-info:#C8DFE9; --badge-info-bg:#2F4E5C; } }\
 * { box-sizing: border-box; }\
 body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; line-height: 1.4; }\
 .ewrap { max-width: 1100px; margin: 0 auto; }\
@@ -3777,7 +3777,7 @@ function overduePanel() {
   var ul = el("ul", { "class": "tlist", style: "margin-top:8px" });
   late.forEach(function (t) {
     var li = el("li"); var b = el("button", { type: "button", "class": "item", title: "View this task" });
-    b.appendChild(el("div", { "class": "l1" }, dispQuest(t) + " · ended " + fmt(taskEnd(t))));
+    b.appendChild(el("div", { "class": "l1" }, dispQuest(t) + " · Ended on " + fmt(taskEnd(t))));
     b.appendChild(el("div", { "class": "l2" }, dispWhat(t)));
     on(b, "click", function () { openTask(t.id); }); li.appendChild(b); ul.appendChild(li);
   });

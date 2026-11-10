@@ -77,7 +77,7 @@ export function overduePanel() {
   var ul = el("ul", { "class": "tlist", style: "margin-top:8px" });
   late.forEach(function (t) {
     var li = el("li"); var b = el("button", { type: "button", "class": "item", title: "View this task" });
-    b.appendChild(el("div", { "class": "l1" }, dispQuest(t) + " · ended " + fmt(taskEnd(t))));
+    b.appendChild(el("div", { "class": "l1" }, dispQuest(t) + " · Ended on " + fmt(taskEnd(t))));
     b.appendChild(el("div", { "class": "l2" }, dispWhat(t)));
     on(b, "click", function () { openTask(t.id); }); li.appendChild(b); ul.appendChild(li);
   });

@@ -95,6 +95,7 @@ strong { font-weight: 600; }
 }
 .js .clasp { display: block; }
 /* The button is padded around the strap so Safari, which clips a button's contents to its box, leaves room for the shadow and the lift. */
+.clasp { -webkit-tap-highlight-color: transparent; }
 .clasp { --clasp-pad-x: 12px; --clasp-pad-t: 8px; --clasp-pad-b: 14px; }
 .claspart {
   position: absolute; inset: var(--clasp-pad-t) var(--clasp-pad-x) var(--clasp-pad-b); transition: transform .2s linear; box-shadow: 0 3px 6px rgba(0, 0, 0, .35);
@@ -323,6 +324,7 @@ code { font-family: var(--font-mono); font-size: .92em; }
 /* Split: prose with a screenshot beside it from 56rem. */
 .split { display: grid; gap: var(--space-24); grid-template-columns: minmax(0, 1fr); align-items: start; }
 .prose > :last-child { margin-bottom: 0; }
+.prose > h3 { margin: var(--space-24) 0 var(--space-10); }
 .prose > h2.lede { margin: 0 0 var(--space-18); font-weight: 400; }
 .prose > .quotehead { width: fit-content; max-width: 100%; margin: 0 0 var(--space-18); }
 .quotehead > h2.lede { margin: 0; }
