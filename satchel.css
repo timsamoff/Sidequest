@@ -346,13 +346,11 @@ code { font-family: var(--font-mono); font-size: .92em; }
   color: var(--muted);
 }
 .shot.wide .shotframe { aspect-ratio: 21 / 9; }
-/* A real screenshot: the parchment frame shows until the image loads, then the image fades in. */
+/* A real screenshot: the parchment box shows until the image loads, then the image fades in. */
 .shotbox {
   position: relative; width: 100%; aspect-ratio: var(--ar); overflow: hidden;
   border: 1px solid var(--line); border-radius: var(--radius-card);
-  background:
-    repeating-linear-gradient(135deg, transparent 0 14px, color-mix(in srgb, var(--brass) 14%, transparent) 14px 15px),
-    color-mix(in srgb, var(--surface) 70%, var(--chip-work));
+  background: color-mix(in srgb, var(--surface) 70%, var(--chip-work));
 }
 .shotbox img { display: block; width: 100%; height: 100%; }
 .js .shotbox img { opacity: 0; }
