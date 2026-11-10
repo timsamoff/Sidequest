@@ -160,28 +160,31 @@
     for (var n = 0; n < out.length; n++) out[n] /= total;
     return out;
   };
-  // Ink spreads from a few drops across the frame with a ragged, darker wet edge, then the real image takes over.
-  var inkIn = function (box, img, done) {
-    var r = box.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
-    var W = Math.round(r.width * dpr), H = Math.round(r.height * dpr), lw = Math.ceil(r.width / 4), lh = Math.ceil(r.height / 4);
+  // The real image sits under a small canvas that draws a parchment cover with an ink-shaped hole.
+  // Only the small canvas is redrawn, at 30 fps, and the browser scales it up.
+  var inkIn = function (box, img) {
+    var r = box.getBoundingClientRect();
+    var lw = Math.ceil(r.width / 4), lh = Math.ceil(r.height / 4);
     var cv = document.createElement("canvas");
-    cv.className = "inkcanvas"; cv.width = W; cv.height = H; cv.setAttribute("aria-hidden", "true");
-    box.appendChild(cv);
-    var ctx = cv.getContext("2d");
-    var maskCv = document.createElement("canvas"), edgeCv = document.createElement("canvas"), tintCv = document.createElement("canvas");
-    maskCv.width = edgeCv.width = lw; maskCv.height = edgeCv.height = lh; tintCv.width = lw; tintCv.height = lh;
-    var mctx = maskCv.getContext("2d"), ectx = edgeCv.getContext("2d"), tctx = tintCv.getContext("2d");
-    var mimg = mctx.createImageData(lw, lh), eimg = ectx.createImageData(lw, lh), noise = noiseField(lw, lh);
+    cv.className = "inkcanvas"; cv.width = lw; cv.height = lh; cv.setAttribute("aria-hidden", "true");
+    var ctx = cv.getContext("2d"), data = ctx.createImageData(lw, lh), px = data.data, noise = noiseField(lw, lh);
     var seeds = [], diag = Math.sqrt(lw * lw + lh * lh);
     for (var i = 0; i < 3; i++) seeds.push({ x: lw * (0.2 + 0.6 * Math.random()), y: lh * (0.2 + 0.6 * Math.random()), delay: 0.18 * i * Math.random() });
-    // The ink is a darker shade of the hero icon's border color, --parch-edge.
+    // The ink is a darker shade of the hero icon's border color, --parch-edge. The cover matches the box.
     var edge = /^#([0-9a-f]{6})$/i.exec(window.getComputedStyle(document.documentElement).getPropertyValue("--parch-edge").trim());
-    var inkColor = edge ? "rgb(" + [0, 2, 4].map(function (i) { return Math.round(parseInt(edge[1].substr(i, 2), 16) * 0.45); }).join(",") + ")" : "black";
-    var start = null, DURATION = 2300;
+    var ink = edge ? [0, 2, 4].map(function (n) { return Math.round(parseInt(edge[1].substr(n, 2), 16) * 0.45); }) : [0, 0, 0];
+    var probe = document.createElement("canvas"); probe.width = probe.height = 1;
+    var pctx = probe.getContext("2d"); pctx.fillStyle = window.getComputedStyle(box).backgroundColor; pctx.fillRect(0, 0, 1, 1);
+    var cover = pctx.getImageData(0, 0, 1, 1).data;
+    var start = null, last = -99, DURATION = 2300;
+    box.appendChild(cv);
+    box.classList.add("inking");
     var frame = function (now) {
       if (start === null) start = now;
-      var t = Math.min((now - start) / DURATION, 1), e = 1 - Math.pow(1 - t, 1.7), thr = -0.12 + e * 1.1;
-      var md = mimg.data, ed = eimg.data;
+      var t = Math.min((now - start) / DURATION, 1);
+      if (t < 1 && now - last < 33) { window.requestAnimationFrame(frame); return; }
+      last = now;
+      var e = 1 - Math.pow(1 - t, 1.7), thr = -0.12 + e * 1.1;
       for (var y = 0; y < lh; y++) for (var x = 0; x < lw; x++) {
         var k = y * lw + x, dmin = 9;
         for (var s = 0; s < 3; s++) {
@@ -190,36 +193,24 @@
         }
         var f = dmin * 1.15 + (noise[k] - 0.5) * 0.7, a = Math.max(0, Math.min(1, (thr - f) / 0.07));
         var band = Math.max(0, 1 - Math.abs(thr - f - 0.058) / 0.042) * (1 - t * 0.45);
-        md[k * 4 + 3] = a * 255;
-        ed[k * 4 + 3] = Math.min(1, band * 1.5) * a * 215;
+        var ia = Math.min(1, band * 1.5) * a * 0.84, ca = (1 - a) * (1 - ia), alpha = ia + ca, o = k * 4;
+        px[o] = alpha ? (ink[0] * ia + cover[0] * ca) / alpha : 0;
+        px[o + 1] = alpha ? (ink[1] * ia + cover[1] * ca) / alpha : 0;
+        px[o + 2] = alpha ? (ink[2] * ia + cover[2] * ca) / alpha : 0;
+        px[o + 3] = alpha * 255;
       }
-      mctx.putImageData(mimg, 0, 0); ectx.putImageData(eimg, 0, 0);
-      tctx.globalCompositeOperation = "source-over"; tctx.clearRect(0, 0, lw, lh);
-      tctx.fillStyle = inkColor; tctx.fillRect(0, 0, lw, lh);
-      tctx.globalCompositeOperation = "destination-in"; tctx.drawImage(edgeCv, 0, 0);
-      ctx.globalCompositeOperation = "source-over"; ctx.clearRect(0, 0, W, H);
-      ctx.drawImage(img, 0, 0, W, H);
-      ctx.globalCompositeOperation = "destination-in"; ctx.drawImage(maskCv, 0, 0, W, H);
-      ctx.globalCompositeOperation = "source-atop"; ctx.drawImage(tintCv, 0, 0, W, H);
+      ctx.putImageData(data, 0, 0);
       if (t < 1) window.requestAnimationFrame(frame);
-      else { box.classList.add("inked", "shown"); window.requestAnimationFrame(function () { cv.remove(); }); if (done) done(); }
+      else { box.classList.add("inked", "shown"); cv.remove(); }
     };
     window.requestAnimationFrame(frame);
-  };
-  // Reveals run one at a time, in the order the images came into view.
-  var waiting = [], inking = false;
-  var pump = function () {
-    if (inking || !waiting.length) return;
-    var next = waiting.shift();
-    inking = true;
-    inkIn(next.box, next.img, function () { inking = false; pump(); });
   };
   Array.prototype.forEach.call(document.querySelectorAll(".shotbox"), function (box) {
     var img = box.querySelector("img");
     var ready = !!(img.complete && img.naturalWidth), seen = false, ran = false;
     var go = function () {
       if (still) { if (ready) box.classList.add("shown"); return; }
-      if (seen && ready && !ran) { ran = true; waiting.push({ box: box, img: img }); pump(); }
+      if (seen && ready && !ran) { ran = true; inkIn(box, img); }
     };
     if (!ready) img.addEventListener("load", function () { ready = true; go(); });
     if (still) { go(); return; }

@@ -359,7 +359,8 @@ code { font-family: var(--font-mono); font-size: .92em; }
 .js .shotbox.shown img { opacity: 1; transition: opacity .5s ease; }
 /* The ink is painted on a canvas over the image, which takes over when the ink is done. */
 .inkcanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.js .shotbox.inked img { transition: none; }
+.js .shotbox.inking img, .js .shotbox.inked img { opacity: 1; transition: none; }
+.inkcanvas { image-rendering: auto; }
 .shot.side .shotbox { max-width: 22rem; margin-inline: auto; }
 @media (prefers-reduced-motion: reduce) { .js .shotbox.shown img { transition: none; } }
 .shotlabel { font: 600 calc(var(--text-80) - 2px)/1.2 var(--font-sans); letter-spacing: .12em; text-transform: uppercase; }
