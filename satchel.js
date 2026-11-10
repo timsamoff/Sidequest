@@ -161,7 +161,7 @@
     return out;
   };
   // Ink spreads from a few drops across the frame with a ragged, darker wet edge, then the real image takes over.
-  var inkIn = function (box, img) {
+  var inkIn = function (box, img, done) {
     var r = box.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
     var W = Math.round(r.width * dpr), H = Math.round(r.height * dpr), lw = Math.ceil(r.width / 4), lh = Math.ceil(r.height / 4);
     var cv = document.createElement("canvas");
@@ -202,16 +202,24 @@
       ctx.globalCompositeOperation = "destination-in"; ctx.drawImage(maskCv, 0, 0, W, H);
       ctx.globalCompositeOperation = "source-atop"; ctx.drawImage(tintCv, 0, 0, W, H);
       if (t < 1) window.requestAnimationFrame(frame);
-      else { box.classList.add("inked", "shown"); window.requestAnimationFrame(function () { cv.remove(); }); }
+      else { box.classList.add("inked", "shown"); window.requestAnimationFrame(function () { cv.remove(); }); if (done) done(); }
     };
     window.requestAnimationFrame(frame);
+  };
+  // Reveals run one at a time, in the order the images came into view.
+  var waiting = [], inking = false;
+  var pump = function () {
+    if (inking || !waiting.length) return;
+    var next = waiting.shift();
+    inking = true;
+    inkIn(next.box, next.img, function () { inking = false; pump(); });
   };
   Array.prototype.forEach.call(document.querySelectorAll(".shotbox"), function (box) {
     var img = box.querySelector("img");
     var ready = !!(img.complete && img.naturalWidth), seen = false, ran = false;
     var go = function () {
       if (still) { if (ready) box.classList.add("shown"); return; }
-      if (seen && ready && !ran) { ran = true; inkIn(box, img); }
+      if (seen && ready && !ran) { ran = true; waiting.push({ box: box, img: img }); pump(); }
     };
     if (!ready) img.addEventListener("load", function () { ready = true; go(); });
     if (still) { go(); return; }
