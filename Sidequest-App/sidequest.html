@@ -5236,7 +5236,7 @@ function helpTopics() {
       "**Quest details:** Tapping a quest title on the **Quests** page opens the quest details for editing.",
       "**Tasks:** You can add tasks with the **+** button or from inside a quest. Tasks can have start and due dates and a time estimate. You can also describe how you’ll know a task is complete.",
       ">Tasks without due dates show a **Backlog** badge. Tasks added after a quest’s start date show an **Added** badge with the date. Even with open steps and decisions, you can close a task.",
-      ">Select **Make milestone** to turn a task with a due date into a milestone. A milestone that moves to the **Backlog** stops being one.",
+      ">Select **Make milestone** to turn a task with a due date into a milestone. A milestone moved to the **Backlog** is no longer a milestone.",
       ">Each task goes into its quest’s **stretch of work**. A stretch of work is a period that divides a quest’s schedule. Stretches of work appear on the **Timeline** as gray bands. Tasks appear within each stretch of work and their color shows status: gray-blue for not started, gold for in progress, and green for completed.",
       "**Steps:** You can add steps with the **+** button or from inside a task. Steps break a task into smaller actions. Completing all of a task’s steps completes the task.",
       "**Decisions:** Every step within a task can require a decision. Answering an open decision closes the step.",
@@ -5252,7 +5252,7 @@ function helpTopics() {
     ]],
     ["A quest’s Schedule and Timeline", [
       "**Schedule:** Quests can have start and due dates, and stretch of work durations (see the **Options** section for more). A quest’s start and due dates divide its total time into stretches of work.",
-      ">A quest can’t start after any of its tasks’ dates, and it can’t be due before it starts or before one of its tasks is due. If you enter a date that conflicts, Sidequest tells you which date to change.",
+      ">A quest can’t start after any of its tasks’ due dates, and its due date can’t come before its start date or any of its tasks’ due dates. If a date conflicts with either rule, you’ll be told which date needs to change.",
       "**Timeline:** The **Timeline** for a quest shows that quest’s schedule as a simple Gantt chart, along with its burndown chart.",
       ">Use the **Slip schedule** button to move incomplete tasks to a later date. Slips can be undone. If a slip would push tasks past the quest’s due date, Sidequest warns you first. Select the button again to proceed.",
       ">The Gantt chart displays milestones and all open tasks. A red line shows today’s date when it falls within the displayed schedule.",
