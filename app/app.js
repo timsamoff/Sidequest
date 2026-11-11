@@ -1,7 +1,7 @@
-import { state, ui, save, saveUI, changed, autoVault, purgeOldVault, APP_NAME, loadFromDbIfAvailable, checkForAppUpdate, pickAffirmation } from "./state.js";
-import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest } from "./model.js";
-import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline, playSfx } from "./dom.js";
-import { lateTasks } from "./model.js";
+import { state, ui, save, changed, autoVault, purgeOldVault, APP_NAME, loadFromDbIfAvailable, checkForAppUpdate, pickAffirmation } from "./state.js";
+import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest, lateTasks } from "./model.js";
+import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline, playSfx, inClaude, isStandalone } from "./dom.js";
+import { TODAY } from "./dates.js";
 import {
   renderToday, renderSchedule, renderQuests, renderWorkshop, renderJobs,
   renderVault, renderSettings, renderHelp, renderQuestPage, renderTimeline, setDeferredInstallPrompt, setInstalledThisSession, setAvailableUpdateVersion
@@ -16,11 +16,11 @@ import { stopTutorial } from "./tutorial.js";
 
 /* navigation */
 export function leaveSearch() { if (ui.view === "search") { ui.query = ""; var b = $("searchBox"); if (b) b.value = ""; } }
-export function go(view) { leaveSearch(); ui.view = view; ui.detail = false; saveUI(); renderAll(); scrollTop(); }
+export function go(view) { leaveSearch(); ui.view = view; ui.detail = false; renderAll(); scrollTop(); }
 export function openTask(id) {
   var at = findAnyTask(id);
   if (at && at.vault) { go("vault"); notify("That task is in the Vault. Restore it to work on it."); return; }
-  leaveSearch(); ui.view = "schedule"; ui.sel = id; ui.detail = true; saveUI(); renderAll(); scrollTop();
+  leaveSearch(); ui.view = "schedule"; ui.sel = id; ui.detail = true; renderAll(); scrollTop();
 }
 export var ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>';
 export var ICON_CANCEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>';
@@ -86,7 +86,7 @@ function renameCurrentQuest() {
 on($("renameBtn"), "click", renameCurrentQuest);
 
 // Installed PWA only (display-mode or navigator.standalone), computed once per session since it cannot change.
-var isStandaloneApp = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+var isStandaloneApp = isStandalone();
 if (isStandaloneApp) {
   $("refreshBtn").hidden = false;
   on($("refreshBtn"), "click", function () {
@@ -214,8 +214,7 @@ Promise.resolve().then(function () {
   });
 
   // PWA install path is web-build only -- a Claude artifact has no sw.js/manifest.json alongside it.
-  var inClaude = !!(window.claude && typeof window.claude.use === "function");
-  if (!inClaude && "serviceWorker" in navigator) {
+  if (!inClaude() && "serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch(function () {});
   }
   // Chrome/Edge/Android fire this once installable; stored in views.js so
@@ -231,12 +230,21 @@ Promise.resolve().then(function () {
   window.addEventListener("appinstalled", function () {
     setDeferredInstallPrompt(null);
     setTimeout(function () {
-      var standalone = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
-      if (standalone) { window.location.reload(); return; }
+      if (isStandalone()) { window.location.reload(); return; }
       setInstalledThisSession(true);
       renderAll();
     }, 300);
   });
+
+  // TODAY is fixed when the page loads, so a page left open overnight reloads when it is next looked at.
+  function reloadOnNewDay() {
+    var n = new Date();
+    if (document.visibilityState === "hidden" || Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()) === TODAY) return;
+    if (!$("overlay").hidden) return;
+    window.location.reload();
+  }
+  document.addEventListener("visibilitychange", reloadOnNewDay);
+  window.addEventListener("focus", reloadOnNewDay);
 
   wireMenu("newBtn", "newMenu"); wireMenu("moreBtn", "moreMenu");
   wireSearchInput($("searchBox"), "side");

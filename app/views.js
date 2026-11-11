@@ -1,15 +1,15 @@
-import { state, ui, save, changed, autoVault, STATUSES, APP_NAME, APP_VERSION, releaseFileUrl, isISO, defaults, setState, normalize, makeQuest, task, st, S, removeLinksTo } from "./state.js";
+import { state, ui, save, changed, autoVault, STATUSES, APP_NAME, APP_VERSION, releaseFileUrl, isISO, defaults, setState, normalize, makeQuest, task, st, S, removeLinksTo, removeQuestTasks } from "./state.js";
 import { DAY, iso, parseISO, TODAY, fmt, fmtY, weekStart, addDays } from "./dates.js";
 import {
-  WORDS, wd, wl, pset, questDueLimit, dateProblems, blockStartFor, blockEndFor, blockForDate, projKey, taskStart, taskEnd,
+  WORDS, wd, wl, pset, questDueLimit, dateProblems, blockStartFor, blockEndFor, blockForDate, taskStart, taskEnd,
   checkpoints, live, counted, planCounted, liveQuests, activeQuests, candidateQuests,
-  findQuest, isDusty, findAnyQuest, linkedQuests, linkQuests, unlinkQuests, dispQuest, dispWhat,
+  findQuest, isDusty, linkedQuests, linkQuests, unlinkQuests, dispQuest,
   totalUnits, remainingUnits, planned, ordered, backlogTasks, sortTasks,
   isLate, lateTasks, setStatus, syncFromSteps, nextTask, questTasksAllDone, questTotalUnits, questRemainingUnits,
   validPage, isPinned, pinPage, unpinPage, questMeta, fmtHours, fmtHoursLong, estimateWarning, questEstimate, recordHist, checkpointStep, globalActual,
   findStep, decisionFor, short, launchItems, stepOptions, taskOptions, findTask, questTasks, openJobs, isJobLate, handJobs, deckJobs, rerollPick
 } from "./model.js";
-import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx, prepareSfx, moneyInput, formatMoney, inClaude, isHosted, helpLink, setHelpOpener } from "./dom.js";
+import { $, el, on, uid, setFocusKey, notify, scrollTop, pencilButton, editInline, playSfx, prepareSfx, moneyInput, formatMoney, inClaude, isHosted, isStandalone, helpLink, setHelpOpener } from "./dom.js";
 import { drawChart, drawQuestChart, rangeBlock, questRangeBlock } from "./chart.js";
 import { playConfetti } from "./confetti.js";
 import { startTutorial } from "./tutorial.js";
@@ -41,7 +41,7 @@ export function nextUpPanel() {
     if (nb) { var ba = el("div", { "class": "actions" }); ba.appendChild(on(el("button", { type: "button", "class": "primary", title: "Go to the Backlog on the Tasks page" }, "Open the Backlog"), "click", function () { go("schedule"); })); box.appendChild(ba); }
     return box;
   }
-  box.appendChild(el("p", { "class": "ptitle" }, dispWhat(t)));
+  box.appendChild(el("p", { "class": "ptitle" }, t.what));
   var meta = el("p", { "class": "pmeta" });
   var pname = dispQuest(t);
   if (validPage("quest:" + t.questId)) {
@@ -78,7 +78,7 @@ export function overduePanel() {
   late.forEach(function (t) {
     var li = el("li"); var b = el("button", { type: "button", "class": "item", title: "View this task" });
     b.appendChild(el("div", { "class": "l1" }, dispQuest(t) + " · Ended on " + fmt(taskEnd(t))));
-    b.appendChild(el("div", { "class": "l2" }, dispWhat(t)));
+    b.appendChild(el("div", { "class": "l2" }, t.what));
     on(b, "click", function () { openTask(t.id); }); li.appendChild(b); ul.appendChild(li);
   });
   box.appendChild(ul);
@@ -216,6 +216,7 @@ export function renderToday(root) {
   root.appendChild(g);
 }
 // Shown when a newer db version stamp exists (checkForAppUpdate() in state.js). Dismissing records the version, so a later update gets its own notice.
+var bannerFit = null;
 function updateBanner() {
   var box = el("div", { "class": "box updatebanner", style: "margin-bottom:22px" });
   box.appendChild(el("h2", { "class": "first", style: "margin-bottom:4px" }, "Sidequest has leveled up!"));
@@ -228,6 +229,9 @@ function updateBanner() {
   box.appendChild(field);
   // Sized to its text (the long URL wraps on a phone), once it is in the page.
   function fit() { if (!field.isConnected) return; field.style.height = "auto"; field.style.height = field.scrollHeight + 2 + "px"; }
+  // One listener at a time: Today redraws this banner on every change.
+  if (bannerFit) window.removeEventListener("resize", bannerFit);
+  bannerFit = fit;
   setTimeout(fit, 0); window.addEventListener("resize", fit);
   box.appendChild(el("p", { "class": "hint" }, "None of your data will be touched."));
   var ar = el("div", { "class": "actions" });
@@ -267,7 +271,7 @@ export function taskRow(t) {
   if (t.block === 0) l2.appendChild(el("span", { "class": "chip backlog", style: "margin-right:8px" }, "Backlog"));
   if (t.launch) l2.appendChild(el("span", { "class": "chip launchcrit", style: "margin-right:8px" }, "Launch critical"));
   if (t.milestone) l2.appendChild(el("span", { "class": "chip milestonechip", style: "margin-right:8px" }, "Milestone"));
-  l2.appendChild(document.createTextNode(dispWhat(t)));
+  l2.appendChild(document.createTextNode(t.what));
   b.appendChild(l2);
   var l3 = el("div", { "class": "l3" });
   l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
@@ -286,7 +290,7 @@ function emptyList(text) {
 export function renderSchedule(root) {
   var o = ordered(), bl = backlogTasks();
   if (!o.length && !bl.length) {
-    root.appendChild(emptyList(planCounted().length ? "No open tasks. Completed tasks are in the Vault." : "No tasks yet. Use the + button to add one."));
+    root.appendChild(emptyList(planCounted().length ? "No open tasks. A completed quest’s tasks stay on that quest’s page." : "No tasks yet. Use the + button to add one."));
     return;
   }
   if (!ui.sel || !findTask(ui.sel)) { var nt = nextTask() || o[0] || bl[0]; ui.sel = nt.id; }
@@ -335,7 +339,7 @@ export function buildDetail(t, inline, readOnly) {
   }
   top.appendChild(right); box.appendChild(top);
   var whatRow = el("div", { "class": "editrow" });
-  var whatP = el("p", { "class": "what", style: "flex:0 1 auto;min-width:0" }, dispWhat(t)); whatRow.appendChild(whatP);
+  var whatP = el("p", { "class": "what", style: "flex:0 1 auto;min-width:0" }, t.what); whatRow.appendChild(whatP);
   if (!readOnly) {
     var whatPen = pencilButton("Rename this task", "Rename this task");
     on(whatPen, "click", function () {
@@ -366,16 +370,16 @@ export function buildDetail(t, inline, readOnly) {
     var ei = el("input", { type: "number", id: "task-est", min: "0", max: "9999", step: "0.25", inputmode: "decimal" });
     sd.value = shownStart(); bd.value = shownDue(); ei.value = t.est > 0 ? t.est : "";
     if (t.block > 0) emsg.textContent = estimateWarning(t.est, taskStart(t), taskEnd(t));
-    var questFirst = parseISO(pset(projKey(t)).start);
+    var questFirst = parseISO(pset(t.questId).start);
     // A bad date stays in its field with its message until it is fixed; nothing is saved or reverted. "change" fires per segment while typing, so saving waits for blur.
-    function liveCheck() { var m = dateProblems(projKey(t), sd.value, bd.value); smsg.textContent = m.start; dmsg.textContent = m.due; return m; }
+    function liveCheck() { var m = dateProblems(t.questId, sd.value, bd.value); smsg.textContent = m.start; dmsg.textContent = m.due; return m; }
     ["input", "change"].forEach(function (ev) { on(bd, ev, liveCheck); on(sd, ev, liveCheck); });
     on(bd, "blur", function () {
       if (bd.value === shownDue()) return;
       var m = liveCheck();
-      if (bd.value === "") { var hadStart = !!t.start; t.block = 0; t.due = ""; t.added = ""; changed(); notify(hadStart ? "Moved to the Backlog. Its start date is kept." : "Moved to the Backlog."); return; }
+      if (bd.value === "") { var hadStart = !!t.start, wasMilestone = t.milestone; t.block = 0; t.due = ""; t.added = ""; t.milestone = false; changed(); notify("Moved to the Backlog." + (hadStart ? " Its start date is kept." : "") + (wasMilestone ? " It is no longer a milestone." : "")); return; }
       if (!isISO(bd.value)) { dmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
-      var blk = blockForDate(projKey(t), parseISO(bd.value));
+      var blk = blockForDate(t.questId, parseISO(bd.value));
       if (blk === null || m.due || m.start.indexOf("You can’t begin") === 0) { if (!dmsg.textContent && !smsg.textContent) dmsg.textContent = "This quest starts " + fmtY(questFirst) + ". Pick a due date on or after that."; return; }
       if (t.start && bd.value < t.start) { smsg.textContent = "You can’t begin after you finish! Pick a start date on or before the due date."; return; }
       if (t.block === 0) t.added = iso(TODAY);
@@ -418,7 +422,8 @@ export function buildDetail(t, inline, readOnly) {
     if (readOnly) {
       cb.disabled = true;
       lab.appendChild(cb); lab.appendChild(el("span", null, s.text)); sli.appendChild(lab);
-      if (dc) sli.appendChild(el("p", { "class": "hint", style: "margin:4px 0 0" }, (dc.a ? "Decision: " : "Decision (open): ") + dc.q + (dc.a ? " — " + dc.a : "")));
+      if (dc) sli.appendChild(el("p", { "class": "hint", style: "margin:4px 0 0" }, (dc.a ? "Decision: " : "Decision (open): ") + dc.q));
+      if (dc && dc.a) sli.appendChild(el("p", { "class": "hint", style: "margin:2px 0 0" }, "Answer: " + dc.a));
     } else {
       on(cb, "change", function () { s.done = cb.checked; syncFromSteps(t); changed(); });
       var textSpan = el("span", null, s.text);
@@ -552,7 +557,7 @@ export function launchSection(root, p) {
     l1.appendChild(t.block === 0 ? el("span", { "class": "chip backlog" }, "Backlog") : el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
     var tag1 = addedChip(t); if (tag1) { tag1.style.marginLeft = "6px"; l1.appendChild(tag1); }
     b.appendChild(l1);
-    b.appendChild(el("div", { "class": "l2" }, short(dispWhat(t), 60) + (t.vault ? " (in the Vault)" : "")));
+    b.appendChild(el("div", { "class": "l2" }, short(t.what, 60) + (t.vault ? " (in the Vault)" : "")));
     var l3 = el("div", { "class": "l3" });
     l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
     if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
@@ -801,20 +806,36 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
   if (readOnly) {
     host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start ? fmtY(parseISO(eff.start)) : "unset") + (p.due ? ", due " + fmtY(parseISO(p.due)) : "") + ", " + wl() + " length " + eff.days + " days" + "."));
   } else {
-    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
+    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
     function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
     var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
     var pd = el("input", { type: "date", id: "proj-due" }); pd.value = p.due;
     var pl = el("input", { type: "number", id: "proj-days", min: "1", max: "90", step: "1", inputmode: "numeric" }); pl.value = eff.days;
+    // The earliest and latest dates on this quest's tasks; its start and due date must stay outside them.
+    var firstTask = "", lastTask = "";
+    questTasks(p.id).forEach(function (t) {
+      [t.start, t.due].forEach(function (v) { if (v && (!firstTask || v < firstTask)) firstTask = v; });
+      if (t.due && t.due > lastTask) lastTask = t.due;
+    });
     function applyOwn() {
       var sv = ps.value, lv = parseInt(pl.value, 10);
-      if (!isISO(sv)) { ps.value = eff.start; smsg.textContent = "Enter a valid start date."; return; }
-      if (isNaN(lv) || lv < 1 || lv > 90) { pl.value = eff.days; smsg.textContent = wd() + " length must be from 1 to 90 days."; return; }
+      if (sv === eff.start && lv === eff.days) { smsg.textContent = ""; return; }
+      if (!isISO(sv)) { smsg.textContent = "Enter a valid start date."; return; }
+      if (isNaN(lv) || lv < 1 || lv > 90) { smsg.textContent = wd() + " length must be from 1 to 90 days."; return; }
+      if (p.due && sv > p.due) { smsg.textContent = "This quest is due " + fmtY(parseISO(p.due)) + ". Pick a start date on or before then."; return; }
+      if (firstTask && sv > firstTask) { smsg.textContent = "A task in this quest is dated " + fmtY(parseISO(firstTask)) + ". Pick a start date on or before that."; return; }
       p.start = sv; p.days = lv; changed(); notify(p.name + " schedule saved.");
     }
     // "blur", not "change" -- a date input fires "change" per segment while typing.
     on(ps, "blur", applyOwn); on(pl, "blur", applyOwn);
-    on(pd, "blur", function () { p.due = isISO(pd.value) ? pd.value : ""; changed(); notify(p.due ? "Due date saved." : "Due date cleared."); });
+    on(pd, "blur", function () {
+      var dv = pd.value;
+      if (dv === p.due) { if (ps.value === eff.start) smsg.textContent = ""; return; }
+      if (dv !== "" && !isISO(dv)) { smsg.textContent = "Enter a valid due date, or leave it empty."; return; }
+      if (dv && dv < eff.start) { smsg.textContent = "This quest starts " + fmtY(parseISO(eff.start)) + ". Pick a due date on or after that."; return; }
+      if (dv && lastTask && dv < lastTask) { smsg.textContent = "A task in this quest is due " + fmtY(parseISO(lastTask)) + ". Pick a due date on or after that."; return; }
+      p.due = dv; changed(); notify(p.due ? "Due date saved." : "Due date cleared.");
+    });
     sfield("proj-start", "Start date", ps); sfield("proj-due", "Due date", pd); sfield("proj-days", "Days per " + wd().toLowerCase(), pl);
     host.appendChild(sg); host.appendChild(smsg);
   }
@@ -853,11 +874,10 @@ function questCharts(p, wide, expandBtn, first) {
   return out;
 }
 
-// Promotes in place -- same record, same id. Restores any links set aside by
-// a prior demoteToCandidate(), only ones still pointing at a quest that still exists.
+// Promotes in place: the same record and id. Its links were kept while it was a Candidate.
 function overWip() { var n = state.settings.wipLimit; return !!n && activeQuests().length >= n; }
 export function promoteToActive(id) {
-  var p = findAnyQuest(id);
+  var p = findQuest(id);
   if (!p) return;
   var n = activeQuests().length;
   if (overWip() && p.status !== "active") {
@@ -875,7 +895,7 @@ function doPromote(p) {
 }
 // Sends an active quest back to Candidates. Its links are kept, shown read-only, and live again on promotion.
 export function demoteToCandidate(id) {
-  var p = findAnyQuest(id);
+  var p = findQuest(id);
   if (!p) return;
   p.status = "candidate";
   changed();
@@ -1293,7 +1313,7 @@ export function vaultEntries() {
 }
 export function dropEntry(e) {
   state[e.list] = state[e.list].filter(function (x) { return x !== e.item; });
-  if (e.list === "quests") removeLinksTo([e.item.id]);
+  if (e.list === "quests") { removeLinksTo([e.item.id]); removeQuestTasks([e.item.id]); }
 }
 export function restoreEntry(e) {
   e.item.vault = null;
@@ -1305,8 +1325,7 @@ export function restoreEntry(e) {
   changed(); notify(KIND_LABEL[e.kind] + " restored to " + where + ".");
 }
 export function deleteForever(e) {
-  var extra = e.kind === "task" ? " Its steps also stop counting in the burndown and on the launch checklist." : "";
-  confirmDialog("Delete forever?", "“" + short(e.title, 80) + "” will be permanently deleted. This cannot be undone." + extra, "Delete forever", function () {
+  confirmDialog("Delete forever?", "“" + short(e.title, 80) + "” will be permanently deleted. This cannot be undone.", "Delete forever", function () {
     dropEntry(e); save(); renderAll(); notify("Deleted.");
   });
 }
@@ -1641,7 +1660,7 @@ export function renderHelp(root) {
 /* settings */
 export function blankState() {
   var d = defaults();
-  d.tasks = []; d.decisions = []; d.quests = []; d.workshop = []; d.jobs = []; d.hand = []; d.pins = []; d.lastSlip = null;
+  d.tasks = []; d.decisions = []; d.quests = []; d.workshop = []; d.jobs = []; d.hand = []; d.pins = []; d.hist = {};
   d.start = iso(TODAY); d.days = state.days; d.settings = state.settings;
   return d;
 }
@@ -1880,12 +1899,10 @@ export function renderSettings(page) {
 
   if (!isHosted()) {
     root.appendChild(el("h2", null, "Install Sidequest"));
-    // navigator.standalone is a non-standard flag some mobile browsers use instead of
-    // the display-mode query; the two checks together cover every installed app.
-    var isStandalone = (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+    var standalone = isStandalone();
     function uninstallLine() {
       var p = el("p", { "class": "hint" });
-      if (isStandalone) {
+      if (standalone) {
         p.appendChild(document.createTextNode("To uninstall Sidequest, open the title bar menu and select "));
       } else {
         p.appendChild(document.createTextNode("To uninstall Sidequest, open the app, open the title bar menu, and select "));
@@ -1895,7 +1912,7 @@ export function renderSettings(page) {
       return p;
     }
     var installBox = el("div", { "class": "box", style: "margin-top:10px" });
-    if (isStandalone) {
+    if (standalone) {
       installBox.appendChild(uninstallLine());
     } else if (installedThisSession) {
       installBox.appendChild(el("p", { "class": "hint first" }, "Sidequest is installed. Open it from your apps or desktop."));
@@ -1980,7 +1997,7 @@ export function renderSettings(page) {
 export var downloads = null;
 var downloadsReady = Promise.resolve(null);
 try {
-  if (window.claude && typeof window.claude.use === "function") {
+  if (inClaude()) {
     downloadsReady = window.claude.use("downloads").then(function (d) { downloads = d; return d; }).catch(function () { return null; });
   }
 } catch (e) { /* unavailable */ }
@@ -2010,13 +2027,13 @@ function manualSaveDialog(name, text, mime, onSaved, capability) {
       if (capability) {
         capability.save({ filename: name, data: text }).then(function () { closeModal(); if (onSaved) onSaved(); }, function (err) {
           if (cancelled(err)) note.textContent = "Save canceled.";
-          else copyInstead("Saving isn't available here.");
+          else copyInstead("Saving isn’t available here.");
         });
         return;
       }
       if (canShare) {
         window.navigator.share({ files: [file] }).then(function () { closeModal(); if (onSaved) onSaved(); }, function (err) {
-          if (!cancelled(err)) copyInstead("Saving isn't available here.");
+          if (!cancelled(err)) copyInstead("Saving isn’t available here.");
         });
         return;
       }
@@ -2025,11 +2042,11 @@ function manualSaveDialog(name, text, mime, onSaved, capability) {
         document.body.appendChild(a); a.click(); a.remove();
         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
         copyInstead("If nothing downloaded,");
-      } catch (e) { copyInstead("Download isn't available here."); }
+      } catch (e) { copyInstead("Download isn’t available here."); }
     });
     var acts = el("div", { "class": "actions" }); acts.appendChild(main); body.appendChild(acts); body.appendChild(note);
     var more = el("details", { style: "margin-top:var(--space-16)" });
-    more.appendChild(el("summary", null, "Didn't work? Copy the text instead"));
+    more.appendChild(el("summary", null, "Didn’t work? Copy the text instead"));
     more.appendChild(el("p", { "class": "hint" }, "Copy the text, paste it into a new text file, and save it as " + name + "."));
     var box = el("textarea", { readonly: "readonly", rows: "8", "aria-label": name, style: "margin-top:var(--space-10)" });
     box.value = text; more.appendChild(box);
@@ -2137,7 +2154,7 @@ function buildQuestFromTrello(summary) {
     var blk = 0, due = "";
     if (c.due) { var b = blockForDate(p.id, parseISO(c.due)); if (b !== null) { blk = b; due = c.due; } }
     var t = task(uid(), blk, p.id, S(c.name, 300), false, c.steps.map(function (s) { return st(uid(), s.text, s.done); }));
-    t.notes = c.desc; t.due = due; t.added = due ? iso(TODAY) : "";
+    t.notes = c.desc; t.due = due;
     return t;
   });
   return { quest: p, tasks: tasks };
@@ -2148,7 +2165,8 @@ function importTrelloFile(file, msg) {
   r.onload = function () {
     var obj = null;
     try { obj = JSON.parse(String(r.result || "")); } catch (e) { obj = null; }
-    var summary = obj && parseTrelloExport(obj);
+    var summary = null;
+    try { summary = obj && parseTrelloExport(obj); } catch (e) { summary = null; }
     if (!summary) { msg.textContent = "That does not look like a Trello board export."; return; }
     msg.textContent = "";
     var nc = summary.cards.length, ns = summary.cards.reduce(function (n, c) { return n + c.steps.length; }, 0);
@@ -2242,7 +2260,7 @@ function buildQuestFromTodoist(summary, name) {
     var blk = 0, due = "";
     if (c.due) { var b = blockForDate(p.id, parseISO(c.due)); if (b !== null) { blk = b; due = c.due; } }
     var t = task(uid(), blk, p.id, c.name, false, []);
-    t.notes = c.section ? "Section: " + c.section : ""; t.due = due; t.added = due ? iso(TODAY) : "";
+    t.notes = c.section ? "Section: " + c.section : ""; t.due = due;
     return t;
   });
   return { quest: p, tasks: tasks };

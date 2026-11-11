@@ -73,7 +73,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.99.4"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.99.5"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("../css/tokens.css?v=" + v) && html.includes("../css/styles.css?v=" + v) && html.includes("../css/splash.css?v=" + v) && html.includes("../css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
@@ -330,6 +330,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const a = k.$("freshAck"); a.checked = true; k.fire(a); k.click(k.$("freshGo"));
   ok(k.$("view").textContent.includes("No tasks yet") && k.saved().tasks.length === 0 && k.saved().settings.hideWelcome === false && k.$("view").textContent.includes("Your new adventure begins here!"), "empty planner: nothing left, and the welcome message comes back");
   ok(k.saved().quests.length === 0 && k.saved().pins.length === 0, "no quests and no pins after a fresh start");
+  ok(Object.keys(k.saved().hist).length === 0, "a blank slate keeps none of the sample burndown history");
   // add own quest from scratch: a task needs an active quest to attach to
   k.menuAct("newBtn", "newQuest"); k.setField("name", "My App"); k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Promote"));
@@ -707,6 +708,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const del = [...k.d.querySelectorAll("#view li")].find(li => li.textContent.includes("Sample App"));
   k.click(k.btn(del, "Delete forever")); k.click(k.$("confirmYes"));
   ok(!q("pApp") && q("pSite").linkedQuestIds.indexOf("pApp") < 0, "deleting a vaulted quest forever removes the link from its partner");
+  ok(!k.saved().tasks.some(t => t.questId === "pApp") && !k.saved().decisions.some(d => d.step === "a5z"), "deleting a vaulted quest forever removes its tasks and their decisions");
 }
 {
   // Saves from before this change kept a demoted quest's links in savedLinkIds; they load as real links
@@ -3058,6 +3060,40 @@ async function exportClick(k, projectName) {
   const k2 = kit(await mk({ quests: [], tasks: [], jobs: [{ id: "x", text: "Keep", done: true, due: "nope" }, { text: "no id" }, null] }));
   const j = k2.saved().jobs;
   ok(j.length === 1 && j[0].text === "Keep" && j[0].done === true && j[0].due === "", "normalize keeps valid jobs, drops bad ones, and blanks a bad date");
+}
+/* ---- quest schedule fields, milestone on backlog, decision lines, slip warning ---- */
+{
+  const k = kit(await mk()); k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
+  const toast = () => k.$("toast").textContent, msg = () => k.d.querySelector(".questcharts .schedmsg").textContent;
+  const app = () => k.saved().quests.find(q => q.id === "pApp");
+  const before = k.$("proj-start");
+  k.fire(before, "blur"); k.fire(k.$("proj-due"), "blur"); k.fire(k.$("proj-days"), "blur");
+  ok(k.$("proj-start") === before && toast() === "", "leaving a quest's schedule fields unchanged saves nothing and shows no toast");
+  const start0 = app().start;
+  k.$("proj-start").value = "2099-01-01"; k.fire(k.$("proj-start"), "blur");
+  ok(app().start === start0 && msg().includes("A task in this quest is dated"), "a quest start after its tasks' dates is refused with a message");
+  k.$("proj-due").value = "2000-01-01"; k.fire(k.$("proj-due"), "blur");
+  ok(app().due === "" && msg().includes("This quest starts"), "a quest due date before its start is refused with a message");
+  k.click(k.d.querySelector("#ptask-a4 button.item"));
+  k.$("task-due").value = ""; k.fire(k.$("task-due"), "blur");
+  const a4 = k.saved().tasks.find(t => t.id === "a4");
+  ok(a4.block === 0 && a4.milestone === false && toast().includes("no longer a milestone"), "a milestone moved to the Backlog stops being a milestone");
+}
+{
+  const k = kit(await mk()); k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Website")); k.click(k.btn(k.$("view"), "Vault"));
+  k.tab("vault"); k.click(k.btn([...k.d.querySelectorAll("#view li")].find(li => li.textContent.includes("Sample Website")), "Sample Website"));
+  k.click(k.d.querySelector("#ptask-w3 button.item"));
+  const lines = [...k.d.querySelectorAll("#ptask-w3 .steps li p.hint")].map(p => p.textContent);
+  ok(lines[0] === "Decision: Should the site use a page builder?" && lines[1] === "Answer: No, plain pages are enough.", "a vaulted quest prints a decision and its answer on two labeled lines");
+}
+{
+  const k = kit(await mk({ quests: [{ id: "q", name: "Late", status: "active", start: "2031-01-01", due: "2031-01-10", days: 7 }, { id: "r", name: "Bad date", status: "active", start: "2026-02-31" }], tasks: [{ id: "t", block: 2, questId: "q", what: "One", due: "2031-01-08", status: "Not started", steps: [] }] }));
+  ok(k.saved().quests.find(q => q.id === "r").start === "", "a date that is not on the calendar is dropped on load");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Late")); k.click(k.btn(k.$("view"), "Slip schedule"));
+  k.$("slipDays").value = "7"; k.click(k.$("slipGo"));
+  ok(k.saved().tasks[0].due === "2031-01-08" && k.$("modalBody").textContent.includes("would land after this quest’s due date"), "a slip past the quest's due date warns first and moves nothing");
+  k.click(k.$("slipGo"));
+  ok(k.saved().tasks[0].due === "2031-01-15", "choosing the button again goes ahead with the slip");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

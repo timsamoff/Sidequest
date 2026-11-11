@@ -44,6 +44,8 @@ async function main() {
   const port = server.address().port;
   const browser = await chromium.launch();
   const context = await browser.newContext();
+  // Keeps test visits out of the site's live analytics.
+  await context.route(/googletagmanager|google-analytics/, r => r.abort());
   const page = await context.newPage();
   await page.goto("http://localhost:" + port + "/app/index.html");
   await page.waitForTimeout(300);

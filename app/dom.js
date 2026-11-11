@@ -22,6 +22,10 @@ export function helpLink(id, name) {
 export function inClaude() {
   try { return !!(window.claude && typeof window.claude.use === "function"); } catch (e) { return false; }
 }
+// True in the installed app. navigator.standalone is a non-standard flag some mobile browsers use instead of the display-mode query.
+export function isStandalone() {
+  try { return (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true; } catch (e) { return false; }
+}
 // True when running as a hosted artifact: inside Claude, or any host that sets window.sidequestHosted. Wording about where data lives and the web-only features follow this; Claude-only abilities use inClaude().
 export function isHosted() {
   try { return inClaude() || window.sidequestHosted === true; } catch (e) { return false; }

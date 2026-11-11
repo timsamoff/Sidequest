@@ -396,17 +396,25 @@ export function stepDialog(prefillQuestId) {
 // Slips only incomplete, scheduled tasks later by N days -- Completed tasks,
 // the Backlog, and the quest's start date are never touched.
 export function slipDialog(p) {
-  openModal("Slip " + p.name + "'s schedule", function (body) {
+  openModal("Slip " + p.name + "’s schedule", function (body) {
     body.appendChild(el("p", { "class": "hint first" }, "This moves incomplete tasks later by the same number of days. Completed tasks and the Backlog are not affected."));
     var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": "slipDays" }, "Days to slip (1 to 90)"));
     var inp = el("input", { type: "number", id: "slipDays", min: "1", max: "90", step: "1", inputmode: "numeric" }); inp.value = "7"; w.appendChild(inp); body.appendChild(w);
     var err = el("p", { "class": "msg", role: "alert" }); body.appendChild(err);
     var acts = el("div", { "class": "actions", style: "margin-top:6px" });
+    var warnedFor = null;
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push dates later" }, "Push dates later"), "click", function () {
       var n = parseInt(inp.value, 10);
       if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
       var targets = state.tasks.filter(function (t) { return t.questId === p.id && t.block > 0 && t.status !== "Completed" && !t.vault; });
       if (!targets.length) { err.textContent = "Nothing incomplete is scheduled to slip."; return; }
+      // Warns once for this number of days; choosing the button again goes ahead.
+      var limit = questDueLimit(p.id), past = limit === null ? 0 : targets.filter(function (t) { return addDays(taskEnd(t), n) > limit; }).length;
+      if (past && warnedFor !== n) {
+        warnedFor = n;
+        err.textContent = past + (past === 1 ? " task" : " tasks") + " would land after this quest’s due date (" + fmtY(limit) + "). Choose Push dates later again to go ahead.";
+        return;
+      }
       var snap = targets.map(function (t) { return { id: t.id, block: t.block, start: t.start, due: t.due }; });
       targets.forEach(function (t) {
         // Both ends move by the same days, so a task keeps its own length.

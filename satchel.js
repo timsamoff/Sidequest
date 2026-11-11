@@ -93,28 +93,31 @@
   /* Scroll lerp: a mouse wheel eases toward its target instead of jumping. Keyboard, touch, trackpads,
      the scrollbar, and in-page links keep their native behavior, and reduced motion turns it off. */
   var reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-  var target = window.scrollY, current = target, raf = 0, driving = false;
-  var EASE = 0.12;
+  var target = window.scrollY, current = target, raf = 0, driving = false, lastT = 0;
+  // The share of the remaining distance covered in one 60 fps frame. Slower frames cover more, so the speed holds.
+  var EASE = 0.12, FRAME = 1000 / 60;
 
   var lastY = target;
 
   function maxScroll() { return Math.max(0, root.scrollHeight - window.innerHeight); }
   function release() {
     if (raf) { window.cancelAnimationFrame(raf); raf = 0; }
-    driving = false;
+    driving = false; lastT = 0;
     target = current = window.scrollY;
   }
-  function step() {
+  function step(now) {
     // Something else moved the page (a key, a link, the scrollbar): hand control back.
     if (Math.abs(window.scrollY - lastY) > 2) { release(); return; }
     var diff = target - current;
     if (Math.abs(diff) < 1) {
       current = target;
       window.scrollTo({ top: current, behavior: "instant" });
-      raf = 0; driving = false;
+      raf = 0; driving = false; lastT = 0;
       return;
     }
-    current += diff * EASE;
+    var dt = lastT ? Math.min(now - lastT, 100) : FRAME;
+    lastT = now;
+    current += diff * (1 - Math.pow(1 - EASE, dt / FRAME));
     window.scrollTo({ top: current, behavior: "instant" });
     lastY = window.scrollY;
     raf = window.requestAnimationFrame(step);
@@ -162,7 +165,7 @@
   };
   // The real image sits under a small canvas that draws a parchment cover with an ink-shaped hole.
   // Only the small canvas is redrawn, at 30 fps, and the browser scales it up.
-  var inkIn = function (box, img) {
+  var inkIn = function (box) {
     var r = box.getBoundingClientRect();
     var lw = Math.ceil(r.width / 4), lh = Math.ceil(r.height / 4);
     var cv = document.createElement("canvas");
@@ -210,7 +213,11 @@
     var ready = !!(img.complete && img.naturalWidth), seen = false, ran = false;
     var go = function () {
       if (still) { if (ready) box.classList.add("shown"); return; }
-      if (seen && ready && !ran) { ran = true; inkIn(box, img); }
+      if (!seen || !ready || ran) return;
+      ran = true;
+      // Decoded first, so the ink never uncovers an image that has not been drawn yet.
+      var begin = function () { inkIn(box); };
+      if (img.decode) img.decode().then(begin, begin); else begin();
     };
     if (!ready) img.addEventListener("load", function () { ready = true; go(); });
     if (still) { go(); return; }
@@ -224,11 +231,63 @@
   });
 })();
 
-/* Pinned cards sit a little off true. The offsets are fixed in each card's style attribute; this only tells the CSS whether cards sit side by side or stacked. */
+/* Pinned cards: each card's edge and shadows are drawn once on a canvas behind it. The live filter in
+   leather.css, which this replaces, was re-run on every frame of anything that moved over the cards. */
 (function () {
+  var PAD = 40, BLUR = 2, backs = [];
+  if (!document.createElement("canvas").getContext) return;
+  // The card's outline: a rectangle with the curled corner cut away, the same path as the mask in leather.css.
+  function trace(c, w, h, bbox) {
+    var k = bbox / 120, ox = w - bbox, oy = h - bbox;
+    function X(x) { return ox + (x + 20) * k; }
+    function Y(y) { return oy + (y + 20) * k; }
+    c.beginPath(); c.moveTo(0, 0); c.lineTo(w, 0); c.lineTo(X(100), Y(-18));
+    c.quadraticCurveTo(X(100), Y(0), X(87.27), Y(12.73));
+    c.quadraticCurveTo(X(46.46), Y(46.46), X(12.73), Y(87.27));
+    c.quadraticCurveTo(X(0), Y(100), X(-18), Y(100));
+    c.lineTo(0, h); c.closePath();
+  }
+  function draw(b) {
+    var r = b.card.getBoundingClientRect(), w = r.width, h = r.height;
+    if (!w || !h) return;
+    var cs = window.getComputedStyle(b.card), bbox = parseFloat(cs.getPropertyValue("--bbox")) || 74;
+    var edge = cs.getPropertyValue("--pin-edge").trim() || "tan", dpr = window.devicePixelRatio || 1;
+    var cw = Math.ceil((w + 2 * PAD) * dpr), ch = Math.ceil((h + 2 * PAD) * dpr), cv = b.canvas;
+    cv.width = cw; cv.height = ch; cv.style.width = cw / dpr + "px"; cv.style.height = ch / dpr + "px";
+    // The card grown by one pixel on every side, in the edge color.
+    var shape = document.createElement("canvas"); shape.width = cw; shape.height = ch;
+    var sc = shape.getContext("2d");
+    sc.fillStyle = edge;
+    for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) {
+      sc.setTransform(dpr, 0, 0, dpr, (PAD + dx) * dpr, (PAD + dy) * dpr);
+      trace(sc, w, h, bbox); sc.fill();
+    }
+    // The soft shadow, then the tight one, each cast by that shape.
+    var ctx = cv.getContext("2d");
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.shadowColor = "rgba(0, 0, 0, .18)"; ctx.shadowBlur = 12 * BLUR * dpr; ctx.shadowOffsetY = 8 * dpr; ctx.drawImage(shape, 0, 0);
+    ctx.shadowColor = "rgba(0, 0, 0, .22)"; ctx.shadowBlur = 1.5 * BLUR * dpr; ctx.shadowOffsetY = 2 * dpr; ctx.drawImage(shape, 0, 0);
+  }
+  function drawAll() { backs.forEach(draw); }
+  var watch = "ResizeObserver" in window ? new ResizeObserver(function (entries) {
+    entries.forEach(function (en) { backs.forEach(function (b) { if (b.card === en.target) draw(b); }); });
+  }) : null;
+
   var grids = document.querySelectorAll(".grid");
   Array.prototype.forEach.call(grids, function (grid) {
-    var cards = grid.querySelectorAll(":scope > .posting");
+    var cards = Array.prototype.slice.call(grid.querySelectorAll(":scope > .posting"));
+    if (!cards.length) return;
+    // Each card moves into a wrapper that takes its place in the grid and carries its offsets.
+    cards = cards.map(function (card) {
+      var wrap = document.createElement("div"), cv = document.createElement("canvas"), b = { card: card, canvas: cv };
+      wrap.className = "pinned"; wrap.style.cssText = card.style.cssText;
+      cv.className = "pinback"; cv.setAttribute("aria-hidden", "true");
+      grid.insertBefore(wrap, card); wrap.appendChild(cv); wrap.appendChild(card);
+      backs.push(b); draw(b);
+      if (watch) watch.observe(card);
+      return wrap;
+    });
+    grid.classList.add("baked");
     if (cards.length < 2) return;
     function layout() {
       var tops = {}, shared = false;
@@ -241,4 +300,9 @@
     layout();
     window.addEventListener("resize", layout);
   });
+  // The edge color follows the theme, and without ResizeObserver a resize is the only cue to redraw.
+  if (!watch) window.addEventListener("resize", drawAll);
+  if ("MutationObserver" in window) new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  var dark = window.matchMedia("(prefers-color-scheme: dark)");
+  if (dark.addEventListener) dark.addEventListener("change", drawAll);
 })();

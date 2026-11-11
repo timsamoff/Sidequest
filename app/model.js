@@ -62,7 +62,6 @@ export function isHiddenComplete(t) { var p = findQuest(t.questId); return !!p &
 // Searches every quest, vaulted or not -- a vaulted quest's page
 // must stay reachable, read-only, until restored.
 export function findQuest(id) { for (var i = 0; i < state.quests.length; i++) if (state.quests[i].id === id) return state.quests[i]; return null; }
-export function findAnyQuest(id) { return findQuest(id); }
 // True only when the quest has at least one counted task and every one of
 // them is Completed -- an empty task list must never read as "done."
 export function questTasksAllDone(p) {
@@ -75,13 +74,13 @@ export function linkedQuests(p) { return (p.linkedQuestIds || []).map(findQuest)
 // A link is bidirectional -- one fact shared by both records, so linking
 // writes the id to both sides' arrays, and unlinking removes it from both.
 export function linkQuests(aId, bId) {
-  var a = findAnyQuest(aId), b = findAnyQuest(bId);
+  var a = findQuest(aId), b = findQuest(bId);
   if (!a || !b || a === b) return;
   if (a.linkedQuestIds.indexOf(bId) < 0) a.linkedQuestIds.push(bId);
   if (b.linkedQuestIds.indexOf(aId) < 0) b.linkedQuestIds.push(aId);
 }
 export function unlinkQuests(aId, bId) {
-  var a = findAnyQuest(aId), b = findAnyQuest(bId);
+  var a = findQuest(aId), b = findQuest(bId);
   if (a) a.linkedQuestIds = a.linkedQuestIds.filter(function (id) { return id !== bId; });
   if (b) b.linkedQuestIds = b.linkedQuestIds.filter(function (id) { return id !== aId; });
 }
@@ -109,11 +108,10 @@ export function blockForDate(questId, dateMs) {
   if (dateMs < start) return null;
   return Math.floor((dateMs - start) / (eff.days * DAY)) + 1;
 }
-export function projKey(t) { return t.questId; }
 // A task's start/due dates, when set, are the truth; otherwise it fills its
 // block. Its block is always the one containing its due date (see syncTaskBlocks).
-export function taskStart(t) { return t.start ? parseISO(t.start) : blockStartFor(projKey(t), t.block); }
-export function taskEnd(t) { return t.due ? parseISO(t.due) : blockEndFor(projKey(t), t.block); }
+export function taskStart(t) { return t.start ? parseISO(t.start) : blockStartFor(t.questId, t.block); }
+export function taskEnd(t) { return t.due ? parseISO(t.due) : blockEndFor(t.questId, t.block); }
 // Re-derives the block of every scheduled task that has its own due date, so a
 // change to a quest's start or block length can't leave a stale block behind.
 export function syncTaskBlocks() {
@@ -145,7 +143,7 @@ export function questEstimate(p) {
 }
 export function chartStart() {
   var min = null;
-  state.tasks.forEach(function (t) { if ((t.vault && t.vault.why !== "done") || t.block === 0 || isHiddenFromPlan(t)) return; var v = parseISO(pset(projKey(t)).start); if (min === null || v < min) min = v; });
+  state.tasks.forEach(function (t) { if ((t.vault && t.vault.why !== "done") || t.block === 0 || isHiddenFromPlan(t)) return; var v = parseISO(pset(t.questId).start); if (min === null || v < min) min = v; });
   return min === null ? parseISO(state.start) : min;
 }
 // Days between points on the main burndown: daily or every few days when the
@@ -194,7 +192,6 @@ export function questTasks(questId) { return state.tasks.filter(function (t) { r
 // both task-less, whichever was promoted first wins.
 export function chosen() { var a = activeQuests(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.questId === a[i].id; })) return a[i]; return null; }
 export function dispQuest(t) { var p = findQuest(t.questId); return p ? p.name : ""; }
-export function dispWhat(t) { return t.what; }
 // The burndown counts tasks, one each.
 function isOpen(t) { return t.status !== "Completed"; }
 export function totalUnits() { return burnTasks().length; }
@@ -343,7 +340,7 @@ export function stepOptionsForTask(taskId) {
 export function taskOptions(questId) {
   var ts = orderedAll();
   if (questId) ts = ts.filter(function (t) { return t.questId === questId; });
-  return ts.map(function (t) { return { value: t.id, label: dispQuest(t) + ": " + short(dispWhat(t), 60) }; });
+  return ts.map(function (t) { return { value: t.id, label: dispQuest(t) + ": " + short(t.what, 60) }; });
 }
 export function findTask(id) { var a = live(state.tasks); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
 export function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (state.tasks[i].id === id) return state.tasks[i]; return null; }

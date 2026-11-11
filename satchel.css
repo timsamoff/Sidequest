@@ -356,9 +356,8 @@ code { font-family: var(--font-mono); font-size: .92em; }
 .js .shotbox img { opacity: 0; }
 .js .shotbox.shown img { opacity: 1; transition: opacity .5s ease; }
 /* The ink is painted on a canvas over the image, which takes over when the ink is done. */
-.inkcanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.inkcanvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; image-rendering: auto; }
 .js .shotbox.inking img, .js .shotbox.inked img { opacity: 1; transition: none; }
-.inkcanvas { image-rendering: auto; }
 .shot.side .shotbox { max-width: 22rem; margin-inline: auto; }
 @media (prefers-reduced-motion: reduce) { .js .shotbox.shown img { transition: none; } }
 .shotlabel { font: 600 calc(var(--text-80) - 2px)/1.2 var(--font-sans); letter-spacing: .12em; text-transform: uppercase; }
@@ -373,8 +372,15 @@ html:has(.splash.inline:not([hidden])) { overflow: visible; }
 html:not(.js) .splash.inline .splashtitle, html:not(.js) .splash.inline .splashaffirm { --wipe: 1; }
 
 /* Pinned cards sit a little off true (offsets are set by satchel.js). */
-.grid[data-rows="side"] > .posting { transform: translateY(calc(var(--ry, 0) * 10px)); }
-.grid[data-rows="stacked"] > .posting { transform: translate(calc(var(--rx, 0) * 5px), calc(var(--ry, 0) * 10px)); }
+.grid[data-rows="side"] > .posting, .grid[data-rows="side"] > .pinned { transform: translateY(calc(var(--ry, 0) * 10px)); }
+.grid[data-rows="stacked"] > .posting, .grid[data-rows="stacked"] > .pinned { transform: translate(calc(var(--rx, 0) * 5px), calc(var(--ry, 0) * 10px)); }
+/* With JavaScript each card sits in a wrapper, and a canvas reaching 40px past it carries the edge and shadows (satchel.js).
+   Without JavaScript the filter in leather.css draws them. */
+.grid.baked { align-items: start; }
+/* The canvas may reach past the window's edge on a phone; clipping it there keeps the page from scrolling sideways. */
+main { overflow-x: clip; }
+.pinned { position: relative; isolation: isolate; }
+.pinback { position: absolute; left: -40px; top: -40px; z-index: -1; pointer-events: none; }
 
 /* Hero splash: a blurred rounded box behind the SVG stands in for its drop-shadow, which Safari clips, and still shows through the torn notches. */
 .splash.inline .splashsvg { filter: none; }

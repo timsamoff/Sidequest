@@ -16,5 +16,12 @@ ok(pre.SOURCE_FILES.includes("app/index.html"), "index.html is still checked");
 ok(pre.HEX_SCAN_FILES.includes("css/tokens.css") && pre.HEX_SCAN_FILES.includes("css/styles.css") && pre.HEX_SCAN_FILES.includes("css/splash.css"), "all three stylesheets are still hex-scanned");
 ok(JSON.stringify(pre.appModules()) === JSON.stringify(onDisk.slice().sort()), "appModules() returns the sorted app/*.js list");
 
+// The service worker's shell must list every module, or the installed app's first offline launch is blank.
+const sw = fs.readFileSync(path.join(__dirname, "..", "app", "sw.js"), "utf8");
+const shell = JSON.parse((sw.match(/var SHELL = (\[[\s\S]*?\]);/) || [])[1] || "[]");
+ok(onDisk.every(f => shell.includes(f.slice(4))), "sw.js SHELL lists every app/*.js module");
+ok(shell.every(f => fs.existsSync(path.join(__dirname, "..", "app", f === "./" ? "index.html" : f))), "every sw.js SHELL entry exists on disk");
+ok(sw.includes("var copy = res.clone();") && sw.includes("c.put(e.request, copy)"), "sw.js clones the response before handing it back");
+
 console.log(fails ? "\n" + fails + " FAILED" : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

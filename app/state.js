@@ -1,13 +1,13 @@
 import { DAY, iso, parseISO, TODAY } from "./dates.js";
 import { findAnyTask, syncTaskBlocks } from "./model.js";
-import { notify, newPin } from "./dom.js";
+import { notify, newPin, inClaude } from "./dom.js";
 import { recordHistory, recordQuestHistory, sweepQuestCompletion } from "./views.js";
 import { renderAll } from "./app.js";
 
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.99.4";
+export var APP_VERSION = "0.99.5";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -157,7 +157,12 @@ export function cleanHand(ids, jobs) {
   }).slice(0, 3);
 }
 export function validVault(a) { return (a && typeof a === "object" && isISO(a.at) && (a.why === "done" || a.why === "removed")) ? { at: a.at, why: a.why } : null; }
-export function isISO(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)); }
+// A real calendar date. The last day of February plus two parses in some browsers but is refused here.
+export function isISO(s) {
+  if (typeof s !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  var ms = Date.parse(s);
+  return !isNaN(ms) && new Date(ms).toISOString().slice(0, 10) === s;
+}
 // Burndown history: { "<ISO day>": [tasks in scope, tasks still open] }.
 // Malformed entries are dropped; the newest 1000 are kept.
 function cleanHist(v) {
@@ -242,8 +247,8 @@ export function normalize(s) {
       });
       var b = typeof t.block === "number" ? Math.round(t.block) : 1;
       b = Math.min(5000, Math.max(0, b));
-      // Dates are independent: only a due date schedules a task. A start after its due date is
-      // dropped, and the block is re-derived from the due date on load.
+      // Only a due date schedules a task, and a start after its due date is dropped.
+      // The block is re-derived from the due date on the next change (syncTaskBlocks).
       var tdue = b > 0 && isISO(t.due) ? t.due : "", tstart = isISO(t.start) ? t.start : "";
       if (tstart && tdue && tstart > tdue) tstart = "";
       var test = typeof t.est === "number" && t.est > 0 && t.est <= 9999 ? Math.round(t.est * 100) / 100 : 0;
@@ -324,7 +329,7 @@ export function normalize(s) {
 var dbPromise = null;
 function getDb() {
   if (dbPromise) return dbPromise;
-  dbPromise = (typeof window !== "undefined" && window.claude && typeof window.claude.use === "function")
+  dbPromise = inClaude()
     ? window.claude.use("db").catch(function () { return null; })
     : Promise.resolve(null);
   return dbPromise;
@@ -332,7 +337,14 @@ function getDb() {
 
 // One write in flight at a time (the db capability's contract); a burst
 // of saves coalesces into the running write plus exactly one more carrying the latest state.
-var dbWriteInFlight = null, dbWritePending = false;
+var dbWriteInFlight = null, dbWritePending = false, dbFails = 0;
+// Says once per session that a save failed, since nothing else would show it.
+var saveWarned = false;
+function warnSaveFailed(where) {
+  if (saveWarned) return;
+  saveWarned = true;
+  notify("Sidequest could not save to " + where + ". Save a backup from Options so nothing is lost.");
+}
 // Nothing is written to the db until it has been read once, or an empty
 // device would overwrite real data with its own sample data.
 var dbReadDone = false, dbLoadTries = 0;
@@ -341,7 +353,8 @@ function dbSave(rawState) {
   getDb().then(function (db) {
     if (!db) return; // no db in this view: localStorage (below) is already the real save
     dbWriteInFlight = db.doc("state/main").set({ json: JSON.stringify(rawState), savedAt: localSavedAt })
-      .catch(function () { /* transient store error: localStorage already has this save; next change retries */ })
+      // One failure may be passing and the next change retries; a second in a row is reported.
+      .then(function () { dbFails = 0; }, function () { if (++dbFails >= 2) warnSaveFailed("your account"); })
       .then(function () {
         dbWriteInFlight = null;
         if (dbWritePending) { dbWritePending = false; dbSave(state); }
@@ -363,7 +376,7 @@ var SAVED_AT_KEY = KEY2 + "-saved-at";
 function readSavedAt() { try { return window.localStorage.getItem(SAVED_AT_KEY) || ""; } catch (e) { return ""; } }
 var bootSavedAt = readSavedAt(), localSavedAt = bootSavedAt, savesSeen = 0, editedAfterBoot = false;
 function writeLocal(json, stamp) {
-  try { window.localStorage.setItem(KEY2, json); window.localStorage.setItem(SAVED_AT_KEY, stamp); } catch (e) { /* ignore */ }
+  try { window.localStorage.setItem(KEY2, json); window.localStorage.setItem(SAVED_AT_KEY, stamp); return true; } catch (e) { return false; }
 }
 export function setState(newState) { state = newState; }
 export function save() {
@@ -373,7 +386,8 @@ export function save() {
   if (changed || !localSavedAt) localSavedAt = new Date().toISOString(); // only a real change moves the stamp
   if (changed && savesSeen > 0) editedAfterBoot = true; // the first save comes from boot, not an edit
   savesSeen++;
-  writeLocal(json, localSavedAt);
+  // A hosted copy saves to its db, so a missing local store only matters when there is no db.
+  if (!writeLocal(json, localSavedAt)) getDb().then(function (db) { if (!db) warnSaveFailed("this browser"); });
   dbSave(state);
 }
 
@@ -400,7 +414,7 @@ export function loadFromDbIfAvailable() {
       return true;
     }).catch(function () {
       // Could not read it, so what it holds is unknown: stay local-only and try again shortly.
-      if (dbLoadTries++ < 3) setTimeout(function () { loadFromDbIfAvailable().then(function (swapped) { if (swapped) { autoVault(); save(); renderAll(); } }); }, 2500 * dbLoadTries);
+      if (dbLoadTries++ < 3) setTimeout(function () { loadFromDbIfAvailable().then(function (swapped) { if (swapped) { autoVault(); purgeOldVault(); save(); renderAll(); } }); }, 2500 * dbLoadTries);
       return false;
     });
   });
@@ -451,8 +465,6 @@ export function checkForAppUpdate() {
 }
 
 export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchVault: true, notesH: {}, questOpen: {}, sectionOpen: {} };
-// Always opens on Today -- no-op.
-export function saveUI() { /* nothing to save */ }
 
 // Stamps a task's completion date when it becomes Done, clears it if reopened.
 // Never moves anything to the Vault itself -- only Quests and Ideas do that.
@@ -466,15 +478,20 @@ export function autoVault() {
 export function removeLinksTo(ids) {
   state.quests.forEach(function (q) { q.linkedQuestIds = q.linkedQuestIds.filter(function (id) { return ids.indexOf(id) < 0; }); });
 }
+// Removes every task of the given quests, and the decisions on those tasks' steps.
+export function removeQuestTasks(ids) {
+  var steps = {};
+  state.tasks.forEach(function (t) { if (ids.indexOf(t.questId) >= 0) t.steps.forEach(function (s) { steps[s.id] = true; }); });
+  state.tasks = state.tasks.filter(function (t) { return ids.indexOf(t.questId) < 0; });
+  state.decisions = state.decisions.filter(function (d) { return !steps[d.step]; });
+}
 export function purgeOldVault() {
   var days = state.settings.vaultPurgeDays;
   if (!days) return;
   var cutoff = TODAY - days * DAY;
   var old = function (item) { return item.vault && parseISO(item.vault.at) < cutoff; };
-  state.quests.filter(old).forEach(function (p) {
-    state.tasks = state.tasks.filter(function (t) { return t.questId !== p.id; });
-  });
   var goneIds = state.quests.filter(old).map(function (p) { return p.id; });
+  removeQuestTasks(goneIds);
   state.quests = state.quests.filter(function (p) { return !old(p); });
   removeLinksTo(goneIds);
   state.workshop = state.workshop.filter(function (p) { return !old(p); });

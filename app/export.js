@@ -471,8 +471,11 @@ function linkLine(href, text) { return '<div><a href="' + escAttr(href) + '">' +
 function emailLine(v) { return linkLine("mailto:" + v, v); }
 // The tel: link strips everything but digits and a leading "+" so phones don't refuse to dial it.
 function phoneLine(v) { return linkLine("tel:" + v.replace(/[^\d+]/g, ""), v); }
-// A scheme is added only if the user didn't already type one ("example.com" alone is relative, not a real link).
-function websiteLine(v) { return linkLine(/^[a-z][a-z0-9+.-]*:/i.test(v) ? v : "https://" + v, v); }
+// A web address with no scheme gets https:// (alone it would be a relative link). Any other scheme prints as plain text, not a link.
+function websiteLine(v) {
+  if (/^https?:/i.test(v)) return linkLine(v, v);
+  return /^[a-z][a-z0-9+.-]*:/i.test(v) ? plainLine(v) : linkLine("https://" + v, v);
+}
 
 // One letterhead column. A brandmark alone (no fields) is reason enough to
 // show it; `nameKey` leads in bold (the organization, not the person), `secondKey` follows plain.
