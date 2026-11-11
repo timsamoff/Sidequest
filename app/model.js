@@ -200,7 +200,9 @@ export function planned(ms) { var d = 0; burnTasks().forEach(function (t) { if (
 export function sortTasks(list) {
   // Completed tasks sink to the bottom. Scheduled tasks go by start, then due date, then creation order;
   // Backlog tasks follow in creation order.
-  return list.map(function (t) { return { t: t, i: state.tasks.indexOf(t) }; }).sort(function (a, b) {
+  var order = new Map();
+  state.tasks.forEach(function (t, i) { order.set(t, i); });
+  return list.map(function (t) { return { t: t, i: order.has(t) ? order.get(t) : -1 }; }).sort(function (a, b) {
     var aDone = a.t.status === "Completed" ? 1 : 0, bDone = b.t.status === "Completed" ? 1 : 0;
     if (aDone !== bDone) return aDone - bDone;
     var aBack = a.t.block > 0 ? 0 : 1, bBack = b.t.block > 0 ? 0 : 1;

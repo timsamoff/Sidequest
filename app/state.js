@@ -304,7 +304,7 @@ export function normalize(s) {
       d.settings.contact = { name: S(c.name, 200), company: S(c.company, 200), phone: S(c.phone, 200), email: S(c.email, 200), address: S(c.address, 500), website: S(c.website, 200) };
     }
     // A data: URI, capped well above the 300 KB upload limit for base64 overhead; anything else is dropped, not truncated.
-    if (typeof s.settings.brandmark === "string" && /^data:image\//.test(s.settings.brandmark) && s.settings.brandmark.length <= 500000) d.settings.brandmark = s.settings.brandmark;
+    d.settings.brandmark = validBrandmark(s.settings.brandmark);
     if ([0, 2, 3, 4, 5].indexOf(s.settings.wipLimit) >= 0) d.settings.wipLimit = s.settings.wipLimit;
     if ([0, 7, 14, 30, 60].indexOf(s.settings.dustDays) >= 0) d.settings.dustDays = s.settings.dustDays;
     if (typeof s.settings.audio === "boolean") d.settings.audio = s.settings.audio;
@@ -337,7 +337,11 @@ function getDb() {
 
 // One write in flight at a time (the db capability's contract); a burst
 // of saves coalesces into the running write plus exactly one more carrying the latest state.
-var dbWriteInFlight = null, dbWritePending = false, dbFails = 0;
+var dbWriteInFlight = null, dbWritePending = false, dbFails = 0, dbTimer = null;
+// The brandmark has its own db document, so a logo cannot push the state document past the db's size limit.
+// dbBrandmark is what the db is known to hold.
+var dbBrandmark = "";
+function validBrandmark(v) { return typeof v === "string" && /^data:image\//.test(v) && v.length <= 500000 ? v : ""; }
 // Says once per session that a save failed, since nothing else would show it.
 var saveWarned = false;
 function warnSaveFailed(where) {
@@ -352,7 +356,15 @@ function dbSave(rawState) {
   if (!dbReadDone || dbWriteInFlight) { dbWritePending = true; return; }
   getDb().then(function (db) {
     if (!db) return; // no db in this view: localStorage (below) is already the real save
-    dbWriteInFlight = db.doc("state/main").set({ json: JSON.stringify(rawState), savedAt: localSavedAt })
+    var mark = rawState.settings.brandmark || "";
+    var slim = Object.assign({}, rawState, { settings: Object.assign({}, rawState.settings, { brandmark: "" }) });
+    var writes = [db.doc("state/main").set({ json: JSON.stringify(slim), savedAt: localSavedAt })];
+    // A brandmark the db refuses is not retried on every save; the rest of the data still syncs.
+    if (mark !== dbBrandmark) writes.push(db.doc("meta/brandmark").set({ data: mark }).then(function () { dbBrandmark = mark; }, function () {
+      dbBrandmark = mark;
+      if (mark) notify("Your brandmark could not be saved to your account. Add a smaller image in Options.");
+    }));
+    dbWriteInFlight = Promise.all(writes)
       // One failure may be passing and the next change retries; a second in a row is reported.
       .then(function () { dbFails = 0; }, function () { if (++dbFails >= 2) warnSaveFailed("your account"); })
       .then(function () {
@@ -379,7 +391,14 @@ function writeLocal(json, stamp) {
   try { window.localStorage.setItem(KEY2, json); window.localStorage.setItem(SAVED_AT_KEY, stamp); return true; } catch (e) { return false; }
 }
 export function setState(newState) { state = newState; }
-export function save() {
+// Sends a held-back db write now (the page is being hidden or closed).
+function flushDbSave() { if (dbTimer) { clearTimeout(dbTimer); dbTimer = null; dbSave(state); } }
+if (typeof window !== "undefined" && window.addEventListener) {
+  window.addEventListener("pagehide", flushDbSave);
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") flushDbSave(); });
+}
+// `typing` marks a save made on every keystroke: the db write waits for a pause, since it sends the whole document.
+export function save(typing) {
   var json = JSON.stringify(state), prev = null;
   try { prev = window.localStorage.getItem(KEY2); } catch (e) { prev = null; }
   var changed = json !== prev;
@@ -388,7 +407,9 @@ export function save() {
   savesSeen++;
   // A hosted copy saves to its db, so a missing local store only matters when there is no db.
   if (!writeLocal(json, localSavedAt)) getDb().then(function (db) { if (!db) warnSaveFailed("this browser"); });
-  dbSave(state);
+  if (dbTimer) { clearTimeout(dbTimer); dbTimer = null; }
+  if (typing === true) dbTimer = setTimeout(function () { dbTimer = null; dbSave(state); }, 800);
+  else dbSave(state);
 }
 
 // Runs once at boot, after the initial paint. Swaps in the db's state if
@@ -396,7 +417,10 @@ export function save() {
 export function loadFromDbIfAvailable() {
   return getDb().then(function (db) {
     if (!db) { dbReadDone = true; dbWritePending = false; return false; }
-    return db.doc("state/main").get().then(function (snap) {
+    return Promise.all([db.doc("state/main").get(), db.doc("meta/brandmark").get()]).then(function (snaps) {
+      var snap = snaps[0], markData = snaps[1].exists ? snaps[1].data() : null;
+      var hasMark = !!markData && typeof markData.data === "string";
+      dbBrandmark = hasMark ? validBrandmark(markData.data) : "";
       var data = snap.exists ? snap.data() : null, parsed = null;
       // A document that exists but cannot be parsed is treated as unreadable, never overwritten.
       if (data && typeof data.json === "string") parsed = JSON.parse(data.json);
@@ -409,6 +433,8 @@ export function loadFromDbIfAvailable() {
       if (mine && dbAt && mine > dbAt) { dbSave(state); return false; }
       if (mine && mine === dbAt) return false; // the very same save: nothing to do
       state = normalize(parsed);
+      // A document saved before the brandmark moved out still carries it inline.
+      if (hasMark) state.settings.brandmark = dbBrandmark;
       localSavedAt = dbAt || localSavedAt;
       writeLocal(JSON.stringify(state), localSavedAt); // so the save that follows sees no change
       return true;

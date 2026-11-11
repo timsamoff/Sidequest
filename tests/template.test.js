@@ -1273,11 +1273,36 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     const downloads = o.noDownloads ? null : { save: (req) => { saves.push(req); return o.decline ? Promise.reject({ code: "declined", message: "no" }) : wait({ status: "saved" }); } };
     return { claude: { use: (n) => Promise.resolve(n === "db" ? db : n === "downloads" ? downloads : null) }, store, log, saves };
   };
-  const wait = (ms) => new Promise(r => setTimeout(r, ms || 90));
+  // Waits in six short turns, not one long one. After a stall, one long timer can fire before the
+  // stand-in's chain of short timers has finished; short turns let that chain run in between.
+  const wait = async (ms) => { for (let i = 0; i < 6; i++) await new Promise(r => setTimeout(r, (ms || 90) / 6)); };
   const base = kit(await mk()).saved();
   base.quests.find(p => p.id === "pApp").name = "REAL DB DATA"; base.settings.hideWelcome = true;
   const realJson = JSON.stringify(base);
   const named = (store) => JSON.parse(store["state/main"].json).quests.find(p => p.id === "pApp").name;
+  {
+    // the brandmark lives in its own db document, so it cannot crowd the state document past the db's size limit
+    const MARK = "data:image/png;base64,AAAA";
+    const withMark = JSON.parse(realJson); withMark.settings.brandmark = MARK;
+    const f = fake({ "state/main": { json: JSON.stringify(withMark) } });
+    const k = kit(await mk(null, f.claude)); await wait();
+    ok(k.saved().settings.brandmark === MARK, "a brandmark saved inline in an older db document is kept");
+    ok(!!f.store["meta/brandmark"] && f.store["meta/brandmark"].data === MARK && JSON.parse(f.store["state/main"].json).settings.brandmark === "", "the brandmark moves to its own db document and out of the state document");
+    const f2 = fake({ "state/main": f.store["state/main"], "meta/brandmark": f.store["meta/brandmark"] });
+    const k2 = kit(await mk(null, f2.claude)); await wait();
+    ok(k2.saved().settings.brandmark === MARK, "a fresh device gets the brandmark from its own db document");
+  }
+  {
+    // a save made on every keystroke writes locally at once and holds the db write until typing pauses
+    const f = fake({ "state/main": { json: realJson } });
+    const k = kit(await mk(null, f.claude)); await wait();
+    k.tab("projects"); k.click(k.btn(k.$("view"), "REAL DB DATA"));
+    const sets = () => f.log.filter(x => x === "set:state/main").length, n = sets(), ta = k.d.querySelector('#view textarea[aria-label^="Notes for"]');
+    ta.value = "typed"; k.fire(ta, "input"); await wait(30);
+    ok(k.saved().quests.find(p => p.id === "pApp").notes === "typed" && sets() === n, "typing saves locally at once and holds the db write");
+    await wait(950);
+    ok(sets() === n + 1 && JSON.parse(f.store["state/main"].json).quests.find(p => p.id === "pApp").notes === "typed", "the db write follows once typing pauses");
+  }
   {
     // a fresh device (nothing in local storage) must read the db before it writes to it
     const f = fake({ "state/main": { json: realJson } });
@@ -1942,7 +1967,7 @@ async function exportClick(k, projectName) {
   k.click(k.$("welcomeDismiss"));
   k.tab("settings");
   ok(!!k.btn(k.$("view"), "Add brandmark"), "Settings has an Add brandmark button");
-  ok(k.$("view").textContent.includes("320×320 pixels or smaller") && k.$("view").textContent.includes("300 KB"), "the size limits are stated up front, not just on rejection");
+  ok(k.$("view").textContent.includes("320×320 pixels or smaller") && k.$("view").textContent.includes("150 KB"), "the size limits are stated up front, not just on rejection");
 }
 {
   const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";

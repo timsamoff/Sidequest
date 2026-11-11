@@ -471,7 +471,7 @@ export function buildDetail(t, inline, readOnly) {
     box.appendChild(el("p", { "class": "hint notetext" }, t.notes || "No notes."));
   } else {
     var ta = el("textarea", { "aria-label": "Notes", style: "margin-top:8px" }); ta.value = t.notes;
-    on(ta, "input", function () { t.notes = ta.value.slice(0, 5000); save(); });
+    on(ta, "input", function () { t.notes = ta.value.slice(0, 5000); save(true); });
     box.appendChild(ta);
   }
   if (inline || !readOnly) {
@@ -712,7 +712,7 @@ export function renderQuestPage(root, id) {
     var ta = el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" }); ta.value = p.notes;
     // Remember a dragged height for this session, since every change rebuilds the page.
     if (ui.notesH[p.id]) ta.style.height = ui.notesH[p.id] + "px";
-    on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(); });
+    on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(true); });
     root.appendChild(ta);
     if (typeof ResizeObserver !== "undefined") new ResizeObserver(function () { if (ta.offsetHeight > 0) ui.notesH[p.id] = ta.offsetHeight; }).observe(ta);
   }
@@ -729,7 +729,7 @@ export function renderQuestPage(root, id) {
       var w = el("div", { "class": "field" + (full ? " full" : "") }); w.appendChild(el("label", { "for": id }, label));
       var inp = el("input", { type: type || "text", id: id });
       inp.value = p.client[key];
-      on(inp, "input", function () { p.client[key] = inp.value.slice(0, 200); save(); });
+      on(inp, "input", function () { p.client[key] = inp.value.slice(0, 200); save(true); });
       w.appendChild(inp); gg.appendChild(w);
     }
     gfield("org", "giver-org-" + p.id, "Organization");
@@ -740,7 +740,7 @@ export function renderQuestPage(root, id) {
     giverBox.appendChild(gg);
     var gaw = el("div", { "class": "field" }); gaw.appendChild(el("label", { "for": "giver-address-" + p.id }, "Address"));
     var gaddr = el("textarea", { id: "giver-address-" + p.id, rows: 3 }); gaddr.value = p.client.address;
-    on(gaddr, "input", function () { p.client.address = gaddr.value.slice(0, 500); save(); });
+    on(gaddr, "input", function () { p.client.address = gaddr.value.slice(0, 500); save(true); });
     gaw.appendChild(gaddr); giverBox.appendChild(gaw);
     var gg2 = el("div", { "class": "setgrid", style: "margin-top:10px" });
     var gcw = el("div", { "class": "field" }), gcl = el("div", { "class": "labelrow" });
@@ -1479,7 +1479,7 @@ export function helpTopics() {
       "**Quest details:** Tapping a quest title on the **Quests** page opens the quest details for editing.",
       "**Tasks:** You can add tasks with the **+** button or from inside a quest. Tasks can have start and due dates and a time estimate. You can also describe how you’ll know a task is complete.",
       ">Tasks without due dates show a **Backlog** badge. Tasks added after a quest’s start date show an **Added** badge with the date. Even with open steps and decisions, you can close a task.",
-      ">Select **Make milestone** to turn a task with a due date into a milestone.",
+      ">Select **Make milestone** to turn a task with a due date into a milestone. A milestone that moves to the **Backlog** stops being one.",
       ">Each task goes into its quest’s **stretch of work**. A stretch of work is a period that divides a quest’s schedule. Stretches of work appear on the **Timeline** as gray bands. Tasks appear within each stretch of work and their color shows status: gray-blue for not started, gold for in progress, and green for completed.",
       "**Steps:** You can add steps with the **+** button or from inside a task. Steps break a task into smaller actions. Completing all of a task’s steps completes the task.",
       "**Decisions:** Every step within a task can require a decision. Answering an open decision closes the step.",
@@ -1495,8 +1495,9 @@ export function helpTopics() {
     ]],
     ["A quest’s Schedule and Timeline", [
       "**Schedule:** Quests can have start and due dates, and stretch of work durations (see the **Options** section for more). A quest’s start and due dates divide its total time into stretches of work.",
+      ">A quest can’t start after any of its tasks’ dates, and it can’t be due before it starts or before one of its tasks is due. If you enter a date that conflicts, Sidequest tells you which date to change.",
       "**Timeline:** The **Timeline** for a quest shows that quest’s schedule as a simple Gantt chart, along with its burndown chart.",
-      ">Use the **Slip schedule** button to push any incomplete tasks to a later date (you can undo a slip).",
+      ">Use the **Slip schedule** button to move incomplete tasks to a later date. Slips can be undone. If a slip would push tasks past the quest’s due date, Sidequest warns you first. Select the button again to proceed.",
       ">The Gantt chart displays milestones and all open tasks. A red line shows today’s date when it falls within the displayed schedule.",
       ">The **Burndown** works the same way as on the **Timeline** page, but counts only this quest’s tasks."
     ]],
@@ -1535,9 +1536,10 @@ export function helpTopics() {
       ">**Quests begin gathering dust after:** Set how long an active quest can go without progress before it displays a **Gathering dust** badge.",
       "**Appearance and formats:** These settings include **Date format**, **Coin format** (1,234.56 or 1.234,56), **Splash screen on open** (on/off), **Theme** (light and dark mode), **Animated burndown** (on/off), **Animated reroll** (on/off), **Completion effects** (on/off), and **Sound effects** (on/off).",
       "**Vault:** Set how long the **Vault** keeps items before it deletes them: never, or after 7, 30, 60, or 90 days.",
-      "**Install Sidequest:** If you’re using Sidequest on the web, you can install it to your device. iPhones and iPads don’t show this button: tap the **Share** icon in Safari, then **Add to Home Screen**, to install it. The installed version displays a **Refresh** button in the top bar.",
+      "**Install Sidequest:** If you’re using Sidequest on the web, you can install it to your device. iPhones and iPads don’t show this button: tap the **Share** icon in Safari, then **Add to Home Screen**, to install it. The installed version works offline and displays a **Refresh** button in the top bar.",
       "**Import:** Bring tasks from another application into Sidequest. Sidequest can import Trello JSON or Todoist CSV as a new quest.",
       "**Backup and restore:** Download a backup of your Sidequest data as a JSON file. Because the web and installed versions store your data on your device, make occasional backups. **Restore backup** loads a backup file and replaces everything in Sidequest with it. You’ll see a warning first, and an **Undo** button afterward.",
+      ">If Sidequest can’t save a change, it tells you once. Save a backup when you see that message.",
       "**Start fresh:** Erase all Sidequest data and start again (your options are retained). You can begin with an empty Sidequest or with the sample quests. You’ll get a warning and a chance to save a backup first. This cannot be undone."
     ]],
   ];
@@ -1693,7 +1695,8 @@ export function startFreshDialog() {
   });
 }
 var BRANDMARK_MAX_DIM = 320;
-var BRANDMARK_MAX_BYTES = 300 * 1024;
+// 150 KB is about 200 KB once encoded, which fits one db document with room to spare.
+var BRANDMARK_MAX_BYTES = 150 * 1024;
 // Reads a chosen image file, rejecting it outright (no cropping or resizing)
 // if it's too large in bytes or in either pixel dimension.
 function readBrandmarkFile(file, msg, onDone) {
@@ -1792,7 +1795,7 @@ export function renderSettings(page) {
     var w = el("div", { "class": "field" + (full ? " full" : "") }); w.appendChild(el("label", { "for": id }, label));
     var inp = el("input", { type: type || "text", id: id });
     inp.value = state.settings.contact[key];
-    on(inp, "input", function () { state.settings.contact[key] = inp.value.slice(0, 200); save(); });
+    on(inp, "input", function () { state.settings.contact[key] = inp.value.slice(0, 200); save(true); });
     w.appendChild(inp); cg.appendChild(w);
   }
   cfield("company", "set-contact-company", "Organization");
@@ -1803,7 +1806,7 @@ export function renderSettings(page) {
   contactBox.appendChild(cg);
   var aw = el("div", { "class": "field" }); aw.appendChild(el("label", { "for": "set-contact-address" }, "Address"));
   var addr = el("textarea", { id: "set-contact-address", rows: 3 }); addr.value = state.settings.contact.address;
-  on(addr, "input", function () { state.settings.contact.address = addr.value.slice(0, 500); save(); });
+  on(addr, "input", function () { state.settings.contact.address = addr.value.slice(0, 500); save(true); });
   aw.appendChild(addr); contactBox.appendChild(aw);
   contactBox.appendChild(brandmarkField());
   side.appendChild(collapsibleSection("contact", function () { var c = state.settings.contact; return [c.company, c.name].filter(Boolean).join(" · "); }, contactBox, "Add your contact details"));

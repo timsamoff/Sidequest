@@ -1299,7 +1299,9 @@ function planned(ms) { var d = 0; burnTasks().forEach(function (t) { if (taskEnd
 function sortTasks(list) {
   // Completed tasks sink to the bottom. Scheduled tasks go by start, then due date, then creation order;
   // Backlog tasks follow in creation order.
-  return list.map(function (t) { return { t: t, i: state.tasks.indexOf(t) }; }).sort(function (a, b) {
+  var order = new Map();
+  state.tasks.forEach(function (t, i) { order.set(t, i); });
+  return list.map(function (t) { return { t: t, i: order.has(t) ? order.get(t) : -1 }; }).sort(function (a, b) {
     var aDone = a.t.status === "Completed" ? 1 : 0, bDone = b.t.status === "Completed" ? 1 : 0;
     if (aDone !== bDone) return aDone - bDone;
     var aBack = a.t.block > 0 ? 0 : 1, bBack = b.t.block > 0 ? 0 : 1;
@@ -1751,7 +1753,7 @@ function normalize(s) {
       d.settings.contact = { name: S(c.name, 200), company: S(c.company, 200), phone: S(c.phone, 200), email: S(c.email, 200), address: S(c.address, 500), website: S(c.website, 200) };
     }
     // A data: URI, capped well above the 300 KB upload limit for base64 overhead; anything else is dropped, not truncated.
-    if (typeof s.settings.brandmark === "string" && /^data:image\//.test(s.settings.brandmark) && s.settings.brandmark.length <= 500000) d.settings.brandmark = s.settings.brandmark;
+    d.settings.brandmark = validBrandmark(s.settings.brandmark);
     if ([0, 2, 3, 4, 5].indexOf(s.settings.wipLimit) >= 0) d.settings.wipLimit = s.settings.wipLimit;
     if ([0, 7, 14, 30, 60].indexOf(s.settings.dustDays) >= 0) d.settings.dustDays = s.settings.dustDays;
     if (typeof s.settings.audio === "boolean") d.settings.audio = s.settings.audio;
@@ -1784,7 +1786,11 @@ function getDb() {
 
 // One write in flight at a time (the db capability's contract); a burst
 // of saves coalesces into the running write plus exactly one more carrying the latest state.
-var dbWriteInFlight = null, dbWritePending = false, dbFails = 0;
+var dbWriteInFlight = null, dbWritePending = false, dbFails = 0, dbTimer = null;
+// The brandmark has its own db document, so a logo cannot push the state document past the db's size limit.
+// dbBrandmark is what the db is known to hold.
+var dbBrandmark = "";
+function validBrandmark(v) { return typeof v === "string" && /^data:image\//.test(v) && v.length <= 500000 ? v : ""; }
 // Says once per session that a save failed, since nothing else would show it.
 var saveWarned = false;
 function warnSaveFailed(where) {
@@ -1799,7 +1805,15 @@ function dbSave(rawState) {
   if (!dbReadDone || dbWriteInFlight) { dbWritePending = true; return; }
   getDb().then(function (db) {
     if (!db) return; // no db in this view: localStorage (below) is already the real save
-    dbWriteInFlight = db.doc("state/main").set({ json: JSON.stringify(rawState), savedAt: localSavedAt })
+    var mark = rawState.settings.brandmark || "";
+    var slim = Object.assign({}, rawState, { settings: Object.assign({}, rawState.settings, { brandmark: "" }) });
+    var writes = [db.doc("state/main").set({ json: JSON.stringify(slim), savedAt: localSavedAt })];
+    // A brandmark the db refuses is not retried on every save; the rest of the data still syncs.
+    if (mark !== dbBrandmark) writes.push(db.doc("meta/brandmark").set({ data: mark }).then(function () { dbBrandmark = mark; }, function () {
+      dbBrandmark = mark;
+      if (mark) notify("Your brandmark could not be saved to your account. Add a smaller image in Options.");
+    }));
+    dbWriteInFlight = Promise.all(writes)
       // One failure may be passing and the next change retries; a second in a row is reported.
       .then(function () { dbFails = 0; }, function () { if (++dbFails >= 2) warnSaveFailed("your account"); })
       .then(function () {
@@ -1826,7 +1840,14 @@ function writeLocal(json, stamp) {
   try { window.localStorage.setItem(KEY2, json); window.localStorage.setItem(SAVED_AT_KEY, stamp); return true; } catch (e) { return false; }
 }
 function setState(newState) { state = newState; }
-function save() {
+// Sends a held-back db write now (the page is being hidden or closed).
+function flushDbSave() { if (dbTimer) { clearTimeout(dbTimer); dbTimer = null; dbSave(state); } }
+if (typeof window !== "undefined" && window.addEventListener) {
+  window.addEventListener("pagehide", flushDbSave);
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") flushDbSave(); });
+}
+// `typing` marks a save made on every keystroke: the db write waits for a pause, since it sends the whole document.
+function save(typing) {
   var json = JSON.stringify(state), prev = null;
   try { prev = window.localStorage.getItem(KEY2); } catch (e) { prev = null; }
   var changed = json !== prev;
@@ -1835,7 +1856,9 @@ function save() {
   savesSeen++;
   // A hosted copy saves to its db, so a missing local store only matters when there is no db.
   if (!writeLocal(json, localSavedAt)) getDb().then(function (db) { if (!db) warnSaveFailed("this browser"); });
-  dbSave(state);
+  if (dbTimer) { clearTimeout(dbTimer); dbTimer = null; }
+  if (typing === true) dbTimer = setTimeout(function () { dbTimer = null; dbSave(state); }, 800);
+  else dbSave(state);
 }
 
 // Runs once at boot, after the initial paint. Swaps in the db's state if
@@ -1843,7 +1866,10 @@ function save() {
 function loadFromDbIfAvailable() {
   return getDb().then(function (db) {
     if (!db) { dbReadDone = true; dbWritePending = false; return false; }
-    return db.doc("state/main").get().then(function (snap) {
+    return Promise.all([db.doc("state/main").get(), db.doc("meta/brandmark").get()]).then(function (snaps) {
+      var snap = snaps[0], markData = snaps[1].exists ? snaps[1].data() : null;
+      var hasMark = !!markData && typeof markData.data === "string";
+      dbBrandmark = hasMark ? validBrandmark(markData.data) : "";
       var data = snap.exists ? snap.data() : null, parsed = null;
       // A document that exists but cannot be parsed is treated as unreadable, never overwritten.
       if (data && typeof data.json === "string") parsed = JSON.parse(data.json);
@@ -1856,6 +1882,8 @@ function loadFromDbIfAvailable() {
       if (mine && dbAt && mine > dbAt) { dbSave(state); return false; }
       if (mine && mine === dbAt) return false; // the very same save: nothing to do
       state = normalize(parsed);
+      // A document saved before the brandmark moved out still carries it inline.
+      if (hasMark) state.settings.brandmark = dbBrandmark;
       localSavedAt = dbAt || localSavedAt;
       writeLocal(JSON.stringify(state), localSavedAt); // so the save that follows sees no change
       return true;
@@ -4200,7 +4228,7 @@ function buildDetail(t, inline, readOnly) {
     box.appendChild(el("p", { "class": "hint notetext" }, t.notes || "No notes."));
   } else {
     var ta = el("textarea", { "aria-label": "Notes", style: "margin-top:8px" }); ta.value = t.notes;
-    on(ta, "input", function () { t.notes = ta.value.slice(0, 5000); save(); });
+    on(ta, "input", function () { t.notes = ta.value.slice(0, 5000); save(true); });
     box.appendChild(ta);
   }
   if (inline || !readOnly) {
@@ -4441,7 +4469,7 @@ function renderQuestPage(root, id) {
     var ta = el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" }); ta.value = p.notes;
     // Remember a dragged height for this session, since every change rebuilds the page.
     if (ui.notesH[p.id]) ta.style.height = ui.notesH[p.id] + "px";
-    on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(); });
+    on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(true); });
     root.appendChild(ta);
     if (typeof ResizeObserver !== "undefined") new ResizeObserver(function () { if (ta.offsetHeight > 0) ui.notesH[p.id] = ta.offsetHeight; }).observe(ta);
   }
@@ -4458,7 +4486,7 @@ function renderQuestPage(root, id) {
       var w = el("div", { "class": "field" + (full ? " full" : "") }); w.appendChild(el("label", { "for": id }, label));
       var inp = el("input", { type: type || "text", id: id });
       inp.value = p.client[key];
-      on(inp, "input", function () { p.client[key] = inp.value.slice(0, 200); save(); });
+      on(inp, "input", function () { p.client[key] = inp.value.slice(0, 200); save(true); });
       w.appendChild(inp); gg.appendChild(w);
     }
     gfield("org", "giver-org-" + p.id, "Organization");
@@ -4469,7 +4497,7 @@ function renderQuestPage(root, id) {
     giverBox.appendChild(gg);
     var gaw = el("div", { "class": "field" }); gaw.appendChild(el("label", { "for": "giver-address-" + p.id }, "Address"));
     var gaddr = el("textarea", { id: "giver-address-" + p.id, rows: 3 }); gaddr.value = p.client.address;
-    on(gaddr, "input", function () { p.client.address = gaddr.value.slice(0, 500); save(); });
+    on(gaddr, "input", function () { p.client.address = gaddr.value.slice(0, 500); save(true); });
     gaw.appendChild(gaddr); giverBox.appendChild(gaw);
     var gg2 = el("div", { "class": "setgrid", style: "margin-top:10px" });
     var gcw = el("div", { "class": "field" }), gcl = el("div", { "class": "labelrow" });
@@ -5208,7 +5236,7 @@ function helpTopics() {
       "**Quest details:** Tapping a quest title on the **Quests** page opens the quest details for editing.",
       "**Tasks:** You can add tasks with the **+** button or from inside a quest. Tasks can have start and due dates and a time estimate. You can also describe how you’ll know a task is complete.",
       ">Tasks without due dates show a **Backlog** badge. Tasks added after a quest’s start date show an **Added** badge with the date. Even with open steps and decisions, you can close a task.",
-      ">Select **Make milestone** to turn a task with a due date into a milestone.",
+      ">Select **Make milestone** to turn a task with a due date into a milestone. A milestone that moves to the **Backlog** stops being one.",
       ">Each task goes into its quest’s **stretch of work**. A stretch of work is a period that divides a quest’s schedule. Stretches of work appear on the **Timeline** as gray bands. Tasks appear within each stretch of work and their color shows status: gray-blue for not started, gold for in progress, and green for completed.",
       "**Steps:** You can add steps with the **+** button or from inside a task. Steps break a task into smaller actions. Completing all of a task’s steps completes the task.",
       "**Decisions:** Every step within a task can require a decision. Answering an open decision closes the step.",
@@ -5224,8 +5252,9 @@ function helpTopics() {
     ]],
     ["A quest’s Schedule and Timeline", [
       "**Schedule:** Quests can have start and due dates, and stretch of work durations (see the **Options** section for more). A quest’s start and due dates divide its total time into stretches of work.",
+      ">A quest can’t start after any of its tasks’ dates, and it can’t be due before it starts or before one of its tasks is due. If you enter a date that conflicts, Sidequest tells you which date to change.",
       "**Timeline:** The **Timeline** for a quest shows that quest’s schedule as a simple Gantt chart, along with its burndown chart.",
-      ">Use the **Slip schedule** button to push any incomplete tasks to a later date (you can undo a slip).",
+      ">Use the **Slip schedule** button to move incomplete tasks to a later date. Slips can be undone. If a slip would push tasks past the quest’s due date, Sidequest warns you first. Select the button again to proceed.",
       ">The Gantt chart displays milestones and all open tasks. A red line shows today’s date when it falls within the displayed schedule.",
       ">The **Burndown** works the same way as on the **Timeline** page, but counts only this quest’s tasks."
     ]],
@@ -5264,9 +5293,10 @@ function helpTopics() {
       ">**Quests begin gathering dust after:** Set how long an active quest can go without progress before it displays a **Gathering dust** badge.",
       "**Appearance and formats:** These settings include **Date format**, **Coin format** (1,234.56 or 1.234,56), **Splash screen on open** (on/off), **Theme** (light and dark mode), **Animated burndown** (on/off), **Animated reroll** (on/off), **Completion effects** (on/off), and **Sound effects** (on/off).",
       "**Vault:** Set how long the **Vault** keeps items before it deletes them: never, or after 7, 30, 60, or 90 days.",
-      "**Install Sidequest:** If you’re using Sidequest on the web, you can install it to your device. iPhones and iPads don’t show this button: tap the **Share** icon in Safari, then **Add to Home Screen**, to install it. The installed version displays a **Refresh** button in the top bar.",
+      "**Install Sidequest:** If you’re using Sidequest on the web, you can install it to your device. iPhones and iPads don’t show this button: tap the **Share** icon in Safari, then **Add to Home Screen**, to install it. The installed version works offline and displays a **Refresh** button in the top bar.",
       "**Import:** Bring tasks from another application into Sidequest. Sidequest can import Trello JSON or Todoist CSV as a new quest.",
       "**Backup and restore:** Download a backup of your Sidequest data as a JSON file. Because the web and installed versions store your data on your device, make occasional backups. **Restore backup** loads a backup file and replaces everything in Sidequest with it. You’ll see a warning first, and an **Undo** button afterward.",
+      ">If Sidequest can’t save a change, it tells you once. Save a backup when you see that message.",
       "**Start fresh:** Erase all Sidequest data and start again (your options are retained). You can begin with an empty Sidequest or with the sample quests. You’ll get a warning and a chance to save a backup first. This cannot be undone."
     ]],
   ];
@@ -5422,7 +5452,8 @@ function startFreshDialog() {
   });
 }
 var BRANDMARK_MAX_DIM = 320;
-var BRANDMARK_MAX_BYTES = 300 * 1024;
+// 150 KB is about 200 KB once encoded, which fits one db document with room to spare.
+var BRANDMARK_MAX_BYTES = 150 * 1024;
 // Reads a chosen image file, rejecting it outright (no cropping or resizing)
 // if it's too large in bytes or in either pixel dimension.
 function readBrandmarkFile(file, msg, onDone) {
@@ -5521,7 +5552,7 @@ function renderSettings(page) {
     var w = el("div", { "class": "field" + (full ? " full" : "") }); w.appendChild(el("label", { "for": id }, label));
     var inp = el("input", { type: type || "text", id: id });
     inp.value = state.settings.contact[key];
-    on(inp, "input", function () { state.settings.contact[key] = inp.value.slice(0, 200); save(); });
+    on(inp, "input", function () { state.settings.contact[key] = inp.value.slice(0, 200); save(true); });
     w.appendChild(inp); cg.appendChild(w);
   }
   cfield("company", "set-contact-company", "Organization");
@@ -5532,7 +5563,7 @@ function renderSettings(page) {
   contactBox.appendChild(cg);
   var aw = el("div", { "class": "field" }); aw.appendChild(el("label", { "for": "set-contact-address" }, "Address"));
   var addr = el("textarea", { id: "set-contact-address", rows: 3 }); addr.value = state.settings.contact.address;
-  on(addr, "input", function () { state.settings.contact.address = addr.value.slice(0, 500); save(); });
+  on(addr, "input", function () { state.settings.contact.address = addr.value.slice(0, 500); save(true); });
   aw.appendChild(addr); contactBox.appendChild(aw);
   contactBox.appendChild(brandmarkField());
   side.appendChild(collapsibleSection("contact", function () { var c = state.settings.contact; return [c.company, c.name].filter(Boolean).join(" · "); }, contactBox, "Add your contact details"));
