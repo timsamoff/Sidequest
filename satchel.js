@@ -221,12 +221,16 @@
     };
     if (!ready) img.addEventListener("load", function () { ready = true; go(); });
     if (still) { go(); return; }
+    // Starts when half the box is on screen, or when it fills half the window (a box taller than the window cannot reach half).
+    var steps = [];
+    for (var s = 0; s <= 20; s++) steps.push(s / 20);
     var io = new IntersectionObserver(function (entries) {
-      if (!entries[0].isIntersecting) return;
+      var en = entries[entries.length - 1];
+      if (!en.isIntersecting || (en.intersectionRatio < 0.5 && en.intersectionRect.height < window.innerHeight * 0.5)) return;
       io.disconnect();
       seen = true;
       go();
-    }, { threshold: 0.2 });
+    }, { threshold: steps });
     io.observe(box);
   });
 })();
