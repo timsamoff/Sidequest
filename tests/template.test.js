@@ -73,7 +73,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.99.7"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.99.8"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("../css/tokens.css?v=" + v) && html.includes("../css/styles.css?v=" + v) && html.includes("../css/splash.css?v=" + v) && html.includes("../css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "settings.js"), "utf8");
@@ -2221,6 +2221,8 @@ async function exportClick(k, projectName) {
     ok(yes.includes("Sidequest is installed. Open it from your apps or desktop.") && !yes.includes("Available options vary by browser"), "a browser that reports an installed copy says Sidequest is installed");
     ok(none.includes("Available options vary by browser") && boom.includes("Available options vary by browser"), "an empty answer or an error keeps the generic install message");
     ok(JSON.parse(fs.readFileSync(path.join(__dirname, "..", "app", "manifest.json"), "utf8")).related_applications.some(a => a.platform === "webapp" && a.url === "manifest.json"), "the manifest lists the web app so detection can work");
+    const mf = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "app", "manifest.json"), "utf8"));
+    ok(mf.id === "/sidequest/app/index.html" && new URL(mf.id, "https://samoff.com/sidequest/app/manifest.json").href === new URL(mf.start_url, "https://samoff.com/sidequest/app/manifest.json").href, "the manifest id is the start URL, so installed apps keep the identity they had without one");
   }
   // iPhone and iPad have no Install button, so they alone get their own steps
   // Browser-specific install tips: Safari on a Mac, Firefox on a computer, and an iPad that reports a Mac user agent

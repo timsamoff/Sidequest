@@ -2,6 +2,7 @@
   "name": "Sidequest",
   "short_name": "Sidequest",
   "description": "A light-weight project planner that runs entirely in your browser.",
+  "id": "/sidequest/app/index.html",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
