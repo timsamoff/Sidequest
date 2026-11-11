@@ -73,7 +73,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.99.10"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.99.11"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("../css/tokens.css?v=" + v) && html.includes("../css/styles.css?v=" + v) && html.includes("../css/splash.css?v=" + v) && html.includes("../css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "settings.js"), "utf8");
@@ -3152,6 +3152,19 @@ async function exportClick(k, projectName) {
   ok(k.saved().tasks[0].due === "2031-01-08" && k.$("modalBody").textContent.includes("would land after this quest’s due date"), "a slip past the quest's due date warns first and moves nothing");
   k.click(k.$("slipGo"));
   ok(k.saved().tasks[0].due === "2031-01-15", "choosing the button again goes ahead with the slip");
+}
+{
+  // Enter in a form submits that form only, never the forms opened before it.
+  const k = kit(await mk({ settings: { hideWelcome: true } }));
+  const enter = e => e.dispatchEvent(new k.w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  const named = n => k.saved().quests.filter(q => q.name === n).length;
+  k.menuAct("newBtn", "newQuest"); k.setField("name", "First one"); k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
+  k.menuAct("newBtn", "newQuest"); k.setField("name", "Second one"); enter(k.$("f-name"));
+  ok(named("First one") === 1 && named("Second one") === 1 && k.$("overlay").hidden, "Enter in a later dialog does not resubmit an earlier one");
+  k.menuAct("newBtn", "newQuest"); k.setField("name", "Third one");
+  k.click(k.$("modalBody").querySelector("[data-term=\"quest-giver\"]")); k.click(k.$("modalClose"));
+  enter(k.$("f-name"));
+  ok(named("Third one") === 1 && named("First one") === 1 && named("Second one") === 1, "Enter still submits a dialog that came back from under a help box");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

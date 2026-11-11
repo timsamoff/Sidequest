@@ -13,8 +13,11 @@ export var modalReturn = null;
 // opts.full makes the dialog fill the screen (less a small margin), for a big chart.
 // A "?" opened from inside a dialog saves that dialog here, so closing the help brings it back as it was.
 var modalSaved = null;
+// The form now showing, if any. One Enter listener serves it; a listener per dialog would pile up and resubmit old forms.
+var formSubmit = null;
+on($("modalBody"), "keydown", function (e) { if (formSubmit && e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); formSubmit(); } });
 export function openModal(title, build, opts) {
-  modalSaved = null;
+  modalSaved = null; formSubmit = null;
   modalReturn = document.activeElement;
   document.querySelector("#overlay .modal").classList.toggle("full", !!(opts && opts.full));
   $("modalTitle").textContent = title;
@@ -31,7 +34,7 @@ export function openModal(title, build, opts) {
 export function openModalOver(title, build, opts) {
   if ($("overlay").hidden) { openModal(title, build, opts); return; }
   var body = $("modalBody"), modal = document.querySelector("#overlay .modal");
-  var saved = { title: $("modalTitle").textContent, nodes: Array.prototype.slice.call(body.childNodes), full: modal.classList.contains("full"), ret: modalReturn, noClose: $("modalClose").hidden };
+  var saved = { title: $("modalTitle").textContent, nodes: Array.prototype.slice.call(body.childNodes), full: modal.classList.contains("full"), ret: modalReturn, noClose: $("modalClose").hidden, submit: formSubmit };
   openModal(title, build, opts);
   modalSaved = saved;
 }
@@ -43,12 +46,12 @@ export function closeModal() {
     b.innerHTML = ""; s.nodes.forEach(function (n) { b.appendChild(n); });
     $("modalTitle").textContent = s.title;
     document.querySelector("#overlay .modal").classList.toggle("full", s.full);
-    modalReturn = s.ret;
+    modalReturn = s.ret; formSubmit = s.submit;
     $("modalClose").hidden = s.noClose;
     var f = b.querySelector("input, textarea, select, button"); if (f) f.focus();
     return;
   }
-  $("overlay").hidden = true; $("modalBody").innerHTML = "";
+  $("overlay").hidden = true; $("modalBody").innerHTML = ""; formSubmit = null;
   document.querySelector("#overlay .modal").classList.remove("full");
   if (modalReturn && document.body.contains(modalReturn) && modalReturn.focus) modalReturn.focus();
   modalReturn = null;
@@ -145,7 +148,7 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
       closeModal(); if (res && res.msg) notify(res.msg);
     }
     on(ok, "click", submit); on(cancel, "click", closeModal);
-    on(body, "keydown", function (e) { if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); submit(); } });
+    formSubmit = submit;
     acts.appendChild(ok); acts.appendChild(cancel);
     if (extra) {
       var xb = el("button", { type: "button", "class": "danger", style: "margin-left:auto", title: extra.title }, extra.label);

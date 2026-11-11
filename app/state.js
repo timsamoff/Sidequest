@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.99.10";
+export var APP_VERSION = "0.99.11";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -376,10 +376,14 @@ function dbSave(rawState) {
 }
 
 export function load() {
+  var raw = null;
   try {
-    var raw = window.localStorage.getItem(KEY2);
+    raw = window.localStorage.getItem(KEY2);
     if (raw) return normalize(JSON.parse(raw));
-  } catch (e) { /* storage unavailable or unreadable: use defaults */ }
+  } catch (e) {
+    // An unreadable save is copied aside before the defaults replace it, so it can be recovered by hand.
+    if (raw) { try { window.localStorage.setItem(KEY2 + "-unreadable", raw); } catch (e2) { /* no room */ } }
+  }
   return defaults();
 }
 export var state = load();

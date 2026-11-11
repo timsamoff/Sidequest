@@ -113,7 +113,7 @@ gtag('config', 'G-JM2CZ1DLQ4');
         <p>Start a new conversation with Claude and send this prompt. Sidequest needs the <code>db</code> capability to save your data and the <code>downloads</code> capability to make <strong>Save backup</strong> work.</p>
         <details>
           <summary>Show the Claude prompt</summary>
-          <pre><code id="claudePrompt" data-parity="claude-prompt">Please fetch this file and publish it as an artifact: https://github.com/timsamoff/sidequest/releases/download/v0.99.10/sidequest.html. It needs the `db` capability for storage and the `downloads` capability so Save backup works.</code></pre>
+          <pre><code id="claudePrompt" data-parity="claude-prompt">Please fetch this file and publish it as an artifact: https://github.com/timsamoff/sidequest/releases/download/v0.99.11/sidequest.html. It needs the `db` capability for storage and the `downloads` capability so Save backup works.</code></pre>
           <p><button class="btn ghost small" type="button" data-copy="claudePrompt" hidden>Copy prompt</button><span class="copystatus" role="status"></span></p>
         </details>
         <p>If Claude asks for permission during the build, choose <strong>Allow once</strong> to let it fetch the file and create the artifact. It asks again when you update.</p>
@@ -125,7 +125,7 @@ gtag('config', 'G-JM2CZ1DLQ4');
         <p>Start a new chat with your Muse and paste this prompt. It asks Muse to build Sidequest from the repository and save your data in its database.</p>
         <details>
           <summary>Show the Muse prompt</summary>
-          <pre><code id="musePrompt" data-parity="muse-prompt">Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://github.com/timsamoff/sidequest/releases/download/v0.99.10/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty.
+          <pre><code id="musePrompt" data-parity="muse-prompt">Please build the Sidequest fullstack app as a private artifact for me, and call it Sidequest, from https://github.com/timsamoff/sidequest/releases/download/v0.99.11/sidequest.html. Store all of the app's data (the whole JSON object it keeps in the browser localStorage key "sidequest-template-v1") in the Muse database so it persists, starting empty.
 
 Keep every feature as is, including the sound effects and the GitHub version check, and keep its update prompt word for word. Set window.sidequestHosted = true before the app starts, so it shows its hosted wording about where your data is saved.
 

@@ -1,11 +1,12 @@
 // Offline cache for the installed PWA. The shell lists every app module, so the first launch after install works offline.
 // Bump the version suffix whenever shipped files change, so activate's cleanup evicts the old cache.
-var CACHE = "sidequest-shell-v9";
+var CACHE = "sidequest-shell-v10";
 // Google Fonts are cached on first use so a launch with no network does not wait on them.
 var FONTS = "sidequest-fonts-v1", FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"], WAIT = 2000, deadUntil = 0;
 var SHELL = [
   "./", "index.html", "manifest.json",
   "../css/tokens.css", "../css/leather.css", "../css/styles.css", "../css/splash.css", "../assets/header-800.jpg",
+  "../assets/sfx/complete.mp3", "../assets/sfx/quest.mp3", "../assets/sfx/refresh.mp3", "../assets/sfx/reroll.mp3", "../assets/sfx/restoreBackup.mp3", "../assets/sfx/startFresh.mp3",
   "app.js", "chart.js", "confetti.js", "dates.js", "dialogs.js", "dom.js", "errands.js", "export.js", "files.js", "help.js", "imports.js", "lifecycle.js",
   "model.js", "quest-page.js", "search.js", "settings.js", "splash.js", "state.js", "tutorial.js", "views.js"
 ];
