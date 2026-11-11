@@ -4,6 +4,8 @@
 const common = require("./sentinel-common");
 
 const RULE = "landing-parity";
+// Pages that share the header and footer but are not in the menu.
+const NAVLESS = ["patch-notes.html"];
 
 function fail(file, message) {
   return common.violation(RULE, file, null, message);
@@ -44,6 +46,11 @@ function checkSharedBlocks(pages) {
   Object.keys(pages).forEach((file) => {
     const name = file.split("/").pop();
     const current = pages[file].match(/<a href="([^"]+)" aria-current="page">/g) || [];
+    // A page that is not in the menu (linked only from Features) marks nothing.
+    if (NAVLESS.indexOf(name) >= 0) {
+      if (current.length) violations.push(fail(file, `This page is not in the menu, so no nav link may carry aria-current.`));
+      return;
+    }
     if (current.length !== 1 || current[0].indexOf('href="' + name + '"') === -1) {
       violations.push(fail(file, `The nav must mark exactly this page (${name}) with aria-current="page".`));
     }

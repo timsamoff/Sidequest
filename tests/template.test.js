@@ -1976,7 +1976,8 @@ async function exportClick(k, projectName) {
   const kn = kit(await mk({ settings: { hideWelcome: true } }));
   ok(!kn.$("view").textContent.includes("Sidequest has leveled up!") && kn.saved().settings.seenVersion === ver, "a first run records the version and shows no banner");
   const ko = kit(await mk({ settings: { hideWelcome: true, seenVersion: "0.0.1" } }));
-  ok(ko.$("view").textContent.includes("Sidequest has leveled up!") && ko.$("view").textContent.includes("You are now questing in version " + ver + "."), "an older seen version shows the banner with the current version");
+    ok(ko.$("view").textContent.includes("Sidequest has leveled up!") && ko.$("view").textContent.includes("You are now questing in version " + ver + "."), "an older seen version shows the banner with the current version");
+  ok(!!ko.d.querySelector('.updatebanner a[href="https://samoff.com/sidequest/patch-notes.html"]'), "the banner links to the patch notes page");
   ko.click(ko.btn(ko.$("view"), "Dismiss"));
   ok(!ko.$("view").textContent.includes("Sidequest has leveled up!") && ko.saved().settings.seenVersion === ver, "Dismiss hides the banner and records the version");
   const kh = kit(await mk({ settings: { hideWelcome: true, seenVersion: "0.0.1" } }, { use: () => Promise.resolve(null) }));

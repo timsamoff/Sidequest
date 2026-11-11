@@ -11,7 +11,8 @@ const root = path.join(__dirname, "..");
 const read = (f) => { const p = path.join(root, f); return fs.existsSync(p) ? fs.readFileSync(p, "utf8").split("\r\n").join("\n") : null; };
 const pages = fs.readdirSync(root).filter((f) => f.endsWith(".html")).sort();
 
-ok(pages.length === 6, "found the six landing pages (" + pages.length + ")");
+ok(pages.length === 7, "found the seven landing pages, six in the menu and patch-notes.html (" + pages.length + ")");
+ok(!/aria-current="page"/.test(fs.readFileSync(path.join(root, "patch-notes.html"), "utf8")), "patch-notes.html is not in the menu, so it marks no current page");
 ok(pre.satchelFiles([".html"]).length === pages.length, "satchelFiles() lists every landing page");
 ok(pre.COMMENT_SCAN_FILES.includes("satchel.css") && pre.COMMENT_SCAN_FILES.includes("index.html") && pre.COMMENT_SCAN_FILES.includes("welcome-splash.js"), "the comment check scans satchel css, html, and js");
 ok(pre.HEX_SCAN_FILES.includes("satchel.css") && pre.HEX_SCAN_FILES.includes("satchel.js"), "the hex check scans satchel css and js");

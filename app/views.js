@@ -158,6 +158,9 @@ function versionBanner() {
   var box = el("div", { "class": "box updatebanner", style: "margin-bottom:22px" });
   box.appendChild(el("h2", { "class": "first", style: "margin-bottom:4px" }, "Sidequest has leveled up!"));
   box.appendChild(el("p", { "class": "hint first" }, "You are now questing in version " + APP_VERSION + "."));
+  var notes = el("p", { "class": "hint" });
+  notes.appendChild(el("a", { href: "https://samoff.com/sidequest/patch-notes.html", target: "_blank", rel: "noopener" }, "Review the latest updates to your questing tools."));
+  box.appendChild(notes);
   var ar = el("div", { "class": "actions" });
   ar.appendChild(on(el("button", { type: "button", title: "Hide this notice" }, "Dismiss"), "click", function () {
     state.settings.seenVersion = APP_VERSION; save(); box.remove();
