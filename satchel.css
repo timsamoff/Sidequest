@@ -279,6 +279,16 @@ main .wrap { container-type: inline-size; }
 .way.trello { border-top-color: var(--brand-trello); }
 .way.todoist { border-top-color: var(--brand-todoist); }
 .way .actions { margin-top: var(--space-16); }
+/* A fold-out inside a card is a lighter band that runs edge to edge, with its content on the same color. */
+.way details {
+  margin: var(--space-14) calc(-1 * var(--space-20)) 0;
+  background: color-mix(in srgb, var(--card) 55%, white);
+}
+.way details[open] { padding-bottom: var(--space-16); }
+.way summary { display: flex; border: 0; border-radius: 0; background: none; padding: 0 var(--space-20); }
+.way summary:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.way summary:focus-visible { outline-offset: -3px; }
+.way details > ul { margin: var(--space-4) var(--space-20) 0 var(--space-20); padding-left: var(--space-18); }
 .postlink { display: inline-block; margin-top: var(--space-12); font-weight: 600; }
 
 
