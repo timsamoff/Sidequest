@@ -21,7 +21,7 @@ const sw = fs.readFileSync(path.join(__dirname, "..", "app", "sw.js"), "utf8");
 const shell = JSON.parse((sw.match(/var SHELL = (\[[\s\S]*?\]);/) || [])[1] || "[]");
 ok(onDisk.every(f => shell.includes(f.slice(4))), "sw.js SHELL lists every app/*.js module");
 ok(shell.every(f => fs.existsSync(path.join(__dirname, "..", "app", f === "./" ? "index.html" : f))), "every sw.js SHELL entry exists on disk");
-ok(sw.includes("var copy = res.clone();") && sw.includes("c.put(e.request, copy)"), "sw.js clones the response before handing it back");
+ok(sw.includes("var copy = res.clone();") && sw.includes("c.put(request, copy)"), "sw.js clones the response before handing it back");
 
 console.log(fails ? "\n" + fails + " FAILED" : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

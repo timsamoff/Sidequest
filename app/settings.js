@@ -306,7 +306,7 @@ export function renderSettings(page) {
       iosNote.appendChild(el("strong", null, "Add to Home Screen"));
       iosNote.appendChild(document.createTextNode("."));
       installBox.appendChild(iosNote);
-      installBox.appendChild(el("p", { "class": "hint" }, "The installed app may keep its own saved data, separate from the browser. To bring your quests over, save a backup in the browser and restore it in the installed app."));
+      installBox.appendChild(el("p", { "class": "hint" }, "The installed app and the browser keep separate saved data, and the two don’t sync. Choose one and stick with it. To switch, save a backup in one and restore it in the other."));
     } else {
       var installNote = el("p", { "class": "hint first" }, "Sidequest can’t verify whether it’s installed in this browser. If it isn’t installed, check your browser’s menu for an option such as Install, Add to Dock, or Add to Home Screen. Available options vary by browser.");
       installBox.appendChild(installNote);
