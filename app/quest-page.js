@@ -1,0 +1,563 @@
+/* a quest's page and the task detail */
+import { go, openTask, renderView } from "./app.js";
+import { questRangeBlock } from "./chart.js";
+import { TODAY, fmt, fmtY, iso, parseISO } from "./dates.js";
+import { decisionDialog, decisionEditDialog, formDialog, linkQuestDialog, openModal, slipDialog, taskDialog } from "./dialogs.js";
+import { editInline, el, formatMoney, helpLink, moneyInput, notify, on, pencilButton, playSfx, setFocusKey, uid } from "./dom.js";
+import { buildExportSnapshot, exportFileName, exportSides, renderExportDocument } from "./export.js";
+import { saveFile } from "./files.js";
+import { completionDialog, demoteToCandidate, promoteToActive, removeNow, removeToVault, restoreEntry, vaultQuest } from "./lifecycle.js";
+import { blockForDate, dateProblems, decisionFor, dispQuest, estimateWarning, findQuest, fmtHoursLong, isDusty, isLate, isPinned, launchItems, linkedQuests, liveQuests, pset, questEstimate, questMeta, questTasks, setStatus, short, sortTasks, syncFromSteps, taskEnd, taskStart, unlinkQuests, wd, wl } from "./model.js";
+import { STATUSES, changed, isISO, save, state, ui } from "./state.js";
+import { addedChip, burnParts, stepsAndEst, wireMilestoneDiamonds, withHelp } from "./views.js";
+
+// Asks which letterhead sides to include, offering only the sides that have something to print. With neither, it exports at once.
+export function askExportSides(p) {
+  var sides = exportSides(p);
+  if (!sides.by && !sides.forWhom) { exportQuestForClient(p); return; }
+  var fields = [];
+  if (sides.by) fields.push({ key: "by", label: "Include “Prepared by” (your contact info and brandmark from Options)", type: "checkbox", value: true });
+  if (sides.forWhom) fields.push({ key: "forWhom", label: "Include “Prepared for” (this quest’s Quest giver)", type: "checkbox", value: true });
+  formDialog("Quest giver export", fields, "Export", function (v) {
+    exportQuestForClient(p, { preparedBy: !sides.by || v.by === "1", preparedFor: !sides.forWhom || v.forWhom === "1" });
+  }, "Choose what appears at the top of the export.");
+}
+
+// Builds the standalone read-only export and offers it for saving, same
+// fallback order as saveBackupFile(). Scoped to Active/Complete quests only.
+export function exportQuestForClient(p, opts) {
+  var snapshot = buildExportSnapshot(p, opts);
+  var html = renderExportDocument(snapshot);
+  var name = exportFileName(p);
+  function exported() { notify("Exported " + p.name + "."); }
+  saveFile(name, html, "text/html", "Sidequest export", ".html", exported).then(function (r) {
+    if (r !== "manual") exported();
+  }).catch(function (err) {
+    notify(err && (err.code === "declined" || err.name === "AbortError") ? "Export canceled." : "The export could not be saved.");
+  });
+}
+
+// `inline` is the quest page's in-place version: no heading or back button, plus an Open in Tasks link.
+export function buildDetail(t, inline, readOnly) {
+  var box = el("div", { "class": "detail" });
+  var top = el("div", { style: "display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap" });
+  var lh = el("div");
+  if (!inline) lh.appendChild(el("h2", { style: "margin:0" }, dispQuest(t)));
+  var dm = el("p", { "class": "dmeta" });
+  if (t.block === 0) dm.appendChild(el("span", { "class": "chip backlog", style: "margin-right:6px" }, "Backlog"));
+  else dm.appendChild(document.createTextNode(fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + " "));
+  if (isLate(t)) dm.appendChild(el("span", { "class": "badge" }, "Overdue"));
+  var tag2 = addedChip(t); if (tag2) { tag2.style.marginLeft = "6px"; dm.appendChild(tag2); }
+  lh.appendChild(dm); top.appendChild(lh);
+  var right = el("div", { style: "display:flex;gap:10px;align-items:center" });
+  if (t.launch) right.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
+  if (t.milestone) right.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
+  if (readOnly) {
+    right.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+  } else {
+    var sel = el("select", { "class": "status", "aria-label": "Status" });
+    STATUSES.forEach(function (s) { var o = el("option", { value: s }, s); if (s === t.status) o.selected = true; sel.appendChild(o); });
+    sel.setAttribute("data-v", t.status);
+    on(sel, "change", function () { setStatus(t, sel.value); changed(); });
+    right.appendChild(sel);
+  }
+  top.appendChild(right); box.appendChild(top);
+  var whatRow = el("div", { "class": "editrow" });
+  var whatP = el("p", { "class": "what", style: "flex:0 1 auto;min-width:0" }, t.what); whatRow.appendChild(whatP);
+  if (!readOnly) {
+    var whatPen = pencilButton("Rename this task", "Rename this task");
+    on(whatPen, "click", function () {
+      whatPen.hidden = true;
+      editInline(whatP, {
+        label: "Task name", max: 400, value: function () { return t.what; },
+        onSave: function (val) { t.what = val.slice(0, 400); changed(); },
+        onEmpty: function () { notify("A task needs a name."); },
+        onDone: function () { whatPen.hidden = false; }
+      });
+    });
+    whatRow.appendChild(whatPen);
+  }
+  box.appendChild(whatRow);
+  box.appendChild(el("p", { "class": "dmeta" }, "Done when: " + t.done));
+  if (readOnly) {
+    box.appendChild(el("p", { "class": "dmeta" }, t.est > 0 ? "Estimated time: " + t.est + " h" : ""));
+  }
+  if (!readOnly) {
+    var dg = el("div", { "class": "setgrid" });
+    var smsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
+    var dmsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
+    var emsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
+    function dfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); dg.appendChild(w); return w; }
+    function shownStart() { return t.start ? t.start : (t.block === 0 ? "" : iso(taskStart(t))); }
+    function shownDue() { return t.block === 0 ? "" : iso(taskEnd(t)); }
+    var sd = el("input", { type: "date", id: "task-start" }), bd = el("input", { type: "date", id: "task-due" });
+    var ei = el("input", { type: "number", id: "task-est", min: "0", max: "9999", step: "0.25", inputmode: "decimal" });
+    sd.value = shownStart(); bd.value = shownDue(); ei.value = t.est > 0 ? t.est : "";
+    if (t.block > 0) emsg.textContent = estimateWarning(t.est, taskStart(t), taskEnd(t));
+    var questFirst = parseISO(pset(t.questId).start);
+    // A bad date stays in its field with its message until it is fixed; nothing is saved or reverted. "change" fires per segment while typing, so saving waits for blur.
+    function liveCheck() { var m = dateProblems(t.questId, sd.value, bd.value); smsg.textContent = m.start; dmsg.textContent = m.due; return m; }
+    ["input", "change"].forEach(function (ev) { on(bd, ev, liveCheck); on(sd, ev, liveCheck); });
+    on(bd, "blur", function () {
+      if (bd.value === shownDue()) return;
+      var m = liveCheck();
+      if (bd.value === "") { var hadStart = !!t.start, wasMilestone = t.milestone; t.block = 0; t.due = ""; t.added = ""; t.milestone = false; changed(); notify("Moved to the Backlog." + (hadStart ? " Its start date is kept." : "") + (wasMilestone ? " It is no longer a milestone." : "")); return; }
+      if (!isISO(bd.value)) { dmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
+      var blk = blockForDate(t.questId, parseISO(bd.value));
+      if (blk === null || m.due || m.start.indexOf("You can’t begin") === 0) { if (!dmsg.textContent && !smsg.textContent) dmsg.textContent = "This quest starts " + fmtY(questFirst) + ". Pick a due date on or after that."; return; }
+      if (t.start && bd.value < t.start) { smsg.textContent = "You can’t begin after you finish! Pick a start date on or before the due date."; return; }
+      if (t.block === 0) t.added = iso(TODAY);
+      t.due = bd.value; t.block = blk; changed();
+      notify("Due " + fmt(taskEnd(t)) + ", in " + wd() + " " + blk + ".");
+    });
+    on(sd, "blur", function () {
+      if (sd.value === shownStart()) return;
+      var m = liveCheck();
+      if (sd.value === "") { smsg.textContent = ""; t.start = ""; changed(); notify(t.block === 0 ? "Start date cleared." : "Start date cleared. The task starts when its " + wl() + " does."); return; }
+      if (!isISO(sd.value)) { smsg.textContent = "Enter a valid start date, or leave it empty."; return; }
+      if (m.start) return;
+      if (t.block > 0 && sd.value > iso(taskEnd(t))) { smsg.textContent = "You can’t begin after you finish! Pick a start date on or before the due date."; return; }
+      t.start = sd.value; changed(); notify("Start date saved.");
+    });
+    // Warn while typing; saving still waits for blur.
+    on(ei, "input", function () { emsg.textContent = t.block > 0 ? estimateWarning(parseFloat(ei.value), taskStart(t), taskEnd(t)) : ""; });
+    on(ei, "blur", function () {
+      var v = ei.value === "" ? 0 : parseFloat(ei.value);
+      if (isNaN(v) || v < 0 || v > 9999) { ei.value = t.est > 0 ? t.est : ""; emsg.textContent = "Enter the estimated time as hours from 0 to 9999."; return; }
+      v = Math.round(v * 100) / 100;
+      if (v === (t.est || 0)) return;
+      emsg.textContent = "";
+      t.est = v; changed();
+      notify(v > 0 ? "Estimated time saved." : "Estimated time cleared.");
+    });
+    dfield("task-start", "Start date (optional)", sd); dfield("task-due", "Due date (leave empty to backlog)", bd); dg.appendChild(smsg); dg.appendChild(dmsg); dfield("task-est", "Estimated time (hours)", ei).appendChild(emsg);
+    box.appendChild(dg);
+  }
+
+  var nDone = t.steps.filter(function (s) { return s.done; }).length;
+  box.appendChild(el("h3", null, t.steps.length ? "Steps (" + nDone + " of " + t.steps.length + " done)" : "Steps"));
+  if (!t.steps.length) box.appendChild(el("p", { "class": "hint" }, "No steps yet. This task counts as one item in the burndown. Add steps to break it up."));
+  if (t.steps.length && !readOnly) box.appendChild(el("p", { "class": "hint" }, "Use a step’s pencil to rename it in place, or Remove to delete it."));
+  var ul = el("ul", { "class": "steps" });
+  t.steps.forEach(function (s) {
+    var sli = el("li", { "class": s.done ? "done" : "" });
+    var lab = el("label"); var cb = el("input", { type: "checkbox" }); cb.checked = s.done;
+    var dc = decisionFor(s.id);
+    if (readOnly) {
+      cb.disabled = true;
+      lab.appendChild(cb); lab.appendChild(el("span", null, s.text)); sli.appendChild(lab);
+      if (dc) sli.appendChild(el("p", { "class": "hint", style: "margin:4px 0 0" }, (dc.a ? "Decision: " : "Decision (open): ") + dc.q));
+      if (dc && dc.a) sli.appendChild(el("p", { "class": "hint", style: "margin:2px 0 0" }, "Answer: " + dc.a));
+    } else {
+      on(cb, "change", function () { s.done = cb.checked; syncFromSteps(t); changed(); });
+      var textSpan = el("span", null, s.text);
+      lab.appendChild(cb); lab.appendChild(textSpan);
+      var stepTop = el("div", { "class": "steptop" }); stepTop.appendChild(lab); sli.appendChild(stepTop);
+      var ac = el("div", { "class": "li-actions stepactions" });
+      if (dc) ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Open the decision for this step", title: "Open this decision" }, dc.a ? "Decision: decided" : "Decision: open"), "click", function () { decisionEditDialog(dc, function () { removeNow(dc, "decisions", "Decision"); }); }));
+      else ac.appendChild(on(el("button", { type: "button", "class": "small", "aria-label": "Add a decision to this step: " + s.text, title: "Add a decision to this step" }, "Add decision"), "click", function () { decisionDialog({ step: s.id }); }));
+      var stepPen = pencilButton("Rename this step", "Rename this step");
+      on(stepPen, "click", function () {
+        stepPen.hidden = true; sli.classList.add("editing");
+        editInline(textSpan, {
+          label: "Step", max: 300, value: function () { return s.text; },
+          onSave: function (v) { s.text = v.slice(0, 300); changed(); },
+          onEmpty: function () { notify("A step needs text."); },
+          onDone: function () { stepPen.hidden = false; sli.classList.remove("editing"); }
+        });
+      });
+      stepTop.appendChild(stepPen);
+      ac.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Remove this step" }, "Remove"), "click", function () {
+        t.steps = t.steps.filter(function (x) { return x.id !== s.id; });
+        state.decisions = state.decisions.filter(function (x) { return x.step !== s.id; });
+        syncFromSteps(t); changed();
+      }));
+      sli.appendChild(ac);
+    }
+    ul.appendChild(sli);
+  });
+  box.appendChild(ul);
+  if (!readOnly) {
+    var add = el("div", { "class": "inline" });
+    var inp = el("input", { type: "text", placeholder: "Add a step", "aria-label": "New step", "data-focus": "step-" + t.id, autocomplete: "off" });
+    var addBtn = el("button", { type: "button", "class": "small", title: "Add a step to this task" }, "Add step");
+    function addStep() {
+      var v = inp.value.trim(); if (!v) return;
+      t.steps.push({ id: uid(), text: v.slice(0, 300), done: false });
+      syncFromSteps(t); setFocusKey("step-" + t.id); changed();
+    }
+    on(addBtn, "click", addStep);
+    on(inp, "keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addStep(); } });
+    add.appendChild(inp); add.appendChild(addBtn); box.appendChild(add);
+  }
+  box.appendChild(el("h3", null, "Notes"));
+  if (readOnly) {
+    box.appendChild(el("p", { "class": "hint notetext" }, t.notes || "No notes."));
+  } else {
+    var ta = el("textarea", { "aria-label": "Notes", style: "margin-top:8px" }); ta.value = t.notes;
+    on(ta, "input", function () { t.notes = ta.value.slice(0, 5000); save(true); });
+    box.appendChild(ta);
+  }
+  if (inline || !readOnly) {
+    var ar = el("div", { "class": "actions", style: "margin-top:14px" });
+    if (readOnly) {
+      // Nothing to offer here -- the quest page's Restore button is the one way back to editing.
+    } else {
+      if (inline) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Open this task on the Tasks page" }, "Open in Tasks"), "click", function () { openTask(t.id); }));
+      if (t.block === 0) {
+        ar.appendChild(el("button", { type: "button", "class": "small", disabled: true, title: "This is a backlogged task. Add a due date to make it a milestone." }, "Make milestone"));
+      } else if (t.milestone) {
+        ar.appendChild(on(el("button", { type: "button", "class": "small on", "aria-pressed": "true", title: "Unmark this task as a milestone" }, "Remove milestone"), "click", function () { t.milestone = false; changed(); }));
+      } else {
+        ar.appendChild(on(el("button", { type: "button", "class": "small", "aria-pressed": "false", title: "Mark this task as a milestone" }, "Make milestone"), "click", function () { t.milestone = true; changed(); }));
+      }
+      if (t.launch) ar.appendChild(on(el("button", { type: "button", "class": "small on", "aria-pressed": "true", title: "Unmark this task as launch critical" }, "Skip launch"), "click", function () { t.launch = false; changed(); }));
+      else ar.appendChild(on(el("button", { type: "button", "class": "small", "aria-pressed": "false", title: "Mark this task as launch critical" }, "Launch critical"), "click", function () { t.launch = true; changed(); }));
+      ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this task (can be undone)" }, "Delete"), "click", function () { ui.detail = false; removeNow(t, "tasks", "Task"); }));
+    }
+    if (ar.childNodes.length) box.appendChild(ar);
+  }
+  return box;
+}
+
+// Bidirectional link, not a subtask hierarchy. Lists p's direct links only, one hop.
+export function linksSection(root, p) {
+  // A live quest or a Candidate can add links (to live quests only); a vaulted quest keeps its links read-only.
+  var links = linkedQuests(p);
+  var ul = el("ul", { "class": "list" });
+  if (!links.length) ul.appendChild(el("li", { "class": "hint" }, "No quest links."));
+  links.forEach(function (lp) {
+    var inert = !!lp.vault || lp.status === "candidate";
+    var li = el("li"), row = el("div", { "class": "crow oneline" }), who = el("span", { "class": "linkwho" });
+    if (inert) {
+      who.appendChild(el("span", { "class": "qinert", style: "font-weight:600" }, lp.name));
+      if (lp.vault) who.appendChild(el("span", { "class": "chip" }, "Vaulted"));
+      else if (lp.status === "candidate") who.appendChild(el("span", { "class": "chip" }, "Candidate"));
+    } else {
+      var nm = el("button", { type: "button", "class": "textbtn qlink", title: "View this quest" }, lp.name);
+      on(nm, "click", function () { go("quest:" + lp.id); });
+      who.appendChild(nm);
+    }
+    row.appendChild(who);
+    if (!p.vault) {
+      var acts = el("div", { "class": "li-actions" });
+      var rm = el("button", { type: "button", "class": "small danger", title: "Remove this link" }, "Unlink");
+      on(rm, "click", function () { unlinkQuests(p.id, lp.id); changed(); });
+      acts.appendChild(rm); row.appendChild(acts);
+    }
+    li.appendChild(row); ul.appendChild(li);
+  });
+  root.appendChild(ul);
+  if (p.vault) return;
+  // A Candidate is not a link target, and neither is a vaulted quest.
+  var candidates = liveQuests().filter(function (x) { return x.id !== p.id && x.status !== "candidate" && p.linkedQuestIds.indexOf(x.id) < 0; });
+  if (candidates.length) {
+    var addRow = el("div", { "class": "actions", style: "margin-top:10px" });
+    addRow.appendChild(on(el("button", { type: "button", "class": "small", title: "Create a link to another quest" }, "Link quest"), "click", function () { linkQuestDialog(p); }));
+    root.appendChild(addRow);
+  }
+}
+
+// Launch-critical items render as a section on a quest's page, scoped
+// to that quest's tasks -- there's no separate standalone Launch page.
+export function launchSection(root, p) {
+  var readOnly = !!p.vault;
+  var ha = el("div", { "class": "sechead" }); ha.appendChild(withHelp(el("h2", { "class": "sechead-h", id: "h-checks" }, "Before you launch"), "before-you-launch", "Before you launch"));
+  root.appendChild(ha);
+  var items = launchItems(p.id);
+  var n = items.filter(function (t) { return t.status === "Completed"; }).length;
+  var total = items.length;
+  root.appendChild(el("p", { "class": "hint" }, total ? "Complete: " + n + " of " + total + " launch-critical " + (total === 1 ? "task" : "tasks") : "No tasks have been marked as launch critical yet."));
+  var ul = el("ul", { "class": "tlist check", "aria-labelledby": "h-checks" });
+  items.forEach(function (t) {
+    var done = t.status === "Completed";
+    // A vaulted quest, or an individually vaulted task, still opens in place -- read-only, not redirected away.
+    var taskReadOnly = readOnly || !!t.vault;
+    var open = ui.questOpen[p.id] === t.id;
+    var li = el("li", { id: "ltask-" + t.id });
+    var b = el("button", { type: "button", "class": "item" + (done ? " done" : ""), title: "View this task" });
+    b.setAttribute("aria-expanded", open ? "true" : "false");
+    var l1 = el("div", { "class": "l1 split" });
+    l1.appendChild(t.block === 0 ? el("span", { "class": "chip backlog" }, "Backlog") : el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
+    var tag1 = addedChip(t); if (tag1) { tag1.style.marginLeft = "6px"; l1.appendChild(tag1); }
+    b.appendChild(l1);
+    b.appendChild(el("div", { "class": "l2" }, short(t.what, 60) + (t.vault ? " (in the Vault)" : "")));
+    var l3 = el("div", { "class": "l3" });
+    l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+    if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
+    stepsAndEst(l3, t);
+    if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
+    b.appendChild(l3);
+    on(b, "click", function () { ui.questOpen[p.id] = open ? null : t.id; renderView(); });
+    li.appendChild(b);
+    if (open) li.appendChild(buildDetail(t, true, taskReadOnly));
+    ul.appendChild(li);
+  });
+  if (total) root.appendChild(ul);
+}
+
+// A one-row section that opens in place like a task row. Starts collapsed.
+export function collapsibleSection(key, summary, detail, emptyText) {
+  var ul = el("ul", { "class": "tlist sectionlist" }), li = el("li");
+  var open = !!ui.sectionOpen[key];
+  var line = el("div", { "class": "l2" });
+  var b = el("button", { type: "button", "class": "item", "aria-expanded": open ? "true" : "false", title: open ? "Collapse this section" : "Expand this section" }, null);
+  b.appendChild(line);
+  function paint() { var t = summary(); line.textContent = t || emptyText; line.style.color = t ? "" : "var(--muted)"; line.style.fontSize = t ? "" : "var(--text-sm)"; }
+  paint();
+  detail.classList.add("detail"); detail.hidden = !open;
+  on(b, "click", function () {
+    open = !open; ui.sectionOpen[key] = open; detail.hidden = !open;
+    b.setAttribute("aria-expanded", open ? "true" : "false"); b.title = open ? "Collapse this section" : "Expand this section";
+    paint();
+  });
+  li.appendChild(b); li.appendChild(detail); ul.appendChild(li);
+  return ul;
+}
+
+export function renderQuestPage(root, id) {
+  var p = findQuest(id);
+  if (!p) { root.appendChild(el("p", { "class": "hint first" }, "Quest not found.")); return; }
+  var readOnly = !!p.vault;
+  // Active/complete: two columns (page content left, Schedule/Timeline/Burndown right), stacked on a phone.
+  var page = root, split = null;
+  var metaLine = el("p", { "class": "hint" });
+  if (p.status === "complete") metaLine.appendChild(el("span", { "class": "chip questcomplete", style: "margin-right:8px" }, "Complete"));
+  if (isDusty(p)) metaLine.appendChild(el("span", { "class": "chip dust", style: "margin-right:8px", title: "No activity for a while" }, "Gathering dust"));
+  metaLine.appendChild(document.createTextNode(questMeta(p)));
+  if (!readOnly) {
+    split = el("div", { "class": "questsplit" });
+    // Grid areas defined in styles.css.
+    root = el("div", { "class": "questmain" });
+    split.appendChild(root); page.appendChild(split);
+  } else {
+    root.appendChild(metaLine);
+    root.appendChild(el("p", { "class": "hint" }, "In the Vault. Restore it to make changes."));
+  }
+
+  // A vaulted candidate keeps this read-only, Notes-only view (reachable
+  // from the Vault list) -- a live candidate falls through to the full page below.
+  if (p.status === "candidate" && readOnly) {
+    root.appendChild(el("h2", null, "Notes"));
+    root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
+    root.appendChild(el("h2", null, "Quest giver"));
+    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Bounty: " + formatMoney(p.client.coin, state.settings.coinFormat) + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
+    root.appendChild(el("p", { "class": "hint notetext" }, cgLines.length ? cgLines.join("\n") : "No Quest giver."));
+    if (linkedQuests(p).length) { root.appendChild(el("h2", null, "Quest links")); linksSection(root, p); }
+    return;
+  }
+
+  var hd = el("div", { "class": "sechead" + (split ? " first" : "") }); hd.appendChild(el("h2", split ? { "class": "first" } : null, "Tasks"));
+  if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a task" }, "Add task"), "click", function () { taskDialog(p.id); }));
+  root.appendChild(hd);
+  // The count line on the left, the open estimated time on the right.
+  var est = questEstimate(p), metaRow = el("div", { "class": "metarow" });
+  metaRow.appendChild(metaLine);
+  if (est.total > 0) metaRow.appendChild(el("span", { "class": "hint estleft" }, "Est. " + fmtHoursLong(est.left) + " remaining"));
+  root.appendChild(metaRow);
+  if (!readOnly && p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this quest is Complete. Reopen it to bring them back."));
+  // questTasks(), not ordered()/backlogTasks()/live() -- a quest's page keeps
+  // showing its tasks even while Complete or vaulted, when cross-quest lists exclude them.
+  var ts = sortTasks(questTasks(p.id).filter(function (t) { return !t.launch; }));
+  if (ts.length) {
+    var ul = el("ul", { "class": "tlist" });
+    ts.forEach(function (t) {
+      // A vaulted quest's task opens in place too, read-only, so its steps and decisions stay visible for historical purposes.
+      var open = ui.questOpen[p.id] === t.id;
+      var li = el("li", { id: "ptask-" + t.id }), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
+      b.setAttribute("aria-expanded", open ? "true" : "false");
+      var l1 = el("div", { "class": "l1 split" });
+      l1.appendChild(t.block === 0 ? el("span", { "class": "chip backlog" }, "Backlog") : el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
+      var tag1 = addedChip(t); if (tag1) { tag1.style.marginLeft = "6px"; l1.appendChild(tag1); }
+      b.appendChild(l1);
+      b.appendChild(el("div", { "class": "l2" }, t.what));
+      var l3 = el("div", { "class": "l3" });
+      l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+      if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
+      stepsAndEst(l3, t);
+      if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
+      b.appendChild(l3);
+      on(b, "click", function () { ui.questOpen[p.id] = open ? null : t.id; renderView(); });
+      li.appendChild(b);
+      if (open) li.appendChild(buildDetail(t, true, readOnly));
+      ul.appendChild(li);
+    });
+    root.appendChild(ul);
+  }
+  if (!split) scheduleSection(root, p, readOnly);
+
+  launchSection(root, p);
+
+  root.appendChild(el("h2", null, "Quest links"));
+  linksSection(root, p);
+
+  root.appendChild(el("h2", null, "Notes"));
+  if (readOnly) {
+    root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
+  } else {
+    var ta = el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" }); ta.value = p.notes;
+    // Remember a dragged height for this session, since every change rebuilds the page.
+    if (ui.notesH[p.id]) ta.style.height = ui.notesH[p.id] + "px";
+    on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(true); });
+    root.appendChild(ta);
+    if (typeof ResizeObserver !== "undefined") new ResizeObserver(function () { if (ta.offsetHeight > 0) ui.notesH[p.id] = ta.offsetHeight; }).observe(ta);
+  }
+
+  if (readOnly) {
+    root.appendChild(el("h2", null, "Quest giver"));
+    var gc = p.client, glines = [gc.org, gc.poc, gc.address, gc.phone, gc.email, gc.website, gc.coin !== "" ? "Bounty: " + formatMoney(gc.coin, state.settings.coinFormat) + " per " + gc.per.toLowerCase() : ""].filter(Boolean);
+    root.appendChild(el("p", { "class": "hint notetext" }, glines.length ? glines.join("\n") : "No Quest giver."));
+  } else {
+    root.appendChild(withHelp(el("h2", null, "Quest giver"), "quest-giver", "Quest giver"));
+    var giverBox = el("div");
+    var gg = el("div", { "class": "setgrid" });
+    function gfield(key, id, label, type, full) {
+      var w = el("div", { "class": "field" + (full ? " full" : "") }); w.appendChild(el("label", { "for": id }, label));
+      var inp = el("input", { type: type || "text", id: id });
+      inp.value = p.client[key];
+      on(inp, "input", function () { p.client[key] = inp.value.slice(0, 200); save(true); });
+      w.appendChild(inp); gg.appendChild(w);
+    }
+    gfield("org", "giver-org-" + p.id, "Organization");
+    gfield("poc", "giver-poc-" + p.id, "POC");
+    gfield("phone", "giver-phone-" + p.id, "Phone", "tel");
+    gfield("email", "giver-email-" + p.id, "Email", "email");
+    gfield("website", "giver-website-" + p.id, "Website", "url", true);
+    giverBox.appendChild(gg);
+    var gaw = el("div", { "class": "field" }); gaw.appendChild(el("label", { "for": "giver-address-" + p.id }, "Address"));
+    var gaddr = el("textarea", { id: "giver-address-" + p.id, rows: 3 }); gaddr.value = p.client.address;
+    on(gaddr, "input", function () { p.client.address = gaddr.value.slice(0, 500); save(true); });
+    gaw.appendChild(gaddr); giverBox.appendChild(gaw);
+    var gg2 = el("div", { "class": "setgrid", style: "margin-top:10px" });
+    var gcw = el("div", { "class": "field" }), gcl = el("div", { "class": "labelrow" });
+    gcl.appendChild(el("label", { "for": "giver-coin-" + p.id }, "Bounty")); gcl.appendChild(helpLink("bounty", "Bounty")); gcw.appendChild(gcl);
+    var gcoin = moneyInput(el("input", { type: "text", id: "giver-coin-" + p.id }), function (n) { p.client.coin = n; save(); }, state.settings.coinFormat);
+    gcoin.value = formatMoney(p.client.coin, state.settings.coinFormat);
+    gcw.appendChild(gcoin); gg2.appendChild(gcw);
+    var gpw = el("div", { "class": "field" }); gpw.appendChild(el("label", { "for": "giver-per-" + p.id }, "Per"));
+    var gper = el("select", { id: "giver-per-" + p.id, "class": "plain" });
+    ["Hour", "Quest"].forEach(function (o) { var op = el("option", { value: o }, o); if (o === p.client.per) op.selected = true; gper.appendChild(op); });
+    on(gper, "change", function () { p.client.per = gper.value; save(); });
+    gpw.appendChild(gper); gg2.appendChild(gpw);
+    giverBox.appendChild(gg2);
+    root.appendChild(collapsibleSection("giver:" + p.id, function () { return [p.client.org, p.client.poc].filter(Boolean).join(" · "); }, giverBox, "Add Quest giver details"));
+  }
+
+  var ar = el("div", { "class": "actions questactions", style: "margin-top:14px" });
+  if (readOnly) {
+    ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Bring back to Quests" }, "Restore"), "click", function () { restoreEntry({ kind: "quest", list: "quests", item: p }); }));
+  } else if (p.status === "candidate") {
+    ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Promote to quest" }, "Promote"), "click", function () { promoteToActive(p.id); }));
+    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Send this candidate to the Vault" }, "Vault"), "click", function () { removeToVault(p, "Quest"); }));
+  } else {
+    if (p.status === "active") {
+      ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Mark complete" }, "Mark complete"), "click", function () {
+        // Manual path, equal in standing to the auto-trigger, not a fallback.
+        p.status = "complete"; changed(); completionDialog(p);
+      }));
+      ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Send this quest back to Candidates" }, "Demote"), "click", function () { demoteToCandidate(p.id); }));
+    } else if (p.status === "complete") {
+      // No auto-revert -- Reopen is the only way back to Active.
+      ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Reopen this quest" }, "Reopen"), "click", function () {
+        p.status = "active";
+        // Lets sweepQuestCompletion() skip this quest once, so reopening one
+        // whose tasks are all still Completed doesn't immediately re-fire it.
+        p.justReopened = true;
+        // Restore a pin completionDialog() auto-removed on completion.
+        if (p.wasPinned) { var key = "quest:" + p.id; if (!isPinned(key)) state.pins.push(key); p.wasPinned = false; }
+        changed(); notify("Reopened.");
+        if (state.settings.audio) playSfx("../assets/sfx/quest.mp3");
+      }));
+    }
+    ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Send this quest to the Vault" }, "Vault"), "click", function () { vaultQuest(p); }));
+    ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Export web page for client review" }, "Quest giver export"), "click", function () {
+      askExportSides(p);
+    }));
+  }
+  // Sits outside .questmain so it renders last when stacked; CSS puts it back under the left column on wide screens.
+  if (split) { split.appendChild(questChartsPanel(p)); split.appendChild(ar); } else { root.appendChild(ar); }
+}
+
+// `first` zeroes the heading's top margin; `extraBtn` rides its heading row.
+export function scheduleSection(host, p, readOnly, first, extraBtn) {
+  // `first` can be a plain boolean (always zero the heading's top margin,
+  // e.g. the Expand modal) or the string "questcharts-head" (zero it only at
+  // the wide breakpoint, via CSS, so a stacked page keeps its normal section gap).
+  var cls = first === true ? "first" : first === "questcharts-head" ? "questcharts-head" : "";
+  var hd = el("div", { "class": "sechead" + (cls ? " " + cls : "") });
+  hd.appendChild(el("h2", cls ? { "class": cls + (cls === "questcharts-head" ? " sechead-h" : "") } : null, "Schedule"));
+  if (extraBtn) hd.appendChild(extraBtn);
+  host.appendChild(hd);
+  var eff = pset(p.id);
+  if (readOnly) {
+    host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start ? fmtY(parseISO(eff.start)) : "unset") + (p.due ? ", due " + fmtY(parseISO(p.due)) : "") + ", " + wl() + " length " + eff.days + " days" + "."));
+  } else {
+    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
+    function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
+    var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
+    var pd = el("input", { type: "date", id: "proj-due" }); pd.value = p.due;
+    var pl = el("input", { type: "number", id: "proj-days", min: "1", max: "90", step: "1", inputmode: "numeric" }); pl.value = eff.days;
+    // The earliest and latest dates on this quest's tasks; its start and due date must stay outside them.
+    var firstTask = "", lastTask = "";
+    questTasks(p.id).forEach(function (t) {
+      [t.start, t.due].forEach(function (v) { if (v && (!firstTask || v < firstTask)) firstTask = v; });
+      if (t.due && t.due > lastTask) lastTask = t.due;
+    });
+    function applyOwn() {
+      var sv = ps.value, lv = parseInt(pl.value, 10);
+      if (sv === eff.start && lv === eff.days) { smsg.textContent = ""; return; }
+      if (!isISO(sv)) { smsg.textContent = "Enter a valid start date."; return; }
+      if (isNaN(lv) || lv < 1 || lv > 90) { smsg.textContent = wd() + " length must be from 1 to 90 days."; return; }
+      if (p.due && sv > p.due) { smsg.textContent = "This quest is due " + fmtY(parseISO(p.due)) + ". Pick a start date on or before then."; return; }
+      if (firstTask && sv > firstTask) { smsg.textContent = "A task in this quest is dated " + fmtY(parseISO(firstTask)) + ". Pick a start date on or before that."; return; }
+      p.start = sv; p.days = lv; changed(); notify(p.name + " schedule saved.");
+    }
+    // "blur", not "change" -- a date input fires "change" per segment while typing.
+    on(ps, "blur", applyOwn); on(pl, "blur", applyOwn);
+    on(pd, "blur", function () {
+      var dv = pd.value;
+      if (dv === p.due) { if (ps.value === eff.start) smsg.textContent = ""; return; }
+      if (dv !== "" && !isISO(dv)) { smsg.textContent = "Enter a valid due date, or leave it empty."; return; }
+      if (dv && dv < eff.start) { smsg.textContent = "This quest starts " + fmtY(parseISO(eff.start)) + ". Pick a due date on or after that."; return; }
+      if (dv && lastTask && dv < lastTask) { smsg.textContent = "A task in this quest is due " + fmtY(parseISO(lastTask)) + ". Pick a due date on or after that."; return; }
+      p.due = dv; changed(); notify(p.due ? "Due date saved." : "Due date cleared.");
+    });
+    sfield("proj-start", "Start date", ps); sfield("proj-due", "Due date", pd); sfield("proj-days", "Days per " + wd().toLowerCase(), pl);
+    host.appendChild(sg); host.appendChild(smsg);
+  }
+}
+
+export var EXPAND_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M15 3h6v6"></path><path d="M9 21H3v-6"></path><path d="M21 3l-7 7"></path><path d="M3 21l7-7"></path></svg>';
+
+// Right column: Schedule, Timeline, Burndown, flowing continuously. Expand opens all three large.
+export function questChartsPanel(p) {
+  var side = el("aside", { "class": "questcharts", "aria-label": "Schedule, timeline, and burndown" });
+  var ex = el("button", { type: "button", "class": "small questexpand", title: "Expand the schedule, timeline, and burndown" }, "Expand");
+  ex.appendChild(el("span", { "class": "expandicon", "aria-hidden": "true" })); ex.lastChild.innerHTML = EXPAND_ICON;
+  on(ex, "click", function () { openModal("Timeline and burndown for " + p.name, function (body) { body.appendChild(questCharts(p, true, null, true)); }, { full: true }); });
+  side.appendChild(questCharts(p, false, ex));
+  return side;
+}
+
+export function questCharts(p, wide, expandBtn, first) {
+  var out = el("div");
+  // Schedule keeps its own heading from scheduleSection(), with Expand on the same row. .questcharts-head zeroes the heading margin only at the wide breakpoint.
+  scheduleSection(out, p, false, "questcharts-head", expandBtn);
+  var tl = questRangeBlock(p);
+  if (tl.empty) {
+    // Nothing to chart -- one combined heading, no Slip button.
+    out.appendChild(el("h2", null, "Timeline & burndown"));
+    out.appendChild(tl.node);
+  } else {
+    // Slip moves incomplete tasks only -- see slipDialog().
+    var slipBtn = el("button", { type: "button", "class": "small", title: "Push this quest’s incomplete tasks later to catch up" }, "Slip schedule");
+    on(slipBtn, "click", function () { slipDialog(p); });
+    var hd1 = el("div", { "class": "sechead" }); hd1.appendChild(el("h2", { "class": "sechead-h" }, "Timeline")); hd1.appendChild(slipBtn);
+    out.appendChild(hd1);
+    out.appendChild(tl.node); wireMilestoneDiamonds(tl.node);
+    var b = burnParts({ quest: p, wide: wide, level: "h2" });
+    b.count.style.marginTop = "0";
+    out.appendChild(b.h); out.appendChild(b.chart); out.appendChild(el("h2", null, "Stats")); out.appendChild(b.count);
+  }
+  return out;
+}

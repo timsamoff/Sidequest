@@ -1,10 +1,11 @@
 // Offline cache for the installed PWA. The shell lists every app module, so the first launch after install works offline.
 // Bump the version suffix whenever shipped files change, so activate's cleanup evicts the old cache.
-var CACHE = "sidequest-shell-v7";
+var CACHE = "sidequest-shell-v8";
 var SHELL = [
   "./", "index.html", "manifest.json",
   "../css/tokens.css", "../css/leather.css", "../css/styles.css", "../css/splash.css", "../assets/header-800.jpg",
-  "app.js", "chart.js", "confetti.js", "dates.js", "dialogs.js", "dom.js", "export.js", "model.js", "search.js", "splash.js", "state.js", "tutorial.js", "views.js"
+  "app.js", "chart.js", "confetti.js", "dates.js", "dialogs.js", "dom.js", "errands.js", "export.js", "files.js", "help.js", "imports.js", "lifecycle.js",
+  "model.js", "quest-page.js", "search.js", "settings.js", "splash.js", "state.js", "tutorial.js", "views.js"
 ];
 
 self.addEventListener("install", function (e) {

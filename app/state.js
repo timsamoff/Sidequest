@@ -1,7 +1,7 @@
 import { DAY, iso, parseISO, TODAY } from "./dates.js";
 import { findAnyTask, syncTaskBlocks } from "./model.js";
 import { notify, newPin, inClaude } from "./dom.js";
-import { recordHistory, recordQuestHistory, sweepQuestCompletion } from "./views.js";
+import { recordHistory, recordQuestHistory, sweepQuestCompletion } from "./lifecycle.js";
 import { renderAll } from "./app.js";
 
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";

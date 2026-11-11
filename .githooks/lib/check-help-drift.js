@@ -5,8 +5,10 @@ const fs = require("fs");
 const common = require("./sentinel-common");
 const pre = require("./check-pre-commit");
 
-const LABEL_FILES = ["app/views.js", "app/dialogs.js", "app/app.js", "app/index.html"];
-const VIEWS_FILE = "app/views.js";
+const LABEL_FILES = ["app/views.js", "app/quest-page.js", "app/errands.js", "app/settings.js", "app/files.js", "app/imports.js", "app/lifecycle.js", "app/dialogs.js", "app/app.js", "app/index.html"];
+// helpTopics() lives in the first, Options controls in the second.
+const VIEWS_FILE = "app/help.js";
+const SETTINGS_FILE = "app/settings.js";
 
 // Returns the index of the bracket that closes the one at openIdx, skipping over
 // string literals. -1 if it never closes on this line.
@@ -138,7 +140,7 @@ function helpTopicRanges(source) {
   return starts.map((t, i) => ({ title: t.title, start: t.start, end: i + 1 < starts.length ? starts[i + 1].start - 1 : range.end }));
 }
 
-// Titles of the Help topics whose lines a diff of app/views.js touched.
+// Titles of the Help topics whose lines a diff of app/help.js touched.
 function topicsTouched(viewsDiff, viewsSource) {
   const ranges = helpTopicRanges(viewsSource);
   if (!ranges.length || !viewsDiff) return [];
@@ -248,7 +250,7 @@ function buildReminder(input) {
     anyHelpReasons.push("button label changed (" + shown + (labels.length > 5 ? ", and " + (labels.length - 5) + " more" : "") + ")");
   }
   (input.triggerHits || []).forEach((h) => anyHelpReasons.push(h));
-  if (addsSettingsControl(diffs[VIEWS_FILE])) anyHelpReasons.push("new Settings control");
+  if (addsSettingsControl(diffs[SETTINGS_FILE])) anyHelpReasons.push("new Settings control");
   const structure = [];
   LABEL_FILES.forEach((f) => changedStructure(diffs[f]).forEach((x) => { if (structure.indexOf(x) < 0) structure.push(x); }));
   if (structure.length) anyHelpReasons.push("a step in the user's process changed (" + structure.slice(0, 4).join("; ") + (structure.length > 4 ? "; and " + (structure.length - 4) + " more" : "") + ")");
@@ -265,7 +267,7 @@ function buildReminder(input) {
   const reasons = (helpEdited ? [] : anyHelpReasons).concat(areaReasons);
   if (!reasons.length) return null;
   return "Help may be out of date: " + reasons.join("; ") + ". " +
-    (helpEdited ? "" : "helpTopics() in app/views.js was not changed in this commit. ") +
+    (helpEdited ? "" : "helpTopics() in app/help.js was not changed in this commit. ") +
     "If something a user sees or does changed, check the matching Help topic and README. " +
     "(Non-blocking: a hook can see that the UI changed, not whether Help still describes it correctly.)";
 }

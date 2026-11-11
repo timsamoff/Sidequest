@@ -2,10 +2,11 @@ import { state, ui, save, changed, autoVault, purgeOldVault, APP_NAME, loadFromD
 import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest, lateTasks } from "./model.js";
 import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline, playSfx, inClaude, isStandalone } from "./dom.js";
 import { TODAY } from "./dates.js";
-import {
-  renderToday, renderSchedule, renderQuests, renderWorkshop, renderJobs,
-  renderVault, renderSettings, renderHelp, renderQuestPage, renderTimeline, setDeferredInstallPrompt, setInstalledThisSession, setAvailableUpdateVersion
-} from "./views.js";
+import { renderJobs } from "./errands.js";
+import { renderHelp } from "./help.js";
+import { renderQuestPage } from "./quest-page.js";
+import { renderSettings, setDeferredInstallPrompt, setInstalledThisSession } from "./settings.js";
+import { renderToday, renderSchedule, renderQuests, renderWorkshop, renderVault, renderTimeline, setAvailableUpdateVersion } from "./views.js";
 import { renderSearch, openSearch, closeSearch, wireSearchInput, focusSearch } from "./search.js";
 import {
   taskDialog, questDialog, ideaDialog, jobDialog, decisionDialog, stepDialog

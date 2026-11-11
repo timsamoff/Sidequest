@@ -76,8 +76,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(stateJs.includes('APP_VERSION = "0.99.5"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("../css/tokens.css?v=" + v) && html.includes("../css/styles.css?v=" + v) && html.includes("../css/splash.css?v=" + v) && html.includes("../css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
-  const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "views.js"), "utf8");
-  ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in views.js/state.js");
+  const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "settings.js"), "utf8");
+  ok(viewsJs.includes('href: "https://samoff.com"') && viewsJs.includes("Tim Samoff"), "credit, link, and version kept in settings.js/state.js");
 }
 
 /* ---- icon files and links ---- */
@@ -2743,7 +2743,7 @@ async function exportClick(k, projectName) {
   const f = k.$("helpFilter"), items = () => [...k.d.querySelectorAll("#view details.helpitem")];
   const titlesOf = () => items().map(d => d.querySelector("summary").firstChild.textContent);
   ok(titlesOf()[1] === "Terms", "the Field guide has a Terms topic, second after How Sidequest works");
-  const { helpTopics } = await import("../app/views.js?run=" + counter);
+  const { helpTopics } = await import("../app/help.js?run=" + counter);
   const topics = helpTopics(), titles = topics.map(t => t[0]);
   const termLines = topics.find(t => t[0] === "Terms")[1];
   ok(termLines.length === 38 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 38 Terms entries read as a bold term, a definition, and a pointer");
@@ -2764,7 +2764,7 @@ async function exportClick(k, projectName) {
 {
   // "?" buttons open a Terms entry in a modal, and lead to the Field guide topic that explains more
   const k = kit(await mk()); k.click(k.$("welcomeDismiss"));
-  const { helpTopics, helpTerm } = await import("../app/views.js?run=" + counter);
+  const { helpTopics, helpTerm } = await import("../app/help.js?run=" + counter);
   const ids = helpTopics().find(t => t[0] === "Terms")[1].map(l => l.match(/^\{#([a-z-]+)\}/)[1]);
   ok(new Set(ids).size === ids.length, "every Terms entry has its own id");
   ok(!!helpTerm("pending") && helpTerm("pending").name === "Pending" && helpTerm("nope") === null, "an id finds its Terms entry, and an unknown id finds nothing");
