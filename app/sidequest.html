@@ -5531,7 +5531,9 @@ function brandmarkField() {
   function renderPreview() {
     preview.innerHTML = "";
     if (state.settings.brandmark) {
-      preview.appendChild(el("img", { src: state.settings.brandmark, alt: "Your brandmark" }));
+      // The company name if there is one, else the user's name, else a plain label.
+      var who = state.settings.contact;
+      preview.appendChild(el("img", { src: state.settings.brandmark, alt: who.company || who.name || "Brandmark" }));
       preview.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Remove the brandmark" }, "Remove"), "click", function () {
         state.settings.brandmark = ""; save(); renderPreview();
       }));

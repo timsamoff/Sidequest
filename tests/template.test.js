@@ -1992,6 +1992,10 @@ async function exportClick(k, projectName) {
   const { html } = await exportClick(kit(await mk(saved)), "Brandmark Only");
   ok(html.includes("Prepared by") && html.includes('class="ebrandmark"'), "Prepared by shows with just the brandmark, no text fields filled in");
   ok(/class="ebrandmark"[^>]*alt="Brandmark"/.test(html), "a brandmark with no name beside it has alt text, since it is the only identification");
+  for (const [contact, want, why] of [[{ company: "Acme Co", name: "Pat Lee" }, "Acme Co", "the company name wins when both are set"], [{ name: "Pat Lee" }, "Pat Lee", "the user's name is used when there is no company"], [{}, "Brandmark", "a plain label is used when neither is set"]]) {
+    const kk = kit(await mk({ settings: { brandmark: tinyPng, contact }, quests: [], tasks: [] })); kk.tab("settings");
+    ok(kk.d.querySelector(".brandmarkpreview img").getAttribute("alt") === want, "the Options brandmark preview alt: " + why);
+  }
   const named = { settings: { brandmark: tinyPng, contact: { company: "Acme Co" } }, quests: [{ id: "pB3", name: "Brandmark Named", status: "active", start: "2026-08-03", days: 7 }], tasks: [] };
   const { html: html2 } = await exportClick(kit(await mk(named)), "Brandmark Named");
   ok(/class="ebrandmark"[^>]*alt=""/.test(html2) && html2.includes("Acme Co"), "a brandmark beside a name is decorative (empty alt)");
