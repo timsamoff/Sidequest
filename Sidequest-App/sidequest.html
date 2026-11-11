@@ -1466,7 +1466,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "0.99.9";
+var APP_VERSION = "0.99.10";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -1602,7 +1602,7 @@ function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop, jobs: d.jobs, hand: [],
     pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", coinFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, animatedReroll: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, dustDays: 30, wipLimit: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "" }
+    settings: { theme: "auto", dateFormat: "us", coinFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, animatedReroll: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, dustDays: 30, wipLimit: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "", seenVersion: "" }
   };
 }
 
@@ -1769,6 +1769,7 @@ function normalize(s) {
     if (typeof s.settings.audio === "boolean") d.settings.audio = s.settings.audio;
     if (typeof s.settings.completionFx === "boolean") d.settings.completionFx = s.settings.completionFx;
     if (typeof s.settings.dismissedUpdateVersion === "string") d.settings.dismissedUpdateVersion = S(s.settings.dismissedUpdateVersion, 20);
+    if (typeof s.settings.seenVersion === "string") d.settings.seenVersion = S(s.settings.seenVersion, 20);
     // Validated on load, not trusted blindly -- a stale saved bucket (from before an
     // AFFIRMATIONS edit) could hold out-of-range or duplicate indices.
     if (Array.isArray(s.settings.affirmationBucket)) {
@@ -5974,6 +5975,7 @@ function welcomeBox() {
 
 function renderToday(root) {
   if (availableUpdateVersion && state.settings.dismissedUpdateVersion !== availableUpdateVersion) root.appendChild(updateBanner());
+  if (versionBannerDue()) root.appendChild(versionBanner());
   if (backupReminderDue()) root.appendChild(backupReminder());
   if (!state.settings.hideWelcome) root.appendChild(welcomeBox());
   var g = pgrid(), b = burnParts({});
@@ -5987,6 +5989,19 @@ function renderToday(root) {
 // Shown when a newer db version stamp exists (checkForAppUpdate() in state.js). Dismissing records the version, so a later update gets its own notice.
 var bannerFit = null;
 
+// The web app and installed app show this once after they update; hosted copies have the prompt banner above instead.
+function versionBannerDue() { return !isHosted() && !!state.settings.seenVersion && state.settings.seenVersion !== APP_VERSION; }
+function versionBanner() {
+  var box = el("div", { "class": "box updatebanner", style: "margin-bottom:22px" });
+  box.appendChild(el("h2", { "class": "first", style: "margin-bottom:4px" }, "Sidequest has leveled up!"));
+  box.appendChild(el("p", { "class": "hint first" }, "You are now questing in version " + APP_VERSION + "."));
+  var ar = el("div", { "class": "actions" });
+  ar.appendChild(on(el("button", { type: "button", title: "Hide this notice" }, "Dismiss"), "click", function () {
+    state.settings.seenVersion = APP_VERSION; save(); box.remove();
+  }));
+  box.appendChild(ar);
+  return box;
+}
 function updateBanner() {
   var box = el("div", { "class": "box updatebanner", style: "margin-bottom:22px" });
   box.appendChild(el("h2", { "class": "first", style: "margin-bottom:4px" }, "Sidequest has leveled up!"));
@@ -6905,6 +6920,8 @@ Promise.resolve().then(function () {
   scrollTop();
   $("brand").textContent = APP_NAME;
   applyTheme();
+  // A first run records the version without a banner; later runs on a newer version show it (see versionBanner()).
+  if (!state.settings.seenVersion) state.settings.seenVersion = APP_VERSION;
   autoVault(); purgeOldVault(); save();
   renderAll();
 

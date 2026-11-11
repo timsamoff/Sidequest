@@ -1,4 +1,4 @@
-import { state, ui, save, changed, autoVault, purgeOldVault, APP_NAME, loadFromDbIfAvailable, checkForAppUpdate, pickAffirmation } from "./state.js";
+import { state, ui, save, changed, autoVault, purgeOldVault, APP_NAME, APP_VERSION, loadFromDbIfAvailable, checkForAppUpdate, pickAffirmation } from "./state.js";
 import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest, lateTasks } from "./model.js";
 import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline, playSfx, inClaude, isStandalone } from "./dom.js";
 import { TODAY } from "./dates.js";
@@ -193,6 +193,8 @@ Promise.resolve().then(function () {
   scrollTop();
   $("brand").textContent = APP_NAME;
   applyTheme();
+  // A first run records the version without a banner; later runs on a newer version show it (see versionBanner()).
+  if (!state.settings.seenVersion) state.settings.seenVersion = APP_VERSION;
   autoVault(); purgeOldVault(); save();
   renderAll();
 

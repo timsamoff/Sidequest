@@ -7,7 +7,7 @@ import { renderAll } from "./app.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.99.9";
+export var APP_VERSION = "0.99.10";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -143,7 +143,7 @@ export function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop, jobs: d.jobs, hand: [],
     pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", coinFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, animatedReroll: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, dustDays: 30, wipLimit: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "" }
+    settings: { theme: "auto", dateFormat: "us", coinFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, animatedReroll: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, dustDays: 30, wipLimit: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "", seenVersion: "" }
   };
 }
 
@@ -310,6 +310,7 @@ export function normalize(s) {
     if (typeof s.settings.audio === "boolean") d.settings.audio = s.settings.audio;
     if (typeof s.settings.completionFx === "boolean") d.settings.completionFx = s.settings.completionFx;
     if (typeof s.settings.dismissedUpdateVersion === "string") d.settings.dismissedUpdateVersion = S(s.settings.dismissedUpdateVersion, 20);
+    if (typeof s.settings.seenVersion === "string") d.settings.seenVersion = S(s.settings.seenVersion, 20);
     // Validated on load, not trusted blindly -- a stale saved bucket (from before an
     // AFFIRMATIONS edit) could hold out-of-range or duplicate indices.
     if (Array.isArray(s.settings.affirmationBucket)) {
