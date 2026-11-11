@@ -138,7 +138,7 @@ Your data is saved in your browser on the device you're using. Nothing is sent a
 
 - Your data doesn't sync between devices or browsers.
 - Clearing your browser data also clears your quests. On an iPhone or iPad, iOS can also clear a website's saved data after a long time without a visit.
-- On an iPhone or iPad, the installed app and the browser keep separate saved data that doesn't sync, so choose the web version or the installed app and stick with it. To switch, save a backup in one and restore it in the other.
+- On an iPhone or iPad, the installed app and browser store data separately and don't sync. Choose one and stick with it. To switch between them, save a backup in one and restore it in the other.
 - Use **Save backup** in **Options** to save everything to a file. **Restore backup** loads it back in. If you haven't made a backup in two weeks, Today will remind you.
 
 **Claude and Muse**
