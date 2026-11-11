@@ -1991,6 +1991,10 @@ async function exportClick(k, projectName) {
   const saved = { settings: { brandmark: tinyPng }, quests: [{ id: "pB2", name: "Brandmark Only", status: "active", start: "2026-08-03", days: 7 }], tasks: [] };
   const { html } = await exportClick(kit(await mk(saved)), "Brandmark Only");
   ok(html.includes("Prepared by") && html.includes('class="ebrandmark"'), "Prepared by shows with just the brandmark, no text fields filled in");
+  ok(/class="ebrandmark"[^>]*alt="Brandmark"/.test(html), "a brandmark with no name beside it has alt text, since it is the only identification");
+  const named = { settings: { brandmark: tinyPng, contact: { company: "Acme Co" } }, quests: [{ id: "pB3", name: "Brandmark Named", status: "active", start: "2026-08-03", days: 7 }], tasks: [] };
+  const { html: html2 } = await exportClick(kit(await mk(named)), "Brandmark Named");
+  ok(/class="ebrandmark"[^>]*alt=""/.test(html2) && html2.includes("Acme Co"), "a brandmark beside a name is decorative (empty alt)");
 }
 {
   // Audio, Completion FX, and Animated burndown settings: all default on, all save, all round-trip.

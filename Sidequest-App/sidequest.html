@@ -2903,7 +2903,9 @@ function websiteLine(v) {
 function renderLetterColumn(heading, fields, nameKey, secondKey, brandmark) {
   if (!fields && !brandmark) return "";
   var lines = [];
-  if (brandmark) lines.push('<img class="ebrandmark" src="' + escAttr(brandmark) + '" alt="">');
+  // With a name beside it the logo is decoration; alone, it is the only thing saying who prepared the export.
+  var named = !!(fields && (fields[nameKey] || fields[secondKey]));
+  if (brandmark) lines.push('<img class="ebrandmark" src="' + escAttr(brandmark) + '" alt="' + (named ? "" : "Brandmark") + '">');
   if (fields && fields[nameKey]) lines.push('<div class="econtactname">' + escHtml(fields[nameKey]) + "</div>");
   if (fields && fields[secondKey]) lines.push(plainLine(fields[secondKey]));
   if (fields && fields.address) lines.push(addrLine(fields.address));
