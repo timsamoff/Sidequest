@@ -137,7 +137,8 @@ If Muse can't fetch the file, attach `sidequest.html` to the chat instead and re
 Your data is saved in your browser on the device you're using. Nothing is sent anywhere. There are a few things to keep in mind:
 
 - Your data doesn't sync between devices or browsers.
-- Clearing your browser data also clears your quests.
+- Clearing your browser data also clears your quests. On an iPhone or iPad, iOS can also clear a website's saved data after a long time without a visit.
+- On an iPhone or iPad, the installed app may keep its own saved data, separate from the browser you installed it from, so quests you added in the browser might not appear in it. Save a backup in the browser and restore it in the installed app to bring them over.
 - Use **Save backup** in **Options** to save everything to a file. **Restore backup** loads it back in. If you haven't made a backup in two weeks, Today will remind you.
 
 **Claude and Muse**

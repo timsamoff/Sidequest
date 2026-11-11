@@ -4514,7 +4514,9 @@ function helpTopics() {
       ">**Quests begin gathering dust after:** Set how long an active quest can go without progress before it displays a **Gathering dust** badge.",
       "**Appearance and formats:** These settings include **Date format**, **Coin format** (1,234.56 or 1.234,56), **Splash screen on open** (on/off), **Theme** (light and dark mode), **Animated burndown** (on/off), **Animated reroll** (on/off), **Completion effects** (on/off), and **Sound effects** (on/off).",
       "**Vault:** Set how long the **Vault** keeps items before it deletes them: never, or after 7, 30, 60, or 90 days.",
-      "**Install Sidequest:** If you’re using Sidequest on the web, you can install it to your device. iPhones and iPads don’t show this button: tap the **Share** icon in Safari, then **Add to Home Screen**, to install it. The installed version works offline and displays a **Refresh** button in the top bar.",
+      "**Install Sidequest:** If you’re using Sidequest on the web, you can install it to your device. iPhones and iPads don’t show this button: in Safari, Chrome, or Firefox, tap **Share**, then **Add to Home Screen**. The installed version works offline and displays a **Refresh** button in the top bar.",
+      ">On an iPhone or iPad, the installed app may keep its own saved data, separate from the browser you installed it from, so quests you added in the browser might not appear in it. To move them, save a backup in the browser and restore it in the installed app.",
+      ">iOS can clear a website’s saved data after a long time without a visit. Save a backup now and then.",
       "**Import:** Bring tasks from another application into Sidequest. Sidequest can import Trello JSON or Todoist CSV as a new quest.",
       "**Backup and restore:** Download a backup of your Sidequest data as a JSON file. Because the web and installed versions store your data on your device, make occasional backups. **Restore backup** loads a backup file and replaces everything in Sidequest with it. You’ll see a warning first, and an **Undo** button afterward.",
       ">If a change can’t be saved, a warning appears. Save a backup to avoid losing the latest changes.",
@@ -5758,6 +5760,7 @@ function renderSettings(page) {
       iosNote.appendChild(el("strong", null, "Add to Home Screen"));
       iosNote.appendChild(document.createTextNode("."));
       installBox.appendChild(iosNote);
+      installBox.appendChild(el("p", { "class": "hint" }, "The installed app may keep its own saved data, separate from the browser. To bring your quests over, save a backup in the browser and restore it in the installed app."));
     } else {
       var installNote = el("p", { "class": "hint first" }, "Sidequest can’t verify whether it’s installed in this browser. If it isn’t installed, check your browser’s menu for an option such as Install, Add to Dock, or Add to Home Screen. Available options vary by browser.");
       installBox.appendChild(installNote);
