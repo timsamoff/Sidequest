@@ -143,7 +143,7 @@ Your data is saved in your browser on the device you're using. Nothing is sent a
 
 **Claude and Muse**
 
-Your data is saved to your own account, so it's available on any device where you sign in. Claude and Muse keep separate copies of your data, and neither can access the browser version's data.
+Your data is saved to your signed-in account and is available on any device using that same account. Claude and Muse don't sync with each other, and neither can access data from the browser version.
 
 To move your quests between versions, save a backup in one and restore it in the other.
 
