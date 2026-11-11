@@ -157,6 +157,7 @@ export function scrollTop() {
   function reset() {
     try { window.scrollTo(0, 0); } catch (e) { /* ignore */ }
     try { document.documentElement.scrollTop = 0; if (document.body) document.body.scrollTop = 0; } catch (e) { /* ignore */ }
+    try { var col = document.querySelector(".column"); if (col) col.scrollTop = 0; } catch (e) { /* ignore */ }
     try {
       var top = document.querySelector(".app") || document.body;
       if (top && typeof top.scrollIntoView === "function") top.scrollIntoView(true);
