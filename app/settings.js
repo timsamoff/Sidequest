@@ -135,6 +135,7 @@ export function isSafariOnMac() {
   return !isIosDevice() && /Macintosh/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg|OPR|Firefox|CriOS|FxiOS/.test(ua);
 }
 
+export function isAndroidDevice() { return /Android/.test(userAgentText()); }
 export function isFirefoxOnDesktop() { var ua = userAgentText(); return /Firefox\//.test(ua) && !/Android|Mobile|Tablet/.test(ua); }
 
 export function triggerInstall() {
@@ -269,6 +270,15 @@ export function renderSettings(page) {
     var standalone = isStandalone();
     function uninstallLine() {
       var p = el("p", { "class": "hint" });
+      // A phone has no title bar; the steps are on the Home Screen icon.
+      if (isIosDevice()) {
+        p.textContent = "To uninstall Sidequest, touch and hold its icon on your Home Screen, then choose Delete Bookmark.";
+        return p;
+      }
+      if (isAndroidDevice()) {
+        p.textContent = "To uninstall Sidequest, touch and hold its icon, then choose Uninstall. If you don’t see that option, open your phone’s app settings.";
+        return p;
+      }
       if (standalone) {
         p.appendChild(document.createTextNode("To uninstall Sidequest, open the title bar menu and select "));
       } else {

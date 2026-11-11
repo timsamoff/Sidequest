@@ -2249,6 +2249,15 @@ async function exportClick(k, projectName) {
   const iosText = kIos.$("view").textContent;
   if (realNav) Object.defineProperty(global, "navigator", realNav); else delete global.navigator;
   ok(iosText.includes("On iPhone or iPad, tap Share, then Add to Home Screen.") && !iosText.includes("Available options vary by browser"), "an iPhone or iPad sees the Share, then Add to Home Screen steps instead of the generic line");
+  // The installed app on a phone gets phone steps, not the desktop title-bar ones.
+  const standaloneMM2 = (q) => ({ matches: q === "(display-mode: standalone)", media: q, addListener() {}, removeListener() {} });
+  for (const [ua, want, why] of [["Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", "touch and hold its icon on your Home Screen, then choose Delete Bookmark", "an installed iPhone app says to touch and hold the icon and choose Delete Bookmark"], ["Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Mobile Safari/537.36", "touch and hold its icon, then choose Uninstall", "an installed Android app says to touch and hold the icon and choose Uninstall"]]) {
+    Object.defineProperty(global, "navigator", { value: { userAgent: ua }, configurable: true, writable: true });
+    const kp = kit(await mk(null, null, null, null, standaloneMM2)); kp.tab("settings");
+    const tp = kp.$("view").textContent;
+    if (realNav) Object.defineProperty(global, "navigator", realNav); else delete global.navigator;
+    ok(tp.includes(want) && !tp.includes("title bar"), why + ", not the desktop title bar steps");
+  }
 }
 
 {
