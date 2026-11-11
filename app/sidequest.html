@@ -78,6 +78,7 @@
   --focus: #2F5D8A;
   --late: #A8261C;
   --late-bg: #F8DDD9;
+  --note: #A04A00;
   --milestone: #694C80;
   --milestone-bg: #E8DFF1;
   --chip-idle: #F4ECD8;
@@ -103,7 +104,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #1C1814; --surface: #26211C; --card: #342D25; --control-bg: #1C1814; --control-line: #7C6F60; --ink: #EDE6DA; --muted: #B3A898; --line: #3B332B;
-    --btn: #D4B48A; --on-btn: #2A1B0E; --pin-edge: #71613A; --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
+    --btn: #D4B48A; --on-btn: #2A1B0E; --pin-edge: #71613A; --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723; --note: #F0A25A;
     --chip-idle: #302A23; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #EDE6DA; --est: #34506B; --sel: #3B3228; --scrim: rgba(0, 0, 0, .6);
     --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
     --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
@@ -118,7 +119,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #1C1814; --surface: #26211C; --card: #342D25; --control-bg: #1C1814; --control-line: #7C6F60; --ink: #EDE6DA; --muted: #B3A898; --line: #3B332B;
-  --btn: #D4B48A; --on-btn: #2A1B0E; --pin-edge: #71613A; --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
+  --btn: #D4B48A; --on-btn: #2A1B0E; --pin-edge: #71613A; --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723; --note: #F0A25A;
   --chip-idle: #302A23; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #EDE6DA; --est: #34506B; --sel: #3B3228; --scrim: rgba(0, 0, 0, .6);
   --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
   --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
@@ -605,6 +606,7 @@ tbody tr:last-child td { border-bottom: 0; }
 /* Reserves no space until there's an error, so an empty message doesn't push Timeline down. */
 .schedmsg { min-height: 0; margin-top: 0; }
 .errmsg { color: var(--late); }
+.notemsg { color: var(--note); }
 .setgrid > .schedmsg { grid-column: 1 / -1; margin-top: 0; }
 .setgrid > .schedmsg:empty { display: none; }
 .schedmsg:not(:empty) { margin-top: var(--space-10); }
@@ -663,6 +665,7 @@ svg.chart.nofocusring { outline: none; }
 .mhead h2 { margin: 0; }
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); max-width: calc(100vw - 32px); background: var(--ink); color: var(--bg); padding: var(--space-10) var(--space-16); border-radius: var(--radius-card); z-index: 60; font-size: var(--text-sm); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8) var(--space-12); text-align: left; }
 .toast:empty { display: none; }
+.toast.problem { background: var(--late); color: var(--bg); }
 
 /* Confetti sits above everything, including an open modal, but never blocks clicks. */
 .confettiFx { position: fixed; inset: 0; z-index: 80; pointer-events: none; }
@@ -1072,14 +1075,21 @@ function arm(btn, label, armedLabel, action) {
 var focusKey = null;
 function setFocusKey(v) { focusKey = v; }
 var toastTimer = null;
-function notify(msg, undo) {
-  var t = $("toast"); t.innerHTML = ""; t.appendChild(document.createTextNode(msg)); clearTimeout(toastTimer);
+// Sets a message line's text and look: "error" is red, "note" is orange, and "" is plain.
+function setMsg(node, text, kind) {
+  node.textContent = text;
+  node.classList.toggle("errmsg", kind === "error");
+  node.classList.toggle("notemsg", kind === "note");
+}
+// A "problem" toast is red and stays longer; any other kind is the normal one.
+function notify(msg, undo, kind) {
+  var t = $("toast"); t.className = kind === "problem" ? "toast problem" : "toast"; t.innerHTML = ""; t.appendChild(document.createTextNode(msg)); clearTimeout(toastTimer);
   if (undo) {
     var b = el("button", { type: "button", "class": "toastbtn" }, "Undo");
     on(b, "click", function () { clearTimeout(toastTimer); t.innerHTML = ""; undo(); });
     t.appendChild(b);
   }
-  toastTimer = setTimeout(function () { t.innerHTML = ""; }, undo ? 7000 : 4200);
+  toastTimer = setTimeout(function () { t.innerHTML = ""; }, undo || kind === "problem" ? 7000 : 4200);
 }
 // Navigation only. A framed copy scrolls the host page, not this window, so every
 // scroller is zeroed, the app's top is scrolled into view, and it repeats after paint.
@@ -1189,11 +1199,11 @@ function questDueLimit(questId) { var p = findQuest(questId); return p && p.due 
 function dateProblems(questId, start, due) {
   var ok = function (v) { return /^\d{4}-\d{2}-\d{2}$/.test(v) && +v.slice(0, 4) >= 1900 && !isNaN(parseISO(v)); };
   var first = parseISO(pset(questId).start), qd = questDueLimit(questId), hasS = ok(start), hasD = ok(due), r = { start: "", due: "" };
-  if (hasS && parseISO(start) < first) r.start = "This quest starts " + fmtY(first) + ". Pick a start date on or after that.";
+  if (hasS && parseISO(start) < first) r.start = "This quest starts " + fmtY(first) + ". Choose a start date on or after that.";
   else if (qd !== null && hasS && parseISO(start) > qd) r.start = "This quest is due " + fmtY(qd) + ". Choose a start date on or before then.";
-  if (hasD && parseISO(due) < first) r.due = "This quest starts " + fmtY(first) + ". Pick a due date on or after that.";
+  if (hasD && parseISO(due) < first) r.due = "This quest starts " + fmtY(first) + ". Choose a due date on or after that.";
   else if (qd !== null && hasD && parseISO(due) > qd) r.due = "This quest is due " + fmtY(qd) + ". Choose a due date on or before then.";
-  if (!r.start && !r.due && hasS && hasD && start > due) r.start = "You can’t begin after you finish! Pick a start date on or before the due date.";
+  if (!r.start && !r.due && hasS && hasD && start > due) r.start = "You can’t begin after you finish! Choose a start date on or before the due date.";
   return r;
 }
 function pset(questId) { var p = findQuest(questId); return { start: (p && p.start) || state.start, days: (p && p.days) || state.days }; }
@@ -1796,7 +1806,7 @@ var saveWarned = false;
 function warnSaveFailed(where) {
   if (saveWarned) return;
   saveWarned = true;
-  notify("Sidequest could not save to " + where + ". Save a backup from Options so nothing is lost.");
+  notify("Sidequest couldn’t save to " + where + ". Save a backup from Options so nothing is lost.", null, "problem");
 }
 // Nothing is written to the db until it has been read once, or an empty
 // device would overwrite real data with its own sample data.
@@ -1811,7 +1821,7 @@ function dbSave(rawState) {
     // A brandmark the db refuses is not retried on every save; the rest of the data still syncs.
     if (mark !== dbBrandmark) writes.push(db.doc("meta/brandmark").set({ data: mark }).then(function () { dbBrandmark = mark; }, function () {
       dbBrandmark = mark;
-      if (mark) notify("Your brandmark could not be saved to your account. Add a smaller image in Options.");
+      if (mark) notify("Your brandmark couldn’t be saved to your account. Add a smaller image in Options.", null, "problem");
     }));
     dbWriteInFlight = Promise.all(writes)
       // One failure may be passing and the next change retries; a second in a row is reported.
@@ -3229,7 +3239,7 @@ function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
     function submit() {
       var vals = {}; Object.keys(inputs).forEach(function (k) { vals[k] = inputs[k].type === "checkbox" ? (inputs[k].checked ? "1" : "") : inputs[k].value.trim(); });
       var res = onSubmit(vals);
-      if (typeof res === "string") { err.textContent = res; return; }
+      if (typeof res === "string") { setMsg(err, res, "error"); return; }
       closeModal(); if (res && res.msg) notify(res.msg);
     }
     on(ok, "click", submit); on(cancel, "click", closeModal);
@@ -3249,7 +3259,7 @@ function workQuests() { return liveQuests().filter(function (p) { return p.statu
 function taskDialog(prefillQuestId) {
   var nt = nextTask();
   var questOpts = workQuests().map(function (p) { return { value: p.id, label: p.name }; });
-  if (!questOpts.length) { notify("Tasks can only be added to a quest."); return; }
+  if (!questOpts.length) { notify("Tasks can only be added to a quest.", null, "problem"); return; }
   var fixedQuest = typeof prefillQuestId === "string";
   var startId = fixedQuest ? prefillQuestId : (nt ? nt.questId : questOpts[0].value);
   var startQuest = findQuest(startId);
@@ -3270,16 +3280,16 @@ function taskDialog(prefillQuestId) {
     if (prob.start || prob.due) return showDates(prob.start, prob.due);
     if (v.start) {
       if (!isISO(v.start)) return "Enter a valid start date, or leave it empty.";
-      if (parseISO(v.start) < first) return showDates("This quest starts " + fmtY(first) + ". Pick a start date on or after that.", "");
+      if (parseISO(v.start) < first) return showDates("This quest starts " + fmtY(first) + ". Choose a start date on or after that.", "");
       start = v.start;
     }
     if (v.due) {
       if (!isISO(v.due)) return "Enter a valid due date, or leave it empty for the Backlog.";
       blk = blockForDate(v.quest, parseISO(v.due));
-      if (blk === null) return showDates("", "This quest starts " + fmtY(first) + ". Pick a due date on or after that.");
+      if (blk === null) return showDates("", "This quest starts " + fmtY(first) + ". Choose a due date on or after that.");
       var qdue = questDueLimit(v.quest);
       if (qdue !== null && parseISO(v.due) > qdue) return showDates("", "This quest is due " + fmtY(qdue) + ". Choose a due date on or before then.");
-      if (start && start > v.due) return showDates("You can’t begin after you finish! Pick a start date on or before the due date.", "");
+      if (start && start > v.due) return showDates("You can’t begin after you finish! Choose a start date on or before the due date.", "");
       due = v.due;
     }
     var est = v.est === "" ? 0 : parseFloat(v.est);
@@ -3307,14 +3317,14 @@ function taskDialog(prefillQuestId) {
     return p;
   }
   var startLine = lineAfter(sIn), dueLine = lineAfter(dIn), estLine = lineAfter(eIn);
-  function setLine(p, text, isErr) { if (p) { p.textContent = text; p.classList.toggle("errmsg", !!text && isErr); } }
+  function setLine(p, text, isErr) { if (p) setMsg(p, text, text ? (isErr ? "error" : "note") : ""); }
   function showDates(startMsg, dueMsg) { setLine(startLine, startMsg, true); setLine(dueLine, dueMsg, true); return ""; }
   function showNote() {
     if (!noteLine) return;
     var pr = dateProblems(questNow(), sIn.value, dIn.value);
     setLine(startLine, pr.start, true);
     if (pr.due) setLine(dueLine, pr.due, true); else setLine(dueLine, sIn.value && !dIn.value ? NO_DUE : "", false);
-    setLine(estLine, estNote(), true);
+    setLine(estLine, estNote(), false);
   }
   if (sIn && dIn) ["input", "change"].forEach(function (ev) { [sIn, dIn, eIn, $("f-quest")].forEach(function (x) { if (x) on(x, ev, showNote); }); });
 }
@@ -3343,7 +3353,7 @@ function questDialog() {
 // quests not already linked are offered.
 function linkQuestDialog(p) {
   var opts = liveQuests().filter(function (x) { return x.id !== p.id && x.status !== "candidate" && p.linkedQuestIds.indexOf(x.id) < 0; }).map(function (x) { return { value: x.id, label: x.name }; });
-  if (!opts.length) { notify("Every other quest is already linked."); return; }
+  if (!opts.length) { notify("Every other quest is already linked.", null, "problem"); return; }
   formDialog("Link quest", [{ key: "quest", label: "Quest to link", type: "select", options: opts, value: opts[0].value }], "Link quest", function (v) {
     var other = findQuest(v.quest);
     if (!other) return "Choose a quest to link.";
@@ -3382,7 +3392,7 @@ function decisionDialog(prefill) {
   if (stepId) {
     var fixed = findStep(stepId);
     var opts = fixed ? [{ value: stepId, label: fixed.s.text }] : [];
-    if (!opts.length) { notify("That step is gone."); return; }
+    if (!opts.length) { notify("That step is gone.", null, "problem"); return; }
     formDialog("New decision", [{ key: "q", label: "Decision" }], "Add decision", function (v) {
       if (!v.q) return "Enter a title for the decision.";
       if (decisionFor(stepId)) return "That step already has a decision.";
@@ -3392,9 +3402,9 @@ function decisionDialog(prefill) {
     return;
   }
   // No fixed step: cascade Quest -> Task -> Step, same pattern as stepDialog().
-  if (!stepOptions().length) { notify("A decision can only be added to a step."); return; }
+  if (!stepOptions().length) { notify("A decision can only be added to a step.", null, "problem"); return; }
   if (!stepOptions().some(function (o) { return !decisionFor(o.value); })) {
-    notify("Every step already has a decision. Add a step first (open a task and add one), then add the decision.");
+    notify("Every step already has a decision. Add a step first (open a task and add one), then add the decision.", null, "problem");
     return;
   }
   var questOpts = workQuests().map(function (p) { return { value: p.id, label: p.name }; });
@@ -3456,7 +3466,7 @@ function decisionEditDialog(dec, onRemove) {
 // Edits one step in place: its text and whether it is on the Launch checklist. Remove
 // also removes its decision, since a decision must belong to a step.
 function stepDialog(prefillQuestId) {
-  if (!orderedAll().length) { notify("Steps can only be added to a task."); return; }
+  if (!orderedAll().length) { notify("Steps can only be added to a task.", null, "problem"); return; }
   var selTask = ui.sel && findTask(ui.sel);
   var questOpts = workQuests().map(function (p) { return { value: p.id, label: p.name }; });
   var startId = prefillQuestId || (selTask ? selTask.questId : (questOpts.length ? questOpts[0].value : ""));
@@ -3493,14 +3503,14 @@ function slipDialog(p) {
     var warnedFor = null;
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push dates later" }, "Push dates later"), "click", function () {
       var n = parseInt(inp.value, 10);
-      if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
+      if (isNaN(n) || n < 1 || n > 90) { setMsg(err, "Enter a number of days from 1 to 90.", "error"); return; }
       var targets = state.tasks.filter(function (t) { return t.questId === p.id && t.block > 0 && t.status !== "Completed" && !t.vault; });
-      if (!targets.length) { err.textContent = "Nothing incomplete is scheduled to slip."; return; }
+      if (!targets.length) { setMsg(err, "Nothing incomplete is scheduled to slip.", "error"); return; }
       // Warns once for this number of days; choosing the button again goes ahead.
       var limit = questDueLimit(p.id), past = limit === null ? 0 : targets.filter(function (t) { return addDays(taskEnd(t), n) > limit; }).length;
       if (past && warnedFor !== n) {
         warnedFor = n;
-        err.textContent = past + (past === 1 ? " task" : " tasks") + " would land after this quest’s due date (" + fmtY(limit) + "). Choose Push dates later again to go ahead.";
+        setMsg(err, past + (past === 1 ? " task" : " tasks") + " would land after this quest’s due date (" + fmtY(limit) + "). Choose Push dates later again to go ahead.", "note");
         return;
       }
       var snap = targets.map(function (t) { return { id: t.id, block: t.block, start: t.start, due: t.due }; });
@@ -3952,11 +3962,11 @@ function manualSaveDialog(name, text, mime, onSaved, capability) {
     var label = canShare || capability ? "Save file" : "Download file";
     body.appendChild(el("p", { "class": "hint first" }, "Choose " + label + " to save " + name + ". If nothing happens, open the copy option below."));
     var note = el("p", { "class": "hint" }, "");
-    function copyInstead(why) { note.textContent = why + " Copy the text below instead."; }
+    function copyInstead(why) { setMsg(note, why + " Copy the text below instead.", "note"); }
     var main = on(el("button", { type: "button", "class": "primary" }, label), "click", function () {
       if (capability) {
         capability.save({ filename: name, data: text }).then(function () { closeModal(); if (onSaved) onSaved(); }, function (err) {
-          if (cancelled(err)) note.textContent = "Save canceled.";
+          if (cancelled(err)) setMsg(note, "Save canceled.", "");
           else copyInstead("Saving isn’t available here.");
         });
         return;
@@ -3983,7 +3993,7 @@ function manualSaveDialog(name, text, mime, onSaved, capability) {
     var copyNote = el("p", { "class": "hint" }, "");
     var copyActs = el("div", { "class": "actions" });
     copyActs.appendChild(on(el("button", { type: "button" }, "Copy"), "click", function () {
-      function done(ok) { copyNote.textContent = ok ? "Copied." : "Select the text and copy it."; }
+      function done(ok) { setMsg(copyNote, ok ? "Copied." : "Select the text and copy it.", ok ? "" : "note"); }
       box.focus(); box.select();
       try {
         if (window.navigator.clipboard && window.navigator.clipboard.writeText) { window.navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); }); return; }
@@ -4047,23 +4057,24 @@ function lastBackupText() {
 
 function saveBackupFile(msg, onDone) {
   var name = "sidequest-backup-" + iso(TODAY) + ".json", text = backupJSON();
-  function saved(note) { state.settings.lastBackup = iso(TODAY); save(); msg.textContent = note; if (onDone) onDone(); }
+  function saved(note) { state.settings.lastBackup = iso(TODAY); save(); setMsg(msg, note, ""); if (onDone) onDone(); }
   saveFile(name, text, "application/json", "Sidequest backup", ".json", function () { saved("Backup saved."); }).then(function (r) {
-    if (r === "manual") msg.textContent = "Use Save or Copy in the box to save " + name + ". It is not counted as saved until you do.";
+    if (r === "manual") setMsg(msg, "Use Save or Copy in the box to save " + name + ". It isn’t counted as saved until you do.", "note");
     else saved(r === "downloaded" ? "Backup downloaded." : "Backup saved.");
   }).catch(function (err) {
-    msg.textContent = err && (err.code === "declined" || err.name === "AbortError") ? "Save canceled." : "The backup could not be saved.";
+    var stopped = !!err && (err.code === "declined" || err.name === "AbortError");
+    setMsg(msg, stopped ? "Save canceled." : "The backup couldn’t be saved.", stopped ? "" : "error");
   });
 }
 
 function restoreBackupFile(file, msg) {
   var r = new FileReader();
-  r.onerror = function () { msg.textContent = "The file could not be read."; };
+  r.onerror = function () { setMsg(msg, "The file couldn’t be read.", "error"); };
   r.onload = function () {
     var obj = null;
     try { obj = JSON.parse(String(r.result || "")); } catch (e) { obj = null; }
-    if (!obj || typeof obj !== "object" || !Array.isArray(obj.tasks)) { msg.textContent = "That is not a Sidequest backup file."; return; }
-    msg.textContent = "";
+    if (!obj || typeof obj !== "object" || !Array.isArray(obj.tasks)) { setMsg(msg, "That isn’t a Sidequest backup file.", "error"); return; }
+    setMsg(msg, "", "");
     var next = normalize(obj), np = next.quests.length, nt = next.tasks.length;
     confirmDialog("Restore this backup?",
       "This backup holds " + np + (np === 1 ? " quest" : " quests") + " and " + nt + (nt === 1 ? " task" : " tasks") + ". Restoring replaces everything in Sidequest" + (isHosted() ? "" : " on this device") + ": all current quests, tasks, notes, history, and settings. You will have a few seconds to undo it.",
@@ -4157,14 +4168,14 @@ function buildQuestFromTrello(summary) {
 
 function importTrelloFile(file, msg) {
   var r = new FileReader();
-  r.onerror = function () { msg.textContent = "The file could not be read."; };
+  r.onerror = function () { setMsg(msg, "The file couldn’t be read.", "error"); };
   r.onload = function () {
     var obj = null;
     try { obj = JSON.parse(String(r.result || "")); } catch (e) { obj = null; }
     var summary = null;
     try { summary = obj && parseTrelloExport(obj); } catch (e) { summary = null; }
-    if (!summary) { msg.textContent = "That does not look like a Trello board export."; return; }
-    msg.textContent = "";
+    if (!summary) { setMsg(msg, "That doesn’t look like a Trello board export.", "error"); return; }
+    setMsg(msg, "", "");
     var nc = summary.cards.length, ns = summary.cards.reduce(function (n, c) { return n + c.steps.length; }, 0);
     openModal("Import “" + summary.boardName + "”?", function (body) {
       var lines = [nc + (nc === 1 ? " card" : " cards") + " and " + ns + (ns === 1 ? " checklist item" : " checklist items") + " were found."];
@@ -4271,11 +4282,11 @@ function buildQuestFromTodoist(summary, name) {
 function importTodoistFile(file, msg) {
   var name = file.name.replace(/\.csv$/i, "");
   var r = new FileReader();
-  r.onerror = function () { msg.textContent = "The file could not be read."; };
+  r.onerror = function () { setMsg(msg, "The file couldn’t be read.", "error"); };
   r.onload = function () {
     var summary = parseTodoistExport(String(r.result || ""));
-    if (!summary) { msg.textContent = "That does not look like a Todoist project export."; return; }
-    msg.textContent = "";
+    if (!summary) { setMsg(msg, "That doesn’t look like a Todoist project export.", "error"); return; }
+    setMsg(msg, "", "");
     var nt = summary.items.length;
     openModal("Import “" + name + "”?", function (body) {
       var lines = [nt + (nt === 1 ? " task was" : " tasks were") + " found."];
@@ -4647,7 +4658,7 @@ function renderJobs(root) {
   var msg = el("p", { "class": "msg", role: "alert" });
   function add() {
     var v = txt.value.trim();
-    if (!v) { msg.textContent = "Enter an errand to add it."; txt.focus(); return; }
+    if (!v) { setMsg(msg, "Enter an errand to add it.", "error"); txt.focus(); return; }
     state.jobs.push({ id: uid(), text: v.slice(0, 200), done: false, due: isISO(due.value) ? due.value : "" });
     setFocusKey("job-new"); changed(); notify("“" + v.slice(0, 200) + "” added to Errands.");
   }
@@ -4704,7 +4715,7 @@ function jobRow(j, opts) {
       editInline(text, {
         label: "Errand", max: 200, value: function () { return j.text; },
         onSave: function (v) { j.text = v.slice(0, 200); changed(); },
-        onEmpty: function () { notify("An errand needs some text."); },
+        onEmpty: function () { notify("An errand needs text.", null, "problem"); },
         onDone: function () { pen.hidden = false; }
       });
     });
@@ -4918,7 +4929,8 @@ function exportQuestForClient(p, opts) {
   saveFile(name, html, "text/html", "Sidequest export", ".html", exported).then(function (r) {
     if (r !== "manual") exported();
   }).catch(function (err) {
-    notify(err && (err.code === "declined" || err.name === "AbortError") ? "Export canceled." : "The export could not be saved.");
+    var stopped = !!err && (err.code === "declined" || err.name === "AbortError");
+    notify(stopped ? "Export canceled." : "The export couldn’t be saved.", null, stopped ? "" : "problem");
   });
 }
 
@@ -4956,7 +4968,7 @@ function buildDetail(t, inline, readOnly) {
       editInline(whatP, {
         label: "Task name", max: 400, value: function () { return t.what; },
         onSave: function (val) { t.what = val.slice(0, 400); changed(); },
-        onEmpty: function () { notify("A task needs a name."); },
+        onEmpty: function () { notify("A task needs a title.", null, "problem"); },
         onDone: function () { whatPen.hidden = false; }
       });
     });
@@ -4969,28 +4981,28 @@ function buildDetail(t, inline, readOnly) {
   }
   if (!readOnly) {
     var dg = el("div", { "class": "setgrid" });
-    var smsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
-    var dmsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
-    var emsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
+    var smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
+    var dmsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
+    var emsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function dfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); dg.appendChild(w); return w; }
     function shownStart() { return t.start ? t.start : (t.block === 0 ? "" : iso(taskStart(t))); }
     function shownDue() { return t.block === 0 ? "" : iso(taskEnd(t)); }
     var sd = el("input", { type: "date", id: "task-start" }), bd = el("input", { type: "date", id: "task-due" });
     var ei = el("input", { type: "number", id: "task-est", min: "0", max: "9999", step: "0.25", inputmode: "decimal" });
     sd.value = shownStart(); bd.value = shownDue(); ei.value = t.est > 0 ? t.est : "";
-    if (t.block > 0) emsg.textContent = estimateWarning(t.est, taskStart(t), taskEnd(t));
+    if (t.block > 0) setMsg(emsg, estimateWarning(t.est, taskStart(t), taskEnd(t)), "note");
     var questFirst = parseISO(pset(t.questId).start);
     // A bad date stays in its field with its message until it is fixed; nothing is saved or reverted. "change" fires per segment while typing, so saving waits for blur.
-    function liveCheck() { var m = dateProblems(t.questId, sd.value, bd.value); smsg.textContent = m.start; dmsg.textContent = m.due; return m; }
+    function liveCheck() { var m = dateProblems(t.questId, sd.value, bd.value); setMsg(smsg, m.start, "error"); setMsg(dmsg, m.due, "error"); return m; }
     ["input", "change"].forEach(function (ev) { on(bd, ev, liveCheck); on(sd, ev, liveCheck); });
     on(bd, "blur", function () {
       if (bd.value === shownDue()) return;
       var m = liveCheck();
       if (bd.value === "") { var hadStart = !!t.start, wasMilestone = t.milestone; t.block = 0; t.due = ""; t.added = ""; t.milestone = false; changed(); notify("Moved to the Backlog." + (hadStart ? " Its start date is kept." : "") + (wasMilestone ? " It is no longer a milestone." : "")); return; }
-      if (!isISO(bd.value)) { dmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
+      if (!isISO(bd.value)) { setMsg(dmsg, "Enter a valid due date, or leave it empty for the Backlog.", "error"); return; }
       var blk = blockForDate(t.questId, parseISO(bd.value));
-      if (blk === null || m.due || m.start.indexOf("You can’t begin") === 0) { if (!dmsg.textContent && !smsg.textContent) dmsg.textContent = "This quest starts " + fmtY(questFirst) + ". Pick a due date on or after that."; return; }
-      if (t.start && bd.value < t.start) { smsg.textContent = "You can’t begin after you finish! Pick a start date on or before the due date."; return; }
+      if (blk === null || m.due || m.start.indexOf("You can’t begin") === 0) { if (!dmsg.textContent && !smsg.textContent) setMsg(dmsg, "This quest starts " + fmtY(questFirst) + ". Choose a due date on or after that.", "error"); return; }
+      if (t.start && bd.value < t.start) { setMsg(smsg, "You can’t begin after you finish! Choose a start date on or before the due date.", "error"); return; }
       if (t.block === 0) t.added = iso(TODAY);
       t.due = bd.value; t.block = blk; changed();
       notify("Due " + fmt(taskEnd(t)) + ", in " + wd() + " " + blk + ".");
@@ -4998,20 +5010,20 @@ function buildDetail(t, inline, readOnly) {
     on(sd, "blur", function () {
       if (sd.value === shownStart()) return;
       var m = liveCheck();
-      if (sd.value === "") { smsg.textContent = ""; t.start = ""; changed(); notify(t.block === 0 ? "Start date cleared." : "Start date cleared. The task starts when its " + wl() + " does."); return; }
-      if (!isISO(sd.value)) { smsg.textContent = "Enter a valid start date, or leave it empty."; return; }
+      if (sd.value === "") { setMsg(smsg, "", ""); t.start = ""; changed(); notify(t.block === 0 ? "Start date cleared." : "Start date cleared. The task starts when its " + wl() + " does."); return; }
+      if (!isISO(sd.value)) { setMsg(smsg, "Enter a valid start date, or leave it empty.", "error"); return; }
       if (m.start) return;
-      if (t.block > 0 && sd.value > iso(taskEnd(t))) { smsg.textContent = "You can’t begin after you finish! Pick a start date on or before the due date."; return; }
+      if (t.block > 0 && sd.value > iso(taskEnd(t))) { setMsg(smsg, "You can’t begin after you finish! Choose a start date on or before the due date.", "error"); return; }
       t.start = sd.value; changed(); notify("Start date saved.");
     });
     // Warn while typing; saving still waits for blur.
-    on(ei, "input", function () { emsg.textContent = t.block > 0 ? estimateWarning(parseFloat(ei.value), taskStart(t), taskEnd(t)) : ""; });
+    on(ei, "input", function () { setMsg(emsg, t.block > 0 ? estimateWarning(parseFloat(ei.value), taskStart(t), taskEnd(t)) : "", "note"); });
     on(ei, "blur", function () {
       var v = ei.value === "" ? 0 : parseFloat(ei.value);
-      if (isNaN(v) || v < 0 || v > 9999) { ei.value = t.est > 0 ? t.est : ""; emsg.textContent = "Enter the estimated time as hours from 0 to 9999."; return; }
+      if (isNaN(v) || v < 0 || v > 9999) { ei.value = t.est > 0 ? t.est : ""; setMsg(emsg, "Enter the estimated time as hours from 0 to 9999.", "error"); return; }
       v = Math.round(v * 100) / 100;
       if (v === (t.est || 0)) return;
-      emsg.textContent = "";
+      setMsg(emsg, "", "");
       t.est = v; changed();
       notify(v > 0 ? "Estimated time saved." : "Estimated time cleared.");
     });
@@ -5047,7 +5059,7 @@ function buildDetail(t, inline, readOnly) {
         editInline(textSpan, {
           label: "Step", max: 300, value: function () { return s.text; },
           onSave: function (v) { s.text = v.slice(0, 300); changed(); },
-          onEmpty: function () { notify("A step needs text."); },
+          onEmpty: function () { notify("A step needs a title.", null, "problem"); },
           onDone: function () { stepPen.hidden = false; sli.classList.remove("editing"); }
         });
       });
@@ -5377,7 +5389,7 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
   if (readOnly) {
     host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start ? fmtY(parseISO(eff.start)) : "unset") + (p.due ? ", due " + fmtY(parseISO(p.due)) : "") + ", " + wl() + " length " + eff.days + " days" + "."));
   } else {
-    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
+    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
     var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
     var pd = el("input", { type: "date", id: "proj-due" }); pd.value = p.due;
@@ -5390,21 +5402,21 @@ function scheduleSection(host, p, readOnly, first, extraBtn) {
     });
     function applyOwn() {
       var sv = ps.value, lv = parseInt(pl.value, 10);
-      if (sv === eff.start && lv === eff.days) { smsg.textContent = ""; return; }
-      if (!isISO(sv)) { smsg.textContent = "Enter a valid start date."; return; }
-      if (isNaN(lv) || lv < 1 || lv > 90) { smsg.textContent = wd() + " length must be from 1 to 90 days."; return; }
-      if (p.due && sv > p.due) { smsg.textContent = "This quest is due " + fmtY(parseISO(p.due)) + ". Pick a start date on or before then."; return; }
-      if (firstTask && sv > firstTask) { smsg.textContent = "A task in this quest is dated " + fmtY(parseISO(firstTask)) + ". Pick a start date on or before that."; return; }
+      if (sv === eff.start && lv === eff.days) { setMsg(smsg, "", ""); return; }
+      if (!isISO(sv)) { setMsg(smsg, "Enter a valid start date.", "error"); return; }
+      if (isNaN(lv) || lv < 1 || lv > 90) { setMsg(smsg, wd() + " length must be from 1 to 90 days.", "error"); return; }
+      if (p.due && sv > p.due) { setMsg(smsg, "This quest is due " + fmtY(parseISO(p.due)) + ". Choose a start date on or before then.", "error"); return; }
+      if (firstTask && sv > firstTask) { setMsg(smsg, "A task in this quest is dated " + fmtY(parseISO(firstTask)) + ". Choose a start date on or before that.", "error"); return; }
       p.start = sv; p.days = lv; changed(); notify(p.name + " schedule saved.");
     }
     // "blur", not "change" -- a date input fires "change" per segment while typing.
     on(ps, "blur", applyOwn); on(pl, "blur", applyOwn);
     on(pd, "blur", function () {
       var dv = pd.value;
-      if (dv === p.due) { if (ps.value === eff.start) smsg.textContent = ""; return; }
-      if (dv !== "" && !isISO(dv)) { smsg.textContent = "Enter a valid due date, or leave it empty."; return; }
-      if (dv && dv < eff.start) { smsg.textContent = "This quest starts " + fmtY(parseISO(eff.start)) + ". Pick a due date on or after that."; return; }
-      if (dv && lastTask && dv < lastTask) { smsg.textContent = "A task in this quest is due " + fmtY(parseISO(lastTask)) + ". Pick a due date on or after that."; return; }
+      if (dv === p.due) { if (ps.value === eff.start) setMsg(smsg, "", ""); return; }
+      if (dv !== "" && !isISO(dv)) { setMsg(smsg, "Enter a valid due date, or leave it empty.", "error"); return; }
+      if (dv && dv < eff.start) { setMsg(smsg, "This quest starts " + fmtY(parseISO(eff.start)) + ". Choose a due date on or after that.", "error"); return; }
+      if (dv && lastTask && dv < lastTask) { setMsg(smsg, "A task in this quest is due " + fmtY(parseISO(lastTask)) + ". Choose a due date on or after that.", "error"); return; }
       p.due = dv; changed(); notify(p.due ? "Due date saved." : "Due date cleared.");
     });
     sfield("proj-start", "Start date", ps); sfield("proj-due", "Due date", pd); sfield("proj-days", "Days per " + wd().toLowerCase(), pl);
@@ -5505,18 +5517,18 @@ var BRANDMARK_MAX_BYTES = 150 * 1024;
 // Reads a chosen image file, rejecting it outright (no cropping or resizing)
 // if it's too large in bytes or in either pixel dimension.
 function readBrandmarkFile(file, msg, onDone) {
-  if (file.size > BRANDMARK_MAX_BYTES) { msg.textContent = "File is larger than " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."; return; }
+  if (file.size > BRANDMARK_MAX_BYTES) { setMsg(msg, "File is larger than " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB.", "error"); return; }
   var r = new FileReader();
-  r.onerror = function () { msg.textContent = "The file could not be read."; };
+  r.onerror = function () { setMsg(msg, "The file couldn’t be read.", "error"); };
   r.onload = function () {
     var img = new Image();
-    img.onerror = function () { msg.textContent = "That file isn’t a usable image."; };
+    img.onerror = function () { setMsg(msg, "That file isn’t a usable image.", "error"); };
     img.onload = function () {
       if (img.naturalWidth > BRANDMARK_MAX_DIM || img.naturalHeight > BRANDMARK_MAX_DIM) {
-        msg.textContent = "That image is " + img.naturalWidth + "×" + img.naturalHeight + " pixels. Each side must be " + BRANDMARK_MAX_DIM + " pixels or less.";
+        setMsg(msg, "That image is " + img.naturalWidth + "×" + img.naturalHeight + " pixels. Each side must be " + BRANDMARK_MAX_DIM + " pixels or less.", "error");
         return;
       }
-      state.settings.brandmark = String(r.result); save(); msg.textContent = ""; onDone();
+      state.settings.brandmark = String(r.result); save(); setMsg(msg, "", ""); onDone();
     };
     img.src = String(r.result);
   };
@@ -5631,7 +5643,7 @@ function renderSettings(page) {
   var grid = el("div", { "class": "setgrid hinted" });
   function fieldOf(id, label, input, hint, term) { var w = el("div", { "class": "field" }), lab = el("label", { "for": id }, label); if (term) { var lr = el("div", { "class": "labelrow" }); lr.appendChild(lab); lr.appendChild(helpLink(term[0], term[1])); w.appendChild(lr); } else w.appendChild(lab); w.appendChild(input); if (hint) { input.setAttribute("aria-describedby", id + "-hint"); w.appendChild(el("p", { "class": "hint", id: id + "-hint" }, hint)); } grid.appendChild(w); }
   var da = el("input", { type: "number", id: "set-days", min: "1", max: "30", step: "1", inputmode: "numeric" }); da.value = state.days;
-  on(da, "change", function () { var v = parseInt(da.value, 10); if (isNaN(v) || v < 1 || v > 30) { da.value = state.days; msg.textContent = wd() + " length must be from 1 to 30 days."; return; } state.days = v; changed(); notify(wd() + " length saved."); });
+  on(da, "change", function () { var v = parseInt(da.value, 10); if (isNaN(v) || v < 1 || v > 30) { da.value = state.days; setMsg(msg, wd() + " length must be from 1 to 30 days.", "error"); return; } state.days = v; changed(); notify(wd() + " length saved."); });
   fieldOf("set-days", "Default days per " + wd().toLowerCase(), da);
   var bwSel = el("select", { id: "set-word", "class": "plain" });
   Object.keys(WORDS).forEach(function (k) { var op = el("option", { value: k }, k); if (k === wd()) op.selected = true; bwSel.appendChild(op); });
@@ -6707,7 +6719,7 @@ function leaveSearch() { if (ui.view === "search") { ui.query = ""; var b = $("s
 function go(view) { leaveSearch(); ui.view = view; ui.detail = false; renderAll(); scrollTop(); }
 function openTask(id) {
   var at = findAnyTask(id);
-  if (at && at.vault) { go("vault"); notify("That task is in the Vault. Restore it to work on it."); return; }
+  if (at && at.vault) { go("vault"); notify("That task is in the Vault. Restore it to work on it.", null, "problem"); return; }
   leaveSearch(); ui.view = "schedule"; ui.sel = id; ui.detail = true; renderAll(); scrollTop();
 }
 var ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>';
@@ -6767,7 +6779,7 @@ function renameCurrentQuest() {
   editInline($("viewTitle"), {
     label: "Quest name", max: 120, value: function () { return p.name; },
     onSave: function (v) { p.name = v.slice(0, 120); changed(); },
-    onEmpty: function () { notify("A quest needs a name."); },
+    onEmpty: function () { notify("A quest needs a title.", null, "problem"); },
     onDone: function () { $("renameBtn").hidden = false; }
   });
 }

@@ -2,7 +2,7 @@
 import { applyTheme, renderAll, replaySplash } from "./app.js";
 import { DAY, TODAY, fmtY, iso, parseISO } from "./dates.js";
 import { closeModal, confirmDialog, openModal } from "./dialogs.js";
-import { el, inClaude, isHosted, notify, on, playSfx } from "./dom.js";
+import { el, inClaude, isHosted, notify, on, playSfx, setMsg } from "./dom.js";
 import { normalize, save, setState, state, ui } from "./state.js";
 
 /* backup */
@@ -42,11 +42,11 @@ export function manualSaveDialog(name, text, mime, onSaved, capability) {
     var label = canShare || capability ? "Save file" : "Download file";
     body.appendChild(el("p", { "class": "hint first" }, "Choose " + label + " to save " + name + ". If nothing happens, open the copy option below."));
     var note = el("p", { "class": "hint" }, "");
-    function copyInstead(why) { note.textContent = why + " Copy the text below instead."; }
+    function copyInstead(why) { setMsg(note, why + " Copy the text below instead.", "note"); }
     var main = on(el("button", { type: "button", "class": "primary" }, label), "click", function () {
       if (capability) {
         capability.save({ filename: name, data: text }).then(function () { closeModal(); if (onSaved) onSaved(); }, function (err) {
-          if (cancelled(err)) note.textContent = "Save canceled.";
+          if (cancelled(err)) setMsg(note, "Save canceled.", "");
           else copyInstead("Saving isn’t available here.");
         });
         return;
@@ -73,7 +73,7 @@ export function manualSaveDialog(name, text, mime, onSaved, capability) {
     var copyNote = el("p", { "class": "hint" }, "");
     var copyActs = el("div", { "class": "actions" });
     copyActs.appendChild(on(el("button", { type: "button" }, "Copy"), "click", function () {
-      function done(ok) { copyNote.textContent = ok ? "Copied." : "Select the text and copy it."; }
+      function done(ok) { setMsg(copyNote, ok ? "Copied." : "Select the text and copy it.", ok ? "" : "note"); }
       box.focus(); box.select();
       try {
         if (window.navigator.clipboard && window.navigator.clipboard.writeText) { window.navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); }); return; }
@@ -137,23 +137,24 @@ export function lastBackupText() {
 
 export function saveBackupFile(msg, onDone) {
   var name = "sidequest-backup-" + iso(TODAY) + ".json", text = backupJSON();
-  function saved(note) { state.settings.lastBackup = iso(TODAY); save(); msg.textContent = note; if (onDone) onDone(); }
+  function saved(note) { state.settings.lastBackup = iso(TODAY); save(); setMsg(msg, note, ""); if (onDone) onDone(); }
   saveFile(name, text, "application/json", "Sidequest backup", ".json", function () { saved("Backup saved."); }).then(function (r) {
-    if (r === "manual") msg.textContent = "Use Save or Copy in the box to save " + name + ". It is not counted as saved until you do.";
+    if (r === "manual") setMsg(msg, "Use Save or Copy in the box to save " + name + ". It isn’t counted as saved until you do.", "note");
     else saved(r === "downloaded" ? "Backup downloaded." : "Backup saved.");
   }).catch(function (err) {
-    msg.textContent = err && (err.code === "declined" || err.name === "AbortError") ? "Save canceled." : "The backup could not be saved.";
+    var stopped = !!err && (err.code === "declined" || err.name === "AbortError");
+    setMsg(msg, stopped ? "Save canceled." : "The backup couldn’t be saved.", stopped ? "" : "error");
   });
 }
 
 export function restoreBackupFile(file, msg) {
   var r = new FileReader();
-  r.onerror = function () { msg.textContent = "The file could not be read."; };
+  r.onerror = function () { setMsg(msg, "The file couldn’t be read.", "error"); };
   r.onload = function () {
     var obj = null;
     try { obj = JSON.parse(String(r.result || "")); } catch (e) { obj = null; }
-    if (!obj || typeof obj !== "object" || !Array.isArray(obj.tasks)) { msg.textContent = "That is not a Sidequest backup file."; return; }
-    msg.textContent = "";
+    if (!obj || typeof obj !== "object" || !Array.isArray(obj.tasks)) { setMsg(msg, "That isn’t a Sidequest backup file.", "error"); return; }
+    setMsg(msg, "", "");
     var next = normalize(obj), np = next.quests.length, nt = next.tasks.length;
     confirmDialog("Restore this backup?",
       "This backup holds " + np + (np === 1 ? " quest" : " quests") + " and " + nt + (nt === 1 ? " task" : " tasks") + ". Restoring replaces everything in Sidequest" + (isHosted() ? "" : " on this device") + ": all current quests, tasks, notes, history, and settings. You will have a few seconds to undo it.",

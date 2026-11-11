@@ -2,7 +2,7 @@
 import { applyTheme, go, renderChrome } from "./app.js";
 import { TODAY, fmtY, iso } from "./dates.js";
 import { closeModal, openModal } from "./dialogs.js";
-import { el, helpLink, isHosted, isStandalone, notify, on, playSfx } from "./dom.js";
+import { el, helpLink, isHosted, isStandalone, notify, on, playSfx, setMsg } from "./dom.js";
 import { backupControls, backupPanel } from "./files.js";
 import { importPanel } from "./imports.js";
 import { WORDS, wd } from "./model.js";
@@ -55,18 +55,18 @@ export var BRANDMARK_MAX_BYTES = 150 * 1024;
 // Reads a chosen image file, rejecting it outright (no cropping or resizing)
 // if it's too large in bytes or in either pixel dimension.
 export function readBrandmarkFile(file, msg, onDone) {
-  if (file.size > BRANDMARK_MAX_BYTES) { msg.textContent = "File is larger than " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB."; return; }
+  if (file.size > BRANDMARK_MAX_BYTES) { setMsg(msg, "File is larger than " + Math.round(BRANDMARK_MAX_BYTES / 1024) + " KB.", "error"); return; }
   var r = new FileReader();
-  r.onerror = function () { msg.textContent = "The file could not be read."; };
+  r.onerror = function () { setMsg(msg, "The file couldn’t be read.", "error"); };
   r.onload = function () {
     var img = new Image();
-    img.onerror = function () { msg.textContent = "That file isn’t a usable image."; };
+    img.onerror = function () { setMsg(msg, "That file isn’t a usable image.", "error"); };
     img.onload = function () {
       if (img.naturalWidth > BRANDMARK_MAX_DIM || img.naturalHeight > BRANDMARK_MAX_DIM) {
-        msg.textContent = "That image is " + img.naturalWidth + "×" + img.naturalHeight + " pixels. Each side must be " + BRANDMARK_MAX_DIM + " pixels or less.";
+        setMsg(msg, "That image is " + img.naturalWidth + "×" + img.naturalHeight + " pixels. Each side must be " + BRANDMARK_MAX_DIM + " pixels or less.", "error");
         return;
       }
-      state.settings.brandmark = String(r.result); save(); msg.textContent = ""; onDone();
+      state.settings.brandmark = String(r.result); save(); setMsg(msg, "", ""); onDone();
     };
     img.src = String(r.result);
   };
@@ -181,7 +181,7 @@ export function renderSettings(page) {
   var grid = el("div", { "class": "setgrid hinted" });
   function fieldOf(id, label, input, hint, term) { var w = el("div", { "class": "field" }), lab = el("label", { "for": id }, label); if (term) { var lr = el("div", { "class": "labelrow" }); lr.appendChild(lab); lr.appendChild(helpLink(term[0], term[1])); w.appendChild(lr); } else w.appendChild(lab); w.appendChild(input); if (hint) { input.setAttribute("aria-describedby", id + "-hint"); w.appendChild(el("p", { "class": "hint", id: id + "-hint" }, hint)); } grid.appendChild(w); }
   var da = el("input", { type: "number", id: "set-days", min: "1", max: "30", step: "1", inputmode: "numeric" }); da.value = state.days;
-  on(da, "change", function () { var v = parseInt(da.value, 10); if (isNaN(v) || v < 1 || v > 30) { da.value = state.days; msg.textContent = wd() + " length must be from 1 to 30 days."; return; } state.days = v; changed(); notify(wd() + " length saved."); });
+  on(da, "change", function () { var v = parseInt(da.value, 10); if (isNaN(v) || v < 1 || v > 30) { da.value = state.days; setMsg(msg, wd() + " length must be from 1 to 30 days.", "error"); return; } state.days = v; changed(); notify(wd() + " length saved."); });
   fieldOf("set-days", "Default days per " + wd().toLowerCase(), da);
   var bwSel = el("select", { id: "set-word", "class": "plain" });
   Object.keys(WORDS).forEach(function (k) { var op = el("option", { value: k }, k); if (k === wd()) op.selected = true; bwSel.appendChild(op); });

@@ -3,7 +3,7 @@ import { go, openTask, renderView } from "./app.js";
 import { questRangeBlock } from "./chart.js";
 import { TODAY, fmt, fmtY, iso, parseISO } from "./dates.js";
 import { decisionDialog, decisionEditDialog, formDialog, linkQuestDialog, openModal, slipDialog, taskDialog } from "./dialogs.js";
-import { editInline, el, formatMoney, helpLink, moneyInput, notify, on, pencilButton, playSfx, setFocusKey, uid } from "./dom.js";
+import { editInline, el, formatMoney, helpLink, moneyInput, notify, on, pencilButton, playSfx, setFocusKey, uid, setMsg } from "./dom.js";
 import { buildExportSnapshot, exportFileName, exportSides, renderExportDocument } from "./export.js";
 import { saveFile } from "./files.js";
 import { completionDialog, demoteToCandidate, promoteToActive, removeNow, removeToVault, restoreEntry, vaultQuest } from "./lifecycle.js";
@@ -33,7 +33,8 @@ export function exportQuestForClient(p, opts) {
   saveFile(name, html, "text/html", "Sidequest export", ".html", exported).then(function (r) {
     if (r !== "manual") exported();
   }).catch(function (err) {
-    notify(err && (err.code === "declined" || err.name === "AbortError") ? "Export canceled." : "The export could not be saved.");
+    var stopped = !!err && (err.code === "declined" || err.name === "AbortError");
+    notify(stopped ? "Export canceled." : "The export couldn’t be saved.", null, stopped ? "" : "problem");
   });
 }
 
@@ -71,7 +72,7 @@ export function buildDetail(t, inline, readOnly) {
       editInline(whatP, {
         label: "Task name", max: 400, value: function () { return t.what; },
         onSave: function (val) { t.what = val.slice(0, 400); changed(); },
-        onEmpty: function () { notify("A task needs a name."); },
+        onEmpty: function () { notify("A task needs a title.", null, "problem"); },
         onDone: function () { whatPen.hidden = false; }
       });
     });
@@ -84,28 +85,28 @@ export function buildDetail(t, inline, readOnly) {
   }
   if (!readOnly) {
     var dg = el("div", { "class": "setgrid" });
-    var smsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
-    var dmsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
-    var emsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
+    var smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
+    var dmsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
+    var emsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function dfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); dg.appendChild(w); return w; }
     function shownStart() { return t.start ? t.start : (t.block === 0 ? "" : iso(taskStart(t))); }
     function shownDue() { return t.block === 0 ? "" : iso(taskEnd(t)); }
     var sd = el("input", { type: "date", id: "task-start" }), bd = el("input", { type: "date", id: "task-due" });
     var ei = el("input", { type: "number", id: "task-est", min: "0", max: "9999", step: "0.25", inputmode: "decimal" });
     sd.value = shownStart(); bd.value = shownDue(); ei.value = t.est > 0 ? t.est : "";
-    if (t.block > 0) emsg.textContent = estimateWarning(t.est, taskStart(t), taskEnd(t));
+    if (t.block > 0) setMsg(emsg, estimateWarning(t.est, taskStart(t), taskEnd(t)), "note");
     var questFirst = parseISO(pset(t.questId).start);
     // A bad date stays in its field with its message until it is fixed; nothing is saved or reverted. "change" fires per segment while typing, so saving waits for blur.
-    function liveCheck() { var m = dateProblems(t.questId, sd.value, bd.value); smsg.textContent = m.start; dmsg.textContent = m.due; return m; }
+    function liveCheck() { var m = dateProblems(t.questId, sd.value, bd.value); setMsg(smsg, m.start, "error"); setMsg(dmsg, m.due, "error"); return m; }
     ["input", "change"].forEach(function (ev) { on(bd, ev, liveCheck); on(sd, ev, liveCheck); });
     on(bd, "blur", function () {
       if (bd.value === shownDue()) return;
       var m = liveCheck();
       if (bd.value === "") { var hadStart = !!t.start, wasMilestone = t.milestone; t.block = 0; t.due = ""; t.added = ""; t.milestone = false; changed(); notify("Moved to the Backlog." + (hadStart ? " Its start date is kept." : "") + (wasMilestone ? " It is no longer a milestone." : "")); return; }
-      if (!isISO(bd.value)) { dmsg.textContent = "Enter a valid due date, or leave it empty for the Backlog."; return; }
+      if (!isISO(bd.value)) { setMsg(dmsg, "Enter a valid due date, or leave it empty for the Backlog.", "error"); return; }
       var blk = blockForDate(t.questId, parseISO(bd.value));
-      if (blk === null || m.due || m.start.indexOf("You can’t begin") === 0) { if (!dmsg.textContent && !smsg.textContent) dmsg.textContent = "This quest starts " + fmtY(questFirst) + ". Pick a due date on or after that."; return; }
-      if (t.start && bd.value < t.start) { smsg.textContent = "You can’t begin after you finish! Pick a start date on or before the due date."; return; }
+      if (blk === null || m.due || m.start.indexOf("You can’t begin") === 0) { if (!dmsg.textContent && !smsg.textContent) setMsg(dmsg, "This quest starts " + fmtY(questFirst) + ". Choose a due date on or after that.", "error"); return; }
+      if (t.start && bd.value < t.start) { setMsg(smsg, "You can’t begin after you finish! Choose a start date on or before the due date.", "error"); return; }
       if (t.block === 0) t.added = iso(TODAY);
       t.due = bd.value; t.block = blk; changed();
       notify("Due " + fmt(taskEnd(t)) + ", in " + wd() + " " + blk + ".");
@@ -113,20 +114,20 @@ export function buildDetail(t, inline, readOnly) {
     on(sd, "blur", function () {
       if (sd.value === shownStart()) return;
       var m = liveCheck();
-      if (sd.value === "") { smsg.textContent = ""; t.start = ""; changed(); notify(t.block === 0 ? "Start date cleared." : "Start date cleared. The task starts when its " + wl() + " does."); return; }
-      if (!isISO(sd.value)) { smsg.textContent = "Enter a valid start date, or leave it empty."; return; }
+      if (sd.value === "") { setMsg(smsg, "", ""); t.start = ""; changed(); notify(t.block === 0 ? "Start date cleared." : "Start date cleared. The task starts when its " + wl() + " does."); return; }
+      if (!isISO(sd.value)) { setMsg(smsg, "Enter a valid start date, or leave it empty.", "error"); return; }
       if (m.start) return;
-      if (t.block > 0 && sd.value > iso(taskEnd(t))) { smsg.textContent = "You can’t begin after you finish! Pick a start date on or before the due date."; return; }
+      if (t.block > 0 && sd.value > iso(taskEnd(t))) { setMsg(smsg, "You can’t begin after you finish! Choose a start date on or before the due date.", "error"); return; }
       t.start = sd.value; changed(); notify("Start date saved.");
     });
     // Warn while typing; saving still waits for blur.
-    on(ei, "input", function () { emsg.textContent = t.block > 0 ? estimateWarning(parseFloat(ei.value), taskStart(t), taskEnd(t)) : ""; });
+    on(ei, "input", function () { setMsg(emsg, t.block > 0 ? estimateWarning(parseFloat(ei.value), taskStart(t), taskEnd(t)) : "", "note"); });
     on(ei, "blur", function () {
       var v = ei.value === "" ? 0 : parseFloat(ei.value);
-      if (isNaN(v) || v < 0 || v > 9999) { ei.value = t.est > 0 ? t.est : ""; emsg.textContent = "Enter the estimated time as hours from 0 to 9999."; return; }
+      if (isNaN(v) || v < 0 || v > 9999) { ei.value = t.est > 0 ? t.est : ""; setMsg(emsg, "Enter the estimated time as hours from 0 to 9999.", "error"); return; }
       v = Math.round(v * 100) / 100;
       if (v === (t.est || 0)) return;
-      emsg.textContent = "";
+      setMsg(emsg, "", "");
       t.est = v; changed();
       notify(v > 0 ? "Estimated time saved." : "Estimated time cleared.");
     });
@@ -162,7 +163,7 @@ export function buildDetail(t, inline, readOnly) {
         editInline(textSpan, {
           label: "Step", max: 300, value: function () { return s.text; },
           onSave: function (v) { s.text = v.slice(0, 300); changed(); },
-          onEmpty: function () { notify("A step needs text."); },
+          onEmpty: function () { notify("A step needs a title.", null, "problem"); },
           onDone: function () { stepPen.hidden = false; sli.classList.remove("editing"); }
         });
       });
@@ -492,7 +493,7 @@ export function scheduleSection(host, p, readOnly, first, extraBtn) {
   if (readOnly) {
     host.appendChild(el("p", { "class": "hint" }, "Started " + (eff.start ? fmtY(parseISO(eff.start)) : "unset") + (p.due ? ", due " + fmtY(parseISO(p.due)) : "") + ", " + wl() + " length " + eff.days + " days" + "."));
   } else {
-    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg errmsg", role: "status", "aria-live": "polite" });
+    var sg = el("div", { "class": "setgrid" }), smsg = el("p", { "class": "msg schedmsg", role: "status", "aria-live": "polite" });
     function sfield(id2, label, input) { var w = el("div", { "class": "field" }); w.appendChild(el("label", { "for": id2 }, label)); w.appendChild(input); sg.appendChild(w); }
     var ps = el("input", { type: "date", id: "proj-start" }); ps.value = eff.start;
     var pd = el("input", { type: "date", id: "proj-due" }); pd.value = p.due;
@@ -505,21 +506,21 @@ export function scheduleSection(host, p, readOnly, first, extraBtn) {
     });
     function applyOwn() {
       var sv = ps.value, lv = parseInt(pl.value, 10);
-      if (sv === eff.start && lv === eff.days) { smsg.textContent = ""; return; }
-      if (!isISO(sv)) { smsg.textContent = "Enter a valid start date."; return; }
-      if (isNaN(lv) || lv < 1 || lv > 90) { smsg.textContent = wd() + " length must be from 1 to 90 days."; return; }
-      if (p.due && sv > p.due) { smsg.textContent = "This quest is due " + fmtY(parseISO(p.due)) + ". Pick a start date on or before then."; return; }
-      if (firstTask && sv > firstTask) { smsg.textContent = "A task in this quest is dated " + fmtY(parseISO(firstTask)) + ". Pick a start date on or before that."; return; }
+      if (sv === eff.start && lv === eff.days) { setMsg(smsg, "", ""); return; }
+      if (!isISO(sv)) { setMsg(smsg, "Enter a valid start date.", "error"); return; }
+      if (isNaN(lv) || lv < 1 || lv > 90) { setMsg(smsg, wd() + " length must be from 1 to 90 days.", "error"); return; }
+      if (p.due && sv > p.due) { setMsg(smsg, "This quest is due " + fmtY(parseISO(p.due)) + ". Choose a start date on or before then.", "error"); return; }
+      if (firstTask && sv > firstTask) { setMsg(smsg, "A task in this quest is dated " + fmtY(parseISO(firstTask)) + ". Choose a start date on or before that.", "error"); return; }
       p.start = sv; p.days = lv; changed(); notify(p.name + " schedule saved.");
     }
     // "blur", not "change" -- a date input fires "change" per segment while typing.
     on(ps, "blur", applyOwn); on(pl, "blur", applyOwn);
     on(pd, "blur", function () {
       var dv = pd.value;
-      if (dv === p.due) { if (ps.value === eff.start) smsg.textContent = ""; return; }
-      if (dv !== "" && !isISO(dv)) { smsg.textContent = "Enter a valid due date, or leave it empty."; return; }
-      if (dv && dv < eff.start) { smsg.textContent = "This quest starts " + fmtY(parseISO(eff.start)) + ". Pick a due date on or after that."; return; }
-      if (dv && lastTask && dv < lastTask) { smsg.textContent = "A task in this quest is due " + fmtY(parseISO(lastTask)) + ". Pick a due date on or after that."; return; }
+      if (dv === p.due) { if (ps.value === eff.start) setMsg(smsg, "", ""); return; }
+      if (dv !== "" && !isISO(dv)) { setMsg(smsg, "Enter a valid due date, or leave it empty.", "error"); return; }
+      if (dv && dv < eff.start) { setMsg(smsg, "This quest starts " + fmtY(parseISO(eff.start)) + ". Choose a due date on or after that.", "error"); return; }
+      if (dv && lastTask && dv < lastTask) { setMsg(smsg, "A task in this quest is due " + fmtY(parseISO(lastTask)) + ". Choose a due date on or after that.", "error"); return; }
       p.due = dv; changed(); notify(p.due ? "Due date saved." : "Due date cleared.");
     });
     sfield("proj-start", "Start date", ps); sfield("proj-due", "Due date", pd); sfield("proj-days", "Days per " + wd().toLowerCase(), pl);

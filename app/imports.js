@@ -2,7 +2,7 @@
 import { go } from "./app.js";
 import { TODAY, addDays, iso, parseISO } from "./dates.js";
 import { closeModal, openModal } from "./dialogs.js";
-import { el, notify, on, uid } from "./dom.js";
+import { el, notify, on, uid, setMsg } from "./dom.js";
 import { blockForDate } from "./model.js";
 import { S, changed, makeQuest, st, state, task } from "./state.js";
 
@@ -52,14 +52,14 @@ export function buildQuestFromTrello(summary) {
 
 export function importTrelloFile(file, msg) {
   var r = new FileReader();
-  r.onerror = function () { msg.textContent = "The file could not be read."; };
+  r.onerror = function () { setMsg(msg, "The file couldn’t be read.", "error"); };
   r.onload = function () {
     var obj = null;
     try { obj = JSON.parse(String(r.result || "")); } catch (e) { obj = null; }
     var summary = null;
     try { summary = obj && parseTrelloExport(obj); } catch (e) { summary = null; }
-    if (!summary) { msg.textContent = "That does not look like a Trello board export."; return; }
-    msg.textContent = "";
+    if (!summary) { setMsg(msg, "That doesn’t look like a Trello board export.", "error"); return; }
+    setMsg(msg, "", "");
     var nc = summary.cards.length, ns = summary.cards.reduce(function (n, c) { return n + c.steps.length; }, 0);
     openModal("Import “" + summary.boardName + "”?", function (body) {
       var lines = [nc + (nc === 1 ? " card" : " cards") + " and " + ns + (ns === 1 ? " checklist item" : " checklist items") + " were found."];
@@ -166,11 +166,11 @@ export function buildQuestFromTodoist(summary, name) {
 export function importTodoistFile(file, msg) {
   var name = file.name.replace(/\.csv$/i, "");
   var r = new FileReader();
-  r.onerror = function () { msg.textContent = "The file could not be read."; };
+  r.onerror = function () { setMsg(msg, "The file couldn’t be read.", "error"); };
   r.onload = function () {
     var summary = parseTodoistExport(String(r.result || ""));
-    if (!summary) { msg.textContent = "That does not look like a Todoist project export."; return; }
-    msg.textContent = "";
+    if (!summary) { setMsg(msg, "That doesn’t look like a Todoist project export.", "error"); return; }
+    setMsg(msg, "", "");
     var nt = summary.items.length;
     openModal("Import “" + name + "”?", function (body) {
       var lines = [nt + (nt === 1 ? " task was" : " tasks were") + " found."];

@@ -1,7 +1,7 @@
 /* Errands and the hand */
 import { fmtY, parseISO } from "./dates.js";
 import { closeModal, formDialog, openModal } from "./dialogs.js";
-import { editInline, el, focusKey, helpLink, notify, on, pencilButton, playSfx, prepareSfx, setFocusKey, uid } from "./dom.js";
+import { editInline, el, focusKey, helpLink, notify, on, pencilButton, playSfx, prepareSfx, setFocusKey, uid, setMsg } from "./dom.js";
 import { removeNow } from "./lifecycle.js";
 import { chosen, deckJobs, handJobs, isJobLate, openJobs, rerollPick } from "./model.js";
 import { changed, isISO, state } from "./state.js";
@@ -17,7 +17,7 @@ export function renderJobs(root) {
   var msg = el("p", { "class": "msg", role: "alert" });
   function add() {
     var v = txt.value.trim();
-    if (!v) { msg.textContent = "Enter an errand to add it."; txt.focus(); return; }
+    if (!v) { setMsg(msg, "Enter an errand to add it.", "error"); txt.focus(); return; }
     state.jobs.push({ id: uid(), text: v.slice(0, 200), done: false, due: isISO(due.value) ? due.value : "" });
     setFocusKey("job-new"); changed(); notify("“" + v.slice(0, 200) + "” added to Errands.");
   }
@@ -74,7 +74,7 @@ export function jobRow(j, opts) {
       editInline(text, {
         label: "Errand", max: 200, value: function () { return j.text; },
         onSave: function (v) { j.text = v.slice(0, 200); changed(); },
-        onEmpty: function () { notify("An errand needs some text."); },
+        onEmpty: function () { notify("An errand needs text.", null, "problem"); },
         onDone: function () { pen.hidden = false; }
       });
     });

@@ -20,7 +20,7 @@ export function leaveSearch() { if (ui.view === "search") { ui.query = ""; var b
 export function go(view) { leaveSearch(); ui.view = view; ui.detail = false; renderAll(); scrollTop(); }
 export function openTask(id) {
   var at = findAnyTask(id);
-  if (at && at.vault) { go("vault"); notify("That task is in the Vault. Restore it to work on it."); return; }
+  if (at && at.vault) { go("vault"); notify("That task is in the Vault. Restore it to work on it.", null, "problem"); return; }
   leaveSearch(); ui.view = "schedule"; ui.sel = id; ui.detail = true; renderAll(); scrollTop();
 }
 export var ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>';
@@ -80,7 +80,7 @@ function renameCurrentQuest() {
   editInline($("viewTitle"), {
     label: "Quest name", max: 120, value: function () { return p.name; },
     onSave: function (v) { p.name = v.slice(0, 120); changed(); },
-    onEmpty: function () { notify("A quest needs a name."); },
+    onEmpty: function () { notify("A quest needs a title.", null, "problem"); },
     onDone: function () { $("renameBtn").hidden = false; }
   });
 }

@@ -90,11 +90,11 @@ export function questDueLimit(questId) { var p = findQuest(questId); return p &&
 export function dateProblems(questId, start, due) {
   var ok = function (v) { return /^\d{4}-\d{2}-\d{2}$/.test(v) && +v.slice(0, 4) >= 1900 && !isNaN(parseISO(v)); };
   var first = parseISO(pset(questId).start), qd = questDueLimit(questId), hasS = ok(start), hasD = ok(due), r = { start: "", due: "" };
-  if (hasS && parseISO(start) < first) r.start = "This quest starts " + fmtY(first) + ". Pick a start date on or after that.";
+  if (hasS && parseISO(start) < first) r.start = "This quest starts " + fmtY(first) + ". Choose a start date on or after that.";
   else if (qd !== null && hasS && parseISO(start) > qd) r.start = "This quest is due " + fmtY(qd) + ". Choose a start date on or before then.";
-  if (hasD && parseISO(due) < first) r.due = "This quest starts " + fmtY(first) + ". Pick a due date on or after that.";
+  if (hasD && parseISO(due) < first) r.due = "This quest starts " + fmtY(first) + ". Choose a due date on or after that.";
   else if (qd !== null && hasD && parseISO(due) > qd) r.due = "This quest is due " + fmtY(qd) + ". Choose a due date on or before then.";
-  if (!r.start && !r.due && hasS && hasD && start > due) r.start = "You can’t begin after you finish! Pick a start date on or before the due date.";
+  if (!r.start && !r.due && hasS && hasD && start > due) r.start = "You can’t begin after you finish! Choose a start date on or before the due date.";
   return r;
 }
 export function pset(questId) { var p = findQuest(questId); return { start: (p && p.start) || state.start, days: (p && p.days) || state.days }; }

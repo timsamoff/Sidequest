@@ -68,6 +68,7 @@
   --focus: #2F5D8A;
   --late: #A8261C;
   --late-bg: #F8DDD9;
+  --note: #A04A00;
   --milestone: #694C80;
   --milestone-bg: #E8DFF1;
   --chip-idle: #F4ECD8;
@@ -93,7 +94,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #1C1814; --surface: #26211C; --card: #342D25; --control-bg: #1C1814; --control-line: #7C6F60; --ink: #EDE6DA; --muted: #B3A898; --line: #3B332B;
-    --btn: #D4B48A; --on-btn: #2A1B0E; --pin-edge: #71613A; --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
+    --btn: #D4B48A; --on-btn: #2A1B0E; --pin-edge: #71613A; --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723; --note: #F0A25A;
     --chip-idle: #302A23; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #EDE6DA; --est: #34506B; --sel: #3B3228; --scrim: rgba(0, 0, 0, .6);
     --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
     --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;
@@ -108,7 +109,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #1C1814; --surface: #26211C; --card: #342D25; --control-bg: #1C1814; --control-line: #7C6F60; --ink: #EDE6DA; --muted: #B3A898; --line: #3B332B;
-  --btn: #D4B48A; --on-btn: #2A1B0E; --pin-edge: #71613A; --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723;
+  --btn: #D4B48A; --on-btn: #2A1B0E; --pin-edge: #71613A; --planned: #86B4E0; --on-planned: #0F1A24; --actual: #F0A25A; --scope: #FFAC1C; --scope-ink: #1B252D; --burn: #E5534B; --forecast: #C23B34; --focus: #86B4E0; --late: #F2A29B; --late-bg: #4A2723; --note: #F0A25A;
   --chip-idle: #302A23; --chip-work: #4A3B22; --chip-done: #21402C; --chip-new: #2A4560; --chip-ink: #EDE6DA; --est: #34506B; --sel: #3B3228; --scrim: rgba(0, 0, 0, .6);
   --badge-attention: #E8C6A6; --badge-attention-bg: #4D3428;
   --badge-priority: #FFCB80; --badge-priority-bg: #6E4410;

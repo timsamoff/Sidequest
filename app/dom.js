@@ -142,14 +142,21 @@ export function arm(btn, label, armedLabel, action) {
 export var focusKey = null;
 export function setFocusKey(v) { focusKey = v; }
 var toastTimer = null;
-export function notify(msg, undo) {
-  var t = $("toast"); t.innerHTML = ""; t.appendChild(document.createTextNode(msg)); clearTimeout(toastTimer);
+// Sets a message line's text and look: "error" is red, "note" is orange, and "" is plain.
+export function setMsg(node, text, kind) {
+  node.textContent = text;
+  node.classList.toggle("errmsg", kind === "error");
+  node.classList.toggle("notemsg", kind === "note");
+}
+// A "problem" toast is red and stays longer; any other kind is the normal one.
+export function notify(msg, undo, kind) {
+  var t = $("toast"); t.className = kind === "problem" ? "toast problem" : "toast"; t.innerHTML = ""; t.appendChild(document.createTextNode(msg)); clearTimeout(toastTimer);
   if (undo) {
     var b = el("button", { type: "button", "class": "toastbtn" }, "Undo");
     on(b, "click", function () { clearTimeout(toastTimer); t.innerHTML = ""; undo(); });
     t.appendChild(b);
   }
-  toastTimer = setTimeout(function () { t.innerHTML = ""; }, undo ? 7000 : 4200);
+  toastTimer = setTimeout(function () { t.innerHTML = ""; }, undo || kind === "problem" ? 7000 : 4200);
 }
 // Navigation only. A framed copy scrolls the host page, not this window, so every
 // scroller is zeroed, the app's top is scrolled into view, and it repeats after paint.

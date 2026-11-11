@@ -5,7 +5,7 @@ import {
   orderedAll, taskOptions, stepOptions, stepOptionsForTask, syncFromSteps, findStep, decisionFor,
   pset, blockForDate, blockStartFor, taskStart, taskEnd, linkQuests, estimateWarning
 } from "./model.js";
-import { $, el, on, uid, newPin, notify, moneyInput, parseMoney, helpLink } from "./dom.js";
+import { $, el, on, uid, newPin, notify, moneyInput, parseMoney, helpLink, setMsg } from "./dom.js";
 import { closeMenus } from "./app.js";
 
 /* modal */
@@ -141,7 +141,7 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
     function submit() {
       var vals = {}; Object.keys(inputs).forEach(function (k) { vals[k] = inputs[k].type === "checkbox" ? (inputs[k].checked ? "1" : "") : inputs[k].value.trim(); });
       var res = onSubmit(vals);
-      if (typeof res === "string") { err.textContent = res; return; }
+      if (typeof res === "string") { setMsg(err, res, "error"); return; }
       closeModal(); if (res && res.msg) notify(res.msg);
     }
     on(ok, "click", submit); on(cancel, "click", closeModal);
@@ -161,7 +161,7 @@ function workQuests() { return liveQuests().filter(function (p) { return p.statu
 export function taskDialog(prefillQuestId) {
   var nt = nextTask();
   var questOpts = workQuests().map(function (p) { return { value: p.id, label: p.name }; });
-  if (!questOpts.length) { notify("Tasks can only be added to a quest."); return; }
+  if (!questOpts.length) { notify("Tasks can only be added to a quest.", null, "problem"); return; }
   var fixedQuest = typeof prefillQuestId === "string";
   var startId = fixedQuest ? prefillQuestId : (nt ? nt.questId : questOpts[0].value);
   var startQuest = findQuest(startId);
@@ -182,16 +182,16 @@ export function taskDialog(prefillQuestId) {
     if (prob.start || prob.due) return showDates(prob.start, prob.due);
     if (v.start) {
       if (!isISO(v.start)) return "Enter a valid start date, or leave it empty.";
-      if (parseISO(v.start) < first) return showDates("This quest starts " + fmtY(first) + ". Pick a start date on or after that.", "");
+      if (parseISO(v.start) < first) return showDates("This quest starts " + fmtY(first) + ". Choose a start date on or after that.", "");
       start = v.start;
     }
     if (v.due) {
       if (!isISO(v.due)) return "Enter a valid due date, or leave it empty for the Backlog.";
       blk = blockForDate(v.quest, parseISO(v.due));
-      if (blk === null) return showDates("", "This quest starts " + fmtY(first) + ". Pick a due date on or after that.");
+      if (blk === null) return showDates("", "This quest starts " + fmtY(first) + ". Choose a due date on or after that.");
       var qdue = questDueLimit(v.quest);
       if (qdue !== null && parseISO(v.due) > qdue) return showDates("", "This quest is due " + fmtY(qdue) + ". Choose a due date on or before then.");
-      if (start && start > v.due) return showDates("You can’t begin after you finish! Pick a start date on or before the due date.", "");
+      if (start && start > v.due) return showDates("You can’t begin after you finish! Choose a start date on or before the due date.", "");
       due = v.due;
     }
     var est = v.est === "" ? 0 : parseFloat(v.est);
@@ -219,14 +219,14 @@ export function taskDialog(prefillQuestId) {
     return p;
   }
   var startLine = lineAfter(sIn), dueLine = lineAfter(dIn), estLine = lineAfter(eIn);
-  function setLine(p, text, isErr) { if (p) { p.textContent = text; p.classList.toggle("errmsg", !!text && isErr); } }
+  function setLine(p, text, isErr) { if (p) setMsg(p, text, text ? (isErr ? "error" : "note") : ""); }
   function showDates(startMsg, dueMsg) { setLine(startLine, startMsg, true); setLine(dueLine, dueMsg, true); return ""; }
   function showNote() {
     if (!noteLine) return;
     var pr = dateProblems(questNow(), sIn.value, dIn.value);
     setLine(startLine, pr.start, true);
     if (pr.due) setLine(dueLine, pr.due, true); else setLine(dueLine, sIn.value && !dIn.value ? NO_DUE : "", false);
-    setLine(estLine, estNote(), true);
+    setLine(estLine, estNote(), false);
   }
   if (sIn && dIn) ["input", "change"].forEach(function (ev) { [sIn, dIn, eIn, $("f-quest")].forEach(function (x) { if (x) on(x, ev, showNote); }); });
 }
@@ -255,7 +255,7 @@ export function questDialog() {
 // quests not already linked are offered.
 export function linkQuestDialog(p) {
   var opts = liveQuests().filter(function (x) { return x.id !== p.id && x.status !== "candidate" && p.linkedQuestIds.indexOf(x.id) < 0; }).map(function (x) { return { value: x.id, label: x.name }; });
-  if (!opts.length) { notify("Every other quest is already linked."); return; }
+  if (!opts.length) { notify("Every other quest is already linked.", null, "problem"); return; }
   formDialog("Link quest", [{ key: "quest", label: "Quest to link", type: "select", options: opts, value: opts[0].value }], "Link quest", function (v) {
     var other = findQuest(v.quest);
     if (!other) return "Choose a quest to link.";
@@ -294,7 +294,7 @@ export function decisionDialog(prefill) {
   if (stepId) {
     var fixed = findStep(stepId);
     var opts = fixed ? [{ value: stepId, label: fixed.s.text }] : [];
-    if (!opts.length) { notify("That step is gone."); return; }
+    if (!opts.length) { notify("That step is gone.", null, "problem"); return; }
     formDialog("New decision", [{ key: "q", label: "Decision" }], "Add decision", function (v) {
       if (!v.q) return "Enter a title for the decision.";
       if (decisionFor(stepId)) return "That step already has a decision.";
@@ -304,9 +304,9 @@ export function decisionDialog(prefill) {
     return;
   }
   // No fixed step: cascade Quest -> Task -> Step, same pattern as stepDialog().
-  if (!stepOptions().length) { notify("A decision can only be added to a step."); return; }
+  if (!stepOptions().length) { notify("A decision can only be added to a step.", null, "problem"); return; }
   if (!stepOptions().some(function (o) { return !decisionFor(o.value); })) {
-    notify("Every step already has a decision. Add a step first (open a task and add one), then add the decision.");
+    notify("Every step already has a decision. Add a step first (open a task and add one), then add the decision.", null, "problem");
     return;
   }
   var questOpts = workQuests().map(function (p) { return { value: p.id, label: p.name }; });
@@ -368,7 +368,7 @@ export function decisionEditDialog(dec, onRemove) {
 // Edits one step in place: its text and whether it is on the Launch checklist. Remove
 // also removes its decision, since a decision must belong to a step.
 export function stepDialog(prefillQuestId) {
-  if (!orderedAll().length) { notify("Steps can only be added to a task."); return; }
+  if (!orderedAll().length) { notify("Steps can only be added to a task.", null, "problem"); return; }
   var selTask = ui.sel && findTask(ui.sel);
   var questOpts = workQuests().map(function (p) { return { value: p.id, label: p.name }; });
   var startId = prefillQuestId || (selTask ? selTask.questId : (questOpts.length ? questOpts[0].value : ""));
@@ -405,14 +405,14 @@ export function slipDialog(p) {
     var warnedFor = null;
     acts.appendChild(on(el("button", { type: "button", "class": "primary", id: "slipGo", title: "Push dates later" }, "Push dates later"), "click", function () {
       var n = parseInt(inp.value, 10);
-      if (isNaN(n) || n < 1 || n > 90) { err.textContent = "Enter a number of days from 1 to 90."; return; }
+      if (isNaN(n) || n < 1 || n > 90) { setMsg(err, "Enter a number of days from 1 to 90.", "error"); return; }
       var targets = state.tasks.filter(function (t) { return t.questId === p.id && t.block > 0 && t.status !== "Completed" && !t.vault; });
-      if (!targets.length) { err.textContent = "Nothing incomplete is scheduled to slip."; return; }
+      if (!targets.length) { setMsg(err, "Nothing incomplete is scheduled to slip.", "error"); return; }
       // Warns once for this number of days; choosing the button again goes ahead.
       var limit = questDueLimit(p.id), past = limit === null ? 0 : targets.filter(function (t) { return addDays(taskEnd(t), n) > limit; }).length;
       if (past && warnedFor !== n) {
         warnedFor = n;
-        err.textContent = past + (past === 1 ? " task" : " tasks") + " would land after this quest’s due date (" + fmtY(limit) + "). Choose Push dates later again to go ahead.";
+        setMsg(err, past + (past === 1 ? " task" : " tasks") + " would land after this quest’s due date (" + fmtY(limit) + "). Choose Push dates later again to go ahead.", "note");
         return;
       }
       var snap = targets.map(function (t) { return { id: t.id, block: t.block, start: t.start, due: t.due }; });

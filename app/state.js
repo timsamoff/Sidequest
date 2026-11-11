@@ -347,7 +347,7 @@ var saveWarned = false;
 function warnSaveFailed(where) {
   if (saveWarned) return;
   saveWarned = true;
-  notify("Sidequest could not save to " + where + ". Save a backup from Options so nothing is lost.");
+  notify("Sidequest couldn’t save to " + where + ". Save a backup from Options so nothing is lost.", null, "problem");
 }
 // Nothing is written to the db until it has been read once, or an empty
 // device would overwrite real data with its own sample data.
@@ -362,7 +362,7 @@ function dbSave(rawState) {
     // A brandmark the db refuses is not retried on every save; the rest of the data still syncs.
     if (mark !== dbBrandmark) writes.push(db.doc("meta/brandmark").set({ data: mark }).then(function () { dbBrandmark = mark; }, function () {
       dbBrandmark = mark;
-      if (mark) notify("Your brandmark could not be saved to your account. Add a smaller image in Options.");
+      if (mark) notify("Your brandmark couldn’t be saved to your account. Add a smaller image in Options.", null, "problem");
     }));
     dbWriteInFlight = Promise.all(writes)
       // One failure may be passing and the next change retries; a second in a row is reported.

@@ -1080,7 +1080,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     k.fire(input, "change"); await new Promise(r => setTimeout(r, 150));
   };
   await pick("this is not json");
-  ok(k.$("overlay").hidden && k.$("view").textContent.includes("That is not a Sidequest backup file."), "a file that is not a backup is refused without a warning dialog");
+  ok(k.$("overlay").hidden && k.$("view").textContent.includes("That isn’t a Sidequest backup file."), "a file that is not a backup is refused without a warning dialog");
   await pick(JSON.stringify({ hello: "world" }));
   ok(k.$("overlay").hidden && k.saved().tasks.length === before, "JSON that is not a backup is refused and nothing changes");
   await pick(JSON.stringify(backup));
@@ -1121,7 +1121,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     k.fire(input, "change"); await new Promise(r => setTimeout(r, 40));
   };
   await pickTrello("not json");
-  ok(k.$("overlay").hidden && k.$("view").textContent.includes("That does not look like a Trello board export."), "a file that is not a Trello export is refused without a dialog");
+  ok(k.$("overlay").hidden && k.$("view").textContent.includes("That doesn’t look like a Trello board export."), "a file that is not a Trello export is refused without a dialog");
   await pickTrello(JSON.stringify(board));
   ok(k.$("modalTitle").textContent === "Import “Launch Plan”?" && /2 cards and 2 checklist items/.test(k.$("modalBody").textContent) && /new quest named/.test(k.$("modalBody").textContent) && /not imported/.test(k.$("modalBody").textContent), "the preview names the board, its counts, and what is left out (" + k.$("modalBody").textContent.slice(0, 120) + ")");
   ok(k.saved().quests.length === qBefore, "nothing has changed yet");
@@ -1164,7 +1164,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     k.fire(input, "change"); await new Promise(r => setTimeout(r, 40));
   };
   await pickTodoist("not,a,todoist,file\n1,2,3,4");
-  ok(k.$("overlay").hidden && k.$("view").textContent.includes("That does not look like a Todoist project export."), "a file with no recognizable Todoist header is refused without a dialog");
+  ok(k.$("overlay").hidden && k.$("view").textContent.includes("That doesn’t look like a Todoist project export."), "a file with no recognizable Todoist header is refused without a dialog");
   await pickTodoist(csv);
   ok(k.$("modalTitle").textContent === "Import “School”?" && /3 tasks were found/.test(k.$("modalBody").textContent) && /Completed tasks are not in this file/.test(k.$("modalBody").textContent) && /new quest named/.test(k.$("modalBody").textContent), "the preview names the quest after the filename and states the completed-tasks limitation (" + k.$("modalBody").textContent.slice(0, 160) + ")");
   ok(k.saved().quests.length === qBefore, "nothing has changed yet");
@@ -1605,11 +1605,11 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   set("task-start", "2026-08-20");
   ok(t().start === "2026-08-20", "a start date is stored");
   set("task-start", "2026-09-05");
-  ok(t().start === "2026-08-20" && k.$("view").textContent.includes("You can’t begin after you finish! Pick a start date on or before the due date."), "a start after the due date is rejected");
+  ok(t().start === "2026-08-20" && k.$("view").textContent.includes("You can’t begin after you finish! Choose a start date on or before the due date."), "a start after the due date is rejected");
   set("task-start", "2026-07-01");
   ok(t().start === "2026-08-20" && k.$("view").textContent.includes("on or after"), "a start before the project's start is rejected");
   set("task-due", "2026-08-10");
-  ok(t().due === "2026-08-30" && k.$("view").textContent.includes("You can’t begin after you finish! Pick a start date on or before the due date."), "a due date before the start is rejected");
+  ok(t().due === "2026-08-30" && k.$("view").textContent.includes("You can’t begin after you finish! Choose a start date on or before the due date."), "a due date before the start is rejected");
   set("task-due", "2026-07-01");
   ok(t().due === "2026-08-30" && t().block === 4, "a due date before the project's start is rejected");
   set("task-est", "2.5");
@@ -1622,7 +1622,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   set("task-start", "2026-08-25");
   ok(t().start === "2026-08-25" && t().block === 0, "a Backlog task can be given a different start date without a due date");
   set("task-due", "2026-08-22");
-  ok(t().block === 0 && t().due === "" && k.$("view").textContent.includes("You can’t begin after you finish! Pick a start date on or before the due date."), "a due date before the kept start is rejected");
+  ok(t().block === 0 && t().due === "" && k.$("view").textContent.includes("You can’t begin after you finish! Choose a start date on or before the due date."), "a due date before the kept start is rejected");
   set("task-due", "2026-08-30");
   ok(t().block === 4 && t().due === "2026-08-30" && t().start === "2026-08-25", "adding a due date later keeps the start and schedules the task");
   set("task-due", ""); set("task-start", "");
@@ -1641,7 +1641,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.menuAct("newBtn", "newTask");
   k.setField("what", "Bad order"); k.setField("start", "2026-08-25"); k.setField("due", "2026-08-20");
   k.click(k.btn(k.$("modalBody"), "Add task"));
-  ok(!k.saved().tasks.some(x => x.what === "Bad order") && k.$("modalBody").textContent.includes("You can’t begin after you finish! Pick a start date on or before the due date."), "the dialog rejects a start after the due date");
+  ok(!k.saved().tasks.some(x => x.what === "Bad order") && k.$("modalBody").textContent.includes("You can’t begin after you finish! Choose a start date on or before the due date."), "the dialog rejects a start after the due date");
 }
 {
   // Slip shifts start and due together; Undo restores them
@@ -1690,7 +1690,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
       const box = k.$("overlay").querySelector("textarea");
       ok(!k.$("overlay").hidden && !!box && JSON.parse(box.value).tasks.length === 24, "in a frame with no way to save, a dialog shows the backup text to copy");
       ok(!!k.btn(k.$("overlay"), "Download file") && !!k.$("overlay").querySelector("details") && !k.$("overlay").querySelector("details").open, "the dialog leads with a Download file button and keeps the copy option folded away");
-      ok(k.saved().settings.lastBackup === "" && !k.$("view").textContent.includes("Backup saved.") && k.$("view").textContent.includes("not counted as saved"), "and nothing is reported or recorded as saved");
+      ok(k.saved().settings.lastBackup === "" && !k.$("view").textContent.includes("Backup saved.") && k.$("view").textContent.includes("counted as saved"), "and nothing is reported or recorded as saved");
     }
   }
   {
@@ -2451,13 +2451,13 @@ async function exportClick(k, projectName) {
   k.click(k.$("welcomeDismiss"));
   // New Task dialog
   const tryTask = (due, start) => { k.menuAct("newBtn", "newTask"); k.setField("quest", "pT"); k.setField("what", "Probe"); k.setField("due", due || ""); k.setField("start", start || ""); k.click(k.btn(k.$("modalBody"), "Add task")); const ms = [...k.$("modalBody").querySelectorAll("p.msg")].filter(x => x.textContent); const m = ms[0]; return m ? m.textContent : ""; };
-  ok(tryTask("2026-07-20") === "This quest starts Aug 3, 2026. Pick a due date on or after that.", "a due date before the quest starts says when the quest starts");
+  ok(tryTask("2026-07-20") === "This quest starts Aug 3, 2026. Choose a due date on or after that.", "a due date before the quest starts says when the quest starts");
   k.click(k.btn(k.$("modalBody"), "Cancel"));
   ok(tryTask("2026-09-10") === "This quest is due Aug 31, 2026. Choose a due date on or before then.", "a due date after the quest's due date is refused with that date");
   k.click(k.btn(k.$("modalBody"), "Cancel"));
-  ok(tryTask("2026-08-20", "2026-07-20") === "This quest starts Aug 3, 2026. Pick a start date on or after that.", "a start date before the quest starts says when the quest starts");
+  ok(tryTask("2026-08-20", "2026-07-20") === "This quest starts Aug 3, 2026. Choose a start date on or after that.", "a start date before the quest starts says when the quest starts");
   k.click(k.btn(k.$("modalBody"), "Cancel"));
-  ok(tryTask("2026-08-20", "2026-08-25") === "You can’t begin after you finish! Pick a start date on or before the due date.", "a start after the due date has its own message");
+  ok(tryTask("2026-08-20", "2026-08-25") === "You can’t begin after you finish! Choose a start date on or before the due date.", "a start after the due date has its own message");
   k.click(k.btn(k.$("modalBody"), "Cancel"));
   tryTask("2026-08-31");
   ok(k.saved().tasks.some(x => x.what === "Probe" && x.due === "2026-08-31"), "a due date on the quest's due date itself is allowed");
@@ -2470,12 +2470,12 @@ async function exportClick(k, projectName) {
   ok(t().due === "" && k.$("view").textContent.includes("This quest is due Aug 31, 2026. Choose a due date on or before then."), "the detail pane refuses a due date after the quest's due date");
   ok(k.$("toast").textContent !== "This quest is due Aug 31, 2026. Choose a due date on or before then.", "a due date past the quest’s due date is refused with the message line only, no toast");
   set("task-due", "2026-07-20");
-  ok(k.$("view").textContent.includes("This quest starts Aug 3, 2026. Pick a due date on or after that."), "and a due date before the quest starts");
+  ok(k.$("view").textContent.includes("This quest starts Aug 3, 2026. Choose a due date on or after that."), "and a due date before the quest starts");
   set("task-start", "2026-07-20");
-  ok(k.$("view").textContent.includes("This quest starts Aug 3, 2026. Pick a start date on or after that."), "and a start date before the quest starts");
+  ok(k.$("view").textContent.includes("This quest starts Aug 3, 2026. Choose a start date on or after that."), "and a start date before the quest starts");
   k.$("toast").textContent = "";
   set("task-start", "2026-07-20"); set("task-due", "2026-09-10");
-  ok(k.$("view").textContent.includes("This quest starts Aug 3, 2026. Pick a start date on or after that.") && k.$("view").textContent.includes("This quest is due Aug 31, 2026. Choose a due date on or before then."), "a bad start and a bad due date both stay showing after leaving each field");
+  ok(k.$("view").textContent.includes("This quest starts Aug 3, 2026. Choose a start date on or after that.") && k.$("view").textContent.includes("This quest is due Aug 31, 2026. Choose a due date on or before then."), "a bad start and a bad due date both stay showing after leaving each field");
   ok(k.$("task-start").value === "2026-07-20" && k.$("task-due").value === "2026-09-10" && k.$("toast").textContent === "", "the bad dates stay in their fields and no toast is shown");
   // Estimate against the dates: 24 hours a day, both days counted, a warning and never a block
   set("task-start", "2026-08-10"); set("task-due", "2026-08-11");
@@ -2494,7 +2494,7 @@ async function exportClick(k, projectName) {
   k.setField("start", "2026-09-10"); k.fire(k.$("f-start"), "input");
   ok(k.$("f-start").parentNode.nextSibling.textContent === "This quest is due Aug 31, 2026. Choose a start date on or before then.", "a start date past the quest’s due date is flagged as soon as it is entered");
   k.setField("start", "2026-07-01"); k.fire(k.$("f-start"), "input");
-  ok(live().includes("This quest starts Aug 3, 2026. Pick a start date on or after that."), "a start date before the quest begins is flagged as soon as it is entered");
+  ok(live().includes("This quest starts Aug 3, 2026. Choose a start date on or after that."), "a start date before the quest begins is flagged as soon as it is entered");
   k.setField("start", "2026-08-20"); k.setField("due", "2026-08-10"); k.fire(k.$("f-due"), "input");
   ok(live().startsWith("You can’t begin after you finish!"), "a start after the due date is flagged as soon as both are entered");
   k.setField("start", "2026-07-01"); k.setField("due", "2026-09-20"); k.setField("est", "3000"); k.fire(k.$("f-est"), "input");
