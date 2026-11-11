@@ -135,7 +135,7 @@ export function helpTopics() {
     ]],
     ["A quest’s Schedule and Timeline", [
       "**Schedule:** Quests can have start and due dates, and stretch of work durations (see the **Options** section for more). A quest’s start and due dates divide its total time into stretches of work.",
-      ">A quest can’t start after any of its tasks’ start or due dates, and its due date can’t come before its start date or any of its tasks’ due dates. If a date conflicts with either rule, you’ll be told which date needs to change.",
+      ">A quest’s start date can’t fall after any of its tasks’ start or due dates. Its due date can’t fall before its own start date or any task’s due date. If dates conflict, the conflicting date is identified.",
       "**Timeline:** The **Timeline** for a quest shows that quest’s schedule as a simple Gantt chart, along with its burndown chart.",
       ">Use the **Slip schedule** button to move incomplete tasks to a later date. Slips can be undone. If a slip would push tasks past the quest’s due date, Sidequest warns you first. Select the button again to proceed.",
       ">The Gantt chart displays milestones and all open tasks. A red line shows today’s date when it falls within the displayed schedule.",
@@ -179,7 +179,7 @@ export function helpTopics() {
       "**Install Sidequest:** If you’re using Sidequest on the web, you can install it to your device. iPhones and iPads don’t show this button: tap the **Share** icon in Safari, then **Add to Home Screen**, to install it. The installed version works offline and displays a **Refresh** button in the top bar.",
       "**Import:** Bring tasks from another application into Sidequest. Sidequest can import Trello JSON or Todoist CSV as a new quest.",
       "**Backup and restore:** Download a backup of your Sidequest data as a JSON file. Because the web and installed versions store your data on your device, make occasional backups. **Restore backup** loads a backup file and replaces everything in Sidequest with it. You’ll see a warning first, and an **Undo** button afterward.",
-      ">If a change can’t be saved, you’ll see a warning. Save a backup when this happens to avoid losing your latest changes.",
+      ">If a change can’t be saved, a warning appears. Save a backup to avoid losing the latest changes.",
       "**Start fresh:** Erase all Sidequest data and start again (your options are retained). You can begin with an empty Sidequest or with the sample quests. You’ll get a warning and a chance to save a backup first. This cannot be undone."
     ]],
   ];
