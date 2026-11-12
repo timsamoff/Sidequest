@@ -9,7 +9,7 @@ Sidequest itself has no account. These versions do need an account with the buil
 The prompts in this README use this raw link to the file:
 
 ```
-https://github.com/timsamoff/sidequest/releases/download/v1.0.0/sidequest.html
+https://github.com/timsamoff/sidequest/releases/latest/download/sidequest.html
 ```
 
 ## Claude
@@ -43,7 +43,7 @@ If Muse can't fetch the file, attach `sidequest.html` to the chat instead and re
 When a new version is released, a banner on the **Today** page says so. It holds a prompt you can copy, and the same prompt works in both builders:
 
 > Please update my Sidequest artifact with the latest version, keeping all of my existing data.
-> https://github.com/timsamoff/sidequest/releases/download/v1.0.0/sidequest.html
+> https://github.com/timsamoff/sidequest/releases/latest/download/sidequest.html
 
 1. Copy the prompt from the banner.
 2. Paste it into the conversation where you built your app, or give the builder the link to your artifact.
