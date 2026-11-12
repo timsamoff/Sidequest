@@ -246,15 +246,12 @@ select.status { border: 1px solid var(--line); border-radius: var(--radius-pill)
 select.rowstatus { position: absolute; top: calc(var(--row-l2, 40px) - 4px); right: var(--space-14); z-index: 1; width: 124px; min-height: 32px; padding: var(--space-2) var(--space-10); font-size: var(--text-sm); }
 button.rowpencil { position: absolute; z-index: 1; top: calc(var(--row-l2, 40px) - 3px); right: calc(var(--space-14) + 132px); }
 .tlist li.hasstatus > .item .l2 { padding-right: 172px; }
+/* The pencil stays beside the pulldown at every width; a narrow row only shrinks the pulldown and lets the title take a third line. */
 @container (max-width: 460px) {
   select.rowstatus { width: 122px; padding: var(--space-2) var(--space-4) var(--space-2) var(--space-8); font-size: .85rem; }
-  button.rowpencil { top: calc(var(--row-l1, 12px) - 8px); right: var(--space-8); }
-  .tlist li.hasstatus > .item .l1 { padding-right: 36px; }
-  .tlist li.hasstatus > .item .l2 { padding-right: 134px; }
+  button.rowpencil { right: calc(var(--space-14) + 130px); }
+  .tlist li.hasstatus > .item .l2 { padding-right: 168px; -webkit-line-clamp: 3; }
 }
-/* A row with no first line (an issue with no due date) keeps its pencil beside the status pulldown at every width. */
-.tlist li.hasstatus.nol1 > .item .l2 { padding-right: 172px; }
-.tlist li.hasstatus.nol1 button.rowpencil { top: calc(var(--row-l2, 12px) - 3px); right: calc(var(--space-14) + 132px); }
 /* A long title with no spaces breaks anywhere instead of running off the card. */
 .item, .detail, .what, .ptitle, .jobtext, .notetext, #viewTitle, .standing li, .list li { overflow-wrap: anywhere; }
 select.status[data-v="Not started"] { background: var(--badge-pending-bg); color: var(--badge-pending); }

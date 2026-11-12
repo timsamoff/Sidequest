@@ -8,7 +8,7 @@ import { isDialCode, setPhoneMemory } from "./phone.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "1.0.1";
+export var APP_VERSION = "1.0.2";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -35,11 +35,11 @@ export function sampleData() {
   var yest = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 1)).toISOString().slice(0, 10);
   var lastWeek = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate() - 7)).toISOString().slice(0, 10);
   // History entries are [tasks in scope, tasks still open], keyed by the day recorded.
-  var appHistory = {}; appHistory[day(0)] = [4, 4]; appHistory[day(5)] = [4, 3]; appHistory[day(9)] = [5, 4];
+  var appHistory = {}; appHistory[day(0)] = [5, 5]; appHistory[day(5)] = [5, 4]; appHistory[day(9)] = [6, 5];
   // Runs a little late, then ahead, then lands on time, so its Burndown crosses the planned line.
   var doneHistory = {}; doneHistory[day(-28)] = [4, 4]; doneHistory[day(-20)] = [4, 3]; doneHistory[day(-15)] = [4, 2]; doneHistory[day(-12)] = [4, 1]; doneHistory[day(-1)] = [4, 0];
   // An eleventh task was added on day 9, so the main burndown's scope line steps up once.
-  var allHistory = {}; allHistory[day(0)] = [15, 15]; allHistory[day(5)] = [15, 14]; allHistory[day(6)] = [15, 13]; allHistory[day(9)] = [16, 14]; allHistory[day(11)] = [16, 13]; allHistory[day(13)] = [16, 12];
+  var allHistory = {}; allHistory[day(0)] = [16, 16]; allHistory[day(5)] = [16, 15]; allHistory[day(6)] = [16, 14]; allHistory[day(9)] = [17, 15]; allHistory[day(11)] = [17, 14]; allHistory[day(13)] = [17, 13];
   // Three of five tasks finished at a steady pace, so its Burndown shows a Forecast line to a finish inside the chart.
   var newsHistory = {}; newsHistory[day(0)] = [5, 5]; newsHistory[day(6)] = [5, 4]; newsHistory[day(11)] = [5, 3]; newsHistory[day(13)] = [5, 2];
   var quests = [
@@ -62,9 +62,14 @@ export function sampleData() {
     task("a4", 4, "pApp", "Run a beta with five friends", "Five people have tried it and sent notes", [st("a4a", "Pick five testers"), st("a4b", "Send the beta link"), st("a4c", "Collect and sort the feedback")], { milestone: true }),
     task("a5", 5, "pApp", "Submit to the app store", "The app is live", [st("a5z", "Choose the first app store", true), st("a5a", "Write the store description"), st("a5b", "Prepare screenshots"), st("a5c", "Submit for review")], { launch: true }),
     task("a6", 0, "pApp", "Add a dark mode", "Every screen passes a contrast check in dark mode", []),
+    // Issues: one with no due date (not Backlog), one with a due date (scheduled like a task), and one resolved.
+    task("i1", 0, "pApp", "Sign-in button misses taps on small phones", "", [], { issue: true, notes: "Seen on two older phones. Check the button’s tap area." }),
+    task("i2", 3, "pApp", "Home screen flickers when it first loads", "", [], { issue: true }),
+    task("i3", 0, "pApp", "Wrong icon on the settings screen", "", [], { issue: true, status: "Completed" }),
     task("w1", 1, "pSite", "Write the page copy", "Every page has final text", [st("w1a", "Write the home page", true), st("w1b", "Write the about page"), st("w1c", "Write the contact page")], { status: "In progress" }),
     task("w2", 2, "pSite", "Build the layout", "Pages look right on a phone and a laptop", [st("w2a", "Build the header and footer"), st("w2b", "Make the layout work on phones"), st("w2c", "Compress the images")]),
     task("w3", 3, "pSite", "Launch the site", "The site is live and checked", [st("w3a", "Point the domain at the site"), st("w3b", "Check every page on a phone"), st("w3c", "Announce it")]),
+    task("i4", 0, "pSite", "Contact link opens a blank page on phones", "", [], { issue: true, status: "In progress" }),
     task("n1", 1, "pNews", "Pick a name and a format", "A name and a one-page outline", [st("n1a", "Choose a name", true), st("n1b", "Outline the format", true)], { status: "Completed" }),
     task("n2", 2, "pNews", "Write the first issue", "A finished issue ready to send", [st("n2a", "Draft the issue", true), st("n2b", "Proofread it", true)], { status: "Completed" }),
     task("n3", 3, "pNews", "Set up the mailing list", "Readers can sign up and receive an issue", [st("n3a", "Pick a mailing tool", true), st("n3b", "Add a sign-up form", true)], { status: "Completed" }),
@@ -82,16 +87,16 @@ export function sampleData() {
     task("d3", 3, "pDone", "Test it", "The top bugs are fixed", [st("d3a", "Run through every screen", true), st("d3b", "Fix what’s broken", true)], { status: "Completed", doneAt: day(-8) }),
     task("d4", 4, "pDone", "Ship it", "It’s live", [st("d4a", "Write the release notes", true), st("d4b", "Announce it", true)], { status: "Completed", doneAt: day(-1) })
   ];
-  var EST = { a1: 3, a2: 6, a3: 8, a4: 4, a5: 5, a6: 4, w1: 3, w2: 10, w3: 2, g1: 12, g2: 20, g3: 8, g4: 16, e1: 4, e2: 1, d1: 6, d2: 12, d3: 8, d4: 3 };
+  var EST = { a1: 3, a2: 6, a3: 8, a4: 4, a5: 5, a6: 4, i2: 2, w1: 3, w2: 10, w3: 2, g1: 12, g2: 20, g3: 8, g4: 16, e1: 4, e2: 1, d1: 6, d2: 12, d3: 8, d4: 3 };
   tasks.forEach(function (t) { if (EST[t.id]) t.est = EST[t.id]; });
   // When the finished tasks were completed (Sample Finished Quest's are a bit late, early, then on time).
-  var DONE = { n1: day(6), n2: day(11), n3: day(13), a1: day(5), d1: day(-20), d2: day(-15), d3: day(-12), d4: day(-1) };
+  var DONE = { n1: day(6), n2: day(11), n3: day(13), i3: day(10), a1: day(5), d1: day(-20), d2: day(-15), d3: day(-12), d4: day(-1) };
   tasks.forEach(function (t) { if (DONE[t.id]) t.doneAt = DONE[t.id]; });
   // Explicit start/due dates for every scheduled task. A start date is only
   // set when the task's estimate is light enough the block would otherwise look misleadingly full.
   var SCHEDULE = {
     a1: { start: day(2), due: day(4) }, a2: { start: day(9), due: day(12) }, a3: { start: day(18), due: day(20) },
-    a4: { start: day(25), due: day(27) }, a5: { start: day(31), due: day(34) },
+    a4: { start: day(25), due: day(27) }, a5: { start: day(31), due: day(34) }, i2: { start: day(16), due: day(19) },
     w1: { start: day(19), due: day(20) }, w2: { start: day(22), due: day(27) }, w3: { due: day(34) },
     g2: { start: day(37), due: day(47) }, g3: { start: day(55), due: day(58) },
     e1: { start: day(29), due: day(32) }, n1: { due: day(5) }, n2: { due: day(12) }, n3: { due: day(19) }, n4: { due: day(26) }, n5: { due: day(33) }, d1: { due: day(-25) }, d2: { due: day(-18) }, d3: { due: day(-11) }, d4: { due: day(-4) }

@@ -325,10 +325,10 @@ export function launchSection(root, p) {
     b.setAttribute("aria-expanded", open ? "true" : "false");
     var l1 = el("div", { "class": "l1 split" });
     if (t.block !== 0) l1.appendChild(el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
-    else if (!t.issue) l1.appendChild(el("span", { "class": "chip backlog" }, "Backlog"));
     if (l1.childNodes.length) b.appendChild(l1); else li.classList.add("nol1");
     b.appendChild(el("div", { "class": "l2" }, short(t.what, 60) + (t.vault ? " (in the Vault)" : "")));
     var l3 = el("div", { "class": "l3" });
+    if (t.block === 0 && !t.issue) l3.appendChild(el("span", { "class": "chip backlog" }, "Backlog"));
     if (taskReadOnly) l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
     if (t.issue) l3.appendChild(el("span", { "class": "chip issuechip" }, "Issue"));
     if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
@@ -452,11 +452,11 @@ export function renderQuestPage(root, id) {
       var open = ui.questOpen[p.id] === t.id;
       var li = el("li", { id: "ptask-" + t.id }), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this task" });
       b.setAttribute("aria-expanded", open ? "true" : "false");
-      var l1 = el("div", { "class": "l1 split" });
-      l1.appendChild(t.block === 0 ? el("span", { "class": "chip backlog" }, "Backlog") : el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
-      b.appendChild(l1);
+      // An undated task has no first line; its Backlog chip leads the chips under the title.
+      if (t.block !== 0) { var l1 = el("div", { "class": "l1 split" }); l1.appendChild(el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t)))); b.appendChild(l1); } else li.classList.add("nol1");
       b.appendChild(el("div", { "class": "l2" }, t.what));
       var l3 = el("div", { "class": "l3" });
+      if (t.block === 0) l3.appendChild(el("span", { "class": "chip backlog" }, "Backlog"));
       if (readOnly) l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
       if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
       var tag1 = addedChip(t); if (tag1) l3.appendChild(tag1);

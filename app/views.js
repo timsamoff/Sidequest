@@ -233,8 +233,8 @@ export function taskRow(t) {
   b.appendChild(l2);
   // The chips sit under the title, the Issue chip first.
   var l3 = el("div", { "class": "l3" });
-  if (t.issue) l3.appendChild(el("span", { "class": "chip issuechip" }, "Issue"));
   if (t.block === 0) l3.appendChild(el("span", { "class": "chip backlog" }, "Backlog"));
+  if (t.issue) l3.appendChild(el("span", { "class": "chip issuechip" }, "Issue"));
   if (t.launch) l3.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
   if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
   var tag1 = addedChip(t); if (tag1) l3.appendChild(tag1);

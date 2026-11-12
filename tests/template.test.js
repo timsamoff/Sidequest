@@ -76,7 +76,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "1.0.1"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "1.0.2"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("../css/tokens.css?v=" + v) && html.includes("../css/styles.css?v=" + v) && html.includes("../css/splash.css?v=" + v) && html.includes("../css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "settings.js"), "utf8");
@@ -107,7 +107,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("view").textContent.includes("Next up") && k.d.querySelector("#view .chartbox svg") && /Remaining: \d+ of \d+ tasks/.test(k.$("view").textContent), "Today works with sample data");
   const next = k.d.querySelector("#view .panel .ptitle").textContent;
   ok(next === "Build the sign-in flow", "Next up is the earliest-starting open sample task: " + next);
-  ok(k.$("view").textContent.includes("Overdue") && !k.$("view").textContent.includes("Overdue tasks: 1") && k.$("view").textContent.includes("Build the sign-in flow") && /Remaining: 12 of 16 tasks/.test(k.$("view").textContent), "the samples include one overdue task, so the burndown sits above the plan");
+  ok(k.$("view").textContent.includes("Overdue") && !k.$("view").textContent.includes("Overdue tasks: 1") && k.$("view").textContent.includes("Build the sign-in flow") && /Remaining: 13 of 17 tasks/.test(k.$("view").textContent), "the samples include one overdue task, so the burndown sits above the plan");
   const projLink = k.btn(k.d.querySelector("#view .panel"), "Sample App");
   ok(!!projLink && projLink.classList.contains("qlink"), "Next up names the quest as a link");
   k.click(projLink);
@@ -146,7 +146,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("view").textContent.includes("Try a new game engine") && k.$("view").textContent.includes("Write up lessons learned") && !k.$("view").textContent.includes("Redesign the logo"), "Workshop samples (removed one is in the Vault)");
   k.tab("schedule");
   const rows = [...k.d.querySelectorAll(".listpane .tlist")[0].querySelectorAll(".item")].map(b => b.textContent);
-  ok(rows.length === 16, "16 scheduled tasks (Sample Finished Quest's tasks are hidden while it's Complete) (got " + rows.length + ")");
+  ok(rows.length === 17, "17 scheduled tasks (Sample Finished Quest's tasks are hidden while it's Complete) (got " + rows.length + ")");
   ok(k.$("view").textContent.includes("Backlog (2)") && k.$("view").textContent.includes("Add a dark mode") && k.$("view").textContent.includes("Add a level editor"), "backlog has two samples");
   ok(k.d.querySelector('label[for="task-due"]').textContent.includes("Due date"), "the task's schedule field is a due date");
   // per-project schedules
@@ -314,7 +314,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const statuses = rows.map(b => b.classList.contains("done"));
   const firstDone = statuses.indexOf(true);
   ok(firstDone === -1 || statuses.slice(firstDone).every(Boolean), "once a completed task appears, every task after it in the list is also completed (sunk to the bottom)");
-  ok(rows.length === 16, "completed tasks (Sketch the main screens, Build the sign-in flow) stay in the Tasks list, not moved to the Vault (" + rows.length + ")");
+  ok(rows.length === 17, "completed tasks (Sketch the main screens, Build the sign-in flow) stay in the Tasks list, not moved to the Vault (" + rows.length + ")");
 }
 
 /* ---- search works on samples ---- */
@@ -341,7 +341,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // reload samples
   k.tab("settings"); k.click(k.$("startFresh")); const r = [...k.d.querySelectorAll('#modalBody input[name=fresh]')]; r[1].checked = true; k.fire(r[1]);
   const a2 = k.$("freshAck"); a2.checked = true; k.fire(a2); k.click(k.$("freshGo"));
-  ok(k.saved().tasks.length === 24 && k.saved().pins.includes("quest:pApp"), "the samples can be reloaded");
+  ok(k.saved().tasks.length === 28 && k.saved().pins.includes("quest:pApp"), "the samples can be reloaded");
   ok(k.saved().settings.hideWelcome === false, "reloading the samples brings the welcome message back too");
 }
 
@@ -406,7 +406,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.w.showSaveFilePicker = (opts) => { asked = opts; return Promise.resolve({ createWritable: () => Promise.resolve({ write: (t) => { written = t; return Promise.resolve(); }, close: () => Promise.resolve() }) }); };
   k.click(k.$("saveFile")); await new Promise(r => setTimeout(r, 30));
   const j = JSON.parse(written);
-  ok(j.tasks.length === 24 && j.quests.find(p => p.name === "Sample Game").days === 14, "Save backup writes the sample data");
+  ok(j.tasks.length === 28 && j.quests.find(p => p.name === "Sample Game").days === 14, "Save backup writes the sample data");
   ok(/^sidequest-backup-\d{4}-\d{2}-\d{2}\.json$/.test(asked.suggestedName), "and suggests a dated .json file name (" + asked.suggestedName + ")");
   ok(k.$("view").textContent.includes("Backup saved."), "and says it saved");
   ok(!k.$("showText") && !k.$("backupText") && !k.$("restoreText"), "there is no backup text box and no paste box any more");
@@ -524,7 +524,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // Open each of Sample App's tasks in turn (including its one Backlog item)
   // and mark it Completed via its status select -- every counted task has to
   // reach Completed, not just the scheduled ones, for the all-done guard to pass.
-  const names = ["Sketch the main screens", "Build the sign-in flow", "Build the home screen", "Run a beta with five friends", "Submit to the app store", "Add a dark mode"];
+  const names = ["Sketch the main screens", "Build the sign-in flow", "Build the home screen", "Run a beta with five friends", "Submit to the app store", "Add a dark mode", "Home screen flickers when it first loads"];
   for (const nm of names) {
     const row = [...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes(nm));
     if (!row) continue;
@@ -533,6 +533,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     if (sel.value !== "Completed") { sel.value = "Completed"; k.fire(sel); }
   }
   ok(k.$("modalTitle").textContent === "Quest complete", "all-tasks-Completed auto-triggers the completion dialog");
+  ok(k.$("modalBody").textContent.includes("1 issue is still open."), "the sample's undated issue stays open without holding the quest back, and the dialog says so");
   k.click(k.btn(k.$("modalBody"), "Vault now"));
   ok(k.saved().quests.find(p => p.id === "pApp").vault, "Vault now from the dialog sends the quest to the Vault");
 }
@@ -817,13 +818,13 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!!split && !!split.querySelector(".questmain") && !split.querySelector(".questtop") && !split.querySelector(".questrest") && !!split.querySelector(".questcharts"), "an active quest's page has one content column and a Schedule/Timeline/Burndown column");
   ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Issues,Quest links,Notes,Quest giver", "the left column runs Tasks, Before you launch, Issues, Quest links, Notes, then Quest giver (" + [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() + ")");
   ok(!split.querySelector(".pintoggle") && !split.querySelector(".pinbar"), "there is no Pin button on a quest's page");
-  ok(split.querySelector(".questmain").textContent.includes("Complete: 1 of 6 tasks | Backlog: 1 unscheduled task"), "the task-count line sits under the Tasks heading");
+  ok(split.querySelector(".questmain").textContent.includes("Complete: 1 of 7 tasks | Backlog: 1 unscheduled task | Issues: 2 open"), "the task-count line sits under the Tasks heading, with the open issues counted apart");
   const side = split.querySelector(".questcharts");
   ok([...side.querySelectorAll("h2")].map(h => h.textContent).join() === "Schedule,Timeline,Burndown,Stats", "the right column flows Schedule, Timeline, Burndown, then Stats, as one column");
   ok([...split.children].map(c => c.className).join() === "questmain,questcharts,actions questactions", "the page is ordered content, then the Schedule/Timeline/Burndown column, then the action buttons last, which is also the reading and phone order");
   ok(!!side.querySelector("#proj-start") && !!side.querySelector("#proj-days") && !split.querySelector(".questmain #proj-start") && ![...split.querySelectorAll(".questmain h2")].some(h => h.textContent === "Schedule"), "the Schedule heading and fields are in the right column, not the left");
   ok(!!k.btn(side, "Expand"), "the right column has an Expand button");
-  ok(side.querySelectorAll(".lane").length === 6, "one timeline lane per scheduled task, plus the milestones lane (" + side.querySelectorAll(".lane").length + ")");
+  ok(side.querySelectorAll(".lane").length === 7, "one timeline lane per scheduled task, plus the milestones lane (" + side.querySelectorAll(".lane").length + ")");
   ok(!side.textContent.includes("not shown until scheduled") && !side.textContent.includes("The red line marks today"), "an unscheduled Backlog task is not drawn, and the Timeline has no caption under it");
   ok(side.querySelectorAll(".ms").length === 1 && /Run a beta with five friends/.test(side.querySelector(".ms").getAttribute("aria-label")), "the timeline shows only this quest's milestone");
   const svg = side.querySelector("svg.chart");
@@ -831,7 +832,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(svg.querySelectorAll(".dot").length === 3, "the actual line has its recorded weeks plus this week (" + svg.querySelectorAll(".dot").length + ")");
   ok(svg.querySelectorAll(".mark").length === 1 && svg.querySelectorAll("rect.hit").length >= 4, "a milestone marker and a hover column for each week are drawn");
   ok(!svg.querySelector("title"), "the chart has no native tooltips, which would double up with the new one and never reach a phone or keyboard");
-  ok(/Remaining: 4 of 5 tasks/.test(side.textContent), "the count line is this quest's tasks");
+  ok(/Remaining: 5 of 6 tasks/.test(side.textContent), "the count line is this quest's tasks");
   // Expand opens both charts in a full-size dialog, and closing restores normal dialogs
   k.click(k.btn(side, "Expand"));
   const modal = k.d.querySelector("#overlay .modal");
@@ -852,12 +853,12 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Build the home screen")));
   const sel = selRow(k); sel.value = "Completed"; k.fire(sel);
   const app = k.saved().quests.find(p => p.id === "pApp");
-  ok(JSON.stringify(app.hist[todayKey]) === "[5,3]", "finishing a task records the quest's tasks in scope and still open for today (" + JSON.stringify(app.hist[todayKey]) + ")");
+  ok(JSON.stringify(app.hist[todayKey]) === "[6,4]", "finishing a task records the quest's tasks in scope and still open for today (" + JSON.stringify(app.hist[todayKey]) + ")");
   ok(Object.keys(app.hist).length >= 3, "the earlier records are kept");
   // a second change that nets out to the same counts leaves no extra record
   const sel2 = selRow(k); sel2.value = "In progress"; k.fire(sel2);
   const sel3 = selRow(k); sel3.value = "Completed"; k.fire(sel3);
-  ok(JSON.stringify(k.saved().quests.find(p => p.id === "pApp").hist[todayKey]) === "[5,3]", "changing a task back and forth keeps the day's record at its final counts");
+  ok(JSON.stringify(k.saved().quests.find(p => p.id === "pApp").hist[todayKey]) === "[6,4]", "changing a task back and forth keeps the day's record at its final counts");
 }
 {
   // A Complete quest's burndown has no gap for a week nothing was recorded, since its remaining count is 0 from completion on. Also exercises the old "projects"/"projectId" saved-data shape.
@@ -890,7 +891,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const sel = openSel(k); sel.value = "Completed"; k.fire(sel);
   ok(k.d.querySelectorAll("#view .questmain .tlist:not(.sectionlist) .detail").length === 1, "the task stays open after an edit");
   const after = k.d.querySelector("#view .estleft").textContent;
-  ok(before === "Est. 27 hours remaining" && after === "Est. 23 hours remaining", "completing a 4 h task lowers the open estimate (" + before + " -> " + after + ")");
+  ok(before === "Est. 29 hours remaining" && after === "Est. 25 hours remaining", "completing a 4 h task lowers the open estimate (" + before + " -> " + after + ")");
   k.click(k.d.querySelector("#view .questmain .tlist button.item[aria-expanded='true']"));
   ok(!k.d.querySelector("#view .questmain .tlist:not(.sectionlist) .detail"), "clicking the open task again closes it");
   // the launch checklist's task row also opens the task in place, same as a regular Tasks row
@@ -919,7 +920,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(!k.d.querySelector("#view .weekly input"), "nothing in the counts table is editable");
   ok(!/Enter the number/.test(k.$("view").textContent) && !/Task counts are recorded automatically/.test(k.$("view").textContent), "the page has no description line");
   const cells = [...k.d.querySelectorAll("#view .weekly tbody tr")].map(tr => [...tr.children].map(c => c.textContent));
-  ok(cells[0][2] === "15" && cells[0][3] === "15" && cells[1][2] === "13" && cells[2][2] === "12", "past rows read back the recorded counts, carrying a quiet day forward (" + JSON.stringify(cells.slice(0, 3)) + ")");
+  ok(cells[0][2] === "16" && cells[0][3] === "16" && cells[1][2] === "14" && cells[2][2] === "13", "past rows read back the recorded counts, carrying a quiet day forward (" + JSON.stringify(cells.slice(0, 3)) + ")");
   ok(cells[0][4] === "" && cells[1][4] === "" && cells[2][4] === "+1", "and the sample shows one scope change, a task added mid-way (" + JSON.stringify(cells.slice(0, 3).map(r => r[4])) + ")");
 }
 {
@@ -985,7 +986,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.$("welcomeDismiss"));
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   k.click(k.btn(k.$("view"), "Mark complete"));
-  ok(/4 open tasks are no longer counted in the main burndown/.test(k.$("modalBody").textContent), "the completion dialog warns about open tasks leaving the burndown (" + k.$("modalBody").textContent.slice(0, 160) + ")");
+  ok(/5 open tasks are no longer counted in the main burndown/.test(k.$("modalBody").textContent), "the completion dialog warns about open tasks leaving the burndown (" + k.$("modalBody").textContent.slice(0, 160) + ")");
 }
 {
   // the main burndown draws total scope as ramps ending on the dates it changed
@@ -1316,7 +1317,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     k.click(k.btn(k.$("overlay"), "Save file")); await wait();
     ok(k.$("overlay").hidden, "finishing the platform's save closes the box");
     ok(f.log.filter(x => x === "set:state/main").length > n && JSON.parse(f.store["state/main"].json).settings.lastBackup, "after loading, a change is written to the db");
-    ok(f.saves.length === 1 && /^sidequest-backup-\d{4}-\d{2}-\d{2}\.json$/.test(f.saves[0].filename) && JSON.parse(f.saves[0].data).tasks.length === 24, "Save backup hands the viewer a dated .json file through the downloads capability");
+    ok(f.saves.length === 1 && /^sidequest-backup-\d{4}-\d{2}-\d{2}\.json$/.test(f.saves[0].filename) && JSON.parse(f.saves[0].data).tasks.length === 28, "Save backup hands the viewer a dated .json file through the downloads capability");
     ok(k.$("view").textContent.includes("Backup saved.") && k.$("view").textContent.includes("(today)"), "and says it saved");
   }
   {
@@ -1507,7 +1508,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(svg.getAttribute("tabindex") === "0" && svg.getAttribute("role") === "group" && /arrow keys/.test(svg.getAttribute("aria-label")), "the chart is one labeled keyboard stop");
   ok(tip().hidden && tip().getAttribute("aria-live") === "polite" && tip().getAttribute("role") === "status", "the tooltip starts hidden and is a live region");
   fire(hits[1], "mouseenter");
-  ok(!tip().hidden && /^Week of /.test(tip().textContent) && /Planned: \d+ remaining/.test(tip().textContent) && /Actual: 3 remaining of 4 in scope/.test(tip().textContent), "hovering a week shows its planned and actual counts (" + tip().textContent.replace(/\n/g, " | ") + ")");
+  ok(!tip().hidden && /^Week of /.test(tip().textContent) && /Planned: \d+ remaining/.test(tip().textContent) && /Actual: 4 remaining of 5 in scope/.test(tip().textContent), "hovering a week shows its planned and actual counts (" + tip().textContent.replace(/\n/g, " | ") + ")");
   fire(hits[1], "mouseleave");
   ok(tip().hidden, "moving the pointer away hides it");
   const named = hits.map(h => { fire(h, "mouseenter"); const s = tip().textContent; fire(h, "mouseleave"); return s; });
@@ -1573,7 +1574,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const sv = k.saved().tasks;
   const appTasks = sv.filter(t => t.questId === "pApp");
   const total = appTasks.reduce((n, t) => n + t.est, 0), left = appTasks.filter(t => t.status !== "Completed").reduce((n, t) => n + t.est, 0);
-  ok(total === 30, "Sample App's estimates add up to 30 h (" + total + ")");
+  ok(total === 32, "Sample App's estimates add up to 32 h (" + total + ")");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
   const est = k.d.querySelector("#view .metarow .estleft");
   ok(!!est && est.textContent === "Est. " + left + " hours remaining", "the quest page shows the open estimate at the right of the count line (" + (est && est.textContent) + ")");
@@ -1685,7 +1686,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     if (k.w.parent !== k.w) {
       k.tab("settings"); k.click(k.$("saveFile")); await wait();
       const box = k.$("overlay").querySelector("textarea");
-      ok(!k.$("overlay").hidden && !!box && JSON.parse(box.value).tasks.length === 24, "in a frame with no way to save, a dialog shows the backup text to copy");
+      ok(!k.$("overlay").hidden && !!box && JSON.parse(box.value).tasks.length === 28, "in a frame with no way to save, a dialog shows the backup text to copy");
       ok(!!k.btn(k.$("overlay"), "Download file") && !!k.$("overlay").querySelector("details") && !k.$("overlay").querySelector("details").open, "the dialog leads with a Download file button and keeps the copy option folded away");
       ok(k.saved().settings.lastBackup === "" && !k.$("view").textContent.includes("Backup saved.") && k.$("view").textContent.includes("counted as saved"), "and nothing is reported or recorded as saved");
     }
@@ -3458,6 +3459,19 @@ async function exportClick(k, projectName) {
   ok(r.html.includes("Slow first load") && r.html.includes('<span class="chip issuechip"'), "an issue with a due date exports with the tasks, marked as an issue");
   r = await exportRun(true);
   ok(r.html.includes("<h3>Issues</h3>") && r.html.includes("Crash on save"), "checking the box lists the issues that have no due date");
+}
+/* ---- sample issues and the Backlog chip ---- */
+{
+  const k = kit(await mk({ settings: { hideWelcome: true } }));
+  const issues = k.saved().tasks.filter(t => t.issue);
+  ok(issues.some(t => t.block === 0 && t.status !== "Completed") && issues.some(t => t.block > 0) && issues.some(t => t.status === "Completed"), "the samples include issues with no due date, one with a due date, and a resolved one (" + issues.length + ")");
+  ok(issues.every(t => !t.milestone && !t.launch), "no sample issue is a milestone or launch critical");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
+  const dark = k.$("ptask-a6");
+  ok(!!dark && !dark.querySelector(".l1") && dark.classList.contains("nol1") && dark.querySelector(".l3").firstElementChild.classList.contains("backlog"), "an undated task on a quest's page has no date line, and its Backlog chip leads the chips under the title");
+  ok(!!k.$("itask-i1") && !k.$("itask-i1").querySelector(".l1") && !!k.$("itask-i2").querySelector(".l1") && !k.$("ptask-i1") && !k.$("ptask-i2"), "the sample issues list under Issues, the dated one with a date line and the undated one without");
+  const css = fs.readFileSync(path.join(__dirname, "..", "css", "styles.css"), "utf8");
+  ok(!/button\.rowpencil\s*\{[^}]*--row-l1/.test(css), "no layout moves a row's pencil off the title line, so it stays beside the pulldown at every width");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);
