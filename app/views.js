@@ -1,3 +1,4 @@
+import { aiButtons } from "./ai-import.js";
 import { go, openTask, renderView } from "./app.js";
 import { drawChart, drawQuestChart, rangeBlock } from "./chart.js";
 import { DAY, TODAY, fmt, fmtY, iso, parseISO } from "./dates.js";
@@ -362,7 +363,10 @@ export function standingBlock() {
 
 export function candidatesSection(first) {
   var sec = el("div");
-  sec.appendChild(withHelp(el("h2", first ? { "class": "first" } : null, "Candidate quests"), "candidate-quest", "Candidate quest"));
+  var head = el("div", { "class": "sechead wraps" + (first ? " first" : "") });
+  head.appendChild(withHelp(el("h2", { "class": "sechead-h" }, "Candidate quests"), "candidate-quest", "Candidate quest"));
+  head.appendChild(aiButtons());
+  sec.appendChild(head);
   if (state.settings.wipLimit && activeQuests().length > state.settings.wipLimit) sec.appendChild(el("p", { "class": "hint" }, "You have " + activeQuests().length + " active quests. Your limit is " + state.settings.wipLimit + "."));
   var list = el("ul", { "class": "list" });
   var cs = candidateQuests();

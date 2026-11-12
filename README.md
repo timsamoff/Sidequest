@@ -90,6 +90,12 @@ Each import creates a new quest, so importing the same file twice creates two qu
 - **Trello:** Export your board as a JSON file from Trello, then select it in Sidequest. Cards become tasks, with descriptions carried over as notes and due dates preserved. Checklist items become steps, including their completion status. Cards without due dates go into the Backlog. Archived cards are skipped. Labels, members, comments, attachments, and custom fields aren't imported.
 - **Todoist:** Export a project as a CSV file from Todoist, then select it in Sidequest. Tasks come across with their due dates and notes. Todoist doesn't include completed tasks in its exports, so those won't appear in Sidequest. Also, exports are capped at 300 tasks, so a file with exactly 300 tasks may be incomplete. Subtasks become regular tasks, and labels aren't imported. Relative dates such as "today," "tomorrow," and "in 3 days" are converted to calendar dates. Repeating tasks are imported without a schedule.
 
+### Build a quest with an AI
+
+Any AI chat can draft a quest for you. On the **Quests** page, select **Copy AI prompt** and paste it into the AI of your choice. It asks about your job, offers to add the typical tasks, steps, and decisions for that kind of job (or builds around your own), and then writes the quest as a JSON file.
+
+Back in Sidequest, select **Import quest** and choose that file, or paste what the AI wrote. Sidequest checks it and lists any problems by task, with a button that copies them so you can paste them back to the AI. When the check passes, you see a summary, and nothing is saved until you confirm. The quest is added to **Candidate quests**, so you can review it before promoting it.
+
 ## Use as app
 
 You can also run Sidequest as a Claude artifact or a Muse space. Both versions use the same single-file app, but save your data to your own account instead of your browser.

@@ -41,6 +41,7 @@ const MODULE_ORDER = [
   "lifecycle.js",
   "files.js",
   "imports.js",
+  "ai-import.js",
   "help.js",
   "errands.js",
   "quest-page.js",

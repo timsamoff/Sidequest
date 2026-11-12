@@ -7,7 +7,7 @@ var SHELL = [
   "./", "index.html", "manifest.json",
   "../css/tokens.css", "../css/leather.css", "../css/styles.css", "../css/splash.css", "../assets/header-800.jpg",
   "../assets/sfx/complete.mp3", "../assets/sfx/completeTask.mp3", "../assets/sfx/quest.mp3", "../assets/sfx/refresh.mp3", "../assets/sfx/reroll.mp3", "../assets/sfx/restoreBackup.mp3", "../assets/sfx/startFresh.mp3",
-  "app.js", "chart.js", "confetti.js", "dates.js", "dialogs.js", "dom.js", "errands.js", "export.js", "files.js", "help.js", "imports.js", "lifecycle.js",
+  "ai-import.js", "app.js", "chart.js", "confetti.js", "dates.js", "dialogs.js", "dom.js", "errands.js", "export.js", "files.js", "help.js", "imports.js", "lifecycle.js",
   "model.js", "phone.js", "quest-page.js", "search.js", "settings.js", "splash.js", "state.js", "tutorial.js", "views.js"
 ];
 

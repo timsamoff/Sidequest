@@ -383,6 +383,10 @@ html { scrollbar-gutter: stable; }
 .decision input[type="text"] { margin-top: var(--space-6); }
 .sechead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-10); margin-top: var(--space-22); }
 .sechead h3, .sechead .sechead-h { margin-top: 0; }
+.sechead.wraps { flex-wrap: wrap; }
+.sechead-btns { display: flex; flex-wrap: wrap; gap: var(--space-10); }
+.importlist { margin: var(--space-6) 0 0 var(--space-18); padding: 0; font-size: var(--text-sm); }
+.importlist li { margin-top: var(--space-4); }
 .first { margin-top: 0; }
 
 .chartbox { margin-top: var(--space-12); padding: var(--space-12) var(--space-12) var(--space-4); }

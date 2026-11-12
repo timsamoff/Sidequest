@@ -76,7 +76,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "1.0.3"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "1.1.0"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("../css/tokens.css?v=" + v) && html.includes("../css/styles.css?v=" + v) && html.includes("../css/splash.css?v=" + v) && html.includes("../css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "settings.js"), "utf8");
@@ -289,7 +289,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const helpText = k.$("view").textContent;
   ok(k.d.querySelectorAll("#view .hbody ul ul").length > 0 && k.d.querySelectorAll("#view .hbody ul ul ul").length === 0, "nested bullets in the guide render as nested lists, no deeper than two levels");
   ok(!helpText.includes("Mark done") && !helpText.includes("archive completed tasks") && !helpText.includes("View beside its name") && !helpText.includes("with its circle"), "Help no longer describes buttons and settings that were removed");
-  const staleHelp = ["default start date", "Show backup text", "pasted text", "Restore from text", "copy your data as text", "Sprint 1", "Where things stand", "Next slot", "what used to be called", "used to be called a project", "Completion FX"];
+  const staleHelp = ["default start date", "Show backup text", "Restore from text", "copy your data as text", "Sprint 1", "Where things stand", "Next slot", "what used to be called", "used to be called a project", "Completion FX"];
   ok(staleHelp.every(ph => !helpText.includes(ph)), "Help does not describe things that were removed (" + staleHelp.filter(ph => helpText.includes(ph)).join(", ") + ")");
   const coveredHelp = ["Quest details", "Quest giver export", "Bounty", "Slip schedule", "Forecast", "Ideal", "Actual", "Gathering dust", "Make milestone", "Launch critical", "Coin format", "Completion effects", "Sound effects", "Refresh", "stretch of work", "Backup and restore", "Start fresh", "Link quest", "Make candidate", "Splash screen on open", "Main menu"];
   ok(coveredHelp.every(ph => helpText.includes(ph)), "the guide covers the features it should (missing: " + coveredHelp.filter(ph => !helpText.includes(ph)).join(", ") + ")");
@@ -2746,7 +2746,7 @@ async function exportClick(k, projectName) {
   const { helpTopics } = await import("../app/help.js?run=" + counter);
   const topics = helpTopics(), titles = topics.map(t => t[0]);
   const termLines = topics.find(t => t[0] === "Terms")[1];
-  ok(termLines.length === 39 &&termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 39 Terms entries read as a bold term, a definition, and a pointer");
+  ok(termLines.length === 41 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 41 Terms entries read as a bold term, a definition, and a pointer");
   ok(termLines.every(l => titles.includes(l.match(/See “([^”]+)”\.$/)[1])), "every Terms pointer names a topic that exists");
   f.value = "decision"; k.fire(f, "input");
   ok(titlesOf()[0] === "Terms" && items()[0].open, "a word that is a term puts the Terms topic first and opens it");
