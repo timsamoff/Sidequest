@@ -129,7 +129,7 @@
     document.addEventListener(type, function () { if (driving) release(); }, { passive: true, capture: true });
   });
   window.addEventListener("wheel", function (e) {
-    if (reduce.matches || e.ctrlKey || e.defaultPrevented) return;
+    if (reduce.matches || e.ctrlKey || e.defaultPrevented || document.querySelector("dialog.lightbox[open]")) return;
     if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
     var dy = e.deltaY;
     if (e.deltaMode === 1) dy *= 16; else if (e.deltaMode === 2) dy *= window.innerHeight;
@@ -233,6 +233,42 @@
     }, { threshold: steps });
     io.observe(box);
   });
+})();
+
+/* Enlarged screenshots: a button over each screenshot opens one shared dialog showing the largest
+   image in its srcset, with the Sidequest page's name (data-page on the img) in a plate at the bottom left. */
+(function () {
+  var boxes = document.querySelectorAll(".shotbox");
+  if (!boxes.length || !window.HTMLDialogElement) return;
+  var dlg = document.createElement("dialog");
+  dlg.className = "lightbox";
+  dlg.setAttribute("aria-label", "Enlarged screenshot");
+  dlg.innerHTML = '<div class="lbframe"><div class="lbmat"><img alt="">' +
+    '<p class="lbname"><small>Sidequest</small><strong></strong></p></div>' +
+    '<button type="button" class="lbclose" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+    '<path d="M5 5l14 14M19 5L5 19" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button></div>';
+  document.body.appendChild(dlg);
+  var big = dlg.querySelector("img"), label = dlg.querySelector("strong");
+  var largest = function (img) {
+    var parts = (img.getAttribute("srcset") || "").split(",");
+    var last = parts[parts.length - 1].trim().split(/\s+/)[0];
+    return last || img.getAttribute("src");
+  };
+  Array.prototype.forEach.call(boxes, function (box) {
+    var img = box.querySelector("img");
+    var name = img.getAttribute("data-page") || "Sidequest";
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "zoombtn";
+    b.setAttribute("aria-label", "Enlarge the " + name + " screenshot");
+    b.addEventListener("click", function () {
+      big.src = largest(img); big.alt = img.alt; label.textContent = name;
+      dlg.showModal();
+    });
+    box.insertBefore(b, box.firstChild);
+  });
+  // A click on the dim area outside the frame closes it, like the Close button.
+  dlg.addEventListener("click", function (e) { if (!e.target.closest(".lbframe") || e.target.closest(".lbclose")) dlg.close(); });
+  dlg.addEventListener("close", function () { big.removeAttribute("src"); });
 })();
 
 /* Pinned cards: each card's edge and shadows are drawn once on a canvas behind it. The live filter in
