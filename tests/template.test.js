@@ -3374,6 +3374,15 @@ async function exportClick(k, projectName) {
   dwIn.value = "Sign-up and log-in both work";
   dwIn.dispatchEvent(new k.w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
   ok(!!dwPen && k.saved().tasks.find(t => t.id === "a2").done === "Sign-up and log-in both work" && k.d.querySelector("#view .donewhen span").textContent === "Sign-up and log-in both work", "Done when has a pencil that edits it in place");
+  // Clearing it brings back the plain field, and typing into the field brings back the pencil.
+  k.click(k.d.querySelector("#view .donewhen button.pencil"));
+  const dwClear = k.d.querySelector("#view .donewhen .inlineedit");
+  dwClear.value = "";
+  dwClear.dispatchEvent(new k.w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  const dwField = k.d.querySelector("#view .detail input.donewhenfield");
+  ok(k.saved().tasks.find(t => t.id === "a2").done === "" && !!dwField && !k.d.querySelector("#view .donewhen"), "a task with no Done when shows a plain field, with no pencil");
+  dwField.value = "People can sign in"; k.fire(dwField, "blur");
+  ok(k.saved().tasks.find(t => t.id === "a2").done === "People can sign in" && !k.d.querySelector("#view .detail input.donewhenfield") && k.d.querySelector("#view .donewhen span").textContent === "People can sign in", "leaving the field saves it, and it becomes the text with a pencil");
   k.click(k.d.querySelector('#view .questmain button.rowpencil[data-task="a2"]'));
   k.setField("what", ""); k.click(k.btn(k.$("modalBody"), "Save"));
   ok(!k.$("overlay").hidden && k.$("modalBody").textContent.includes("A task needs a title.") && k.saved().tasks.find(t => t.id === "a2").what === "Build the sign-in flow", "the rename dialog refuses an empty title");
@@ -3425,7 +3434,7 @@ async function exportClick(k, projectName) {
   ok(!k.$("overlay").hidden && k.$("modalBody").textContent.includes("Enter a title for the issue."), "an issue needs a title");
   k.setField("what", "Typo in footer"); k.click(k.btn(k.$("modalBody"), "Add issue"));
   const made = k.saved().tasks.find(t => t.what === "Typo in footer");
-  ok(!!made && made.issue === true && made.block === 0 && made.due === "" && made.done === "It’s finished" && k.$("toast").textContent.includes("added as an issue to Issue Quest."), "it is saved as an issue with no due date");
+  ok(!!made && made.issue === true && made.block === 0 && made.due === "" && made.done === "" && k.$("toast").textContent.includes("added as an issue to Issue Quest."), "it is saved as an issue with no due date");
   // Search finds an issue and opens it on its quest's page.
   k.type("Typo");
   const hit = k.d.querySelector("#searchResults .item");

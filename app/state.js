@@ -256,7 +256,7 @@ export function normalize(s) {
       // A task with a launch-flagged step becomes a launch task, so an old checklist is not emptied.
       var wasStepLaunch = Array.isArray(t.steps) && t.steps.some(function (x) { return x && x.launch === true; });
       ts.push({
-        id: S(t.id, 40), block: b, questId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
+        id: S(t.id, 40), block: b, questId: pid, what: S(t.what, 400), done: S(t.done, 200) === "It’s finished" ? "" : S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
         custom: t.custom === true, launch: t.launch === true || wasStepLaunch, issue: t.issue === true,
         // A milestone needs a real due date to plot on the chart -- a Backlog

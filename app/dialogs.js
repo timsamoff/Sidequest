@@ -211,7 +211,7 @@ export function taskDialog(prefillQuestId) {
     if (fixedQuest) v.quest = startId;
     if (!v.quest) return "Choose a quest.";
     if (!v.what) return { field: "what", error: "Enter a title for the task." };
-    var t = task("c" + uid(), 0, v.quest, v.what.slice(0, 400), "It’s finished", [], { custom: true, start: "", due: "", est: 0, added: "", notes: v.notes.slice(0, 5000) });
+    var t = task("c" + uid(), 0, v.quest, v.what.slice(0, 400), "", [], { custom: true, start: "", due: "", est: 0, added: "", notes: v.notes.slice(0, 5000) });
     state.tasks.push(t); ui.sel = t.id; changed();
     // After the dialog closes and the page unlocks, so the scroll is not undone.
     setTimeout(function () { scrollToTask(t.id); }, 0);
@@ -234,7 +234,7 @@ export function issueDialog(prefillQuestId) {
     if (fixedQuest) v.quest = startId;
     if (!v.quest) return "Choose a quest.";
     if (!v.what) return { field: "what", error: "Enter a title for the issue." };
-    var t = task("c" + uid(), 0, v.quest, v.what.slice(0, 400), "It’s finished", [], { custom: true, issue: true, notes: v.notes.slice(0, 5000) });
+    var t = task("c" + uid(), 0, v.quest, v.what.slice(0, 400), "", [], { custom: true, issue: true, notes: v.notes.slice(0, 5000) });
     state.tasks.push(t); changed();
     setTimeout(function () { scrollToTask(t.id); }, 0);
     return { msg: "“" + t.what + "” added as an issue to " + dispQuest(t) + "." };

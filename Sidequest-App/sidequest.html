@@ -442,6 +442,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .detailpane .detail { background: var(--sel); }
 .detail { padding: var(--space-18) var(--space-20); }
 .detail .what { font-family: var(--font-serif); font-size: calc(1.25rem + 1px); font-weight: 400; line-height: 1.3; margin-top: var(--space-8); }
+.detail .donewhenfield { margin-top: var(--space-6); }
 .detail .donewhen { display: flex; gap: var(--space-8); align-items: flex-start; }
 .detail .dmeta { color: var(--muted); margin-top: var(--space-4); }
 select.status { border: 1px solid var(--line); border-radius: var(--radius-pill); padding: var(--space-5) var(--space-12); min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
@@ -1950,7 +1951,7 @@ function normalize(s) {
       // A task with a launch-flagged step becomes a launch task, so an old checklist is not emptied.
       var wasStepLaunch = Array.isArray(t.steps) && t.steps.some(function (x) { return x && x.launch === true; });
       ts.push({
-        id: S(t.id, 40), block: b, questId: pid, what: S(t.what, 400), done: S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
+        id: S(t.id, 40), block: b, questId: pid, what: S(t.what, 400), done: S(t.done, 200) === "It’s finished" ? "" : S(t.done, 200), start: tstart, due: tdue, est: test, added: b > 0 && isISO(t.added) ? t.added : "",
         status: STATUSES.indexOf(t.status) >= 0 ? t.status : "Not started", notes: S(t.notes, 5000), steps: steps,
         custom: t.custom === true, launch: t.launch === true || wasStepLaunch, issue: t.issue === true,
         // A milestone needs a real due date to plot on the chart -- a Backlog
@@ -3583,7 +3584,7 @@ function taskDialog(prefillQuestId) {
     if (fixedQuest) v.quest = startId;
     if (!v.quest) return "Choose a quest.";
     if (!v.what) return { field: "what", error: "Enter a title for the task." };
-    var t = task("c" + uid(), 0, v.quest, v.what.slice(0, 400), "It’s finished", [], { custom: true, start: "", due: "", est: 0, added: "", notes: v.notes.slice(0, 5000) });
+    var t = task("c" + uid(), 0, v.quest, v.what.slice(0, 400), "", [], { custom: true, start: "", due: "", est: 0, added: "", notes: v.notes.slice(0, 5000) });
     state.tasks.push(t); ui.sel = t.id; changed();
     // After the dialog closes and the page unlocks, so the scroll is not undone.
     setTimeout(function () { scrollToTask(t.id); }, 0);
@@ -3606,7 +3607,7 @@ function issueDialog(prefillQuestId) {
     if (fixedQuest) v.quest = startId;
     if (!v.quest) return "Choose a quest.";
     if (!v.what) return { field: "what", error: "Enter a title for the issue." };
-    var t = task("c" + uid(), 0, v.quest, v.what.slice(0, 400), "It’s finished", [], { custom: true, issue: true, notes: v.notes.slice(0, 5000) });
+    var t = task("c" + uid(), 0, v.quest, v.what.slice(0, 400), "", [], { custom: true, issue: true, notes: v.notes.slice(0, 5000) });
     state.tasks.push(t); changed();
     setTimeout(function () { scrollToTask(t.id); }, 0);
     return { msg: "“" + t.what + "” added as an issue to " + dispQuest(t) + "." };
@@ -5354,16 +5355,23 @@ function buildDetail(t, inline, readOnly) {
     box.appendChild(dg);
   }
 
-  box.appendChild(el("h3", null, "Done when"));
-  if (readOnly) box.appendChild(el("p", null, t.done));
-  else {
+  if (!readOnly || t.done) box.appendChild(el("h3", null, "Done when"));
+  if (readOnly) { if (t.done) box.appendChild(el("p", null, t.done)); }
+  else if (!t.done) {
+    // Nothing entered yet: a plain field. Once it has text it becomes the text with a pencil.
+    var dwIn = el("input", { type: "text", "class": "donewhenfield", "aria-label": "Done when", placeholder: "How you’ll know it’s finished", maxlength: "200", autocomplete: "off" });
+    function saveDone() { var v = dwIn.value.trim(); if (!v) return; t.done = v.slice(0, 200); changed(); }
+    on(dwIn, "blur", saveDone);
+    on(dwIn, "keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); saveDone(); } });
+    box.appendChild(dwIn);
+  } else {
     var dw = el("div", { "class": "donewhen" }), dwText = el("span", null, t.done), dwPen = pencilButton("Edit Done when", "Edit Done when");
     on(dwPen, "click", function () {
       dwPen.hidden = true;
       editInline(dwText, {
         label: "Done when", max: 200, value: function () { return t.done; },
         onSave: function (v) { t.done = v.slice(0, 200); changed(); },
-        onEmpty: function () { notify("Done when can’t be empty.", null, "problem"); },
+        onEmpty: function () { t.done = ""; changed(); },
         onDone: function () { dwPen.hidden = false; }
       });
     });
@@ -6282,7 +6290,7 @@ function nextUpPanel() {
   meta.appendChild(document.createTextNode(" · " + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + " "));
   if (isLate(t)) meta.appendChild(el("span", { "class": "badge" }, "Overdue"));
   box.appendChild(meta);
-  box.appendChild(el("p", { "class": "pline" }, "Done when: " + t.done));
+  if (t.done) box.appendChild(el("p", { "class": "pline" }, "Done when: " + t.done));
   var open = t.steps.filter(function (s) { return !s.done; })[0];
   if (open && t.steps.length) box.appendChild(el("p", { "class": "pline" }, "Next step: " + open.text));
   var acts = el("div", { "class": "actions" });

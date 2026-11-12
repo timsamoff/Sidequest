@@ -47,7 +47,7 @@ export function nextUpPanel() {
   meta.appendChild(document.createTextNode(" · " + fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + " "));
   if (isLate(t)) meta.appendChild(el("span", { "class": "badge" }, "Overdue"));
   box.appendChild(meta);
-  box.appendChild(el("p", { "class": "pline" }, "Done when: " + t.done));
+  if (t.done) box.appendChild(el("p", { "class": "pline" }, "Done when: " + t.done));
   var open = t.steps.filter(function (s) { return !s.done; })[0];
   if (open && t.steps.length) box.appendChild(el("p", { "class": "pline" }, "Next step: " + open.text));
   var acts = el("div", { "class": "actions" });

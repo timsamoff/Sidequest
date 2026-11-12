@@ -154,16 +154,23 @@ export function buildDetail(t, inline, readOnly) {
     box.appendChild(dg);
   }
 
-  box.appendChild(el("h3", null, "Done when"));
-  if (readOnly) box.appendChild(el("p", null, t.done));
-  else {
+  if (!readOnly || t.done) box.appendChild(el("h3", null, "Done when"));
+  if (readOnly) { if (t.done) box.appendChild(el("p", null, t.done)); }
+  else if (!t.done) {
+    // Nothing entered yet: a plain field. Once it has text it becomes the text with a pencil.
+    var dwIn = el("input", { type: "text", "class": "donewhenfield", "aria-label": "Done when", placeholder: "How you’ll know it’s finished", maxlength: "200", autocomplete: "off" });
+    function saveDone() { var v = dwIn.value.trim(); if (!v) return; t.done = v.slice(0, 200); changed(); }
+    on(dwIn, "blur", saveDone);
+    on(dwIn, "keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); saveDone(); } });
+    box.appendChild(dwIn);
+  } else {
     var dw = el("div", { "class": "donewhen" }), dwText = el("span", null, t.done), dwPen = pencilButton("Edit Done when", "Edit Done when");
     on(dwPen, "click", function () {
       dwPen.hidden = true;
       editInline(dwText, {
         label: "Done when", max: 200, value: function () { return t.done; },
         onSave: function (v) { t.done = v.slice(0, 200); changed(); },
-        onEmpty: function () { notify("Done when can’t be empty.", null, "problem"); },
+        onEmpty: function () { t.done = ""; changed(); },
         onDone: function () { dwPen.hidden = false; }
       });
     });
