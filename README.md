@@ -4,6 +4,8 @@
 
 A lightweight project planner for juggling several projects.
 
+🔗 [samoff.com/sidequest](https://samoff.com/sidequest/)
+
 ## The perfect project management system... for me. And maybe you'll like it too!
 
 —[Tim Samoff](https://samoff.com)
