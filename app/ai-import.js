@@ -17,7 +17,7 @@ var PROMPT_TEMPLATE = [
   "",
   "HOW TO WORK",
   "Work in this order, one step at a time, and wait for my answer after each question.",
-  "1. If the job above is still the bracketed placeholder, ask me what the job is.",
+  "1. If the job above is still the bracketed placeholder, do not mention the placeholder. Greet me briefly and ask what the job is.",
   "2. If the job is missing details you need to plan it well, such as the goal, who it is for, the deadline, or limits, ask me up to five short questions about it. If it is already clear, skip this step.",
   "3. Then ask me this: do I want you to add the typical tasks, steps, and decisions for this kind of job, or do I want to define my own? If I define my own, ask me for them, or for an outline, and build the quest around what I give you.",
   "4. Once I have answered, reply with the quest as one JSON object and nothing else: no introduction, no explanation, no commentary after it. Put it in a single code block, or, if you can create files, give it to me as a file named after the quest, such as Paint the spare room.json.",

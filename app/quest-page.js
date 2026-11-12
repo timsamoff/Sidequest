@@ -425,18 +425,6 @@ export function renderQuestPage(root, id) {
     root.appendChild(el("p", { "class": "hint" }, "In the Vault. Restore it to make changes."));
   }
 
-  // A vaulted candidate keeps this read-only, Notes-only view (reachable
-  // from the Vault list) -- a live candidate falls through to the full page below.
-  if (p.status === "candidate" && readOnly) {
-    root.appendChild(el("h2", null, "Notes"));
-    root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
-    root.appendChild(el("h2", null, "Quest giver"));
-    var cgLines = [p.client.org, p.client.poc, p.client.address, p.client.phone, p.client.email, p.client.website, p.client.coin !== "" ? "Bounty: " + formatMoney(p.client.coin, state.settings.coinFormat) + " per " + p.client.per.toLowerCase() : ""].filter(Boolean);
-    root.appendChild(el("p", { "class": "hint notetext" }, cgLines.length ? cgLines.join("\n") : "No Quest giver."));
-    if (linkedQuests(p).length) { root.appendChild(el("h2", null, "Quest links")); linksSection(root, p); }
-    return;
-  }
-
   var hd = el("div", { "class": "sechead" + (split ? " first" : "") }); hd.appendChild(el("h2", split ? { "class": "first" } : null, "Tasks"));
   if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Add a task" }, "Add task"), "click", function () { taskDialog(p.id); }));
   root.appendChild(hd);

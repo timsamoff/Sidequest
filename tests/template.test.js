@@ -76,7 +76,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "1.1.0"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "1.1.1"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("../css/tokens.css?v=" + v) && html.includes("../css/styles.css?v=" + v) && html.includes("../css/splash.css?v=" + v) && html.includes("../css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "settings.js"), "utf8");
@@ -569,6 +569,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(gameVaultRow, "Sample Game"));
   ok(k.$("viewTitle").textContent === "Sample Game", "a vaulted quest's page is now reachable (previously invisible)");
   ok(k.$("view").textContent.includes("In the Vault. Restore it to make changes."), "vaulted quest page states it's read-only");
+  ok(k.d.querySelector('#navBottom [aria-current="page"]')?.getAttribute("data-view") === "vault" && !k.d.querySelector('#nav [data-view="projects"][aria-current]'), "a vaulted quest's page highlights Vault, not Quests");
   ok(k.d.querySelectorAll("#view .tlist li").length === tasksBefore && k.$("view").textContent.includes("Add a level editor") && k.$("view").textContent.includes("Backlog"), "a vaulted quest's page still lists its own tasks, including its Backlog task (previously showed none at all)");
   ok(!k.btn(k.$("view"), "Add task") && !k.d.querySelector("#proj-start") && !k.d.querySelector("#view textarea"), "no mutating controls (Add task, schedule inputs, notes textarea) on a vaulted quest page");
   ok(!!k.btn(k.$("view"), "Restore"), "vaulted quest page offers Restore instead of Vault/Mark complete");
@@ -2635,7 +2636,7 @@ async function exportClick(k, projectName) {
   ok(yes && k.d.body.textContent.includes("Promote it anyway?") && nActive() === before + 1, "past the limit, Promote asks first and changes nothing yet");
   k.click(yes);
   ok(nActive() === before + 2, "Promote anyway promotes");
-  k.tab("projects"); ok(k.$("view").textContent.includes("Your limit is 2"), "the Quests page notes being over the limit");
+  k.tab("projects"); ok(!k.$("view").textContent.includes("Your limit is 2"), "the Quests page no longer prints the over-limit line");
 }
 {
   // Contact info and Quest giver open in place like a task row and start collapsed

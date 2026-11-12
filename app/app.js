@@ -43,7 +43,10 @@ export function renderChrome() {
   var nav = $("nav"); nav.innerHTML = ""; var nb = $("navBottom"); nb.innerHTML = "";
   var pinned = state.pins.filter(validPage);
   var isBottom = BOTTOM.some(function (b) { return b[0] === ui.view; });
-  var active = ui.view; if (ui.view === "search") active = ""; else if (!isCore(active) && !isBottom && pinned.indexOf(active) < 0) active = "projects";
+  var active = ui.view; if (ui.view === "search") active = ""; else if (!isCore(active) && !isBottom && pinned.indexOf(active) < 0) {
+    var shown = active.indexOf("quest:") === 0 ? findQuest(active.slice(6)) : null;
+    active = shown && shown.vault ? "vault" : "projects";
+  }
   function addTab(host, key, label, extra) {
     var b = el("button", { type: "button", "class": "tab" + (extra ? " " + extra : ""), "data-view": key });
     if (key === active) b.setAttribute("aria-current", "page");
@@ -131,8 +134,13 @@ if (!isStandaloneApp && typeof window.matchMedia === "function") {
 
 // The quest page showing on the last draw, so leaving it can close its open task.
 var lastQuestView = null;
+var lastView = null;
 export function renderView() {
-  var root = $("view"); root.innerHTML = "";
+  var root = $("view");
+  // A redraw of the same page keeps its scroll position; emptying the page lets a phone jump it.
+  var keepY = ui.view === lastView && document.body.style.position !== "fixed" ? (window.pageYOffset || 0) : null;
+  if (keepY !== null) root.style.minHeight = root.offsetHeight + "px";
+  root.innerHTML = "";
   if (ui.view.indexOf("quest:") === 0 && !validPage(ui.view)) ui.view = "projects";
   noteBurnView(ui.view);
   var questView = ui.view.indexOf("quest:") === 0 ? ui.view : null;
@@ -152,7 +160,10 @@ export function renderView() {
   else renderTimeline(root);
   renderChrome();
   alignStatuses(root);
-  if (focusKey) { var f = document.querySelector('[data-focus="' + focusKey + '"]'); if (f) f.focus(); setFocusKey(null); }
+  root.style.minHeight = "";
+  if (keepY !== null) { try { window.scrollTo(0, keepY); } catch (e) { /* ignore */ } }
+  lastView = ui.view;
+  if (focusKey) { var f = document.querySelector('[data-focus="' + focusKey + '"]'); if (f) f.focus({ preventScroll: true }); setFocusKey(null); }
 }
 export function renderAll() { renderView(); }
 

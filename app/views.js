@@ -367,7 +367,6 @@ export function candidatesSection(first) {
   head.appendChild(withHelp(el("h2", { "class": "sechead-h" }, "Candidate quests"), "candidate-quest", "Candidate quest"));
   head.appendChild(aiButtons());
   sec.appendChild(head);
-  if (state.settings.wipLimit && activeQuests().length > state.settings.wipLimit) sec.appendChild(el("p", { "class": "hint" }, "You have " + activeQuests().length + " active quests. Your limit is " + state.settings.wipLimit + "."));
   var list = el("ul", { "class": "list" });
   var cs = candidateQuests();
   if (!cs.length) list.appendChild(el("li", { "class": "hint" }, "No candidate quests yet. Start one with the + button."));
