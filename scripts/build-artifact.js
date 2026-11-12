@@ -157,7 +157,8 @@ function build() {
   var head = out.slice(0, headEnd)
     .replace(/<script async src="https:\/\/www\.googletagmanager\.com[^>]*><\/script>\s*<script>[^]*?<\/script>\s*/, "")
     .replace(/<meta (?:property="og:|name="twitter:|name="description")[^>]*>\s*/g, "")
-    .replace(/<link rel="canonical"[^>]*>\s*/g, "");
+    .replace(/<link rel="canonical"[^>]*>\s*/g, "")
+    .replace(/(<meta name="viewport" content="[^"]*)"/, "$1, maximum-scale=1, user-scalable=no\"");
   out = head + out.slice(headEnd);
   var outHead = out.slice(0, out.indexOf("</head>"));
   if (/googletagmanager|gtag\(|rel="canonical"|property="og:|name="twitter:|name="description"/.test(outHead)) throw new Error("build-artifact: analytics or search/social metadata survived in the head -- a published artifact must not carry it.");

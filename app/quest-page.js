@@ -56,7 +56,11 @@ export function addRowControls(li, t) {
   var sel = el("select", { "class": "status rowstatus", "aria-label": "Status of " + short(t.what, 40), title: "Change this task’s status", "data-task": t.id, "data-focus": "status-" + t.id });
   STATUSES.forEach(function (s) { var o = el("option", { value: s }, s); if (s === t.status) o.selected = true; sel.appendChild(o); });
   sel.setAttribute("data-v", t.status);
-  on(sel, "change", function () { setStatus(t, sel.value); setFocusKey("status-" + t.id); changed(); });
+  // Focus returns to the select only for keyboard use; after a tap or click it would look still open.
+  var byPointer = false;
+  on(sel, "pointerdown", function () { byPointer = true; });
+  on(sel, "keydown", function () { byPointer = false; });
+  on(sel, "change", function () { setStatus(t, sel.value); if (!byPointer) setFocusKey("status-" + t.id); changed(); });
   li.classList.add("hasstatus"); li.appendChild(sel);
 }
 // Opens or closes a row in place. Closing the row that was open above shifts the page, so the clicked row is put back where it was.

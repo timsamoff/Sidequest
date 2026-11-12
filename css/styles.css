@@ -1,7 +1,9 @@
 html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 72px); }
 *, *::before, *::after { box-sizing: inherit; }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 19px; line-height: 1.5; }
-h1, h2, h3 { font-family: var(--font-serif); font-weight: 400; line-height: 1.2; margin: 0; }
+/* Text color is set on the app roots and headings, not inherited from body, so a host wrapper with its own color cannot override it. */
+.app, .overlay, .splash, .tutorial { color: var(--ink); }
+h1, h2, h3 { color: var(--ink); font-family: var(--font-serif); font-weight: 400; line-height: 1.2; margin: 0; }
 h1 { font-family: var(--font-display); }
 .dialogheading { margin-top: var(--space-16); }
 h1 { font-size: calc(1.5rem + 1px); }
@@ -180,10 +182,10 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 
 .panel { padding: var(--space-16) var(--space-18); border-left: 5px solid var(--planned); }
 .box { padding: var(--space-14) var(--space-16); }
-.ptitle { font-family: var(--font-serif); font-size: calc(1.3rem + 1px); font-weight: 400; line-height: 1.3; }
+.ptitle { color: var(--ink); font-family: var(--font-serif); font-size: calc(1.3rem + 1px); font-weight: 400; line-height: 1.3; }
 .pmeta { margin-top: var(--space-6); color: var(--muted); }
 .pmeta b { color: var(--ink); font-weight: 600; }
-.pline { margin-top: var(--space-8); }
+.pline { color: var(--ink); margin-top: var(--space-8); }
 .badge { display: inline-block; padding: var(--space-1) var(--space-9); border-radius: var(--radius-pill); font-size: var(--text-80); font-weight: 600; background: var(--late-bg); color: var(--late); vertical-align: 1px; }
 .tabbadge { min-width: 22px; text-align: center; padding: 0 var(--space-6); }
 .chip { display: inline-block; padding: var(--space-1) var(--space-10); border-radius: var(--radius-pill); font-size: .82rem; background: var(--badge-neutral-bg); color: var(--badge-neutral); }
@@ -205,7 +207,8 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .tlist li:last-child { border-bottom: 0; }
 .tlist li.plain { padding: var(--space-12) var(--space-14); color: var(--muted); font-size: var(--text-sm); }
 .item { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; padding: var(--space-12) var(--space-14); min-height: 0; }
-.item:hover { background: var(--chip-idle); border: 0; }
+/* Hover only on devices that can hover; on touch the last tap point stays "hovered" on the next page. */
+@media (hover: hover) { .item:hover { background: var(--chip-idle); border: 0; } }
 .item[aria-current="true"], .item[aria-expanded="true"] { background: var(--sel); box-shadow: inset 4px 0 0 var(--planned); }
 /* A task opened in place on a quest's page: part of the list, not a separate card. */
 .tlist li > .detail { border: 0; border-top: 1px solid var(--line); border-radius: 0; }
@@ -235,7 +238,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
    highlight blue a quest page's expanded task gets -- the user's call. */
 .detailpane .detail { background: var(--sel); }
 .detail { padding: var(--space-18) var(--space-20); }
-.detail .what { font-family: var(--font-serif); font-size: calc(1.25rem + 1px); font-weight: 400; line-height: 1.3; margin-top: var(--space-8); }
+.detail .what { color: var(--ink); font-family: var(--font-serif); font-size: calc(1.25rem + 1px); font-weight: 400; line-height: 1.3; margin-top: var(--space-8); }
 .detail .donewhenfield { margin-top: var(--space-6); }
 .detail .donewhen { display: flex; gap: var(--space-8); align-items: flex-start; }
 .detail .dmeta { color: var(--muted); margin-top: var(--space-4); }
@@ -243,12 +246,12 @@ select.status { border: 1px solid var(--line); border-radius: var(--radius-pill)
 /* A task row's status pulldown sits beside the row's button, on the title line; alignStatuses() sets its top. */
 /* The row is the container, so a narrow column on a wide screen gets the compact layout too. */
 .tlist li.hasstatus { position: relative; container-type: inline-size; }
-select.rowstatus { position: absolute; top: calc(var(--row-l2, 40px) - 4px); right: var(--space-14); z-index: 1; width: 124px; min-height: 32px; padding: var(--space-2) var(--space-10); font-size: var(--text-sm); }
+select.rowstatus { position: absolute; top: calc(var(--row-l2, 40px) - 1px); right: var(--space-14); z-index: 1; width: 124px; min-height: 32px; padding: var(--space-2) var(--space-10); font-size: var(--text-sm); }
 button.rowpencil { position: absolute; z-index: 1; top: calc(var(--row-l2, 40px) - 3px); right: calc(var(--space-14) + 132px); }
 .tlist li.hasstatus > .item .l2 { padding-right: 172px; }
 /* The pencil stays beside the pulldown at every width; a narrow row only shrinks the pulldown and lets the title take a third line. */
 @container (max-width: 460px) {
-  select.rowstatus { width: 122px; padding: var(--space-2) var(--space-4) var(--space-2) var(--space-8); font-size: .85rem; }
+  select.rowstatus { width: 122px; padding: var(--space-2) var(--space-4) var(--space-2) var(--space-8); font-size: 16px; }
   button.rowpencil { right: calc(var(--space-14) + 130px); }
   .tlist li.hasstatus > .item .l2 { padding-right: 168px; -webkit-line-clamp: 3; }
 }
@@ -506,7 +509,7 @@ svg.chart.nofocusring { outline: none; }
 li.tutorialtarget { border-radius: var(--radius-control); }
 li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: var(--tutorial); text-decoration-thickness: 3px; text-underline-offset: 4px; }
 @media (max-width: 899px) {
-  .tutorial { bottom: calc(env(safe-area-inset-bottom, 0px) + 76px); left: var(--space-12); right: var(--space-12); width: auto; padding: var(--space-22) var(--space-14) var(--space-10); }
+  .tutorial { bottom: calc(var(--bottom-padding, 0px) + env(safe-area-inset-bottom, 0px) + 76px); left: var(--space-12); right: var(--space-12); width: auto; padding: var(--space-22) var(--space-14) var(--space-10); }
   body:has(.tutorial) #view { padding-bottom: 230px; }
   .tutorialcount { display: none; }
   /* The card spans the bottom here, so confirmation toasts sit just above it (--tutorial-top is the card's top edge, measured from the bottom of the window). */
@@ -517,9 +520,9 @@ li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: va
 }
 @media (max-width: 899px) {
   .app { display: block; }
-  .side { position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: auto; z-index: 20; padding: var(--space-4); border-right: 0; border-top: 1px solid var(--line); flex-direction: row; }
+  .side { position: fixed; left: 0; right: 0; bottom: var(--bottom-padding, 0px); top: auto; height: auto; z-index: 20; padding: var(--space-4); border-right: 0; border-top: 1px solid var(--line); flex-direction: row; }
   /* Some mobile browsers show the page below the bar when their toolbar collapses; the bar's color continues past the bottom edge. */
-  .side::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 200px; background: var(--surface); pointer-events: none; }
+  .side::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: calc(200px + var(--bottom-padding, 0px)); background: var(--surface); pointer-events: none; }
   .brandrow, .navbottom, .searchwrap, .pinnedwrap { display: none; }
   .mlogo { display: block; }
   .nav { flex-direction: row; width: 100%; gap: 0; overflow: hidden; }
@@ -528,7 +531,7 @@ li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: va
   .tab { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: var(--space-2); padding: var(--space-6) var(--space-2); min-height: 52px; font-size: 1rem; text-align: center; justify-content: flex-start; padding-top: var(--space-8); border-radius: var(--radius-control); }
   .tab[aria-current="page"] { box-shadow: inset 0 3px 0 var(--planned); }
   .topbar { padding: var(--space-10) var(--space-16); }
-  .content { padding: var(--space-16) var(--space-16) 120px; }
+  .content { padding: var(--space-16) var(--space-16) calc(120px + var(--bottom-padding, 0px)); }
   .twocol, .cols2 { grid-template-columns: minmax(0, 1fr); gap: var(--space-20); }
   .split { display: block; }
   .split .detailpane { display: none; position: static; margin-bottom: 0; }
@@ -537,7 +540,7 @@ li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: va
   .only-mobile { display: inline-flex; align-items: center; }
   .iconbtn.only-mobile { display: inline-flex; }
   .hide-on-mobile { display: none; }
-  .toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+  .toast { bottom: calc(80px + var(--bottom-padding, 0px) + env(safe-area-inset-bottom, 0px)); }
   .overlay { align-items: flex-end; padding: 0; }
   .modal { max-width: none; border-radius: 16px 16px 0 0; max-height: 92vh; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
   .menu { min-width: 220px; }

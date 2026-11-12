@@ -37,6 +37,10 @@ export function scrollToTask(id) {
   var bar = document.querySelector(".topbar"), below = bar ? bar.getBoundingClientRect().bottom : 0;
   try { window.scrollTo(0, Math.max(0, row.getBoundingClientRect().top + (window.pageYOffset || 0) - below - 20)); } catch (e) { /* ignore */ }
 }
+// A text field gets focus first; a dropdown only if nothing else fits, so it is not ringed on arrival.
+function firstFocus(root) {
+  return root.querySelector("input:not([type=checkbox]):not([type=radio]), textarea") || root.querySelector("input, select, button");
+}
 export function openModal(title, build, opts) {
   modalSaved = null; formSubmit = null;
   modalReturn = document.activeElement;
@@ -48,7 +52,7 @@ export function openModal(title, build, opts) {
   var body = $("modalBody"); body.innerHTML = "";
   build(body);
   $("overlay").hidden = false; lockPage();
-  var first = body.querySelector("input, textarea, select, button");
+  var first = firstFocus(body);
   if (first) first.focus();
 }
 // Opens over whatever dialog is showing; closing it (X, Escape, outside click) returns to that dialog.
@@ -69,7 +73,7 @@ export function closeModal() {
     document.querySelector("#overlay .modal").classList.toggle("full", s.full);
     modalReturn = s.ret; formSubmit = s.submit;
     $("modalClose").hidden = s.noClose;
-    var f = b.querySelector("input, textarea, select, button"); if (f) f.focus();
+    var f = firstFocus(b); if (f) f.focus();
     return;
   }
   $("overlay").hidden = true; $("modalBody").innerHTML = ""; formSubmit = null; unlockPage();

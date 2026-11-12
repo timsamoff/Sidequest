@@ -66,6 +66,10 @@
   .app .topbar .flapstitch { display: block; }
   .app .topbar > .tbleft, .app .topbar > .topact { position: relative; top: 4px; z-index: 3; }
   .app .topbar #viewTitle { position: relative; top: 2px; color: var(--clasp-brass); text-shadow: 0 1px 0 var(--engrave); }
+  .app .topbar #renameBtn { color: var(--pencil-leather); }
   .app .topbar #newBtn { --btn: var(--btn-tan); --on-btn: var(--on-btn-tan); }
   .app .topbar .mlogo { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 }
+/* Wide, light theme: the quest title pencil takes the leather brown instead of the blue-gray muted. */
+@media (min-width: 900px) { :root[data-theme="light"] #renameBtn { color: var(--leather); } }
+@media (min-width: 900px) and (prefers-color-scheme: light) { :root:not([data-theme="dark"]) #renameBtn { color: var(--leather); } }
