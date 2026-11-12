@@ -53,6 +53,9 @@ function editTitle(k, value, key) {
   return i;
 }
 const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) fails++; };
+// The status pulldown on a task's row: the selected row in Tasks, or the open row on a quest's page.
+const selRow = (k) => { const b = k.d.querySelector('.listpane .item[aria-current="true"]'); return b && b.parentNode.querySelector("select.rowstatus"); };
+const openSel = (k) => { const b = k.d.querySelector("#view .questmain .tlist button.item[aria-expanded='true']"); return b && b.parentNode.querySelector("select.rowstatus"); };
 function kit(dom) {
   const w = dom.window, d = w.document, $ = id => d.getElementById(id);
   return { w, d, $, fire: (e, t = "change") => e.dispatchEvent(new w.Event(t, { bubbles: true })),
@@ -73,7 +76,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.99.11"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "0.99.12"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("../css/tokens.css?v=" + v) && html.includes("../css/styles.css?v=" + v) && html.includes("../css/splash.css?v=" + v) && html.includes("../css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "settings.js"), "utf8");
@@ -116,19 +119,19 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const tokens = fs.readFileSync(path.join(__dirname, "..", "css", "tokens.css"), "utf8"), styles = fs.readFileSync(path.join(__dirname, "..", "css", "styles.css"), "utf8");
   ok((tokens.match(/--notice-update:/g) || []).length === 3 && (tokens.match(/--notice-backup:/g) || []).length === 3 && (tokens.match(/--notice-welcome:/g) || []).length === 3, "the three notice colors are defined in the light, dark, and forced-dark blocks");
   ok(/\.updatebanner \{ border-top: 5px solid var\(--notice-update\)/.test(styles) && /\.backupreminder \{ border-top: 5px solid var\(--notice-backup\)/.test(styles) && /\.welcomebox \{ border-top: 5px solid var\(--notice-welcome\)/.test(styles), "each notice's top bar uses its own token");
-  ok(/\.updatebanner \{ background: var\(--notice-update-bg\)/.test(styles) && /\.backupreminder \{ background: var\(--notice-backup-bg\)/.test(styles) && (tokens.match(/--notice-update-bg:/g) || []).length === 3 && (tokens.match(/--notice-backup-bg:/g) || []).length === 3, "the update and backup notices have their own tinted backgrounds, defined in all three theme blocks");
+  ok(/\.updatebanner \{[^}]*--card: var\(--notice-update-bg\)/.test(styles) && /\.backupreminder \{[^}]*--card: var\(--notice-backup-bg\)/.test(styles) && (tokens.match(/--notice-update-bg:/g) || []).length === 3 && (tokens.match(/--notice-backup-bg:/g) || []).length === 3, "the update and backup notices have their own tinted backgrounds, defined in all three theme blocks");
 }
 
 /* ---- tasks order: start date across quests ---- */
 {
   const k = kit(await mk()); k.click(k.$("welcomeDismiss")); k.tab("schedule");
-  const rows = [...k.d.querySelectorAll("#view .tlist li .item")].map(e => e.textContent.replace(/\s+/g, " ").trim());
+  const rows = [...k.d.querySelectorAll("#view .tlist li .item")].map(e => ({ t: e.textContent.replace(/\s+/g, " ").trim(), done: e.classList.contains("done") }));
   const mons = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
-  const open = rows.filter(r => !/Completed/.test(r) && !/Backlog/.test(r) && /[A-Z][a-z]{2} \d{1,2} to /.test(r));
+  const open = rows.filter(r => !r.done && !/Backlog/.test(r.t) && /[A-Z][a-z]{2} \d{1,2} to /.test(r.t)).map(r => r.t);
   let year = 2000, prev = -Infinity, ordered = true;
   open.forEach(r => { const m = r.match(/([A-Z][a-z]{2}) (\d{1,2}) to /); let t = Date.UTC(year, mons[m[1]], +m[2]); if (t < prev - 180 * 86400000) { year++; t = Date.UTC(year, mons[m[1]], +m[2]); } if (t < prev) ordered = false; prev = t; });
   ok(open.length > 5 && ordered, "the Tasks page lists open scheduled tasks by start date, across quests (" + open.length + " rows)");
-  const firstDone = rows.findIndex(r => /Completed/.test(r)), lastOpen = rows.reduce((a, r, i) => (/Completed/.test(r) || /Backlog/.test(r) ? a : i), -1);
+  const firstDone = rows.findIndex(r => r.done), lastOpen = rows.reduce((a, r, i) => (r.done || /Backlog/.test(r.t) ? a : i), -1);
   ok(firstDone > lastOpen, "completed tasks stay at the bottom of the scheduled list");
 }
 
@@ -179,7 +182,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(launchBtn);
   const detail = () => k.d.querySelector("#view .tlist.check .detail");
   ok(!!detail().querySelector(".chip") && detail().textContent.includes("Launch critical"), "the expanded launch task shows a Launch critical badge");
-  ok(!!k.btn(detail(), "Open in Tasks") && !!k.btn(detail(), "Skip launch") && !!k.btn(detail(), "Delete") && !k.btn(detail(), "Launch critical"), "a launch task's detail offers Open in Tasks, Skip launch, and Delete");
+  ok(!k.btn(detail(), "Open in Tasks") && !!k.btn(detail(), "Skip launch") && !!k.btn(detail(), "Delete") && !k.btn(detail(), "Launch critical"), "a launch task's detail offers Skip launch and Delete, and no Open in Tasks");
   ok(k.btn(detail(), "Skip launch").classList.contains("on") && k.btn(detail(), "Skip launch").getAttribute("aria-pressed") === "true", "Skip launch shows as an active/pressed toggle (blue), matching Remove milestone's on-state");
   ok(detail().querySelector(".steps li.done") && detail().querySelector(".steps").textContent.includes("Choose the first app store"), "answered decision's step is already ticked");
   // Skip launch takes the task off the checklist without deleting it
@@ -261,10 +264,9 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const k = kit(await mk());
   k.tab("schedule");
   k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Build the home screen")));
-  ok(!!k.d.querySelector(".detailpane .editrow button.pencil"), "a task's detail has a pencil next to its name");
-  k.click(k.d.querySelector(".detailpane .editrow button.pencil"));
-  const i = k.d.querySelector(".detailpane .inlineedit"); i.value = "Build the main screen";
-  i.dispatchEvent(new k.w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  ok(!!k.d.querySelector('.listpane button.rowpencil[data-task="a3"]') && !k.d.querySelector('.detailpane button[aria-label="Rename this task"]'), "a task's row has the pencil, and its detail does not");
+  k.click(k.d.querySelector('.listpane button.rowpencil[data-task="a3"]'));
+  k.setField("what", "Build the main screen"); k.click(k.btn(k.$("modalBody"), "Save"));
   ok(k.saved().tasks.find(t => t.id === "a3").what === "Build the main screen", "renaming a task saves it");
   ok([...k.d.querySelectorAll(".listpane .item")].some(b => b.textContent.includes("Build the main screen")) && ![...k.d.querySelectorAll(".listpane .item")].some(b => b.textContent.includes("Build the home screen")), "and the task list shows the new name");
 }
@@ -334,8 +336,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   // add own quest from scratch: a task needs an active quest to attach to
   k.menuAct("newBtn", "newQuest"); k.setField("name", "My App"); k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
   k.tab("projects"); k.click(k.btn(k.$("view"), "Promote"));
-  k.menuAct("newBtn", "newTask"); k.setField("what", "First task"); k.setField("due", new Date().toISOString().slice(0, 10)); k.click(k.btn(k.$("modalBody"), "Add task"));
-  k.tab("today"); ok(k.$("view").textContent.includes("First task"), "can start working right away, once a quest exists");
+  k.menuAct("newBtn", "newTask"); k.setField("what", "First task"); k.click(k.btn(k.$("modalBody"), "Add task"));
+  ok(k.saved().tasks.some(t => t.what === "First task"), "can add a task right away, once a quest exists");
   // reload samples
   k.tab("settings"); k.click(k.$("startFresh")); const r = [...k.d.querySelectorAll('#modalBody input[name=fresh]')]; r[1].checked = true; k.fire(r[1]);
   const a2 = k.$("freshAck"); a2.checked = true; k.fire(a2); k.click(k.$("freshGo"));
@@ -385,7 +387,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 /* ---- core behavior still intact ---- */
 {
   const k = kit(await mk());
-  k.tab("schedule"); const sel = k.d.querySelector(".detailpane select.status");
+  k.tab("schedule"); const sel = selRow(k);
   ok(sel && sel.value === "In progress", "schedule shows the selected sample task");
   k.tab("settings"); ok(k.d.getElementById("set-word").value === "Sprint" && k.$("view").textContent.includes("days per sprint"), "Settings show the Sprint vocabulary");
   ok(!k.d.getElementById("set-start"), "Settings no longer has a default-start-date field");
@@ -394,7 +396,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.tab("today"); const nextTaskTitle = k.d.querySelector("#view .panel .ptitle").textContent;
   ok(!k.btn(k.$("view"), "Mark completed"), "Today's Next up card has no one-click Mark completed shortcut");
   k.click(k.btn(k.$("view"), "Open task"));
-  const statusSel = k.d.querySelector(".detailpane .status"); statusSel.value = "Completed"; k.fire(statusSel);
+  const statusSel = selRow(k); statusSel.value = "Completed"; k.fire(statusSel);
   k.tab("schedule");
   const completedRow = [...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes(nextTaskTitle));
   ok(completedRow && completedRow.classList.contains("done"), "the task shows as completed in Tasks, not moved anywhere");
@@ -506,7 +508,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
   ok(k.$("view").textContent.includes("Its tasks are not included in Tasks, Timeline, or Today"), "the quest's page explains the hiding");
   k.click([...k.d.querySelectorAll(".questmain .tlist .item")].find(b => b.textContent.includes("Sketch the main screens")));
-  const statusSel = k.d.querySelector(".questmain .detail .status"); statusSel.value = "In progress"; k.fire(statusSel);
+  const statusSel = openSel(k); statusSel.value = "In progress"; k.fire(statusSel);
   ok(k.saved().quests.find(p => p.id === "pApp").status === "complete", "reopening a task does not auto-revert a Complete quest");
   // reopening the quest brings its tasks straight back, no separate restore
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
@@ -527,7 +529,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
     const row = [...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes(nm));
     if (!row) continue;
     k.click(row);
-    const sel = k.d.querySelector(".detailpane .status");
+    const sel = selRow(k);
     if (sel.value !== "Completed") { sel.value = "Completed"; k.fire(sel); }
   }
   ok(k.$("modalTitle").textContent === "Quest complete", "all-tasks-Completed auto-triggers the completion dialog");
@@ -848,13 +850,13 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const d = new Date(), todayKey = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
   k.tab("schedule");
   k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Build the home screen")));
-  const sel = k.d.querySelector(".detailpane .status"); sel.value = "Completed"; k.fire(sel);
+  const sel = selRow(k); sel.value = "Completed"; k.fire(sel);
   const app = k.saved().quests.find(p => p.id === "pApp");
   ok(JSON.stringify(app.hist[todayKey]) === "[5,3]", "finishing a task records the quest's tasks in scope and still open for today (" + JSON.stringify(app.hist[todayKey]) + ")");
   ok(Object.keys(app.hist).length >= 3, "the earlier records are kept");
   // a second change that nets out to the same counts leaves no extra record
-  const sel2 = k.d.querySelector(".detailpane .status"); sel2.value = "In progress"; k.fire(sel2);
-  sel2.value = "Completed"; k.fire(sel2);
+  const sel2 = selRow(k); sel2.value = "In progress"; k.fire(sel2);
+  const sel3 = selRow(k); sel3.value = "Completed"; k.fire(sel3);
   ok(JSON.stringify(k.saved().quests.find(p => p.id === "pApp").hist[todayKey]) === "[5,3]", "changing a task back and forth keeps the day's record at its final counts");
 }
 {
@@ -884,8 +886,8 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(k.$("viewTitle").textContent === "Sample App" && !!k.d.querySelector("#view .questmain .tlist:not(.sectionlist) .detail"), "clicking a task on a quest's page opens it in place, not on the Tasks page");
   ok(k.d.querySelector("#ptask-" + row.id.slice(6) + " button.item").getAttribute("aria-expanded") === "true", "the open row is marked expanded");
   ok(k.d.querySelectorAll("#view .questmain .tlist:not(.sectionlist) .detail").length === 1 && !k.d.querySelector("#view .questmain .detail h2"), "one task is open at a time, with no quest heading repeated inside it");
-  ok(!!k.btn(k.d.querySelector("#view .questmain .detail"), "Open in Tasks"), "an Open in Tasks link is offered");
-  const sel = k.d.querySelector("#view .questmain .detail .status"); sel.value = "Completed"; k.fire(sel);
+  ok(!k.btn(k.d.querySelector("#view .questmain .detail"), "Open in Tasks"), "no Open in Tasks button is offered");
+  const sel = openSel(k); sel.value = "Completed"; k.fire(sel);
   ok(k.d.querySelectorAll("#view .questmain .tlist:not(.sectionlist) .detail").length === 1, "the task stays open after an edit");
   const after = k.d.querySelector("#view .estleft").textContent;
   ok(before === "Est. 27 hours remaining" && after === "Est. 23 hours remaining", "completing a 4 h task lowers the open estimate (" + before + " -> " + after + ")");
@@ -895,8 +897,6 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const launchRow = [...k.d.querySelectorAll("#view .questmain .tlist.check button.item")].find(b => b.textContent.includes("Submit to the app store"));
   k.click(launchRow);
   ok(k.$("viewTitle").textContent === "Sample App" && !!k.d.querySelector("#view .questmain .tlist.check .detail"), "a task row in Before you launch opens that task in place");
-  k.click(k.btn(k.d.querySelector("#view .questmain .tlist.check .detail"), "Open in Tasks"));
-  ok(k.$("viewTitle").textContent === "Tasks", "Open in Tasks goes to the Tasks page");
 }
 {
   // a pale band behind each task's bar shows its block
@@ -1040,12 +1040,13 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   due.value = iso(20); k.fire(due, "blur");
   const dm = k.saved().tasks.find(t => t.what === "Add a dark mode");
   ok(dm.added === iso(0) && !!chip(rowOf("Add a dark mode")), "scheduling a Backlog task records the day it joined the plan and tags it");
+  ok(dm.start === iso(0), "a due date with no start date starts the task today (" + dm.start + ")");
   const due2 = k.$("task-due"); due2.value = ""; k.fire(due2, "blur");
   ok(k.saved().tasks.find(t => t.what === "Add a dark mode").added === "" && !chip(rowOf("Add a dark mode")), "sending it back to the Backlog clears that");
-  // a new scheduled task from the dialog is tagged too; a Backlog item is not
+  // a task from the dialog starts in the Backlog, so it is not tagged
   k.click(k.btn(k.$("view"), "Add task"));
-  k.setField("what", "Late idea"); k.setField("due", iso(10)); k.click(k.btn(k.$("modalBody"), "Add task"));
-  ok(k.saved().tasks.find(t => t.what === "Late idea").added === iso(0), "a task created with a due date records the day it joined the plan");
+  k.setField("what", "Late idea"); k.click(k.btn(k.$("modalBody"), "Add task"));
+  ok(k.saved().tasks.find(t => t.what === "Late idea").added === "", "a task created in the dialog is a Backlog item and has no added date");
   // saved data: an added date only makes sense on a scheduled task
   const saved = { projects: [{ id: "pA", name: "A", status: "active", start: iso(-5) }], tasks: [
     { id: "t1", block: 2, projectId: "pA", what: "Scheduled", done: "d", status: "Not started", steps: [], added: iso(-1) },
@@ -1217,7 +1218,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   ok(barOf("Sketch the main screens").classList.contains("done") && barOf("Build the sign-in flow").classList.contains("work") && barOf("Run a beta with five friends").classList.contains("new"), "Completed is green, In progress is yellow, Not started is pale blue on the Timeline");
   k.tab("schedule");
   k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Run a beta with five friends")));
-  ok(k.d.querySelector(".detailpane select.status").getAttribute("data-v") === "Not started" && [...k.d.querySelectorAll(".listpane .chip")].some(c => c.getAttribute("data-v") === "Not started"), "the status pull-down and chips carry the status the colors key off");
+  ok(selRow(k).getAttribute("data-v") === "Not started" && [...k.d.querySelectorAll(".detailpane .chip")].some(c => c.getAttribute("data-v") === "Not started"), "the row's status pull-down and the detail's chip carry the status the colors key off");
 }
 {
   // the backup reminder: remembered in settings, quiet until two weeks have passed, web app only
@@ -1633,15 +1634,11 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const saved = { projects: [{ id: "pT", name: "Dates", status: "active", start: "2026-08-03", days: 7 }], tasks: [] };
   const k = kit(await mk(saved));
   k.menuAct("newBtn", "newTask");
-  ok(!!k.$("f-start") && !!k.$("f-due") && !!k.$("f-est"), "the New task dialog has start, due, and estimate fields");
-  k.setField("what", "Made in dialog"); k.setField("start", "2026-08-12"); k.setField("due", "2026-08-20"); k.setField("est", "4");
+  ok(!k.$("f-start") && !k.$("f-due") && !k.$("f-est"), "the New task dialog has no date or estimate fields");
+  k.setField("what", "Made in dialog");
   k.click(k.btn(k.$("modalBody"), "Add task"));
   const t = k.saved().tasks.find(x => x.what === "Made in dialog");
-  ok(t && t.start === "2026-08-12" && t.due === "2026-08-20" && t.est === 4 && t.block === 3, "the dialog saves dates, estimate, and the derived block");
-  k.menuAct("newBtn", "newTask");
-  k.setField("what", "Bad order"); k.setField("start", "2026-08-25"); k.setField("due", "2026-08-20");
-  k.click(k.btn(k.$("modalBody"), "Add task"));
-  ok(!k.saved().tasks.some(x => x.what === "Bad order") && k.$("modalBody").textContent.includes("You can’t begin after you finish! Choose a start date on or before the due date."), "the dialog rejects a start after the due date");
+  ok(t && t.block === 0 && t.start === "" && t.due === "" && t.est === 0, "the dialog saves a Backlog task with no dates");
 }
 {
   // Slip shifts start and due together; Undo restores them
@@ -1977,7 +1974,11 @@ async function exportClick(k, projectName) {
   ok(!kn.$("view").textContent.includes("Sidequest has leveled up!") && kn.saved().settings.seenVersion === ver, "a first run records the version and shows no banner");
   const ko = kit(await mk({ settings: { hideWelcome: true, seenVersion: "0.0.1" } }));
     ok(ko.$("view").textContent.includes("Sidequest has leveled up!") && ko.$("view").textContent.includes("You are now questing in version " + ver + "."), "an older seen version shows the banner with the current version");
-  ok(!!ko.d.querySelector('.updatebanner a[href="https://samoff.com/sidequest/patch-notes.html"]'), "the banner links to the patch notes page");
+  const opened = []; ko.w.open = function (u) { opened.push(u); };
+  const banBtns = [...ko.d.querySelectorAll(".updatebanner .actions button")].map(b => b.textContent);
+  ok(banBtns.join() === "Patch notes,Dismiss" && !ko.d.querySelector(".updatebanner a"), "the banner has a Patch notes button to the left of Dismiss, and no link");
+  ko.click(ko.btn(ko.d.querySelector(".updatebanner"), "Patch notes"));
+  ok(opened[0] === "https://samoff.com/sidequest/patch-notes.html", "the Patch notes button opens the patch notes page");
   ko.click(ko.btn(ko.$("view"), "Dismiss"));
   ok(!ko.$("view").textContent.includes("Sidequest has leveled up!") && ko.saved().settings.seenVersion === ver, "Dismiss hides the banner and records the version");
   const kh = kit(await mk({ settings: { hideWelcome: true, seenVersion: "0.0.1" } }, { use: () => Promise.resolve(null) }));
@@ -2042,9 +2043,19 @@ async function exportClick(k, projectName) {
   ok(!!k.d.querySelector("svg.chart polyline.planned"), "the chart still draws its lines immediately when animation is off");
 }
 {
+  // The Welcome note is a post-it with its own corner fold, kept across redraws.
+  const k = kit(await mk());
+  const n = k.d.querySelector(".postitwrap > .welcomebox.posting"), b1 = n && (n.getAttribute("style").match(/--bend:(\d+)px/) || [])[1];
+  k.tab("projects"); k.tab("today");
+  const n2 = k.d.querySelector(".postitwrap > .welcomebox.posting");
+  ok(!!n && /^\d+$/.test(b1) && (n2.getAttribute("style").match(/--bend:(\d+)px/) || [])[1] === b1, "a Today notice has its own corner fold, and a redraw keeps it");
+}
+{
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   ok(!!k.d.querySelector("rect.burnreveal"), "Today's burndown has reveal rects when Animated burndown is on (default)");
+  const rects = [...k.d.querySelectorAll("rect.burnreveal")], dot = k.d.querySelector("circle.dot");
+  ok(!!dot && rects.some(r => +r.getAttribute("x") <= +dot.getAttribute("cx") - 5.5), "a reveal clip starts left of the first actual dot, so the dot is not cut in half");
 }
 {
   // The draw-in plays once per page visit: a repaint of the same page leaves the lines still, leaving and coming back plays it again.
@@ -2417,10 +2428,10 @@ async function exportClick(k, projectName) {
   // Confirmations name where each new item went
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
-  k.menuAct("newBtn", "newTask"); k.setField("quest", "pSite"); k.setField("what", "Scheduled task"); k.setField("due", (() => { const d = new Date(); return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) + 3 * 86400000).toISOString().slice(0, 10); })()); k.click(k.btn(k.$("modalBody"), "Add task"));
-  ok(/^“Scheduled task” added as a task to \w+ \d+ in Sample Website\. \(.+ to .+\.\)$/.test(k.$("toast").textContent), "a scheduled task's confirmation names its block and quest, with the date range (" + k.$("toast").textContent + ")");
+
+
   k.menuAct("newBtn", "newTask"); k.setField("quest", "pSite"); k.setField("what", "Unscheduled task"); k.click(k.btn(k.$("modalBody"), "Add task"));
-  ok(k.$("toast").textContent === "“Unscheduled task” added as a task to Sample Website’s backlog.", "a task with no due date says it went to the quest's backlog");
+  ok(k.$("toast").textContent === "“Unscheduled task” added as a task to Sample Website’s backlog.", "a new task says it went to the quest's backlog");
   k.menuAct("newBtn", "newStep"); k.setField("text", "Brand new step"); k.click(k.btn(k.$("modalBody"), "Add step"));
   ok(/^“Brand new step” added as a step to .+ in .+\.$/.test(k.$("toast").textContent), "a step's confirmation names its task and quest (" + k.$("toast").textContent + ")");
   k.menuAct("newBtn", "newDecision"); k.setField("q", "Which font?"); k.click(k.btn(k.$("modalBody"), "Add decision"));
@@ -2430,30 +2441,16 @@ async function exportClick(k, projectName) {
 }
 
 {
-  // New Task dialog: a start date alone is allowed, and the dialog says where the task will go
-  // Dates are built from this week's Monday, which is where the sample Website quest starts.
-  const nowD = new Date(), mon = Date.UTC(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() - ((nowD.getDay() + 6) % 7));
-  const iso = (k) => new Date(mon + k * 86400000).toISOString().slice(0, 10);
+  // New Task dialog: only the quest and the title; the task lands in the quest’s backlog
   const k = kit(await mk());
   k.click(k.$("welcomeDismiss"));
   k.menuAct("newBtn", "newTask");
-  k.setField("quest", "pSite"); k.setField("what", "Start only");
-  k.setField("start", iso(1)); k.fire(k.$("f-start"), "input");
-  const note = () => k.$("f-due").parentNode.nextSibling.textContent;
-  ok(note() === "A task with no due date goes to the quest’s backlog.", "entering a start date with no due date shows the backlog message right away (" + note() + ")");
-  k.setField("due", iso(8)); k.fire(k.$("f-due"), "input");
-  ok(note() === "", "the message goes away on its own once a due date is added");
-  k.setField("due", ""); k.fire(k.$("f-due"), "input");
-  ok(note() === "A task with no due date goes to the quest’s backlog.", "and comes back if the due date is cleared again");
+  k.setField("quest", "pSite"); k.setField("what", "Backlog only"); k.setField("notes", "Ask first");
+  ok(!k.$("f-start") && !k.$("f-due") && !k.$("f-est") && !k.$("f-done"), "the New task dialog has no date, estimate, or finish-line fields");
   k.click(k.btn(k.$("modalBody"), "Add task"));
-  const made = k.saved().tasks.find(x => x.what === "Start only");
-  ok(!!made && made.block === 0 && made.due === "" && made.start === iso(1), "the task is still created, in the Backlog, with its start date kept");
-  ok(k.$("toast").textContent === "“Start only” added as a task to Sample Website’s backlog.", "and the confirmation says it went to the backlog");
-  k.menuAct("newBtn", "newTask");
-  k.setField("quest", "pSite"); k.setField("what", "Bad order"); k.setField("start", iso(5)); k.setField("due", iso(2));
-  k.click(k.btn(k.$("modalBody"), "Add task"));
-  ok(k.$("modalBody").querySelector("p.errmsg") && !k.$("modalBody").querySelector("p.errmsg").textContent === false, "a refused date shows red under the dates");
-  ok(!k.saved().tasks.some(x => x.what === "Bad order") && k.$("f-start").parentNode.nextSibling.textContent.includes("You can’t begin after you finish!"), "a start after the due date is still refused");
+  const made = k.saved().tasks.find(x => x.what === "Backlog only");
+  ok(!!made && made.block === 0 && made.due === "" && made.start === "" && made.est === 0 && made.notes === "Ask first", "the task is created in the Backlog with no dates or estimate");
+  ok(k.$("toast").textContent === "“Backlog only” added as a task to Sample Website’s backlog.", "and the confirmation says it went to the backlog");
 }
 {
   // The Welcome box's Open Options button lands on Start fresh
@@ -2474,18 +2471,6 @@ async function exportClick(k, projectName) {
   };
   const k = kit(await mk(saved));
   k.click(k.$("welcomeDismiss"));
-  // New Task dialog
-  const tryTask = (due, start) => { k.menuAct("newBtn", "newTask"); k.setField("quest", "pT"); k.setField("what", "Probe"); k.setField("due", due || ""); k.setField("start", start || ""); k.click(k.btn(k.$("modalBody"), "Add task")); const ms = [...k.$("modalBody").querySelectorAll("p.msg")].filter(x => x.textContent); const m = ms[0]; return m ? m.textContent : ""; };
-  ok(tryTask("2026-07-20") === "This quest starts Aug 3, 2026. Choose a due date on or after that.", "a due date before the quest starts says when the quest starts");
-  k.click(k.btn(k.$("modalBody"), "Cancel"));
-  ok(tryTask("2026-09-10") === "This quest is due Aug 31, 2026. Choose a due date on or before then.", "a due date after the quest's due date is refused with that date");
-  k.click(k.btn(k.$("modalBody"), "Cancel"));
-  ok(tryTask("2026-08-20", "2026-07-20") === "This quest starts Aug 3, 2026. Choose a start date on or after that.", "a start date before the quest starts says when the quest starts");
-  k.click(k.btn(k.$("modalBody"), "Cancel"));
-  ok(tryTask("2026-08-20", "2026-08-25") === "You can’t begin after you finish! Choose a start date on or before the due date.", "a start after the due date has its own message");
-  k.click(k.btn(k.$("modalBody"), "Cancel"));
-  tryTask("2026-08-31");
-  ok(k.saved().tasks.some(x => x.what === "Probe" && x.due === "2026-08-31"), "a due date on the quest's due date itself is allowed");
   // Tasks detail pane
   k.tab("schedule");
   k.click([...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Dated task")));
@@ -2513,25 +2498,6 @@ async function exportClick(k, projectName) {
   set("task-est", "49");
   ok(t().est === 49 && k.$("toast").textContent === "Estimated time saved.", "49 hours on a two-day task still saves, with a plain toast (the warning is not repeated in it)");
   ok(k.$("view").textContent.includes("49 h exceeds the time between these dates (24 h/day)."), "and the warning stays under the fields");
-  // dates are checked live in the New Task dialog, start included
-  k.menuAct("newBtn", "newTask"); k.setField("quest", "pT");
-  const live = () => [...k.$("modalBody").querySelectorAll("p.msg")].map(x => x.textContent).filter(Boolean).join(" | ");
-  k.setField("start", "2026-09-10"); k.fire(k.$("f-start"), "input");
-  ok(k.$("f-start").parentNode.nextSibling.textContent === "This quest is due Aug 31, 2026. Choose a start date on or before then.", "a start date past the quest’s due date is flagged as soon as it is entered");
-  k.setField("start", "2026-07-01"); k.fire(k.$("f-start"), "input");
-  ok(live().includes("This quest starts Aug 3, 2026. Choose a start date on or after that."), "a start date before the quest begins is flagged as soon as it is entered");
-  k.setField("start", "2026-08-20"); k.setField("due", "2026-08-10"); k.fire(k.$("f-due"), "input");
-  ok(live().startsWith("You can’t begin after you finish!"), "a start after the due date is flagged as soon as both are entered");
-  k.setField("start", "2026-07-01"); k.setField("due", "2026-09-20"); k.setField("est", "3000"); k.fire(k.$("f-est"), "input");
-  ok(k.$("f-start").parentNode.nextSibling.textContent.includes("This quest starts Aug 3, 2026") && k.$("f-due").parentNode.nextSibling.textContent.includes("This quest is due Aug 31, 2026") && k.$("f-est").parentNode.nextSibling.textContent.includes("3000 h exceeds"), "a bad start, due date and estimate all show at once, each under its own field");
-  k.click(k.btn(k.$("modalBody"), "Cancel"));
-  // same rule in the New Task dialog
-  k.menuAct("newBtn", "newTask"); k.setField("quest", "pT"); k.setField("start", "2026-08-10"); k.setField("due", "2026-08-10"); k.setField("est", "25"); k.fire(k.$("f-est"), "input");
-  ok(k.$("f-est").parentNode.nextSibling.textContent.startsWith("25 h exceeds the time between these dates (24 h/day)."), "the New Task dialog warns as the estimate is typed");
-  k.setField("est", "24"); k.fire(k.$("f-est"), "input");
-  ok(k.$("f-est").parentNode.nextSibling.textContent === "", "and the warning clears when it fits");
-  k.setField("est", "30"); k.setField("what", "Big one"); k.click(k.btn(k.$("modalBody"), "Add task"));
-  ok(k.saved().tasks.some(x => x.what === "Big one" && x.est === 30), "an over-long estimate still saves");
 }
 
 {
@@ -2568,8 +2534,8 @@ async function exportClick(k, projectName) {
   const k = kit(await mk(saved));
   k.menuAct("newBtn", "newTask");
   ok([...k.$("f-quest").options].some(o => o.value === "c1"), "the New task picker offers a Candidate quest");
-  k.setField("quest", "c1"); k.setField("what", "Dated candidate task"); k.setField("due", "2026-08-12"); k.click(k.btn(k.$("modalBody"), "Add task"));
-  ok(k.saved().tasks.some(t => t.what === "Dated candidate task" && t.questId === "c1" && t.block > 0), "a dated task can be added to a Candidate quest");
+  k.setField("quest", "c1"); k.setField("what", "Dated candidate task"); k.click(k.btn(k.$("modalBody"), "Add task"));
+  ok(k.saved().tasks.some(t => t.what === "Dated candidate task" && t.questId === "c1"), "a task can be added to a Candidate quest");
   k.menuAct("newBtn", "newStep"); k.setField("text", "A step"); k.click(k.btn(k.$("modalBody"), "Add step"));
   ok(k.saved().tasks.find(t => t.what === "Dated candidate task").steps.length === 1, "and a step can be added to that task");
   k.tab("today");
@@ -3165,6 +3131,246 @@ async function exportClick(k, projectName) {
   k.click(k.$("modalBody").querySelector("[data-term=\"quest-giver\"]")); k.click(k.$("modalClose"));
   enter(k.$("f-name"));
   ok(named("Third one") === 1 && named("First one") === 1 && named("Second one") === 1, "Enter still submits a dialog that came back from under a help box");
+}
+{
+  // Every finished task dings, including the one that finishes its quest.
+  const saved = (audio, both) => ({
+    settings: { audio },
+    quests: [{ id: "pT", name: "Ding Quest", status: "active", start: "2026-08-03", days: 7 }],
+    tasks: [{ id: "tA", block: 1, questId: "pT", what: "First", done: "d", status: "Not started", steps: [] }].concat(both ? [{ id: "tB", block: 1, questId: "pT", what: "Second", done: "d", status: "Not started", steps: [] }] : [])
+  });
+  const finish = async (audio, both) => {
+    const k = kit(await mk(saved(audio, both)));
+    const plays = [], RealAudio = k.w.Audio;
+    k.tab("schedule"); k.click(k.d.querySelector("#view .listpane .item"));
+    k.w.Audio = function (src) { plays.push(src); const o = { play: function () { return Promise.resolve(); } }; Object.defineProperty(o, "volume", { set: function (v) { if (/completeTask/.test(src)) plays.push("vol " + v); } }); return o; };
+    const sel = selRow(k); sel.value = "Completed"; k.fire(sel);
+    k.w.Audio = RealAudio;
+    return plays;
+  };
+  const dings = await finish(true, true), off = await finish(false, true), last = await finish(true, false);
+  ok(dings.length === 2 && dings[0] === "../assets/sfx/completeTask.mp3" && dings[1] === "vol 0.5", "completing a task plays the task sound at half volume (" + dings.join() + ")");
+  ok(off.length === 0, "completing a task is silent when Sound effects is off");
+  ok(last.indexOf("../assets/sfx/completeTask.mp3") >= 0 && last.indexOf("../assets/sfx/complete.mp3") >= 0, "the task that finishes a quest plays both the task sound and the quest sound (" + last.join() + ")");
+}
+{
+  // Quest page and dialog behavior: a task due with no start begins today, the page locks behind a dialog,
+  // a new task is scrolled to, and leaving a quest closes its open task.
+  const n = new Date(), today = new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())).toISOString().slice(0, 10);
+  const saved = {
+    settings: { hideWelcome: true },
+    quests: [{ id: "pQ", name: "Dialog Quest", status: "active", start: "2020-01-01", days: 7 }],
+    tasks: [{ id: "tQ", block: 1, questId: "pQ", what: "Existing task", done: "d", status: "Not started", steps: [] }]
+  };
+  const add = async (what) => {
+    const k = kit(await mk(saved));
+    k.tab("projects"); k.click(k.btn(k.$("view"), "Dialog Quest"));
+    // Fake geometry: the sticky header ends at 60 and the new task's row sits at 500.
+    const hit = []; k.w.scrollTo = function (x, y) { hit.push(y); };
+    k.w.Element.prototype.getBoundingClientRect = function () { const bar = this.classList.contains("topbar"), mine = this.id.indexOf("ptask-") === 0 && this.textContent.includes(what); return { top: mine ? 500 : 0, bottom: bar ? 60 : 0 }; };
+    k.click(k.btn(k.$("view"), "Add task"));
+    const locked = k.d.body.style.position === "fixed";
+    k.setField("what", what);
+    k.click(k.btn(k.$("modalBody"), "Add task"));
+    await new Promise(r => setTimeout(r, 20));
+    return { k, locked, hit, task: k.saved().tasks.find(t => t.what === what) };
+  };
+  const a = await add("Due later");
+
+
+
+  ok(a.locked && a.k.d.body.style.position === "", "the page is frozen while a dialog is open and freed when it closes");
+  ok(a.hit[a.hit.length - 1] === 420, "a task added from its quest page scrolls to 20px below the header (" + a.hit.join() + ")");
+  const k = kit(await mk(saved));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Dialog Quest")); k.click(k.d.querySelector("#ptask-tQ button.item"));
+  ok(k.d.querySelector("#ptask-tQ button.item").getAttribute("aria-expanded") === "true", "a task opens on its quest page");
+  k.tab("today"); k.tab("projects"); k.click(k.btn(k.$("view"), "Dialog Quest"));
+  ok(k.d.querySelector("#ptask-tQ button.item").getAttribute("aria-expanded") === "false", "leaving a quest closes its open task");
+}
+{
+  // Phone fields: a country code select beside the number, formatted on blur, saved as one string with its +code.
+  const saved = {
+    settings: { hideWelcome: true, contact: { name: "Ada", company: "", phone: "8055593005", email: "", address: "", website: "" } },
+    quests: [{ id: "pPh", name: "Phone Quest", status: "active", start: "2026-08-03", days: 7, client: { org: "", poc: "", phone: "8055593005", email: "", address: "", website: "", coin: "", per: "Hour" } }],
+    tasks: []
+  };
+  const k = kit(await mk(saved));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Phone Quest"));
+  const num = k.$("giver-phone-pPh"), sel = () => num.parentNode.querySelector("select"), giverPhone = () => k.saved().quests[0].client.phone;
+  ok(sel().value === "1" && num.value === "(805) 559-3005" && giverPhone() === "8055593005", "an older bare number shows under +1, formatted, and is not rewritten until it is edited");
+  num.value = "2079460958"; k.fire(num, "input");
+  ok(giverPhone() === "+1 2079460958" && num.value === "2079460958", "typing saves the number with its code and does not reformat while typing");
+  k.fire(num, "blur");
+  ok(num.value === "(207) 946-0958" && giverPhone() === "+1 (207) 946-0958", "leaving the field formats a 10-digit +1 number");
+  num.value = "(805) 555-3005 x12"; k.fire(num, "blur");
+  ok(num.value === "(805) 555-3005 x12" && giverPhone() === "+1 (805) 555-3005 x12", "an extension is kept after the formatted number");
+  sel().value = "44"; k.fire(sel(), "change");
+  num.value = "20 7946 0958"; k.fire(num, "blur");
+  ok(giverPhone() === "+44 20 7946 0958" && num.value === "20 7946 0958" && k.saved().settings.dialCode === "44", "another country code leaves the number as typed and is remembered");
+  num.value = "+81 3 1234 5678"; k.fire(num, "blur");
+  ok(sel().value === "81" && num.value === "3 1234 5678" && giverPhone() === "+81 3 1234 5678", "a number pasted with its own +code moves the code into the select");
+  num.value = "+999 123"; k.fire(num, "blur");
+  ok(giverPhone() === "+999 123", "an unknown +code is saved as typed");
+  num.value = ""; k.fire(num, "blur");
+  ok(giverPhone() === "", "an empty number saves as empty, with no lone code");
+  k.menuAct("newBtn", "newQuest");
+  ok(k.$("modalBody").querySelector("#f-giverPhone").parentNode.querySelector("select").value === "81", "a new phone field starts on the code last chosen");
+  const bad = kit(await mk({ settings: { dialCode: "zz" } }));
+  ok(bad.saved().settings.dialCode === "1", "an invalid saved country code falls back to +1");
+  const ex = await exportClick(kit(await mk({ settings: { contact: { company: "Acme Co.", name: "", phone: "+1 (805) 555-3005 x12", email: "", address: "", website: "" } }, quests: [{ id: "pX", name: "Ext Quest", status: "active", start: "2026-08-03", days: 7 }], tasks: [] })), "Ext Quest");
+  ok(ex.html.includes('<a href="tel:+18055553005">+1 (805) 555-3005 x12</a>'), "the export's tel: link keeps the + and leaves the extension off");
+}
+{
+  // Email fields: only a valid address (or none) is saved, and a bad one is reported on blur, never while typing.
+  const saved = {
+    settings: { hideWelcome: true, contact: { name: "Ada", company: "", phone: "", email: "", address: "", website: "" } },
+    quests: [{ id: "pEm", name: "Email Quest", status: "active", start: "2026-08-03", days: 7, client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } }],
+    tasks: []
+  };
+  const k = kit(await mk(saved));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Email Quest"));
+  const em = k.$("giver-email-pEm"), note = () => em.parentNode.querySelector("p.emailmsg"), giverEmail = () => k.saved().quests[0].client.email;
+  em.value = "not-an-email"; k.fire(em, "input");
+  ok(giverEmail() === "" && note().textContent === "", "a half-typed address is not saved and shows no message while typing");
+  k.fire(em, "blur");
+  ok(giverEmail() === "" && note().textContent.startsWith("Not saved.") && note().classList.contains("errmsg"), "leaving the field with a bad address says it was not saved, in red");
+  em.value = "jordan@example.com"; k.fire(em, "input");
+  ok(giverEmail() === "jordan@example.com" && note().textContent === "", "a valid address saves and clears the message");
+  em.value = ""; k.fire(em, "input");
+  ok(giverEmail() === "", "clearing the field saves an empty address");
+  for (const bad of ["a@b", "a b@c.com", "@c.com", "a@@c.com", "a@c.c"]) ok(!(function () { em.value = bad; k.fire(em, "input"); return giverEmail() === bad; })(), "“" + bad + "” is not accepted");
+  em.value = "first.last+tag@mail.example.co.uk"; k.fire(em, "input");
+  ok(giverEmail() === "first.last+tag@mail.example.co.uk", "a plus tag and a multi-part domain are accepted");
+  k.tab("settings"); k.click(k.btn(k.$("view"), "Adventurer") || k.d.querySelector("#view .setside button.item"));
+  const se = k.$("set-contact-email");
+  se.value = "ada@"; k.fire(se, "input"); k.fire(se, "blur");
+  ok(k.saved().settings.contact.email === "" && se.parentNode.querySelector("p.emailmsg").textContent.startsWith("Not saved."), "Settings refuses a bad email the same way");
+  se.value = "ada@example.com"; k.fire(se, "input");
+  ok(k.saved().settings.contact.email === "ada@example.com", "and saves a good one");
+  k.menuAct("newBtn", "newQuest"); k.setField("name", "Needs email"); k.setField("giverEmail", "oops");
+  k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
+  ok(!k.$("overlay").hidden && k.$("modalBody").textContent.includes("Quest giver email isn’t an address") && !k.saved().quests.some(q => q.name === "Needs email"), "the New quest dialog refuses a bad Quest giver email and says which field");
+  k.setField("giverEmail", "ok@example.com"); k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
+  ok(k.$("overlay").hidden && k.saved().quests.find(q => q.name === "Needs email").client.email === "ok@example.com", "a good one goes through");
+  const ex = await exportClick(kit(await mk({ settings: { contact: { company: "Acme Co.", name: "", phone: "", email: "not an address", address: "", website: "" } }, quests: [{ id: "pE2", name: "Old Email Quest", status: "active", start: "2026-08-03", days: 7 }], tasks: [] })), "Old Email Quest");
+  ok(ex.html.includes("<div>not an address</div>") && !ex.html.includes("mailto:not"), "an older, invalid email prints in the export as plain text, not a mailto link");
+}
+{
+  // Country layouts: a number that fits its country's layout exactly is reflowed (a trunk 0 dropped); anything else stays as typed.
+  const saved = {
+    settings: { hideWelcome: true },
+    quests: [{ id: "pLy", name: "Layout Quest", status: "active", start: "2026-08-03", days: 7, client: { org: "", poc: "", phone: "", email: "", address: "", website: "", coin: "", per: "Hour" } }],
+    tasks: []
+  };
+  const k = kit(await mk(saved));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Layout Quest"));
+  const num = k.$("giver-phone-pLy"), sel = num.parentNode.querySelector("select");
+  const run = (code, typed) => { sel.value = code; k.fire(sel, "change"); num.value = typed; k.fire(num, "blur"); return num.value; };
+  const cases = [
+    ["1", "1 805 559 3005", "(805) 559-3005"], ["1", "805.559.3005", "(805) 559-3005"],
+    ["44", "07700 900123", "7700 900123"], ["44", "020 7946 0958", "20 7946 0958"], ["44", "0330 123 4567", "330 123 4567"], ["44", "01632 960001", "01632 960001"],
+    ["33", "06 12 34 56 78", "6 12 34 56 78"], ["34", "612345678", "612 345 678"], ["41", "044 123 45 67", "44 123 45 67"],
+    ["7", "8 495 123 45 67", "495 123-45-67"], ["7", "8 800 555 35 35", "800 555-35-35"],
+    ["91", "098765 43210", "98765 43210"], ["81", "090-1234-5678", "90 1234 5678"], ["81", "03-1234-5678", "3 1234 5678"], ["86", "13812345678", "138 1234 5678"],
+    ["55", "(11) 91234-5678", "11 91234 5678"], ["55", "(21) 2345-6789", "21 2345 6789"], ["52", "5512345678", "55 1234 5678"], ["52", "6621234567", "662 123 4567"],
+    ["61", "0412 345 678", "412 345 678"], ["61", "02 1234 5678", "2 1234 5678"], ["972", "050-123-4567", "50 123 4567"], ["971", "04 123 4567", "4 123 4567"],
+    ["65", "91234567", "9123 4567"], ["852", "9123 4567", "9123 4567"], ["27", "082 123 4567", "82 123 4567"], ["234", "0803 123 4567", "803 123 4567"],
+    ["44", "20 7946", "20 7946"], ["33", "12345", "12345"], ["49", "030 12345678", "030 12345678"], ["1", "555-CALL-NOW", "555-CALL-NOW"], ["39", "06 1234 5678", "06 1234 5678"]
+  ];
+  cases.forEach(([code, typed, want]) => { const got = run(code, typed); ok(got === want, "+" + code + " “" + typed + "” shows as “" + got + "”" + (got === want ? "" : ", wanted “" + want + "”")); });
+  ok(k.$("giver-email-pLy").parentNode.parentNode.classList.contains("full"), "the email field takes the full width, so its message does too");
+}
+{
+  // Status pulldown on every task row; the detail no longer has one.
+  const k = kit(await mk({ settings: { hideWelcome: true } }));
+  k.tab("schedule");
+  const rows = [...k.d.querySelectorAll("#view .tlist li")].filter(li => li.querySelector(".item"));
+  ok(rows.length > 5 && rows.every(li => li.classList.contains("hasstatus") && li.querySelector("button.item") && li.querySelector("select.rowstatus")), "every task row on the Tasks page has a status pulldown beside its button");
+  ok(rows.every(li => !li.querySelector(".item .chip[data-v]")), "and no status chip inside the row");
+  ok(!k.d.querySelector(".detailpane select.status") && !!k.d.querySelector(".detailpane .chip[data-v]"), "the Tasks detail pane shows the status as a chip, not a pulldown");
+  const first = rows[0].querySelector("select.rowstatus"), id = first.getAttribute("data-task");
+  first.value = "Completed"; k.fire(first);
+  ok(k.saved().tasks.find(t => t.id === id).status === "Completed" && k.d.querySelector('select.rowstatus[data-task="' + id + '"]').value === "Completed", "changing a row's pulldown completes the task without opening it");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
+  const qrows = [...k.d.querySelectorAll("#view .questmain .tlist:not(.sectionlist) li")].filter(li => li.querySelector(".item"));
+  ok(qrows.length > 3 && qrows.every(li => li.querySelector("select.rowstatus")), "quest page rows, including Before you launch, have one too");
+  k.click(qrows[0].querySelector(".item"));
+  ok(!k.d.querySelector("#view .questmain .detail select.status") && !k.d.querySelector("#view .questmain .detail .chip[data-v]"), "an opened task has no second status control");
+}
+{
+  // Duplicate quest names are refused where a name is chosen, ignoring case; imports number themselves.
+  const k = kit(await mk({ settings: { hideWelcome: true } }));
+  k.menuAct("newBtn", "newQuest"); k.setField("name", "  sample app "); k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
+  ok(!k.$("overlay").hidden && k.$("modalBody").textContent.includes("A quest named “Sample App” already exists") && k.saved().quests.filter(q => q.name.toLowerCase().trim() === "sample app").length === 1, "the New quest dialog refuses a name that is taken, ignoring case and spaces");
+  { const nf = k.$("f-name").closest(".field").nextSibling; ok(!!nf && nf.getAttribute("role") === "alert" && nf.textContent === "A quest named “Sample App” already exists. Choose another name.", "and the message sits directly under the name field, with the new wording"); }
+  k.setField("name", "Brand new"); k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
+  ok(k.$("overlay").hidden && k.saved().quests.some(q => q.name === "Brand new"), "a free name goes through");
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Brand new"));
+  editTitle(k, "Sample Website");
+  ok(k.saved().quests.find(q => q.id === "pSite").name === "Sample Website" && k.saved().quests.some(q => q.name === "Brand new") && /already exists/.test(k.$("toast").textContent), "renaming to a taken name is refused with a message and changes nothing");
+  editTitle(k, "Brand newer");
+  ok(k.saved().quests.some(q => q.name === "Brand newer"), "renaming to a free name works");
+  k.menuAct("newBtn", "newIdea"); k.setField("text", "sample game"); k.click(k.btn(k.$("modalBody"), "Workshop it"));
+  k.tab("workshop"); k.click(k.btn([...k.d.querySelectorAll("#view .list li")].find(li => li.textContent.includes("sample game")), "Make candidate"));
+  ok(!k.saved().quests.some(q => q.name === "sample game") && /already exists/.test(k.$("toast").textContent) && k.saved().workshop.some(p => p.text === "sample game"), "Make candidate refuses a taken name and keeps the idea");
+}
+{
+  // A vaulted quest's name is free to reuse, but restoring it onto a live clash is refused.
+  const saved = { settings: { hideWelcome: true }, quests: [
+    { id: "pV", name: "Twin", status: "active", start: "2026-08-03", days: 7, vault: { at: "2026-08-01", why: "removed" } },
+    { id: "pL", name: "Other", status: "active", start: "2026-08-03", days: 7 }], tasks: [] };
+  const k = kit(await mk(saved));
+  k.menuAct("newBtn", "newQuest"); k.setField("name", "Twin"); k.click(k.btn(k.$("modalBody"), "Add candidate quest"));
+  ok(k.$("overlay").hidden && k.saved().quests.filter(q => q.name === "Twin").length === 2, "a name used only by a vaulted quest can be reused");
+  k.tab("vault"); k.click(k.btn([...k.d.querySelectorAll("#view li")].find(li => li.textContent.includes("Twin")), "Twin"));
+  k.click(k.btn(k.$("view"), "Restore"));
+  ok(k.saved().quests.find(q => q.id === "pV").vault !== null && /already exists/.test(k.$("toast").textContent), "restoring it while a live quest has that name is refused");
+}
+{
+  // An import onto a taken name gets a number.
+  const k = kit(await mk({ settings: { hideWelcome: true } }));
+  k.tab("settings");
+  const board = { name: "Sample App", cards: [{ id: "c1", name: "A card", desc: "", due: null, closed: false, idChecklists: [], idLabels: [], idMembers: [] }], checklists: [], labels: [], members: [] };
+  const input = k.$("importTrelloFile");
+  Object.defineProperty(input, "files", { value: [new k.w.File([JSON.stringify(board)], "b.json")], configurable: true });
+  k.fire(input, "change"); await new Promise(r => setTimeout(r, 40));
+  ok(k.$("modalBody").textContent.includes("named “Sample App (2).”") && k.$("modalBody").textContent.includes("a number is added"), "the import dialog says the quest will be numbered");
+  k.click(k.btn(k.$("modalBody"), "Import"));
+  ok(k.saved().quests.some(q => q.name === "Sample App (2)") && k.saved().quests.filter(q => q.name === "Sample App").length === 1, "the imported quest is saved as Sample App (2)");
+}
+{
+  // Chips on a Tasks row ride on the first line, and the Tasks list has no chip inside the clamped title.
+  const k = kit(await mk({ settings: { hideWelcome: true } }));
+  k.tab("schedule");
+  const bl = [...k.d.querySelectorAll("#view .tlist li")].find(li => li.querySelector(".chip.backlog"));
+  ok(!!bl && !!bl.querySelector(".l1 .l1chips .chip.backlog") && !bl.querySelector(".l2 .chip"), "a Backlog chip sits in the row's first line group, not in the title line");
+}
+{
+  // Every phone number in the export is a tel: link, on both sides of the letterhead.
+  const saved = {
+    settings: { contact: { company: "Acme Co.", name: "", phone: "+44 20 7946 0958", email: "", address: "", website: "" } },
+    quests: [{ id: "pT2", name: "Both Phones", status: "active", start: "2026-08-03", days: 7, client: { org: "Client Co.", poc: "", phone: "+1 (805) 559-3005", email: "", address: "", website: "", coin: "", per: "Hour" } }],
+    tasks: []
+  };
+  const { html } = await exportClick(kit(await mk(saved)), "Both Phones");
+  ok(html.includes('<a href="tel:+442079460958">+44 20 7946 0958</a>') && html.includes('<a href="tel:+18055593005">+1 (805) 559-3005</a>'), "the export links both the Prepared by and the Prepared for phone numbers");
+  const none = await exportClick(kit(await mk({ settings: { contact: { company: "Acme Co.", name: "", phone: "call after five", email: "", address: "", website: "" } }, quests: [{ id: "pT3", name: "Words Phone", status: "active", start: "2026-08-03", days: 7 }], tasks: [] })), "Words Phone");
+  ok(none.html.includes("<div>call after five</div>") && !none.html.includes('href="tel:"'), "a phone field with no digits prints as plain text, never an empty link");
+}
+{
+  // The folded task detail: no title or dates, and Done when sits between the estimate and Steps.
+  const k = kit(await mk({ settings: { hideWelcome: true } }));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
+  const row = [...k.d.querySelectorAll("#view .questmain .tlist:not(.sectionlist) .item")].find(b => b.textContent.includes("Build the sign-in flow"));
+  k.click(row);
+  const d = k.d.querySelector("#view .questmain .tlist:not(.sectionlist) .detail");
+  ok(!!d && !d.querySelector(".what") && !d.querySelector(".dmeta") && !d.querySelector(".editrow"), "an opened task has no title or date line of its own");
+  const kids = [...d.children], at = (f) => kids.findIndex(f);
+  const est = at(c => c.querySelector && !!c.querySelector("#task-est")), dw = at(c => c.tagName === "H3" && c.textContent === "Done when"), steps = at(c => c.tagName === "H3" && /^Steps/.test(c.textContent));
+  ok(est >= 0 && dw > est && steps > dw && kids[dw + 1].textContent === "People can sign up and log in", "Done when is a subtitle with its text under it, after the estimate and before Steps");
+  k.click(k.d.querySelector('#view .questmain button.rowpencil[data-task="a2"]'));
+  k.setField("what", ""); k.click(k.btn(k.$("modalBody"), "Save"));
+  ok(!k.$("overlay").hidden && k.$("modalBody").textContent.includes("A task needs a title.") && k.saved().tasks.find(t => t.id === "a2").what === "Build the sign-in flow", "the rename dialog refuses an empty title");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

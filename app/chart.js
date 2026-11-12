@@ -57,8 +57,9 @@ function renderBurn(host, wide, cfg) {
   var plannedHost = revealGroup("burnclip-planned-" + Math.random().toString(36).slice(2));
   plannedHost.appendChild(svgEl("polyline", { "class": "planned", points: pl.map(function (p, i) { return x(i) + "," + y(p); }).join(" ") }));
   // Actual only reaches its last recorded point, so its reveal stops there and the Forecast can start the moment it finishes.
+  // The clip starts 8px left of the axis so the first dot, centered on it, is not cut in half.
   var lastActual = -1; acts.forEach(function (a, i) { if (a !== null) lastActual = i; });
-  var actualHost = revealGroup("burnclip-actual-" + Math.random().toString(36).slice(2), undefined, lastActual >= 0 ? x(lastActual) - L + 8 : undefined);
+  var actualHost = revealGroup("burnclip-actual-" + Math.random().toString(36).slice(2), lastActual >= 0 ? L - 8 : undefined, lastActual >= 0 ? x(lastActual) - L + 16 : undefined);
   var seg = [];
   function flush() { if (seg.length > 1) actualHost.appendChild(svgEl("polyline", { "class": "actual", points: seg.join(" ") })); seg = []; }
   acts.forEach(function (a, i) { if (a === null) { flush(); return; } seg.push(x(i) + "," + y(a)); });

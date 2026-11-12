@@ -49,6 +49,55 @@ export function prepareSfx(src, volume) {
     try { a.currentTime = 0; var p = a.play(); if (p && typeof p.catch === "function") p.catch(function () {}); } catch (e) { /* no audio support */ }
   };
 }
+var sfxCtx = null, sfxClips = {};
+// One shared audio clock for sounds that must land on an animation frame. Null where Web Audio is missing.
+function sfxContext() {
+  try {
+    if (!sfxCtx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) sfxCtx = new AC(); }
+  } catch (e) { sfxCtx = null; }
+  return sfxCtx;
+}
+// Decodes a clip once, reading data: URIs directly so it works in a published artifact. Resolves to null on failure.
+export function warmSfx(src) {
+  var ctx = sfxContext();
+  if (!src || !ctx) return Promise.resolve(null);
+  if (sfxClips[src]) return sfxClips[src].promise;
+  var clip = sfxClips[src] = { buffer: null, lead: 0 };
+  clip.promise = new Promise(function (resolve) {
+    function decode(ab) {
+      var done = function (buf) {
+        // MP3 decoding leaves a little silence at the front; skip it so the first sound lands on time.
+        var d = buf.getChannelData(0), i = 0;
+        while (i < d.length && Math.abs(d[i]) < 0.02) i++;
+        clip.buffer = buf; clip.lead = i / buf.sampleRate; resolve(clip);
+      };
+      try { var p = ctx.decodeAudioData(ab, done, function () { resolve(null); }); if (p && p.then) p.then(done, function () { resolve(null); }); } catch (e) { resolve(null); }
+    }
+    try {
+      if (src.indexOf("data:") === 0) {
+        var bin = window.atob(src.slice(src.indexOf(",") + 1)), u8 = new Uint8Array(bin.length);
+        for (var n = 0; n < bin.length; n++) u8[n] = bin.charCodeAt(n);
+        decode(u8.buffer);
+      } else window.fetch(src).then(function (r) { return r.arrayBuffer(); }).then(decode, function () { resolve(null); });
+    } catch (e) { resolve(null); }
+  });
+  return clip.promise;
+}
+// Starts the clip once per delay (ms from now) on the audio clock. Returns a stop function, or null if not ready.
+export function scheduleSfx(src, volume, delaysMs) {
+  var ctx = sfxContext(), clip = src && sfxClips[src];
+  if (!ctx || !clip || !clip.buffer) { warmSfx(src); return null; }
+  try {
+    if (ctx.state === "suspended") ctx.resume();
+    var gain = ctx.createGain(); gain.gain.value = volume === undefined ? 1 : volume; gain.connect(ctx.destination);
+    var late = (ctx.outputLatency || ctx.baseLatency || 0), nodes = [];
+    delaysMs.forEach(function (ms) {
+      var s = ctx.createBufferSource(); s.buffer = clip.buffer; s.connect(gain);
+      s.start(Math.max(ctx.currentTime, ctx.currentTime + ms / 1000 - late), clip.lead); nodes.push(s);
+    });
+    return function () { nodes.forEach(function (s) { try { s.stop(); } catch (e) { /* already ended */ } }); };
+  } catch (e) { return null; }
+}
 // Cash-register money input: digits fill in from the cents, capped at 999,999.99. `style` is "us" or "eu" from the Options Coin format setting.
 function moneySeps(style) { return style === "eu" ? { group: ".", dec: "," } : { group: ",", dec: "." }; }
 export function formatMoney(n, style) {
@@ -93,6 +142,17 @@ export function moneyInput(input, onChange, style) {
     e.preventDefault(); apply(n);
   });
   return input;
+}
+// A plain check: something, an @, then a dotted domain ending in two or more letters, and no spaces.
+export function isEmail(s) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s); }
+// An email input that saves only a valid address (or none). A bad one is reported when the field loses focus, never while typing.
+export function emailField(id, value, onValid) {
+  var wrap = el("div"), inp = el("input", { type: "email", id: id, autocomplete: "off" }), msg = el("p", { "class": "msg emailmsg", role: "alert" });
+  inp.value = value;
+  on(inp, "input", function () { var v = inp.value.trim(); if (!v || isEmail(v)) { setMsg(msg, "", ""); onValid(v); } });
+  on(inp, "blur", function () { var v = inp.value.trim(); if (v && !isEmail(v)) setMsg(msg, "Not saved. Enter an address like name@example.com, or clear the field.", "error"); });
+  wrap.appendChild(inp); wrap.appendChild(msg);
+  return wrap;
 }
 // A pencil icon button: the app's one affordance for "change this text".
 var PENCIL = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';

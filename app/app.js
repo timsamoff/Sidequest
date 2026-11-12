@@ -1,10 +1,10 @@
 import { state, ui, save, changed, autoVault, purgeOldVault, APP_NAME, APP_VERSION, loadFromDbIfAvailable, checkForAppUpdate, pickAffirmation } from "./state.js";
-import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest, lateTasks } from "./model.js";
+import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest, lateTasks, questNameTaken } from "./model.js";
 import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline, playSfx, inClaude, isStandalone } from "./dom.js";
 import { TODAY } from "./dates.js";
 import { renderJobs } from "./errands.js";
 import { renderHelp } from "./help.js";
-import { renderQuestPage } from "./quest-page.js";
+import { alignStatuses, renderQuestPage } from "./quest-page.js";
 import { renderSettings, setDeferredInstallPrompt, setInstalledThisSession } from "./settings.js";
 import { renderToday, renderSchedule, renderQuests, renderWorkshop, renderVault, renderTimeline, setAvailableUpdateVersion } from "./views.js";
 import { renderSearch, openSearch, closeSearch, wireSearchInput, focusSearch } from "./search.js";
@@ -79,7 +79,11 @@ function renameCurrentQuest() {
   $("renameBtn").hidden = true;
   editInline($("viewTitle"), {
     label: "Quest name", max: 120, value: function () { return p.name; },
-    onSave: function (v) { p.name = v.slice(0, 120); changed(); },
+    onSave: function (v) {
+      var other = questNameTaken(v, p.id);
+      if (other) { notify("A quest named “" + other.name + "” already exists. Choose another name.", null, "problem"); return; }
+      p.name = v.slice(0, 120); changed();
+    },
     onEmpty: function () { notify("A quest needs a title.", null, "problem"); },
     onDone: function () { $("renameBtn").hidden = false; }
   });
@@ -123,10 +127,15 @@ if (!isStandaloneApp && typeof window.matchMedia === "function") {
   }
 }
 
+// The quest page showing on the last draw, so leaving it can close its open task.
+var lastQuestView = null;
 export function renderView() {
   var root = $("view"); root.innerHTML = "";
   if (ui.view.indexOf("quest:") === 0 && !validPage(ui.view)) ui.view = "projects";
   noteBurnView(ui.view);
+  var questView = ui.view.indexOf("quest:") === 0 ? ui.view : null;
+  if (lastQuestView && lastQuestView !== questView) ui.questOpen = {};
+  lastQuestView = questView;
   root.className = "content";
   if (ui.view === "today") renderToday(root);
   else if (ui.view === "schedule") renderSchedule(root);
@@ -140,6 +149,7 @@ export function renderView() {
   else if (ui.view.indexOf("quest:") === 0) renderQuestPage(root, ui.view.slice(6));
   else renderTimeline(root);
   renderChrome();
+  alignStatuses(root);
   if (focusKey) { var f = document.querySelector('[data-focus="' + focusKey + '"]'); if (f) f.focus(); setFocusKey(null); }
 }
 export function renderAll() { renderView(); }
@@ -246,6 +256,9 @@ Promise.resolve().then(function () {
     if (!$("overlay").hidden) return;
     window.location.reload();
   }
+  // The status pulldowns on task rows follow their titles when the width changes or the fonts arrive.
+  window.addEventListener("resize", function () { alignStatuses($("view")); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { alignStatuses($("view")); });
   document.addEventListener("visibilitychange", reloadOnNewDay);
   window.addEventListener("focus", reloadOnNewDay);
 

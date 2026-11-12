@@ -4,7 +4,7 @@ import { playConfetti } from "./confetti.js";
 import { TODAY, iso } from "./dates.js";
 import { closeModal, confirmDialog, openModal } from "./dialogs.js";
 import { el, notify, on, playSfx } from "./dom.js";
-import { activeQuests, findQuest, isPinned, liveQuests, questRemainingUnits, questTasksAllDone, questTotalUnits, recordHist, remainingUnits, short, totalUnits } from "./model.js";
+import { activeQuests, questNameTaken, findQuest, isPinned, liveQuests, questRemainingUnits, questTasksAllDone, questTotalUnits, recordHist, remainingUnits, short, totalUnits } from "./model.js";
 import { changed, removeLinksTo, removeQuestTasks, save, state } from "./state.js";
 import { KIND_LABEL } from "./views.js";
 
@@ -118,6 +118,7 @@ export function dropEntry(e) {
 }
 
 export function restoreEntry(e) {
+  if (e.kind === "quest" && questNameTaken(e.item.name, e.item.id)) { notify("A quest named “" + e.item.name + "” already exists. Rename that one first, then restore this one.", null, "problem"); return; }
   e.item.vault = null;
   // Reverses vaultQuest()'s task cascade, or the quest comes back empty.
   if (e.kind === "quest") {

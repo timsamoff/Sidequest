@@ -81,8 +81,10 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .helpitem > summary .helpcount { font-weight: 400; color: var(--muted); font-size: var(--text-sm); }
 .helpitem > summary { padding: var(--space-12) var(--space-14); font-weight: 600; cursor: pointer; color: var(--ink); font-size: var(--text-100); }
 .hbody { padding: 0 var(--space-14) var(--space-12); }
-.hbody ul { margin: 0; padding-left: 1.2rem; }
-.hbody li { margin-top: var(--space-6); }
+/* Diamond bullets, drawn the way the landing site's lists are. */
+.hbody ul { list-style: none; margin: 0; padding: 0; }
+.hbody li { position: relative; padding-left: var(--space-18); margin-top: var(--space-6); }
+.hbody li::before { content: ""; position: absolute; left: 0; top: .6em; width: 7px; height: 7px; background: var(--brass); border-radius: 1px; transform: rotate(45deg); }
 /* Bold text inside a Field guide section is the dark blue; the section headings stay as they are. */
 .hbody b, .hbody strong { color: var(--planned); }
 kbd { font: inherit; font-size: .9em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 var(--space-6); background: var(--bg); }
@@ -143,14 +145,14 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .scrollhead:focus { outline: none; }
 /* The three Today notices (update, backup reminder, Welcome) each have their own --notice-* color in css/tokens.css. */
 .updatebanner .hint, .backupreminder .hint, .welcomebox .hint { color: var(--ink); }
-/* Pinned notices and tutorial card: a cream card with a brass pin; each notice keeps its own color as a top edge. */
-:is(.updatebanner, .backupreminder, .welcomebox, .tutorial) { position: relative; padding-top: var(--space-26); background: var(--card); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); box-shadow: var(--shadow-menu); }
-:is(.updatebanner, .backupreminder, .welcomebox, .tutorial)::before { content: ""; position: absolute; top: var(--space-9); left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--clasp-brass) 60%, white), var(--clasp-brass) 55%, var(--clasp-brass-edge)); box-shadow: var(--shadow-pin); }
-.updatebanner { border-top: 5px solid var(--notice-update); }
-.backupreminder { border-top: 5px solid var(--notice-backup); }
-.welcomebox { border-top: 5px solid var(--notice-welcome); }
-.updatebanner { background: var(--notice-update-bg); }
-.backupreminder { background: var(--notice-backup-bg); }
+/* The tutorial card: cream, with a brass pin. */
+.tutorial { position: relative; padding-top: var(--space-26); background: var(--card); border: 1px solid color-mix(in srgb, var(--brass) 55%, var(--line)); box-shadow: var(--shadow-menu); }
+.tutorial::before { content: ""; position: absolute; top: var(--space-9); left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--clasp-brass) 60%, white), var(--clasp-brass) 55%, var(--clasp-brass-edge)); box-shadow: var(--shadow-pin); }
+/* The three Today notices are post-it notes: the Workshop's .posting card with no offset, in a .postitwrap that casts the shadow. */
+/* Each keeps its color as a top edge; the tinted ones set --card, which is the posting's fill. */
+.postitwrap > .updatebanner { border-top: 5px solid var(--notice-update); --card: var(--notice-update-bg); }
+.postitwrap > .backupreminder { border-top: 5px solid var(--notice-backup); --card: var(--notice-backup-bg); }
+.postitwrap > .welcomebox { border-top: 5px solid var(--notice-welcome); }
 /* Workshop ideas: parchment cards pinned to a board. */
 .list.pinboard { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: var(--space-18); background: transparent; border: 0; border-radius: 0; padding: var(--space-8) 0 0; }
 .list.pinboard > li.posting, .list.pinboard > li.posting:last-child { padding: var(--space-30) var(--space-20) var(--space-20); border-bottom: 1px solid transparent; }
@@ -219,7 +221,8 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .item .l1 { color: var(--muted); font-size: var(--text-sm); }
 .item .l1 b { color: var(--ink); font-weight: 600; }
 /* A date line with a tag pinned to its right end. */
-.item .l1.split { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-8); }
+.item .l1chips { display: inline-flex; flex-wrap: wrap; gap: var(--space-4) var(--space-6); }
+.item .l1.split { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--space-2) var(--space-8); }
 .item .l2 { margin-top: var(--space-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .item.done .l2 { color: var(--muted); }
 .item .l3 { margin-top: var(--space-6); display: flex; gap: var(--space-8); align-items: center; flex-wrap: wrap; font-size: var(--text-sm); color: var(--muted); }
@@ -234,6 +237,20 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .detail .what { font-family: var(--font-serif); font-size: calc(1.25rem + 1px); font-weight: 400; line-height: 1.3; margin-top: var(--space-8); }
 .detail .dmeta { color: var(--muted); margin-top: var(--space-4); }
 select.status { border: 1px solid var(--line); border-radius: var(--radius-pill); padding: var(--space-5) var(--space-12); min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
+/* A task row's status pulldown sits beside the row's button, on the title line; alignStatuses() sets its top. */
+/* The row is the container, so a narrow column on a wide screen gets the compact layout too. */
+.tlist li.hasstatus { position: relative; container-type: inline-size; }
+select.rowstatus { position: absolute; top: calc(var(--row-l2, 40px) - 4px); right: var(--space-14); z-index: 1; width: 124px; min-height: 32px; padding: var(--space-2) var(--space-10); font-size: var(--text-sm); }
+button.rowpencil { position: absolute; z-index: 1; top: calc(var(--row-l2, 40px) - 3px); right: calc(var(--space-14) + 132px); }
+.tlist li.hasstatus > .item .l2 { padding-right: 172px; }
+@container (max-width: 460px) {
+  select.rowstatus { width: 122px; padding: var(--space-2) var(--space-4) var(--space-2) var(--space-8); font-size: .85rem; }
+  button.rowpencil { top: calc(var(--row-l1, 12px) - 8px); right: var(--space-8); }
+  .tlist li.hasstatus > .item .l1 { padding-right: 36px; }
+  .tlist li.hasstatus > .item .l2 { padding-right: 134px; }
+}
+/* A long title with no spaces breaks anywhere instead of running off the card. */
+.item, .detail, .what, .ptitle, .jobtext, .notetext, #viewTitle, .standing li, .list li { overflow-wrap: anywhere; }
 select.status[data-v="Not started"] { background: var(--badge-pending-bg); color: var(--badge-pending); }
 select.status[data-v="In progress"] { background: var(--badge-active-bg); color: var(--badge-active); }
 select.status[data-v="Completed"] { background: var(--badge-done-bg); color: var(--badge-done); }
@@ -282,6 +299,12 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 640px) { .setgrid { grid-template-columns: minmax(0, 1fr); } }
 .about p { margin-top: var(--space-2); }
 .radiorow { display: flex; gap: var(--space-10); align-items: flex-start; margin-top: var(--space-10); cursor: pointer; }
+/* A country code select beside the number: the select takes its own width, the number takes the rest. */
+.emailmsg { margin-top: var(--space-4); min-height: 0; }
+.emailmsg:empty { display: none; }
+.phonerow { display: flex; gap: var(--space-8); }
+.phonerow select.plain { flex: none; width: auto; }
+.phonerow input { flex: 1 1 auto; min-width: 0; }
 select.plain { background: var(--control-bg); border: 1px solid var(--control-line); border-radius: var(--radius-input); padding: var(--space-7) var(--space-10); min-height: var(--control-height); max-width: 100%; width: 100%; }
 button.small.on { background: var(--sel); border-color: var(--planned); color: var(--planned); font-weight: 600; }
 

@@ -1,7 +1,7 @@
 /* Errands and the hand */
 import { fmtY, parseISO } from "./dates.js";
 import { closeModal, formDialog, openModal } from "./dialogs.js";
-import { editInline, el, focusKey, helpLink, notify, on, pencilButton, playSfx, prepareSfx, setFocusKey, uid, setMsg } from "./dom.js";
+import { editInline, el, focusKey, helpLink, notify, on, pencilButton, playSfx, prepareSfx, scheduleSfx, setFocusKey, uid, setMsg, warmSfx } from "./dom.js";
 import { removeNow } from "./lifecycle.js";
 import { chosen, deckJobs, handJobs, isJobLate, openJobs, rerollPick } from "./model.js";
 import { changed, isISO, state } from "./state.js";
@@ -89,7 +89,7 @@ export var HAND = {
   label: "Your hand", edit: "Manage hand", empty: "Empty hand", done: "Done", up: "Up", down: "Down",
   reroll: "Reroll", roll: "Roll", pick: "Choose", discard: "Discard", deck: "Errands deck",
   none: "Nothing in your hand. Choose up to three errands to keep here.",
-  editorTitle: "Manage your hand", editorHint: "Choose up to three errands. Then put them in the order you want.",
+  editorTitle: "Manage your hand", editorHint: "Choose up to three errands and organize them. Discard to remove from your hand.",
   rerolled: "Hand rerolled.", rolled: "Hand rolled.", emptied: "Hand emptied.", needTwo: "Reroll needs at least two open errands.", needOne: "Roll needs at least one open errand."
 };
 
@@ -123,12 +123,13 @@ export function reduceMotion() {
   try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; }
 }
 
-export var flip = { anims: [], ghosts: [] };
+export var flip = { anims: [], ghosts: [], stops: [] };
 
 export function stopFlip() {
   flip.anims.forEach(function (a) { try { a.cancel(); } catch (e) { /* already gone */ } });
   flip.ghosts.forEach(function (g) { if (g.parentNode) g.parentNode.removeChild(g); });
-  flip = { anims: [], ghosts: [] };
+  flip.stops.forEach(function (stop) { stop(); });
+  flip = { anims: [], ghosts: [], stops: [] };
 }
 
 // Puts a new hand in place, flipping the cards over (and playing the landing sound) when animation is on. Reroll and its Undo both use it.
@@ -144,9 +145,12 @@ export function swapHand(ids, focusKey) {
   if (!cards.length) return;
   if (!animate || typeof cards[0].animate !== "function") { if (state.settings.audio) playSfx(REROLL_SFX, 0.25); return; }
   var ul = cards[0].parentNode, persp = "perspective(900px) ";
+  // Sounds go on the audio clock in the same tick the animations start, so each lands with its card.
+  var stopAll = state.settings.audio ? scheduleSfx(REROLL_SFX, 0.25, Array.prototype.map.call(cards, function (c, i) { return i * FLIP_GAP + 200 + 340; })) : null;
+  if (stopAll) flip.stops.push(stopAll);
   Array.prototype.forEach.call(cards, function (card, i) {
     var delay = i * FLIP_GAP, ghost = old[i];
-    var land = state.settings.audio ? prepareSfx(REROLL_SFX, 0.25) : null;
+    var land = state.settings.audio && !stopAll ? prepareSfx(REROLL_SFX, 0.25) : null;
     if (ghost) {
       ghost.classList.add("handghost"); ghost.setAttribute("aria-hidden", "true"); ghost.setAttribute("inert", "");
       Array.prototype.forEach.call(ghost.querySelectorAll("[data-focus]"), function (n) { n.removeAttribute("data-focus"); });
@@ -174,6 +178,7 @@ export function rerollHand() {
 }
 
 export function handSection(root, hand, open) {
+  if (state.settings.audio) warmSfx(REROLL_SFX);
   var head = el("div", { "class": "handhead" });
   head.appendChild(el("h2", { "class": "handlabel" }, HAND.label));
   var btns = el("div", { "class": "handbtns" });

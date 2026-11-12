@@ -3,7 +3,7 @@ import { go } from "./app.js";
 import { TODAY, addDays, iso, parseISO } from "./dates.js";
 import { closeModal, openModal } from "./dialogs.js";
 import { el, notify, on, uid, setMsg } from "./dom.js";
-import { blockForDate } from "./model.js";
+import { blockForDate, uniqueQuestName } from "./model.js";
 import { S, changed, makeQuest, st, state, task } from "./state.js";
 
 // Reads a Trello JSON board export into a plain summary. Labels, members, comments, attachments, and custom fields are dropped by design.
@@ -39,7 +39,7 @@ export function isISOInstant(v) { return typeof v === "string" && /^\d{4}-\d{2}-
 export function buildQuestFromTrello(summary) {
   var dues = summary.cards.map(function (c) { return c.due; }).filter(Boolean).sort();
   var start = dues.length ? dues[0] : iso(TODAY);
-  var p = makeQuest(uid(), S(summary.boardName, 120) || "Imported board", "active", { start: start });
+  var p = makeQuest(uid(), uniqueQuestName(S(summary.boardName, 120) || "Imported board"), "active", { start: start });
   var tasks = summary.cards.map(function (c) {
     var blk = 0, due = "";
     if (c.due) { var b = blockForDate(p.id, parseISO(c.due)); if (b !== null) { blk = b; due = c.due; } }
@@ -63,7 +63,8 @@ export function importTrelloFile(file, msg) {
     var nc = summary.cards.length, ns = summary.cards.reduce(function (n, c) { return n + c.steps.length; }, 0);
     openModal("Import “" + summary.boardName + "”?", function (body) {
       var lines = [nc + (nc === 1 ? " card" : " cards") + " and " + ns + (ns === 1 ? " checklist item" : " checklist items") + " were found."];
-      lines.push("This creates a new quest named “" + summary.boardName + ".” Your existing quests and tasks are not changed.");
+      var boardFinal = uniqueQuestName(S(summary.boardName, 120) || "Imported board");
+      lines.push("This creates a new quest named “" + boardFinal + ".” Your existing quests and tasks are not changed." + (boardFinal !== summary.boardName ? " A quest called “" + summary.boardName + "” already exists, so a number is added." : ""));
       if (summary.droppedCount) lines.push("Labels, members, comments, and attachments on this board are not imported.");
       lines.forEach(function (t, i) { body.appendChild(el("p", { "class": i === 0 ? "first" : "" }, t)); });
       var acts = el("div", { "class": "actions" });
@@ -152,7 +153,7 @@ export function resolveTodoistDate(v) {
 export function buildQuestFromTodoist(summary, name) {
   var dues = summary.items.map(function (c) { return c.due; }).filter(Boolean).sort();
   var start = dues.length ? dues[0] : iso(TODAY);
-  var p = makeQuest(uid(), S(name, 120) || "Imported from Todoist", "active", { start: start });
+  var p = makeQuest(uid(), uniqueQuestName(S(name, 120) || "Imported from Todoist"), "active", { start: start });
   var tasks = summary.items.map(function (c) {
     var blk = 0, due = "";
     if (c.due) { var b = blockForDate(p.id, parseISO(c.due)); if (b !== null) { blk = b; due = c.due; } }
@@ -177,7 +178,8 @@ export function importTodoistFile(file, msg) {
       lines.push("Completed tasks are not in this file, so only what is still open comes across.");
       if (summary.capped) lines.push("This file has 300 tasks, Todoist’s export limit, so some tasks may be missing from the file itself.");
       if (summary.hasSubtasks) lines.push("Subtasks come in as their own tasks, not nested under their parent.");
-      lines.push("This creates a new quest named “" + name + ".” Your existing quests and tasks are not changed.");
+      var nameFinal = uniqueQuestName(S(name, 120) || "Imported from Todoist");
+      lines.push("This creates a new quest named “" + nameFinal + ".” Your existing quests and tasks are not changed." + (nameFinal !== name ? " A quest called “" + name + "” already exists, so a number is added." : ""));
       lines.push("Labels and other Todoist-only details are not imported.");
       lines.forEach(function (t, i) { body.appendChild(el("p", { "class": i === 0 ? "first" : "" }, t)); });
       var acts = el("div", { "class": "actions" });

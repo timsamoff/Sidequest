@@ -38,7 +38,7 @@
     url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-20 -20 120 120'><path d='M-20 -20H100V-18Q100 0 87.27 12.73Q46.46 46.46 12.73 87.27Q0 100 -18 100H-20Z'/></svg>") right bottom / var(--bbox) var(--bbox) no-repeat;
 }
 /* The grid casts the shadow, since a mask on the note itself would clip it. */
-.grid:has(> .posting), .list.pinboard:has(> .posting) { align-items: start; filter: drop-shadow(1px 0 0 var(--pin-edge)) drop-shadow(-1px 0 0 var(--pin-edge)) drop-shadow(0 1px 0 var(--pin-edge)) drop-shadow(0 -1px 0 var(--pin-edge)) drop-shadow(0 2px 1.5px rgba(0, 0, 0, .22)) drop-shadow(0 8px 12px rgba(0, 0, 0, .18)); }
+.grid:has(> .posting), .list.pinboard:has(> .posting), .postitwrap { align-items: start; filter: drop-shadow(1px 0 0 var(--pin-edge)) drop-shadow(-1px 0 0 var(--pin-edge)) drop-shadow(0 1px 0 var(--pin-edge)) drop-shadow(0 -1px 0 var(--pin-edge)) drop-shadow(0 2px 1.5px rgba(0, 0, 0, .22)) drop-shadow(0 8px 12px rgba(0, 0, 0, .18)); }
 /* The fold's outline matches the card border (baked into the image, so each theme restates it). */
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .posting { --flap-line: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-20 -20 120 120'><path d='M0 100Q20 59 18 18Q59 20 100 0' fill='none' stroke='%2371613A' stroke-width='3' stroke-linejoin='round'/></svg>"); } }
 :root[data-theme="dark"] .posting { --flap-line: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-20 -20 120 120'><path d='M0 100Q20 59 18 18Q59 20 100 0' fill='none' stroke='%2371613A' stroke-width='3' stroke-linejoin='round'/></svg>"); }

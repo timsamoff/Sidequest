@@ -6,6 +6,8 @@ import {
   blockForDate, blockStartFor, blockEndFor, milestoneTasks
 } from "./model.js";
 import { scopeSteps } from "./chart.js";
+import { phoneHref } from "./phone.js";
+import { isEmail } from "./dom.js";
 
 /* Client export: a single, self-contained, read-only HTML file for sharing one
    quest, with chart data precomputed here so the exported file only draws numbers, never recomputes scheduling math. */
@@ -468,9 +470,10 @@ var EXPORT_BRAND = '<div class="ebrand"><svg viewBox="0 0 512 512" aria-hidden="
 function addrLine(v) { return '<div class="econtactaddr">' + escHtml(v).replace(/\n/g, "<br>") + "</div>"; }
 function plainLine(v) { return "<div>" + escHtml(v) + "</div>"; }
 function linkLine(href, text) { return '<div><a href="' + escAttr(href) + '">' + escHtml(text) + "</a></div>"; }
-function emailLine(v) { return linkLine("mailto:" + v, v); }
-// The tel: link strips everything but digits and a leading "+" so phones don't refuse to dial it.
-function phoneLine(v) { return linkLine("tel:" + v.replace(/[^\d+]/g, ""), v); }
+// Only a valid address becomes a link; an older, unchecked one prints as plain text.
+function emailLine(v) { return isEmail(v) ? linkLine("mailto:" + v, v) : plainLine(v); }
+// The link keeps only digits and a leading "+" (and drops an extension), so phones don't refuse to dial it.
+function phoneLine(v) { return /\d/.test(v) ? linkLine(phoneHref(v), v) : plainLine(v); }
 // A web address with no scheme gets https:// (alone it would be a relative link). Any other scheme prints as plain text, not a link.
 function websiteLine(v) {
   if (/^https?:/i.test(v)) return linkLine(v, v);

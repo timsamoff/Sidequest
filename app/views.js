@@ -2,11 +2,11 @@ import { go, openTask, renderView } from "./app.js";
 import { drawChart, drawQuestChart, rangeBlock } from "./chart.js";
 import { DAY, TODAY, fmt, fmtY, iso, parseISO } from "./dates.js";
 import { ideaDialog } from "./dialogs.js";
-import { $, el, helpLink, isHosted, notify, on, scrollTop, uid } from "./dom.js";
+import { $, el, helpLink, isHosted, newPin, notify, on, scrollTop, uid } from "./dom.js";
 import { backupControls, backupReminderDue, daysSinceBackup } from "./files.js";
 import { deleteForever, emptyVault, promoteToActive, removeToVault, restoreEntry, vaultEntries } from "./lifecycle.js";
-import { activeQuests, backlogTasks, candidateQuests, checkpointStep, checkpoints, counted, dispQuest, findQuest, findTask, fmtHours, globalActual, isDusty, isLate, isPinned, lateTasks, live, liveQuests, nextTask, ordered, pinPage, planCounted, planned, pset, questMeta, questRemainingUnits, questTotalUnits, remainingUnits, short, taskEnd, taskStart, totalUnits, unpinPage, validPage, wl } from "./model.js";
-import { buildDetail } from "./quest-page.js";
+import { questNameTaken, activeQuests, backlogTasks, candidateQuests, checkpointStep, checkpoints, counted, dispQuest, findQuest, findTask, fmtHours, globalActual, isDusty, isLate, isPinned, lateTasks, live, liveQuests, nextTask, ordered, pinPage, planCounted, planned, pset, questMeta, questRemainingUnits, questTotalUnits, remainingUnits, short, taskEnd, taskStart, totalUnits, unpinPage, validPage, wl } from "./model.js";
+import { addRowControls, buildDetail } from "./quest-page.js";
 import { APP_VERSION, changed, makeQuest, quest, releaseFileUrl, save, state, ui } from "./state.js";
 import { startTutorial } from "./tutorial.js";
 
@@ -136,11 +136,21 @@ export function welcomeBox() {
   return box;
 }
 
+// Turns a notice box into a post-it note (the Workshop's posting card, with no offset); the wrapper casts its shadow.
+// Each notice keeps a random corner fold until the page reloads, so a redraw does not change it.
+var noticeFolds = {};
+function postit(box, key) {
+  var wrap = el("div", { "class": "postitwrap" });
+  if (!noticeFolds[key]) noticeFolds[key] = newPin().bend;
+  box.setAttribute("style", (box.getAttribute("style") || "") + ";" + pinStyle({ x: 0, y: 0, bend: noticeFolds[key] }));
+  box.classList.remove("box"); box.classList.add("posting"); wrap.appendChild(box);
+  return wrap;
+}
 export function renderToday(root) {
-  if (availableUpdateVersion && state.settings.dismissedUpdateVersion !== availableUpdateVersion) root.appendChild(updateBanner());
-  if (versionBannerDue()) root.appendChild(versionBanner());
-  if (backupReminderDue()) root.appendChild(backupReminder());
-  if (!state.settings.hideWelcome) root.appendChild(welcomeBox());
+  if (availableUpdateVersion && state.settings.dismissedUpdateVersion !== availableUpdateVersion) root.appendChild(postit(updateBanner(), "update"));
+  if (versionBannerDue()) root.appendChild(postit(versionBanner(), "version"));
+  if (backupReminderDue()) root.appendChild(postit(backupReminder(), "backup"));
+  if (!state.settings.hideWelcome) root.appendChild(postit(welcomeBox(), "welcome"));
   var g = pgrid(), b = burnParts({});
   g.put(withHelp(el("h2", null, "Next up"), "next-up", "Next up"), 1, 1); g.put(nextUpPanel(), 1, 2); g.put(overduePanel(), 1, 3);
   var progress = el("div"); b.count.style.marginTop = "0";
@@ -158,10 +168,10 @@ function versionBanner() {
   var box = el("div", { "class": "box updatebanner", style: "margin-bottom:22px" });
   box.appendChild(el("h2", { "class": "first", style: "margin-bottom:4px" }, "Sidequest has leveled up!"));
   box.appendChild(el("p", { "class": "hint first" }, "You are now questing in version " + APP_VERSION + "."));
-  var notes = el("p", { "class": "hint" });
-  notes.appendChild(el("a", { href: "https://samoff.com/sidequest/patch-notes.html", target: "_blank", rel: "noopener" }, "Review the latest updates to your questing tools."));
-  box.appendChild(notes);
   var ar = el("div", { "class": "actions" });
+  ar.appendChild(on(el("button", { type: "button", "class": "primary", title: "Read what changed in the patch notes, in a new tab" }, "Patch notes"), "click", function () {
+    window.open("https://samoff.com/sidequest/patch-notes.html", "_blank", "noopener");
+  }));
   ar.appendChild(on(el("button", { type: "button", title: "Hide this notice" }, "Dismiss"), "click", function () {
     state.settings.seenVersion = APP_VERSION; save(); box.remove();
   }));
@@ -217,21 +227,23 @@ export function taskRow(t) {
   var l1 = el("div", { "class": "l1 split" }), l1t = el("span"); l1t.appendChild(el("b", null, dispQuest(t)));
   if (t.block !== 0) l1t.appendChild(document.createTextNode(" · " + fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
   l1.appendChild(l1t);
-  var tag1 = addedChip(t); if (tag1) l1.appendChild(tag1);
+  // The chips ride on the first line and wrap below it on a narrow screen, so the title keeps its own lines.
+  var chips = el("span", { "class": "l1chips" });
+  if (t.block === 0) chips.appendChild(el("span", { "class": "chip backlog" }, "Backlog"));
+  if (t.launch) chips.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
+  if (t.milestone) chips.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
+  var tag1 = addedChip(t); if (tag1) chips.appendChild(tag1);
+  if (chips.childNodes.length) l1.appendChild(chips);
   b.appendChild(l1);
   var l2 = el("div", { "class": "l2" });
-  if (t.block === 0) l2.appendChild(el("span", { "class": "chip backlog", style: "margin-right:8px" }, "Backlog"));
-  if (t.launch) l2.appendChild(el("span", { "class": "chip launchcrit", style: "margin-right:8px" }, "Launch critical"));
-  if (t.milestone) l2.appendChild(el("span", { "class": "chip milestonechip", style: "margin-right:8px" }, "Milestone"));
   l2.appendChild(document.createTextNode(t.what));
   b.appendChild(l2);
   var l3 = el("div", { "class": "l3" });
-  l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
   stepsAndEst(l3, t);
   if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
-  b.appendChild(l3);
+  if (l3.childNodes.length) b.appendChild(l3);
   on(b, "click", function () { ui.sel = t.id; ui.detail = true; renderView(); scrollTop(); });
-  li.appendChild(b); return li;
+  li.appendChild(b); addRowControls(li, t); return li;
 }
 
 // A one-line empty state in the same card the lists use.
@@ -416,7 +428,8 @@ export function renderWorkshop(root) {
     if (p.note) nm.appendChild(el("p", { "class": "hint notetext noteclamp", style: "margin-top:2px" }, p.note));
     row.appendChild(nm);
     var acts = el("div", { "class": "li-actions" });
-    acts.appendChild(on(el("button", { type: "button", "class": "small", title: "Make this a candidate quest" }, "Make candidate"), "click", function () {
+    acts.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Make this a candidate quest" }, "Make candidate"), "click", function () {
+      if (questNameTaken(p.text)) { notify("A quest named “" + questNameTaken(p.text).name + "” already exists. Rename this idea first.", null, "problem"); return; }
       state.workshop = state.workshop.filter(function (x) { return x.id !== p.id; });
       state.quests.push(makeQuest(uid(), p.text, "candidate", { notes: p.note, start: iso(TODAY) })); changed();
       notify("“" + p.text + "” is now a candidate quest. Find it under Candidate quests on the Quests page.");
@@ -485,7 +498,7 @@ export var KIND_FILTERS = [["all", "All"], ["quest", "Quests"], ["idea", "Ideas"
 export function renderVault(root) {
   var all = vaultEntries(), filter = ui.vaultFilter || "all";
   var counts = { all: all.length }; all.forEach(function (e) { counts[e.kind] = (counts[e.kind] || 0) + 1; });
-  if (!all.length) { root.appendChild(emptyList("The Vault is empty. Completed tasks and removed items appear here.")); return; }
+  if (!all.length) { root.appendChild(emptyList("The Vault is empty. This is where you can store ideas and quests you’re no longer actively working on but may want to keep.")); return; }
   var chips = el("div", { "class": "chips", role: "group", "aria-label": "Filter the Vault" });
   KIND_FILTERS.forEach(function (f) {
     var b = el("button", { type: "button", "class": "chipbtn", "aria-pressed": filter === f[0] ? "true" : "false" }, f[1] + " (" + (counts[f[0]] || 0) + ")");

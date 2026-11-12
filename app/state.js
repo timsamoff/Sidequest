@@ -1,13 +1,14 @@
 import { DAY, iso, parseISO, TODAY } from "./dates.js";
 import { findAnyTask, syncTaskBlocks } from "./model.js";
-import { notify, newPin, inClaude } from "./dom.js";
+import { notify, newPin, inClaude, playSfx } from "./dom.js";
 import { recordHistory, recordQuestHistory, sweepQuestCompletion } from "./lifecycle.js";
 import { renderAll } from "./app.js";
+import { isDialCode, setPhoneMemory } from "./phone.js";
 
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "0.99.11";
+export var APP_VERSION = "0.99.12";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -143,7 +144,7 @@ export function defaults() {
     tasks: d.tasks, hist: d.hist,
     decisions: d.decisions, quests: d.quests, workshop: d.workshop, jobs: d.jobs, hand: [],
     pins: ["quest:pApp"],
-    settings: { theme: "auto", dateFormat: "us", coinFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, animatedReroll: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, dustDays: 30, wipLimit: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, affirmationBucket: [], dismissedUpdateVersion: "", seenVersion: "" }
+    settings: { theme: "auto", dateFormat: "us", coinFormat: "us", blockWord: "Sprint", hideWelcome: false, showSplash: true, animatedBurndown: true, animatedReroll: true, lastBackup: "", since: iso(TODAY), vaultPurgeDays: 0, dustDays: 30, wipLimit: 0, contact: { name: "", company: "", phone: "", email: "", address: "", website: "" }, brandmark: "", audio: true, completionFx: true, dialCode: "1", affirmationBucket: [], dismissedUpdateVersion: "", seenVersion: "" }
   };
 }
 
@@ -309,6 +310,7 @@ export function normalize(s) {
     if ([0, 7, 14, 30, 60].indexOf(s.settings.dustDays) >= 0) d.settings.dustDays = s.settings.dustDays;
     if (typeof s.settings.audio === "boolean") d.settings.audio = s.settings.audio;
     if (typeof s.settings.completionFx === "boolean") d.settings.completionFx = s.settings.completionFx;
+    if (isDialCode(s.settings.dialCode)) d.settings.dialCode = s.settings.dialCode;
     if (typeof s.settings.dismissedUpdateVersion === "string") d.settings.dismissedUpdateVersion = S(s.settings.dismissedUpdateVersion, 20);
     if (typeof s.settings.seenVersion === "string") d.settings.seenVersion = S(s.settings.seenVersion, 20);
     // Validated on load, not trusted blindly -- a stale saved bucket (from before an
@@ -396,6 +398,8 @@ function writeLocal(json, stamp) {
   try { window.localStorage.setItem(KEY2, json); window.localStorage.setItem(SAVED_AT_KEY, stamp); return true; } catch (e) { return false; }
 }
 export function setState(newState) { state = newState; }
+// A new phone field starts on the country code last chosen in any phone field.
+setPhoneMemory(function () { return state.settings.dialCode; }, function (c) { state.settings.dialCode = c; save(); });
 // Sends a held-back db write now (the page is being hidden or closed).
 function flushDbSave() { if (dbTimer) { clearTimeout(dbTimer); dbTimer = null; dbSave(state); } }
 if (typeof window !== "undefined" && window.addEventListener) {
@@ -497,13 +501,15 @@ export function checkForAppUpdate() {
 
 export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchVault: true, notesH: {}, questOpen: {}, sectionOpen: {} };
 
-// Stamps a task's completion date when it becomes Done, clears it if reopened.
+// Stamps a task's completion date when it becomes Done, clears it if reopened, and returns how many it stamped.
 // Never moves anything to the Vault itself -- only Quests and Ideas do that.
 export function autoVault() {
+  var fresh = 0;
   state.tasks.forEach(function (t) {
     if (t.status !== "Completed") { t.doneAt = ""; return; }
-    if (!t.doneAt) t.doneAt = iso(TODAY);
+    if (!t.doneAt) { t.doneAt = iso(TODAY); fresh++; }
   });
+  return fresh;
 }
 // Deletes Vault entries older than settings.vaultPurgeDays, checked once at boot (0 = Never, no confirmation). Also removes links to quests that no longer exist.
 export function removeLinksTo(ids) {
@@ -586,8 +592,13 @@ function touchQuests() {
     q.sig = sig;
   });
 }
+// Every finished task dings, at half volume so it stays subtle.
+var TASK_SFX = "../assets/sfx/completeTask.mp3";
 export function changed() {
   state.hand = cleanHand(state.hand, state.jobs);
-  autoVault(); syncTaskBlocks(); sweepQuestCompletion(); touchQuests(); recordHistory(); recordQuestHistory(); save(); renderAll();
+  var fresh = autoVault();
+  if (fresh && state.settings.audio) playSfx(TASK_SFX, 0.5);
+  syncTaskBlocks(); sweepQuestCompletion();
+  touchQuests(); recordHistory(); recordQuestHistory(); save(); renderAll();
 }
 

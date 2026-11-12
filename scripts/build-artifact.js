@@ -29,6 +29,7 @@ function buildFaviconDataUri(html) {
 const MODULE_ORDER = [
   "dates.js",
   "dom.js",
+  "phone.js",
   "model.js",
   "state.js",
   "chart.js",
@@ -78,7 +79,7 @@ function stripModuleSyntax(source, filename) {
 
 // Sound effects are relative asset paths that do not resolve in a published artifact, so each reference becomes a variable and one var SFX_... declaration holds the base64 data URI, embedded once however many call sites use it.
 var SFX_FILES = {
-  "assets/sfx/quest.mp3": "SFX_QUEST", "assets/sfx/complete.mp3": "SFX_COMPLETE",
+  "assets/sfx/quest.mp3": "SFX_QUEST", "assets/sfx/complete.mp3": "SFX_COMPLETE", "assets/sfx/completeTask.mp3": "SFX_COMPLETE_TASK",
   "assets/sfx/refresh.mp3": "SFX_REFRESH", "assets/sfx/restoreBackup.mp3": "SFX_RESTORE_BACKUP",
   "assets/sfx/startFresh.mp3": "SFX_START_FRESH", "assets/sfx/reroll.mp3": "SFX_REROLL"
 };

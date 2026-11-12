@@ -1,9 +1,10 @@
 /* a quest's page and the task detail */
-import { go, openTask, renderView } from "./app.js";
+import { go, renderView } from "./app.js";
 import { questRangeBlock } from "./chart.js";
 import { TODAY, fmt, fmtY, iso, parseISO } from "./dates.js";
 import { decisionDialog, decisionEditDialog, formDialog, linkQuestDialog, openModal, slipDialog, taskDialog } from "./dialogs.js";
-import { editInline, el, formatMoney, helpLink, moneyInput, notify, on, pencilButton, playSfx, setFocusKey, uid, setMsg } from "./dom.js";
+import { phoneField } from "./phone.js";
+import { emailField, editInline, el, formatMoney, helpLink, moneyInput, notify, on, pencilButton, playSfx, setFocusKey, uid, setMsg } from "./dom.js";
 import { buildExportSnapshot, exportFileName, exportSides, renderExportDocument } from "./export.js";
 import { saveFile } from "./files.js";
 import { completionDialog, demoteToCandidate, promoteToActive, removeNow, removeToVault, restoreEntry, vaultQuest } from "./lifecycle.js";
@@ -38,7 +39,32 @@ export function exportQuestForClient(p, opts) {
   });
 }
 
-// `inline` is the quest page's in-place version: no heading or back button, plus an Open in Tasks link.
+// Renaming happens in a small dialog, since a text field cannot sit inside the row's button.
+function renameTaskDialog(t) {
+  formDialog("Rename task", [{ key: "what", label: "Task", value: t.what }], "Save", function (v) {
+    if (!v.what) return "A task needs a title.";
+    t.what = v.what.slice(0, 400); changed();
+    return { msg: "Task renamed." };
+  });
+}
+// The rename pencil and status pulldown for a task's row. They sit beside the row's button (controls cannot sit inside one), and alignStatuses() lines them up.
+export function addRowControls(li, t) {
+  var pen = pencilButton("Rename task: " + short(t.what, 40), "Rename this task", function () { renameTaskDialog(t); });
+  pen.classList.add("rowpencil"); pen.setAttribute("data-task", t.id); li.appendChild(pen);
+  var sel = el("select", { "class": "status rowstatus", "aria-label": "Status of " + short(t.what, 40), title: "Change this task’s status", "data-task": t.id, "data-focus": "status-" + t.id });
+  STATUSES.forEach(function (s) { var o = el("option", { value: s }, s); if (s === t.status) o.selected = true; sel.appendChild(o); });
+  sel.setAttribute("data-v", t.status);
+  on(sel, "change", function () { setStatus(t, sel.value); setFocusKey("status-" + t.id); changed(); });
+  li.classList.add("hasstatus"); li.appendChild(sel);
+}
+// A long date line can wrap, so a title is not always at the same height; this reads each row's line positions, then hands them to the CSS.
+export function alignStatuses(root) {
+  var rows = Array.prototype.slice.call(root.querySelectorAll("li.hasstatus"));
+  var tops = rows.map(function (li) { var l1 = li.querySelector(".l1"), l2 = li.querySelector(".l2"); return [l1 ? l1.offsetTop : 0, l2 ? l2.offsetTop : 0]; });
+  rows.forEach(function (li, i) { li.style.setProperty("--row-l1", tops[i][0] + "px"); li.style.setProperty("--row-l2", tops[i][1] + "px"); });
+}
+
+// `inline` is the quest page's in-place version, without the heading or back button.
 export function buildDetail(t, inline, readOnly) {
   var box = el("div", { "class": "detail" });
   var top = el("div", { style: "display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap" });
@@ -49,37 +75,17 @@ export function buildDetail(t, inline, readOnly) {
   else dm.appendChild(document.createTextNode(fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + " "));
   if (isLate(t)) dm.appendChild(el("span", { "class": "badge" }, "Overdue"));
   var tag2 = addedChip(t); if (tag2) { tag2.style.marginLeft = "6px"; dm.appendChild(tag2); }
-  lh.appendChild(dm); top.appendChild(lh);
+  // The folded (in-place) detail leaves the title and dates to the row above it.
+  if (!inline) { lh.appendChild(dm); top.appendChild(lh); }
   var right = el("div", { style: "display:flex;gap:10px;align-items:center" });
   if (t.launch) right.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
   if (t.milestone) right.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
-  if (readOnly) {
-    right.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
-  } else {
-    var sel = el("select", { "class": "status", "aria-label": "Status" });
-    STATUSES.forEach(function (s) { var o = el("option", { value: s }, s); if (s === t.status) o.selected = true; sel.appendChild(o); });
-    sel.setAttribute("data-v", t.status);
-    on(sel, "change", function () { setStatus(t, sel.value); changed(); });
-    right.appendChild(sel);
-  }
-  top.appendChild(right); box.appendChild(top);
-  var whatRow = el("div", { "class": "editrow" });
-  var whatP = el("p", { "class": "what", style: "flex:0 1 auto;min-width:0" }, t.what); whatRow.appendChild(whatP);
-  if (!readOnly) {
-    var whatPen = pencilButton("Rename this task", "Rename this task");
-    on(whatPen, "click", function () {
-      whatPen.hidden = true;
-      editInline(whatP, {
-        label: "Task name", max: 400, value: function () { return t.what; },
-        onSave: function (val) { t.what = val.slice(0, 400); changed(); },
-        onEmpty: function () { notify("A task needs a title.", null, "problem"); },
-        onDone: function () { whatPen.hidden = false; }
-      });
-    });
-    whatRow.appendChild(whatPen);
-  }
-  box.appendChild(whatRow);
-  box.appendChild(el("p", { "class": "dmeta" }, "Done when: " + t.done));
+  // The pulldown lives on the task's row; the Tasks pane (no row above it) and a read-only task show the status as a chip.
+  if (readOnly || !inline) right.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+  if (right.childNodes.length) top.appendChild(right);
+  if (top.childNodes.length) box.appendChild(top);
+  // The Tasks pane shows the title read-only; renaming is the pencil on the task's row.
+  if (!inline) box.appendChild(el("p", { "class": "what" }, t.what));
   if (readOnly) {
     box.appendChild(el("p", { "class": "dmeta" }, t.est > 0 ? "Estimated time: " + t.est + " h" : ""));
   }
@@ -108,8 +114,11 @@ export function buildDetail(t, inline, readOnly) {
       if (blk === null || m.due || m.start.indexOf("You can’t begin") === 0) { if (!dmsg.textContent && !smsg.textContent) setMsg(dmsg, "This quest starts " + fmtY(questFirst) + ". Choose a due date on or after that.", "error"); return; }
       if (t.start && bd.value < t.start) { setMsg(smsg, "You can’t begin after you finish! Choose a start date on or before the due date.", "error"); return; }
       if (t.block === 0) t.added = iso(TODAY);
+      // A due date with no start date starts the task today, when today falls inside the quest and before that date.
+      var startedToday = !t.start && iso(TODAY) >= pset(t.questId).start && iso(TODAY) <= bd.value;
+      if (startedToday) t.start = iso(TODAY);
       t.due = bd.value; t.block = blk; changed();
-      notify("Due " + fmt(taskEnd(t)) + ", in " + wd() + " " + blk + ".");
+      notify("Due " + fmt(taskEnd(t)) + ", in " + wd() + " " + blk + "." + (startedToday ? " Starts today." : ""));
     });
     on(sd, "blur", function () {
       if (sd.value === shownStart()) return;
@@ -135,6 +144,8 @@ export function buildDetail(t, inline, readOnly) {
     box.appendChild(dg);
   }
 
+  box.appendChild(el("h3", null, "Done when"));
+  box.appendChild(el("p", null, t.done));
   var nDone = t.steps.filter(function (s) { return s.done; }).length;
   box.appendChild(el("h3", null, t.steps.length ? "Steps (" + nDone + " of " + t.steps.length + " done)" : "Steps"));
   if (!t.steps.length) box.appendChild(el("p", { "class": "hint" }, "No steps yet. This task counts as one item in the burndown. Add steps to break it up."));
@@ -204,7 +215,6 @@ export function buildDetail(t, inline, readOnly) {
     if (readOnly) {
       // Nothing to offer here -- the quest page's Restore button is the one way back to editing.
     } else {
-      if (inline) ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Open this task on the Tasks page" }, "Open in Tasks"), "click", function () { openTask(t.id); }));
       if (t.block === 0) {
         ar.appendChild(el("button", { type: "button", "class": "small", disabled: true, title: "This is a backlogged task. Add a due date to make it a milestone." }, "Make milestone"));
       } else if (t.milestone) {
@@ -284,13 +294,14 @@ export function launchSection(root, p) {
     b.appendChild(l1);
     b.appendChild(el("div", { "class": "l2" }, short(t.what, 60) + (t.vault ? " (in the Vault)" : "")));
     var l3 = el("div", { "class": "l3" });
-    l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+    if (taskReadOnly) l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
     if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
     stepsAndEst(l3, t);
     if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
-    b.appendChild(l3);
+    if (l3.childNodes.length) b.appendChild(l3);
     on(b, "click", function () { ui.questOpen[p.id] = open ? null : t.id; renderView(); });
     li.appendChild(b);
+    if (!taskReadOnly) addRowControls(li, t);
     if (open) li.appendChild(buildDetail(t, true, taskReadOnly));
     ul.appendChild(li);
   });
@@ -373,13 +384,14 @@ export function renderQuestPage(root, id) {
       b.appendChild(l1);
       b.appendChild(el("div", { "class": "l2" }, t.what));
       var l3 = el("div", { "class": "l3" });
-      l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+      if (readOnly) l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
       if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
       stepsAndEst(l3, t);
       if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
-      b.appendChild(l3);
+      if (l3.childNodes.length) b.appendChild(l3);
       on(b, "click", function () { ui.questOpen[p.id] = open ? null : t.id; renderView(); });
       li.appendChild(b);
+      if (!readOnly) addRowControls(li, t);
       if (open) li.appendChild(buildDetail(t, true, readOnly));
       ul.appendChild(li);
     });
@@ -414,6 +426,14 @@ export function renderQuestPage(root, id) {
     var gg = el("div", { "class": "setgrid" });
     function gfield(key, id, label, type, full) {
       var w = el("div", { "class": "field" + (full ? " full" : "") }); w.appendChild(el("label", { "for": id }, label));
+      if (type === "phone") {
+        w.appendChild(phoneField(id, p.client[key], function (v) { p.client[key] = v.slice(0, 200); save(true); }).el);
+        gg.appendChild(w); return;
+      }
+      if (type === "email") {
+        w.appendChild(emailField(id, p.client[key], function (v) { p.client[key] = v.slice(0, 200); save(true); }));
+        gg.appendChild(w); return;
+      }
       var inp = el("input", { type: type || "text", id: id });
       inp.value = p.client[key];
       on(inp, "input", function () { p.client[key] = inp.value.slice(0, 200); save(true); });
@@ -421,8 +441,8 @@ export function renderQuestPage(root, id) {
     }
     gfield("org", "giver-org-" + p.id, "Organization");
     gfield("poc", "giver-poc-" + p.id, "POC");
-    gfield("phone", "giver-phone-" + p.id, "Phone", "tel");
-    gfield("email", "giver-email-" + p.id, "Email", "email");
+    gfield("phone", "giver-phone-" + p.id, "Phone", "phone", true);
+    gfield("email", "giver-email-" + p.id, "Email", "email", true);
     gfield("website", "giver-website-" + p.id, "Website", "url", true);
     giverBox.appendChild(gg);
     var gaw = el("div", { "class": "field" }); gaw.appendChild(el("label", { "for": "giver-address-" + p.id }, "Address"));

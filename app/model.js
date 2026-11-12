@@ -62,6 +62,20 @@ export function isHiddenComplete(t) { var p = findQuest(t.questId); return !!p &
 // Searches every quest, vaulted or not -- a vaulted quest's page
 // must stay reachable, read-only, until restored.
 export function findQuest(id) { for (var i = 0; i < state.quests.length; i++) if (state.quests[i].id === id) return state.quests[i]; return null; }
+// The live quest already using this name (ignoring case and spaces at the ends), other than `exceptId`, or null.
+export function questNameTaken(name, exceptId) {
+  var k = String(name || "").trim().toLowerCase();
+  if (!k) return null;
+  var all = liveQuests();
+  for (var i = 0; i < all.length; i++) if (all[i].id !== exceptId && all[i].name.trim().toLowerCase() === k) return all[i];
+  return null;
+}
+// An imported quest takes the name as is, or with (2), (3)... when a live quest already has it.
+export function uniqueQuestName(base) {
+  var n = 1, name = base;
+  while (questNameTaken(name)) { n++; name = base + " (" + n + ")"; }
+  return name;
+}
 // True only when the quest has at least one counted task and every one of
 // them is Completed -- an empty task list must never read as "done."
 export function questTasksAllDone(p) {

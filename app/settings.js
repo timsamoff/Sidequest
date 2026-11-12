@@ -2,7 +2,8 @@
 import { applyTheme, go, renderChrome } from "./app.js";
 import { TODAY, fmtY, iso } from "./dates.js";
 import { closeModal, openModal } from "./dialogs.js";
-import { el, helpLink, isHosted, isStandalone, notify, on, playSfx, setMsg } from "./dom.js";
+import { phoneField } from "./phone.js";
+import { emailField, el, helpLink, isHosted, isStandalone, notify, on, playSfx, setMsg } from "./dom.js";
 import { backupControls, backupPanel } from "./files.js";
 import { importPanel } from "./imports.js";
 import { WORDS, wd } from "./model.js";
@@ -158,6 +159,14 @@ export function renderSettings(page) {
   var cg = el("div", { "class": "setgrid" });
   function cfield(key, id, label, type, full) {
     var w = el("div", { "class": "field" + (full ? " full" : "") }); w.appendChild(el("label", { "for": id }, label));
+    if (type === "phone") {
+      w.appendChild(phoneField(id, state.settings.contact[key], function (v) { state.settings.contact[key] = v.slice(0, 200); save(true); }).el);
+      cg.appendChild(w); return;
+    }
+    if (type === "email") {
+      w.appendChild(emailField(id, state.settings.contact[key], function (v) { state.settings.contact[key] = v.slice(0, 200); save(true); }));
+      cg.appendChild(w); return;
+    }
     var inp = el("input", { type: type || "text", id: id });
     inp.value = state.settings.contact[key];
     on(inp, "input", function () { state.settings.contact[key] = inp.value.slice(0, 200); save(true); });
@@ -165,8 +174,8 @@ export function renderSettings(page) {
   }
   cfield("company", "set-contact-company", "Organization");
   cfield("name", "set-contact-name", "Name");
-  cfield("phone", "set-contact-phone", "Phone", "tel");
-  cfield("email", "set-contact-email", "Email", "email");
+  cfield("phone", "set-contact-phone", "Phone", "phone", true);
+  cfield("email", "set-contact-email", "Email", "email", true);
   cfield("website", "set-contact-website", "Website", "url", true);
   contactBox.appendChild(cg);
   var aw = el("div", { "class": "field" }); aw.appendChild(el("label", { "for": "set-contact-address" }, "Address"));
