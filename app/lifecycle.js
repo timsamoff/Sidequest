@@ -4,7 +4,7 @@ import { playConfetti } from "./confetti.js";
 import { TODAY, iso } from "./dates.js";
 import { closeModal, confirmDialog, openModal } from "./dialogs.js";
 import { el, notify, on, playSfx } from "./dom.js";
-import { activeQuests, questNameTaken, findQuest, isPinned, liveQuests, questRemainingUnits, questTasksAllDone, questTotalUnits, recordHist, remainingUnits, short, totalUnits } from "./model.js";
+import { activeQuests, questNameTaken, findQuest, isPinned, liveQuests, openIssues, questRemainingUnits, questTasksAllDone, questTotalUnits, recordHist, remainingUnits, short, totalUnits } from "./model.js";
 import { changed, removeLinksTo, removeQuestTasks, save, state } from "./state.js";
 import { KIND_LABEL } from "./views.js";
 
@@ -49,6 +49,8 @@ export function completionDialog(p) {
     body.appendChild(el("p", { "class": "first" }, "“" + p.name + "” is marked complete. Send it to the Vault now, or leave it in Quests."));
     var openTasks = questRemainingUnits(p);
     if (openTasks) body.appendChild(el("p", { "class": "hint" }, openTasks + (openTasks === 1 ? " open task is" : " open tasks are") + " no longer counted in the main burndown. Reopen the quest to count " + (openTasks === 1 ? "it" : "them") + " again."));
+    var oi = openIssues(p.id).length;
+    if (oi) body.appendChild(el("p", { "class": "hint" }, oi + (oi === 1 ? " issue is" : " issues are") + " still open."));
     var acts = el("div", { "class": "actions" });
     var leave = el("button", { type: "button", title: "Keep visible on Quests" }, "Leave in Quests");
     var vault = el("button", { type: "button", "class": "dangerfill", title: "Send to the Vault right now" }, "Vault now");

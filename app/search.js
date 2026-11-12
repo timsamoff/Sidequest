@@ -41,7 +41,8 @@ export function searchAll(q, includeVault) {
     groups[kind].push({ kind: kind, title: title, sub: sub, snip: snip, vault: !!vault, score: inTitle ? 2 : 0, idx: groups[kind].length, open: open });
   }
   state.tasks.forEach(function (t) {
-    var when = t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t));
+    var dates = t.block === 0 ? "" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t));
+    var when = t.issue ? "Issue" + (dates ? " · " + dates : "") : (dates || "Backlog");
     consider("task", t.what, [t.notes, t.done, dispQuest(t)], dispQuest(t) + " · " + when + " · " + t.status, function () { if (t.vault) go("vault"); else openTask(t.id); }, !!t.vault, ["Notes", "Done when", ""]);
     t.steps.forEach(function (st) {
       consider("step", st.text, [], "Step of " + dispQuest(t) + ": " + short(t.what, 50) + (st.done ? " · done" : ""), function () { if (t.vault) go("vault"); else openTask(t.id); }, !!t.vault);

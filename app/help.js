@@ -67,6 +67,7 @@ export function helpTopics() {
       "{#idea}**Idea:** A note in the **Workshop** that hasn’t become a quest. See “Workshop page”.",
       "{#ideal}**Ideal:** The burndown line showing your planned pace. See “Timeline page”.",
       "{#in-progress}**In progress:** An active quest with at least one incomplete task that has a due date. See “Quests page”.",
+      "{#issue}**Issue:** A problem associated with a quest, such as a bug. An issue doesn’t need a due date. See “Inside a quest”.",
       "{#launch-critical}**Launch critical:** A task that must be completed before launch. These tasks are grouped in the **Before you launch** section. See “Inside a quest”.",
       "{#make-candidate}**Make candidate:** Turns an idea into a candidate quest. See “The quest lifecycle”.",
       "{#milestone}**Milestone:** A task with a date that appears on the **Timeline**. See “Inside a quest”.",
@@ -91,7 +92,7 @@ export function helpTopics() {
     ]],
     ["Finding your way around", [
       "**Search:** Press [[/]] to search on a computer, or tap the magnifier on a phone. [[Enter]] opens the first result, [[Esc]] clears it. On a phone, tap the **x** where the magnifier was to cancel.",
-      "**New (+) button:** Use the **+** button to add a candidate quest, task, step, decision, idea, or errand.",
+      "**New (+) button:** Use the **+** button to add a candidate quest, task, step, decision, issue, idea, or errand.",
       "**Main menu:** The **Main menu** (hamburger menu) lists every page in the app.",
       "**Tab bar (mobile):** On a mobile device, the tab bar holds the main pages. Find the other pages in the **Main menu**.",
       "**Undo:** Removing an item or sending it to the **Vault** shows an **Undo** button for a few seconds."
@@ -101,13 +102,14 @@ export function helpTopics() {
       "A promoted quest is an active quest. It lands in **In progress** only if it has incomplete scheduled tasks. Otherwise it goes to **Pending**. You can later complete an active quest, demote it back to a candidate, or vault it.",
       "If you already know what you want to pursue, you can create a candidate quest directly with the **+** button.",
       "Finishing the last step of a task completes the task, and completing the last task of a quest (including its backlog tasks) completes the quest. You can also mark a task or quest complete manually. A quest has **Mark complete** and **Reopen** buttons on its page.",
+      ">An open issue doesn’t prevent a quest from being completed unless it’s launch critical or has a due date.",
       "The **Vault** stores old ideas and quests, either permanently or for a specified period of time (see the **Options** section for more)."
     ]],
     ["Today page", [
       "The **Today** page shows your most pressing task, and any overdue tasks. The **Burndown** chart shows how many tasks remain in all open quests (see the **Timeline** page for more). The **Stats** section displays all remaining and backlogged tasks."
     ]],
     ["Quests page", [
-      "**In progress:** This section lists the quests you’re working on. Each quest appears as a row with its name, its next scheduled task and that task’s start date, and the number of incomplete scheduled tasks it has left.",
+      "**In progress:** This section lists the quests you’re working on. Each quest appears as a row with its name, its next scheduled task and that task’s start date, and the number of incomplete scheduled tasks it has left. If the quest has open issues, the row shows their count.",
       ">Rows are ordered by the start date of each quest’s next task, from earliest to latest. A quest appears here only if it has incomplete scheduled tasks. Backlog tasks don’t count.",
       "**Pending:** These are promoted quests with no incomplete scheduled tasks. This includes new quests with no tasks, and quests whose only open tasks are backlogged. When it has an incomplete task with a due date, a quest moves up to **In progress**.",
       "**Completed:** This section lists completed quests.",
@@ -124,11 +126,14 @@ export function helpTopics() {
       "**Steps:** You can add steps with the **+** button or from inside a task. Steps break a task into smaller actions. Completing all of a task’s steps completes the task.",
       "**Decisions:** Every step within a task can require a decision. Answering an open decision closes the step.",
       "**Before you launch:** Tasks that must be done before a quest can launch go in this section. Selecting **Launch critical** adds a task to this section. This is only an organizational feature and does not otherwise change the task.",
+      "**Issues:** Use the **+** button to log a problem on a quest, such as a bug. Once a quest has an issue, its issues appear in the **Issues** section of its details. Issues work like tasks, with steps, notes, and a status, but don’t require a due date and never show a **Backlog** badge.",
+      ">Issues without due dates stay in the quest’s details and don’t appear on the **Tasks** page, the **Timeline**, or the **Burndown**. Add a due date to schedule an issue like any other task. Scheduled issues display an **Issue** badge.",
+      ">Select **Launch critical** to move an issue to the **Before you launch** section.",
       "**Notes:** Use **Notes** for any additional information about the quest. An idea’s note carries over when the idea becomes a candidate quest."
     ]],
     ["Quest giver and Quest links", [
       "**Quest giver:** The Quest giver is the client for a quest. You can also enter a **Bounty** (a monetary value), either as an hourly rate or a fixed payment for the quest.",
-      ">The **Quest giver export** includes everything entered here except the **Bounty**. It creates a read-only, interactive web page you can share with the client. Before it exports, you choose whether to include **Prepared by** (your contact information and brandmark) and **Prepared for** (the Quest giver). Its button is at the bottom of an in progress or complete quest’s details and doesn’t appear on a candidate or vaulted quest.",
+      ">The **Quest giver export** includes everything entered here except the **Bounty**. It creates a read-only, interactive web page you can share with the client. Before it exports, you choose whether to include **Prepared by** (your contact information and brandmark) and **Prepared for** (the Quest giver). If the quest has issues without due dates, you can choose whether to include them. Only their titles and statuses are shown. Its button is at the bottom of an in progress or complete quest’s details and doesn’t appear on a candidate or vaulted quest.",
       "**Quest links:** When a job requires more than one quest, link them. Use **Link quest** to link a quest to any quest that is in progress, pending, or completed.",
       ">A candidate quest can add links the same way, but other quests can’t link to a candidate quest. Links to a candidate or vaulted quest show as plain text, and you can follow links to other quests.",
       ">Vaulting or demoting a quest keeps its links, and promoting or restoring it makes them active again."
@@ -143,6 +148,7 @@ export function helpTopics() {
     ]],
     ["Tasks page", [
       "**Tasks:** This section shows tasks from all open quests, excluding candidate quests. They are listed by start date, earliest first. Tasks with the same start date are ordered by due date, then by the order they were created. Completed tasks appear at the bottom. You can edit tasks here without returning to the **Quests** page.",
+      ">Issues with due dates appear here with an **Issue** badge. Issues without due dates remain in their quest’s details.",
       "**Backlog:** This section shows all open tasks without due dates."
     ]],
     ["Timeline page", [

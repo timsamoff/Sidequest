@@ -31,7 +31,7 @@ export function renderJobs(root) {
   var hand = handJobs(), deck = deckJobs();
   if (open.length) handSection(root, hand, open);
   var ul = el("ul", { "class": "list jobs", style: "margin-top:12px" });
-  if (!open.length) ul.appendChild(el("li", { "class": "hint" }, "No open errands. Add one with the Add errand button."));
+  if (!open.length) ul.appendChild(el("li", { "class": "hint" }, "No errands yet. Add one with the Add errand button."));
   deck.forEach(function (j) { ul.appendChild(jobRow(j)); });
   if (deck.length || !open.length) root.appendChild(ul);
   if (done.length) {

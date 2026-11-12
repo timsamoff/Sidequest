@@ -2,10 +2,10 @@
 import { go, renderView } from "./app.js";
 import { questRangeBlock } from "./chart.js";
 import { TODAY, fmt, fmtY, iso, parseISO } from "./dates.js";
-import { decisionDialog, decisionEditDialog, formDialog, linkQuestDialog, openModal, slipDialog, taskDialog } from "./dialogs.js";
+import { decisionDialog, decisionEditDialog, formDialog, issueDialog, linkQuestDialog, openModal, slipDialog, taskDialog } from "./dialogs.js";
 import { phoneField } from "./phone.js";
 import { emailField, editInline, el, formatMoney, helpLink, moneyInput, notify, on, pencilButton, playSfx, setFocusKey, uid, setMsg } from "./dom.js";
-import { buildExportSnapshot, exportFileName, exportSides, renderExportDocument } from "./export.js";
+import { buildExportSnapshot, exportFileName, exportHasIssues, exportSides, renderExportDocument } from "./export.js";
 import { saveFile } from "./files.js";
 import { completionDialog, demoteToCandidate, promoteToActive, removeNow, removeToVault, restoreEntry, vaultQuest } from "./lifecycle.js";
 import { blockForDate, dateProblems, decisionFor, dispQuest, estimateWarning, findQuest, fmtHoursLong, isDusty, isLate, isPinned, launchItems, linkedQuests, liveQuests, pset, questEstimate, questMeta, questTasks, setStatus, short, sortTasks, syncFromSteps, taskEnd, taskStart, unlinkQuests, wd, wl } from "./model.js";
@@ -14,14 +14,15 @@ import { addedChip, burnParts, stepsAndEst, wireMilestoneDiamonds, withHelp } fr
 
 // Asks which letterhead sides to include, offering only the sides that have something to print. With neither, it exports at once.
 export function askExportSides(p) {
-  var sides = exportSides(p);
-  if (!sides.by && !sides.forWhom) { exportQuestForClient(p); return; }
+  var sides = exportSides(p), hasIssues = exportHasIssues(p);
+  if (!sides.by && !sides.forWhom && !hasIssues) { exportQuestForClient(p); return; }
   var fields = [];
   if (sides.by) fields.push({ key: "by", label: "Include “Prepared by” (your contact info and brandmark from Options)", type: "checkbox", value: true });
   if (sides.forWhom) fields.push({ key: "forWhom", label: "Include “Prepared for” (this quest’s Quest giver)", type: "checkbox", value: true });
+  if (hasIssues) fields.push({ key: "issues", label: "Include issues that have no due date (title and status only)", type: "checkbox", value: false });
   formDialog("Quest giver export", fields, "Export", function (v) {
-    exportQuestForClient(p, { preparedBy: !sides.by || v.by === "1", preparedFor: !sides.forWhom || v.forWhom === "1" });
-  }, "Choose what appears at the top of the export.");
+    exportQuestForClient(p, { preparedBy: !sides.by || v.by === "1", preparedFor: !sides.forWhom || v.forWhom === "1", issues: v.issues === "1" });
+  }, sides.by || sides.forWhom ? "Choose what appears on the export." : "Choose whether the export lists this quest’s issues.");
 }
 
 // Builds the standalone read-only export and offers it for saving, same
@@ -41,15 +42,16 @@ export function exportQuestForClient(p, opts) {
 
 // Renaming happens in a small dialog, since a text field cannot sit inside the row's button.
 function renameTaskDialog(t) {
-  formDialog("Rename task", [{ key: "what", label: "Task", value: t.what }], "Save", function (v) {
-    if (!v.what) return "A task needs a title.";
+  var noun = t.issue ? "issue" : "task", Noun = t.issue ? "Issue" : "Task";
+  formDialog("Rename " + noun, [{ key: "what", label: Noun, value: t.what }], "Save", function (v) {
+    if (!v.what) return "A" + (t.issue ? "n " : " ") + noun + " needs a title.";
     t.what = v.what.slice(0, 400); changed();
-    return { msg: "Task renamed." };
+    return { msg: Noun + " renamed." };
   });
 }
 // The rename pencil and status pulldown for a task's row. They sit beside the row's button (controls cannot sit inside one), and alignStatuses() lines them up.
 export function addRowControls(li, t) {
-  var pen = pencilButton("Rename task: " + short(t.what, 40), "Rename this task", function () { renameTaskDialog(t); });
+  var pen = pencilButton("Rename " + (t.issue ? "issue: " : "task: ") + short(t.what, 40), t.issue ? "Rename this issue" : "Rename this task", function () { renameTaskDialog(t); });
   pen.classList.add("rowpencil"); pen.setAttribute("data-task", t.id); li.appendChild(pen);
   var sel = el("select", { "class": "status rowstatus", "aria-label": "Status of " + short(t.what, 40), title: "Change this task’s status", "data-task": t.id, "data-focus": "status-" + t.id });
   STATUSES.forEach(function (s) { var o = el("option", { value: s }, s); if (s === t.status) o.selected = true; sel.appendChild(o); });
@@ -71,7 +73,7 @@ export function buildDetail(t, inline, readOnly) {
   var lh = el("div");
   if (!inline) lh.appendChild(el("h2", { style: "margin:0" }, dispQuest(t)));
   var dm = el("p", { "class": "dmeta" });
-  if (t.block === 0) dm.appendChild(el("span", { "class": "chip backlog", style: "margin-right:6px" }, "Backlog"));
+  if (t.block === 0) { if (!t.issue) dm.appendChild(el("span", { "class": "chip backlog", style: "margin-right:6px" }, "Backlog")); }
   else dm.appendChild(document.createTextNode(fmt(taskStart(t)) + " to " + fmt(taskEnd(t)) + " "));
   if (isLate(t)) dm.appendChild(el("span", { "class": "badge" }, "Overdue"));
   var tag2 = addedChip(t); if (tag2) { tag2.style.marginLeft = "6px"; dm.appendChild(tag2); }
@@ -80,6 +82,7 @@ export function buildDetail(t, inline, readOnly) {
   var right = el("div", { style: "display:flex;gap:10px;align-items:center" });
   if (t.launch) right.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
   if (t.milestone) right.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
+  if (t.issue && !inline) right.appendChild(el("span", { "class": "chip issuechip" }, "Issue"));
   // The pulldown lives on the task's row; the Tasks pane (no row above it) and a read-only task show the status as a chip.
   if (readOnly || !inline) right.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
   if (right.childNodes.length) top.appendChild(right);
@@ -108,8 +111,8 @@ export function buildDetail(t, inline, readOnly) {
     on(bd, "blur", function () {
       if (bd.value === shownDue()) return;
       var m = liveCheck();
-      if (bd.value === "") { var hadStart = !!t.start, wasMilestone = t.milestone; t.block = 0; t.due = ""; t.added = ""; t.milestone = false; changed(); notify("Moved to the Backlog." + (hadStart ? " Its start date is kept." : "") + (wasMilestone ? " It is no longer a milestone." : "")); return; }
-      if (!isISO(bd.value)) { setMsg(dmsg, "Enter a valid due date, or leave it empty for the Backlog.", "error"); return; }
+      if (bd.value === "") { var hadStart = !!t.start, wasMilestone = t.milestone; t.block = 0; t.due = ""; t.added = ""; t.milestone = false; changed(); notify((t.issue ? "Due date cleared." : "Moved to the Backlog.") + (hadStart ? " Its start date is kept." : "") + (wasMilestone ? " It is no longer a milestone." : "")); return; }
+      if (!isISO(bd.value)) { setMsg(dmsg, t.issue ? "Enter a valid due date, or leave it empty." : "Enter a valid due date, or leave it empty for the Backlog.", "error"); return; }
       var blk = blockForDate(t.questId, parseISO(bd.value));
       if (blk === null || m.due || m.start.indexOf("You can’t begin") === 0) { if (!dmsg.textContent && !smsg.textContent) setMsg(dmsg, "This quest starts " + fmtY(questFirst) + ". Choose a due date on or after that.", "error"); return; }
       if (t.start && bd.value < t.start) { setMsg(smsg, "You can’t begin after you finish! Choose a start date on or before the due date.", "error"); return; }
@@ -140,7 +143,7 @@ export function buildDetail(t, inline, readOnly) {
       t.est = v; changed();
       notify(v > 0 ? "Estimated time saved." : "Estimated time cleared.");
     });
-    dfield("task-start", "Start date (optional)", sd); dfield("task-due", "Due date (leave empty to backlog)", bd); dg.appendChild(smsg); dg.appendChild(dmsg); dfield("task-est", "Estimated time (hours)", ei).appendChild(emsg);
+    dfield("task-start", "Start date (optional)", sd); dfield("task-due", t.issue ? "Due date (optional)" : "Due date (leave empty to backlog)", bd); dg.appendChild(smsg); dg.appendChild(dmsg); dfield("task-est", "Estimated time (hours)", ei).appendChild(emsg);
     box.appendChild(dg);
   }
 
@@ -148,7 +151,7 @@ export function buildDetail(t, inline, readOnly) {
   box.appendChild(el("p", null, t.done));
   var nDone = t.steps.filter(function (s) { return s.done; }).length;
   box.appendChild(el("h3", null, t.steps.length ? "Steps (" + nDone + " of " + t.steps.length + " done)" : "Steps"));
-  if (!t.steps.length) box.appendChild(el("p", { "class": "hint" }, "No steps yet. This task counts as one item in the burndown. Add steps to break it up."));
+  if (!t.steps.length) box.appendChild(el("p", { "class": "hint" }, t.issue ? "No steps yet. Add steps to break it up." : "No steps yet. This task counts as one item in the burndown. Add steps to break it up."));
   if (t.steps.length && !readOnly) box.appendChild(el("p", { "class": "hint" }, "Use a step’s pencil to rename it in place, or Remove to delete it."));
   var ul = el("ul", { "class": "steps" });
   t.steps.forEach(function (s) {
@@ -215,16 +218,19 @@ export function buildDetail(t, inline, readOnly) {
     if (readOnly) {
       // Nothing to offer here -- the quest page's Restore button is the one way back to editing.
     } else {
-      if (t.block === 0) {
+      if (t.issue) {
+        // An issue is never a milestone.
+      } else if (t.block === 0) {
         ar.appendChild(el("button", { type: "button", "class": "small", disabled: true, title: "This is a backlogged task. Add a due date to make it a milestone." }, "Make milestone"));
       } else if (t.milestone) {
         ar.appendChild(on(el("button", { type: "button", "class": "small on", "aria-pressed": "true", title: "Unmark this task as a milestone" }, "Remove milestone"), "click", function () { t.milestone = false; changed(); }));
       } else {
         ar.appendChild(on(el("button", { type: "button", "class": "small", "aria-pressed": "false", title: "Mark this task as a milestone" }, "Make milestone"), "click", function () { t.milestone = true; changed(); }));
       }
-      if (t.launch) ar.appendChild(on(el("button", { type: "button", "class": "small on", "aria-pressed": "true", title: "Unmark this task as launch critical" }, "Skip launch"), "click", function () { t.launch = false; changed(); }));
-      else ar.appendChild(on(el("button", { type: "button", "class": "small", "aria-pressed": "false", title: "Mark this task as launch critical" }, "Launch critical"), "click", function () { t.launch = true; changed(); }));
-      ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this task (can be undone)" }, "Delete"), "click", function () { ui.detail = false; removeNow(t, "tasks", "Task"); }));
+      var kind = t.issue ? "issue" : "task";
+      if (t.launch) ar.appendChild(on(el("button", { type: "button", "class": "small on", "aria-pressed": "true", title: "Unmark this " + kind + " as launch critical" }, "Skip launch"), "click", function () { t.launch = false; changed(); }));
+      else ar.appendChild(on(el("button", { type: "button", "class": "small", "aria-pressed": "false", title: "Mark this " + kind + " as launch critical" }, "Launch critical"), "click", function () { t.launch = true; changed(); }));
+      ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Delete this " + kind + " (can be undone)" }, "Delete"), "click", function () { ui.detail = false; removeNow(t, "tasks", t.issue ? "Issue" : "Task"); }));
     }
     if (ar.childNodes.length) box.appendChild(ar);
   }
@@ -278,7 +284,9 @@ export function launchSection(root, p) {
   var items = launchItems(p.id);
   var n = items.filter(function (t) { return t.status === "Completed"; }).length;
   var total = items.length;
-  root.appendChild(el("p", { "class": "hint" }, total ? "Complete: " + n + " of " + total + " launch-critical " + (total === 1 ? "task" : "tasks") : "No tasks have been marked as launch critical yet."));
+  // "items" once an issue is on the list, since an issue is not called a task anywhere else.
+  var unit = items.some(function (t) { return t.issue; }) ? ["item", "items"] : ["task", "tasks"];
+  root.appendChild(el("p", { "class": "hint" }, total ? "Complete: " + n + " of " + total + " launch-critical " + (total === 1 ? unit[0] : unit[1]) : "No tasks have been marked as launch critical yet."));
   var ul = el("ul", { "class": "tlist check", "aria-labelledby": "h-checks" });
   items.forEach(function (t) {
     var done = t.status === "Completed";
@@ -289,13 +297,15 @@ export function launchSection(root, p) {
     var b = el("button", { type: "button", "class": "item" + (done ? " done" : ""), title: "View this task" });
     b.setAttribute("aria-expanded", open ? "true" : "false");
     var l1 = el("div", { "class": "l1 split" });
-    l1.appendChild(t.block === 0 ? el("span", { "class": "chip backlog" }, "Backlog") : el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
+    if (t.block !== 0) l1.appendChild(el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
+    else if (!t.issue) l1.appendChild(el("span", { "class": "chip backlog" }, "Backlog"));
     var tag1 = addedChip(t); if (tag1) { tag1.style.marginLeft = "6px"; l1.appendChild(tag1); }
-    b.appendChild(l1);
+    if (l1.childNodes.length) b.appendChild(l1); else li.classList.add("nol1");
     b.appendChild(el("div", { "class": "l2" }, short(t.what, 60) + (t.vault ? " (in the Vault)" : "")));
     var l3 = el("div", { "class": "l3" });
     if (taskReadOnly) l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
     if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
+    if (t.issue) l3.appendChild(el("span", { "class": "chip issuechip" }, "Issue"));
     stepsAndEst(l3, t);
     if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
     if (l3.childNodes.length) b.appendChild(l3);
@@ -306,6 +316,43 @@ export function launchSection(root, p) {
     ul.appendChild(li);
   });
   if (total) root.appendChild(ul);
+}
+
+// A quest's issues that are not launch critical.
+export function issuesSection(root, p) {
+  var readOnly = !!p.vault;
+  var items = sortTasks(questTasks(p.id).filter(function (t) { return t.issue && !t.launch; }));
+  var hd = el("div", { "class": "sechead" }); hd.appendChild(withHelp(el("h2", { "class": "sechead-h", id: "h-issues" }, "Issues"), "issue", "Issue"));
+  if (!readOnly) hd.appendChild(on(el("button", { type: "button", "class": "small", title: "Log an issue on this quest" }, "Add issue"), "click", function () { issueDialog(p.id); }));
+  root.appendChild(hd);
+  var n = items.filter(function (t) { return t.status === "Completed"; }).length;
+  root.appendChild(el("p", { "class": "hint" }, items.length ? "Complete: " + n + " of " + items.length + (items.length === 1 ? " issue" : " issues") : "No issues yet."));
+  if (!items.length) return;
+  var ul = el("ul", { "class": "tlist", "aria-labelledby": "h-issues" });
+  items.forEach(function (t) {
+    var open = ui.questOpen[p.id] === t.id;
+    var li = el("li", { id: "itask-" + t.id }), b = el("button", { type: "button", "class": "item" + (t.status === "Completed" ? " done" : ""), title: "View this issue" });
+    b.setAttribute("aria-expanded", open ? "true" : "false");
+    // An issue with no due date has no first line: it is not Backlog.
+    if (t.block !== 0) {
+      var l1 = el("div", { "class": "l1 split" });
+      l1.appendChild(el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
+      var tag1 = addedChip(t); if (tag1) { tag1.style.marginLeft = "6px"; l1.appendChild(tag1); }
+      b.appendChild(l1);
+    } else li.classList.add("nol1");
+    b.appendChild(el("div", { "class": "l2" }, t.what));
+    var l3 = el("div", { "class": "l3" });
+    if (readOnly) l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+    stepsAndEst(l3, t);
+    if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
+    if (l3.childNodes.length) b.appendChild(l3);
+    on(b, "click", function () { ui.questOpen[p.id] = open ? null : t.id; renderView(); });
+    li.appendChild(b);
+    if (!readOnly) addRowControls(li, t);
+    if (open) li.appendChild(buildDetail(t, true, readOnly));
+    ul.appendChild(li);
+  });
+  root.appendChild(ul);
 }
 
 // A one-row section that opens in place like a task row. Starts collapsed.
@@ -370,7 +417,7 @@ export function renderQuestPage(root, id) {
   if (!readOnly && p.status === "complete") root.appendChild(el("p", { "class": "hint" }, "Its tasks are not included in Tasks, Timeline, or Today while this quest is Complete. Reopen it to bring them back."));
   // questTasks(), not ordered()/backlogTasks()/live() -- a quest's page keeps
   // showing its tasks even while Complete or vaulted, when cross-quest lists exclude them.
-  var ts = sortTasks(questTasks(p.id).filter(function (t) { return !t.launch; }));
+  var ts = sortTasks(questTasks(p.id).filter(function (t) { return !t.launch && !t.issue; }));
   if (ts.length) {
     var ul = el("ul", { "class": "tlist" });
     ts.forEach(function (t) {
@@ -400,6 +447,7 @@ export function renderQuestPage(root, id) {
   if (!split) scheduleSection(root, p, readOnly);
 
   launchSection(root, p);
+  issuesSection(root, p);
 
   root.appendChild(el("h2", null, "Quest links"));
   linksSection(root, p);

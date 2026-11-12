@@ -76,7 +76,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "0.99.12"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "1.0.0"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("../css/tokens.css?v=" + v) && html.includes("../css/styles.css?v=" + v) && html.includes("../css/splash.css?v=" + v) && html.includes("../css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "settings.js"), "utf8");
@@ -815,7 +815,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
   const split = k.d.querySelector("#view .questsplit");
   ok(!!split && !!split.querySelector(".questmain") && !split.querySelector(".questtop") && !split.querySelector(".questrest") && !!split.querySelector(".questcharts"), "an active quest's page has one content column and a Schedule/Timeline/Burndown column");
-  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Quest links,Notes,Quest giver", "the left column runs Tasks, Before you launch, Quest links, Notes, then Quest giver (" + [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() + ")");
+  ok(!split.querySelector("#proj-name") && [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() === "Tasks,Before you launch,Issues,Quest links,Notes,Quest giver", "the left column runs Tasks, Before you launch, Issues, Quest links, Notes, then Quest giver (" + [...split.querySelectorAll(".questmain h2")].map(h => h.textContent).join() + ")");
   ok(!split.querySelector(".pintoggle") && !split.querySelector(".pinbar"), "there is no Pin button on a quest's page");
   ok(split.querySelector(".questmain").textContent.includes("Complete: 1 of 6 tasks | Backlog: 1 unscheduled task"), "the task-count line sits under the Tasks heading");
   const side = split.querySelector(".questcharts");
@@ -1581,7 +1581,7 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const chips = [...k.d.querySelectorAll("#view .questmain .l3 span")].map(s => s.textContent);
   ok(chips.includes("Est 3 h") && chips.includes("Est 6 h"), "task rows on the quest page show their estimate as Est N h");
   const heads = [...k.d.querySelectorAll("#view .questmain h2")].map(h => h.textContent);
-  ok(heads.join() === "Tasks,Before you launch,Quest links,Notes,Quest giver", "the quest page order is Tasks, Before you launch, Quest links, Notes, Quest giver (" + heads.join() + ")");
+  ok(heads.join() === "Tasks,Before you launch,Issues,Quest links,Notes,Quest giver", "the quest page order is Tasks, Before you launch, Issues, Quest links, Notes, Quest giver (" + heads.join() + ")");
   const g1 = sv.find(t => t.id === "g1");
   ok(g1.block === 1 && g1.start && g1.due && g1.start < g1.due, "Sample Game's first task keeps block 1 with its own start and due");
   const gp = k.saved().quests.find(p => p.id === "pGame");
@@ -2745,7 +2745,7 @@ async function exportClick(k, projectName) {
   const { helpTopics } = await import("../app/help.js?run=" + counter);
   const topics = helpTopics(), titles = topics.map(t => t[0]);
   const termLines = topics.find(t => t[0] === "Terms")[1];
-  ok(termLines.length === 38 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 38 Terms entries read as a bold term, a definition, and a pointer");
+  ok(termLines.length === 39 &&termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 39 Terms entries read as a bold term, a definition, and a pointer");
   ok(termLines.every(l => titles.includes(l.match(/See “([^”]+)”\.$/)[1])), "every Terms pointer names a topic that exists");
   f.value = "decision"; k.fire(f, "input");
   ok(titlesOf()[0] === "Terms" && items()[0].open, "a word that is a term puts the Terms topic first and opens it");
@@ -2870,7 +2870,7 @@ async function exportClick(k, projectName) {
 {
   const k = kit(await mk({ settings: { hideWelcome: true } }));
   const kids = [...k.$("newMenu").children].map(n => n.tagName === "HR" ? "-" : n.dataset.act).join();
-  ok(kids === "newQuest,newTask,newStep,newDecision,-,newJob,newIdea", "the + menu has a divider between New decision and New errand (" + kids + ")");
+  ok(kids === "newQuest,newTask,newStep,newDecision,newIssue,-,newJob,newIdea", "the + menu has New issue under New decision, then a divider before New errand (" + kids + ")");
   k.menuAct("newBtn", "newQuest");
   const tg = k.$("modalBody").querySelector(".dialogheading + .sectionlist .item"), grp = k.$("modalBody").querySelector(".dialogheading + .sectionlist .detail");
   ok(!!tg && !!grp && grp.hidden && tg.getAttribute("aria-expanded") === "false", "the New quest dialog starts with Quest giver collapsed");
@@ -3371,6 +3371,78 @@ async function exportClick(k, projectName) {
   k.click(k.d.querySelector('#view .questmain button.rowpencil[data-task="a2"]'));
   k.setField("what", ""); k.click(k.btn(k.$("modalBody"), "Save"));
   ok(!k.$("overlay").hidden && k.$("modalBody").textContent.includes("A task needs a title.") && k.saved().tasks.find(t => t.id === "a2").what === "Build the sign-in flow", "the rename dialog refuses an empty title");
+}
+/* ---- issues ---- */
+{
+  const T = (id, extra) => Object.assign({ id, block: 0, questId: "pI", what: "Task " + id, done: "x", status: "Not started", steps: [] }, extra);
+  const base = (tasks, more) => Object.assign({ settings: { hideWelcome: true }, quests: [{ id: "pI", name: "Issue Quest", status: "active", start: "2026-08-03", days: 7 }], tasks }, more);
+  const finish = (k, id) => { const sel = k.d.querySelector('select.rowstatus[data-task="' + id + '"]'); sel.value = "Completed"; k.fire(sel); };
+  const questOf = (k) => k.saved().quests.find(q => q.id === "pI");
+  // An issue with no due date: its own section, no Backlog chip, and it does not hold the quest open.
+  let k = kit(await mk(base([T("t1", { block: 1 }), T("b1"), T("i1", { issue: true, what: "Crash on save" })])));
+  ok(/Remaining: 1 of 1 task \| Backlog: 1 unscheduled task$/.test(k.d.querySelector("#view .remaining").textContent), "an issue with no due date is not in the burndown or the Backlog count");
+  k.tab("schedule");
+  ok(!k.$("view").textContent.includes("Crash on save") && k.$("view").textContent.includes("Backlog (1)"), "it is not on the Tasks page, in the list or in the Backlog");
+  k.tab("projects");
+  ok(k.$("view").textContent.includes("1 open task · 1 open issue"), "an In progress row counts the quest's open issues apart from its tasks");
+  k.click(k.btn(k.$("view"), "Issue Quest"));
+  ok(k.$("view").textContent.includes("Complete: 0 of 2 tasks | Backlog: 1 unscheduled task | Issues: 1 open"), "the quest's count line does the same");
+  const irow = k.$("itask-i1");
+  ok(!!k.$("h-issues") && !!irow && !k.$("ptask-i1") && !irow.querySelector(".chip.backlog") && !irow.querySelector(".l1") && irow.classList.contains("nol1"), "the quest page lists it under Issues, with no Backlog chip and no date line");
+  ok(k.$("h-issues").closest(".sechead").nextElementSibling.textContent === "Complete: 0 of 1 issue" && !!k.btn(k.$("view"), "Add issue"), "the Issues section has its count line and an Add issue button");
+  k.click(irow.querySelector(".item"));
+  const det = k.$("itask-i1").querySelector(".detail");
+  ok(!!det && det.textContent.includes("Due date (optional)") && !k.btn(det, "Make milestone") && !!k.btn(det, "Launch critical"), "an open issue offers an optional due date and Launch critical, and no milestone button");
+  finish(k, "b1"); finish(k, "t1");
+  ok(questOf(k).status === "complete" && k.$("modalBody").textContent.includes("1 issue is still open."), "finishing the last task completes the quest with an open issue, and the dialog says so");
+  // A launch-critical issue moves to Before you launch and holds the quest open.
+  k = kit(await mk(base([T("t1", { block: 1 }), T("i1", { issue: true, launch: true, what: "Crash on save" })])));
+  k.tab("projects"); k.click(k.btn(k.$("view"), "Issue Quest"));
+  const lrow = k.$("ltask-i1");
+  ok(!!lrow && !!lrow.querySelector(".chip.issuechip") && !lrow.querySelector(".chip.backlog") && k.$("h-issues").closest(".sechead").nextElementSibling.textContent === "No issues yet." && !!k.btn(k.$("view"), "Add issue"), "a launch-critical issue sits in Before you launch with an Issue chip, and the Issues section reads No issues yet. with its Add issue button");
+  ok(k.$("h-checks").closest(".sechead").nextElementSibling.textContent === "Complete: 0 of 1 launch-critical item", "the launch count says items once an issue is on it");
+  finish(k, "t1");
+  ok(questOf(k).status === "active", "an open launch-critical issue holds the quest open");
+  // An issue with a due date is scheduled work: Tasks page, burndown, and completion.
+  k = kit(await mk(base([T("t1", { block: 1 }), T("i1", { issue: true, block: 1, due: "2026-12-01", milestone: true, what: "Crash on save" })])));
+  ok(/Remaining: 2 of 2 tasks/.test(k.d.querySelector("#view .remaining").textContent), "an issue with a due date counts in the burndown");
+  k.tab("schedule");
+  const trow = [...k.d.querySelectorAll("#view .listpane .item")].find(b => b.textContent.includes("Crash on save"));
+  ok(!!trow && !!trow.querySelector(".chip.issuechip") && !trow.querySelector(".chip.milestonechip"), "it is on the Tasks page with an Issue chip, and an issue is never a milestone");
+  finish(k, "t1");
+  ok(questOf(k).status === "active", "an open issue with a due date holds the quest open");
+  // New issue from the + menu.
+  k = kit(await mk(base([T("t1", { block: 1 })])));
+  k.menuAct("newBtn", "newIssue");
+  ok(k.$("modalTitle").textContent === "New issue" && !!k.$("f-quest") && !!k.$("f-what") && !!k.$("f-notes"), "New issue asks for a quest, a title, and notes");
+  k.click(k.btn(k.$("modalBody"), "Add issue"));
+  ok(!k.$("overlay").hidden && k.$("modalBody").textContent.includes("Enter a title for the issue."), "an issue needs a title");
+  k.setField("what", "Typo in footer"); k.click(k.btn(k.$("modalBody"), "Add issue"));
+  const made = k.saved().tasks.find(t => t.what === "Typo in footer");
+  ok(!!made && made.issue === true && made.block === 0 && made.due === "" && k.$("toast").textContent.includes("added as an issue to Issue Quest."), "it is saved as an issue with no due date");
+  // Search finds an issue and opens it on its quest's page.
+  k.type("Typo");
+  const hit = k.d.querySelector("#searchResults .item");
+  ok(!!hit && hit.querySelector(".l1").textContent.includes("Issue Quest · Issue · Not started"), "search lists an issue as an Issue, not as Backlog");
+  k.click(hit);
+  ok(k.$("viewTitle").textContent === "Issue Quest" && k.$("itask-" + made.id).querySelector(".item").getAttribute("aria-expanded") === "true", "opening it goes to its quest's page with the issue open");
+  // The Quest giver export leaves issues with no due date out unless asked.
+  async function exportRun(check) {
+    const kx = kit(await mk(base([T("t1", { block: 1 }), T("i1", { issue: true, what: "Crash on save" }), T("i2", { issue: true, block: 1, due: "2026-12-01", what: "Slow first load" })])));
+    let written = null;
+    kx.w.showSaveFilePicker = () => Promise.resolve({ createWritable: () => Promise.resolve({ write: (t) => { written = t; return Promise.resolve(); }, close: () => Promise.resolve() }) });
+    kx.tab("projects"); kx.click(kx.btn(kx.$("view"), "Issue Quest")); kx.click(kx.btn(kx.$("view"), "Quest giver export"));
+    const boxes = [...kx.d.querySelectorAll('#overlay input[type="checkbox"]')].map(c => c.id + ":" + c.checked);
+    if (check) kx.$("f-issues").checked = true;
+    kx.click(kx.btn(kx.$("overlay"), "Export"));
+    await new Promise((r) => setTimeout(r, 30));
+    return { html: written || "", boxes };
+  }
+  let r = await exportRun(false);
+  ok(r.boxes.join() === "f-issues:false" && !r.html.includes("Crash on save") && !r.html.includes("<h3>Issues</h3>"), "the export offers issues unchecked, and leaves them out by default");
+  ok(r.html.includes("Slow first load") && r.html.includes('<span class="chip issuechip"'), "an issue with a due date exports with the tasks, marked as an issue");
+  r = await exportRun(true);
+  ok(r.html.includes("<h3>Issues</h3>") && r.html.includes("Crash on save"), "checking the box lists the issues that have no due date");
 }
 console.log(fails ? ("\n" + fails + " FAILED") : "\nALL PASSED");
 process.exit(fails ? 1 : 0);

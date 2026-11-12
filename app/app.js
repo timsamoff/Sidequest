@@ -1,5 +1,5 @@
 import { state, ui, save, changed, autoVault, purgeOldVault, APP_NAME, APP_VERSION, loadFromDbIfAvailable, checkForAppUpdate, pickAffirmation } from "./state.js";
-import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest, lateTasks, questNameTaken } from "./model.js";
+import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest, isLooseIssue, lateTasks, questNameTaken } from "./model.js";
 import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline, playSfx, inClaude, isStandalone } from "./dom.js";
 import { TODAY } from "./dates.js";
 import { renderJobs } from "./errands.js";
@@ -9,7 +9,7 @@ import { renderSettings, setDeferredInstallPrompt, setInstalledThisSession } fro
 import { renderToday, renderSchedule, renderQuests, renderWorkshop, renderVault, renderTimeline, setAvailableUpdateVersion } from "./views.js";
 import { renderSearch, openSearch, closeSearch, wireSearchInput, focusSearch } from "./search.js";
 import {
-  taskDialog, questDialog, ideaDialog, jobDialog, decisionDialog, stepDialog
+  taskDialog, questDialog, ideaDialog, jobDialog, decisionDialog, stepDialog, issueDialog
 } from "./dialogs.js";
 import { playSplash } from "./splash.js";
 import { noteBurnView } from "./chart.js";
@@ -21,6 +21,8 @@ export function go(view) { leaveSearch(); ui.view = view; ui.detail = false; ren
 export function openTask(id) {
   var at = findAnyTask(id);
   if (at && at.vault) { go("vault"); notify("That task is in the Vault. Restore it to work on it.", null, "problem"); return; }
+  // An issue with no due date is not on the Tasks page, so it opens in place on its quest's page.
+  if (at && isLooseIssue(at) && findQuest(at.questId)) { ui.questOpen[at.questId] = id; go("quest:" + at.questId); return; }
   leaveSearch(); ui.view = "schedule"; ui.sel = id; ui.detail = true; renderAll(); scrollTop();
 }
 export var ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>';
@@ -177,7 +179,7 @@ export function wireMenu(btnId, menuId) {
     closeMenus(false);
     if (t.getAttribute("data-view")) { go(t.getAttribute("data-view")); return; }
     var act = t.getAttribute("data-act");
-    ({ newTask: taskDialog, newStep: function () { stepDialog(); }, newQuest: questDialog, newIdea: ideaDialog, newJob: jobDialog, newDecision: decisionDialog, vault: function () { go("vault"); }, settings: function () { go("settings"); } })[act]();
+    ({ newTask: taskDialog, newStep: function () { stepDialog(); }, newQuest: questDialog, newIdea: ideaDialog, newJob: jobDialog, newDecision: decisionDialog, newIssue: issueDialog, vault: function () { go("vault"); }, settings: function () { go("settings"); } })[act]();
   });
   on(m, "keydown", function (e) {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;

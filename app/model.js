@@ -59,6 +59,10 @@ export function completeQuests() { return liveQuests().filter(function (p) { ret
 export function isCandidateTask(t) { var p = findQuest(t.questId); return !!p && p.status === "candidate" && !p.vault; }
 export function isHiddenFromPlan(t) { return isHiddenComplete(t) || isCandidateTask(t); }
 export function isHiddenComplete(t) { var p = findQuest(t.questId); return !!p && p.status === "complete" && !p.vault; }
+// An issue with no due date is only logged on its quest's page: it is not Backlog and appears in no cross-quest list.
+export function isLooseIssue(t) { return !!t.issue && t.block === 0; }
+// A quest's issues that are still open, dated or not.
+export function openIssues(questId) { return questTasks(questId).filter(function (t) { return t.issue && t.status !== "Completed"; }); }
 // Searches every quest, vaulted or not -- a vaulted quest's page
 // must stay reachable, read-only, until restored.
 export function findQuest(id) { for (var i = 0; i < state.quests.length; i++) if (state.quests[i].id === id) return state.quests[i]; return null; }
@@ -79,7 +83,7 @@ export function uniqueQuestName(base) {
 // True only when the quest has at least one counted task and every one of
 // them is Completed -- an empty task list must never read as "done."
 export function questTasksAllDone(p) {
-  var ts = counted().filter(function (t) { return t.questId === p.id; });
+  var ts = counted().filter(function (t) { return t.questId === p.id && !(isLooseIssue(t) && !t.launch); });
   return ts.length > 0 && ts.every(function (t) { return t.status === "Completed"; });
 }
 // Direct links only, one hop -- a linked quest may itself have further
@@ -204,7 +208,7 @@ export function counted() { return state.tasks.filter(function (t) { return !t.v
 export function questTasks(questId) { return state.tasks.filter(function (t) { return t.questId === questId; }); }
 // The "chosen" quest is the first active one with no tasks yet. If two are
 // both task-less, whichever was promoted first wins.
-export function chosen() { var a = activeQuests(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.questId === a[i].id; })) return a[i]; return null; }
+export function chosen() { var a = activeQuests(); for (var i = 0; i < a.length; i++) if (!counted().some(function (t) { return t.questId === a[i].id && !isLooseIssue(t); })) return a[i]; return null; }
 export function dispQuest(t) { var p = findQuest(t.questId); return p ? p.name : ""; }
 // The burndown counts tasks, one each.
 function isOpen(t) { return t.status !== "Completed"; }
@@ -227,10 +231,10 @@ export function sortTasks(list) {
 }
 export function ordered() { return sortTasks(live(state.tasks).filter(function (t) { return t.block > 0 && !isHiddenFromPlan(t); })); }
 export function orderedAll() { return sortTasks(live(state.tasks)); }
-export function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0 && !isHiddenFromPlan(t); })); }
+export function backlogTasks() { return sortTasks(live(state.tasks).filter(function (t) { return t.block === 0 && !t.issue && !isHiddenFromPlan(t); })); }
 export function burnTasks() { return counted().filter(function (t) { return t.block > 0 && !isHiddenFromPlan(t); }); }
 // Tasks that count for the empty-state wording on Today and Tasks: everything but a Candidate quest's.
-export function planCounted() { return counted().filter(function (t) { return !isCandidateTask(t); }); }
+export function planCounted() { return counted().filter(function (t) { return !isCandidateTask(t) && !isLooseIssue(t); }); }
 // Projects a finish from the tasks completed in the last four blocks (four
 // block lengths of days), so it needs two blocks of history and one finished task first.
 export function velocityForecast(tasks, blockDays, sinceMs) {
@@ -305,14 +309,16 @@ function pinHome() { return isHosted() ? "main menu" : "sidebar"; }
 export function pinPage(key) { if (!isPinned(key)) state.pins.push(key); changed(); notify(pageTitle(key) + " pinned to the " + pinHome() + "."); }
 export function unpinPage(key) { state.pins = state.pins.filter(function (k) { return k !== key; }); changed(); notify(pageTitle(key) + " removed from the " + pinHome() + ". It is still listed under Quests."); }
 export function questMeta(p) {
-  var ts = questTasks(p.id);
+  var ts = questTasks(p.id).filter(function (t) { return !isLooseIssue(t); });
   var parts = [];
   if (ts.length) {
     var bk = ts.filter(function (t) { return t.block === 0; }).length;
     var dn = ts.filter(function (t) { return t.status === "Completed"; }).length;
     parts.push("Complete: " + dn + " of " + ts.length + (ts.length === 1 ? " task" : " tasks") + (bk ? " | Backlog: " + bk + " unscheduled " + (bk === 1 ? "task" : "tasks") : ""));
   }
-  return parts.length ? parts.join(" ") : "No tasks yet";
+  var oi = openIssues(p.id).length;
+  if (oi) parts.push("Issues: " + oi + " open");
+  return parts.length ? parts.join(" | ") : "No tasks yet.";
 }
 export function findStep(id) {
   if (!id) return null;

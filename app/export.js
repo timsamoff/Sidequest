@@ -2,7 +2,7 @@ import { state } from "./state.js";
 import { fmt, fmtY, iso, parseISO, TODAY } from "./dates.js";
 import {
   wl, pset, linkedQuests, questBurn, questBurnTasks, isLate,
-  taskStart, taskEnd, questEstimate, fmtHours, fmtHoursLong, live,
+  taskStart, taskEnd, questEstimate, fmtHours, fmtHoursLong, live, isLooseIssue,
   blockForDate, blockStartFor, blockEndFor, milestoneTasks
 } from "./model.js";
 import { scopeSteps } from "./chart.js";
@@ -15,10 +15,10 @@ import { isEmail } from "./dom.js";
 // Tasks, steps, and the quest's fields, frozen to plain data. Does not
 // walk linked quests -- buildExportTree() does that, with the cycle guard.
 function snapshotTasks(p) {
-  return questBurnTasksOrdered(p).map(function (t) {
+  return questBurnTasksOrdered(p).filter(function (t) { return !isLooseIssue(t); }).map(function (t) {
     return {
       id: t.id, what: t.what, done: t.done, status: t.status, notes: t.notes || "",
-      block: t.block, start: fmtRange(t), late: isLate(t), launch: !!t.launch, milestone: !!t.milestone,
+      block: t.block, start: fmtRange(t), late: isLate(t), launch: !!t.launch, milestone: !!t.milestone, issue: !!t.issue,
       est: t.est > 0 ? fmtHours(t.est) : "",
       steps: (t.steps || []).map(function (s) { return { text: s.text, done: !!s.done }; })
     };
@@ -32,6 +32,14 @@ function questBurnTasksOrdered(p) {
   });
 }
 function fmtRange(t) { return t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)); }
+// Issues with no due date, as title and status only. They print only when the export asks for them.
+function snapshotIssues(p) {
+  return questBurnTasksOrdered(p).filter(isLooseIssue).map(function (t) { return { what: t.what, status: t.status, launch: !!t.launch }; });
+}
+// True when this quest, or a linked quest the export would include, has an issue with no due date.
+export function exportHasIssues(p) {
+  return flattenSections(buildExportTree(p, null, true)).some(function (n) { return n.issues.length > 0; });
+}
 
 // Precomputed chart data for one quest: burndown points with baked tooltip text, and timeline lanes. Milestones use two coordinate systems: date labels for the burndown, percent-of-range in each lane.
 function snapshotCharts(p) {
@@ -104,12 +112,12 @@ function snapshotLanes(p, bd) {
 
 // Walks a quest and its Active/Complete linked quests, recursively, with a
 // cycle guard. Candidate and vaulted linked quests are skipped entirely.
-function buildExportTree(p, seen) {
+function buildExportTree(p, seen, withIssues) {
   seen = seen || {};
   seen[p.id] = true;
   var node = {
     id: p.id, name: p.name, status: p.status, notes: p.notes || "",
-    meta: questMetaLine(p), tasks: snapshotTasks(p), charts: snapshotCharts(p),
+    meta: questMetaLine(p), tasks: snapshotTasks(p), issues: withIssues ? snapshotIssues(p) : [], charts: snapshotCharts(p),
     links: [], estimate: estimateLine(p)
   };
   linkedQuests(p).forEach(function (lp) {
@@ -117,7 +125,7 @@ function buildExportTree(p, seen) {
     // so being in the Vault is a separate check from status -- both exclude it.
     if (lp.vault || (lp.status !== "active" && lp.status !== "complete")) return;
     if (seen[lp.id]) { node.links.push({ id: lp.id, name: lp.name, cycle: true }); return; }
-    var child = buildExportTree(lp, seen);
+    var child = buildExportTree(lp, seen, withIssues);
     node.links.push({ id: lp.id, name: lp.name, cycle: false, node: child });
   });
   return node;
@@ -159,9 +167,10 @@ export function exportSides(p) {
 }
 
 // opts.preparedBy and opts.preparedFor (both default true) leave a letterhead side out when false.
+// opts.issues (default false) adds each quest's issues that have no due date.
 export function buildExportSnapshot(p, opts) {
   var includeBy = !opts || opts.preparedBy !== false, includeFor = !opts || opts.preparedFor !== false;
-  var tree = buildExportTree(p);
+  var tree = buildExportTree(p, null, !!opts && opts.issues === true);
   var sections = flattenSections(tree);
   var contact = includeBy ? filledOrNull(state.settings.contact) : null;
   // coin/per (the pay rate) never print on the export -- excluded here so they
@@ -197,7 +206,7 @@ function renderTasks(node) {
     var cls = t.status === "Completed" ? " done" : "";
     var html = '<li class="etask' + cls + '">';
     if (t.block !== 0) html += '<div class="el1">' + escHtml(t.start) + "</div>";
-    html += '<div class="el2">' + (t.launch ? '<span class="chip launchcrit" style="margin-right:8px">Launch critical</span>' : "") + (t.milestone ? '<span class="chip milestonechip" style="margin-right:8px">Milestone</span>' : "") + escHtml(t.what) + "</div>";
+    html += '<div class="el2">' + (t.launch ? '<span class="chip launchcrit" style="margin-right:8px">Launch critical</span>' : "") + (t.milestone ? '<span class="chip milestonechip" style="margin-right:8px">Milestone</span>' : "") + (t.issue ? '<span class="chip issuechip" style="margin-right:8px">Issue</span>' : "") + escHtml(t.what) + "</div>";
     if (t.est) html += '<div class="el3"><span>Est ' + escHtml(t.est) + "</span></div>";
     if (t.done) html += '<p class="edone">Done when: ' + escHtml(t.done) + "</p>";
     if (t.steps.length) {
@@ -206,6 +215,13 @@ function renderTasks(node) {
     if (t.notes) html += '<p class="enotes">' + escHtml(t.notes) + "</p>";
     html += "</li>";
     return html;
+  });
+  return '<ul class="etasklist">' + rows.join("") + "</ul>";
+}
+
+function renderIssues(node) {
+  var rows = node.issues.map(function (t) {
+    return '<li class="etask' + (t.status === "Completed" ? " done" : "") + '"><div class="el2">' + (t.launch ? '<span class="chip launchcrit" style="margin-right:8px">Launch critical</span>' : "") + escHtml(t.what) + '</div><div class="el3"><span>' + escHtml(t.status) + "</span></div></li>";
   });
   return '<ul class="etasklist">' + rows.join("") + "</ul>";
 }
@@ -244,6 +260,7 @@ function renderSection(node) {
   html += '<div class="emain">';
   html += '<h3 class="efirst">Tasks</h3>';
   html += renderTasks(node);
+  if (node.issues.length) html += "<h3>Issues</h3>" + renderIssues(node);
   if (node.notes) html += "<h3>Notes</h3>" + '<p class="enotes">' + escHtml(node.notes).replace(/\n/g, "<br>") + "</p>";
   if (node.links.length) html += "<h3>Quest links</h3>" + renderLinks(node);
   html += "</div>";
@@ -286,6 +303,7 @@ h1, h2, h3, h4, h5 { font-weight: 700; margin-top: 0; }\
 .chip.launchcrit { background: var(--badge-priority-bg); color: var(--badge-priority); }\
 .chip.backlog { background: var(--badge-neutral-bg); color: var(--badge-neutral); }\
 .chip.milestonechip { background: var(--milestone-bg); color: var(--milestone); }\
+.chip.issuechip { background: var(--badge-attention-bg); color: var(--badge-attention); }\
 .chip.ereadonly { background: var(--muted); color: var(--surface); vertical-align: middle; font-size: .7rem; margin-left: 8px; }\
 .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--late-bg); color: var(--late); font-size: .8rem; font-weight: 600; }\
 .etasklist, .list { list-style: none; margin: 8px 0; padding: 0; }\

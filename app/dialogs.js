@@ -32,7 +32,7 @@ function unlockPage() {
 }
 // Scrolls a just-added task (its quest page row, or its selected row in Tasks) to 20px below the sticky header.
 export function scrollToTask(id) {
-  var row = document.getElementById("ptask-" + id) || document.querySelector('#view .listpane [aria-current="true"]');
+  var row = document.getElementById("ptask-" + id) || document.getElementById("itask-" + id) || document.querySelector('#view .listpane [aria-current="true"]');
   if (!row) return;
   var bar = document.querySelector(".topbar"), below = bar ? bar.getBoundingClientRect().bottom : 0;
   try { window.scrollTo(0, Math.max(0, row.getBoundingClientRect().top + (window.pageYOffset || 0) - below - 20)); } catch (e) { /* ignore */ }
@@ -217,6 +217,28 @@ export function taskDialog(prefillQuestId) {
     setTimeout(function () { scrollToTask(t.id); }, 0);
     return { msg: "“" + t.what + "” added as a task to " + dispQuest(t) + "’s backlog." };
   }, (fixedQuest ? "Assign a new task to this quest." : "Assign a new task to any open quest.") + " New tasks start in the quest’s backlog. Open the task afterward to set its dates, estimate, and finish line.");
+}
+// An issue is a task flagged t.issue. It starts with no due date and, until it has one, shows only on its quest's page.
+export function issueDialog(prefillQuestId) {
+  var questOpts = workQuests().map(function (p) { return { value: p.id, label: p.name }; });
+  if (!questOpts.length) { notify("Issues can only be added to a quest.", null, "problem"); return; }
+  var fixedQuest = typeof prefillQuestId === "string", nt = nextTask();
+  var startId = fixedQuest ? prefillQuestId : (nt ? nt.questId : questOpts[0].value);
+  var startQuest = findQuest(startId);
+  var fields = fixedQuest && startQuest
+    ? [{ key: "quest", label: "Quest", type: "static", value: startQuest.name }]
+    : [{ key: "quest", label: "Quest", type: "select", options: questOpts, value: startId }];
+  fields.push({ key: "what", label: "Issue" });
+  fields.push({ key: "notes", label: "Notes", type: "textarea", rows: 5 });
+  formDialog("New issue", fields, "Add issue", function (v) {
+    if (fixedQuest) v.quest = startId;
+    if (!v.quest) return "Choose a quest.";
+    if (!v.what) return { field: "what", error: "Enter a title for the issue." };
+    var t = task("c" + uid(), 0, v.quest, v.what.slice(0, 400), "It’s resolved", [], { custom: true, issue: true, notes: v.notes.slice(0, 5000) });
+    state.tasks.push(t); changed();
+    setTimeout(function () { scrollToTask(t.id); }, 0);
+    return { msg: "“" + t.what + "” added as an issue to " + dispQuest(t) + "." };
+  }, (fixedQuest ? "Log an issue on this quest." : "Log an issue on any open quest.") + " No due date is required, and the issue stays out of the Backlog. Find it in the Issues section of the quest’s details.");
 }
 export function questDialog() {
   formDialog("New candidate quest", [

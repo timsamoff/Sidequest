@@ -5,7 +5,7 @@ import { ideaDialog } from "./dialogs.js";
 import { $, el, helpLink, isHosted, newPin, notify, on, scrollTop, uid } from "./dom.js";
 import { backupControls, backupReminderDue, daysSinceBackup } from "./files.js";
 import { deleteForever, emptyVault, promoteToActive, removeToVault, restoreEntry, vaultEntries } from "./lifecycle.js";
-import { questNameTaken, activeQuests, backlogTasks, candidateQuests, checkpointStep, checkpoints, counted, dispQuest, findQuest, findTask, fmtHours, globalActual, isDusty, isLate, isPinned, lateTasks, live, liveQuests, nextTask, ordered, pinPage, planCounted, planned, pset, questMeta, questRemainingUnits, questTotalUnits, remainingUnits, short, taskEnd, taskStart, totalUnits, unpinPage, validPage, wl } from "./model.js";
+import { questNameTaken, activeQuests, backlogTasks, candidateQuests, checkpointStep, checkpoints, counted, dispQuest, findQuest, findTask, fmtHours, globalActual, isDusty, isLate, isPinned, lateTasks, live, liveQuests, nextTask, openIssues, ordered, pinPage, planCounted, planned, pset, questMeta, questRemainingUnits, questTotalUnits, remainingUnits, short, taskEnd, taskStart, totalUnits, unpinPage, validPage, wl } from "./model.js";
 import { addRowControls, buildDetail } from "./quest-page.js";
 import { APP_VERSION, changed, makeQuest, quest, releaseFileUrl, save, state, ui } from "./state.js";
 import { startTutorial } from "./tutorial.js";
@@ -96,7 +96,7 @@ export function burnParts(o) {
   if (host.dataset.forecast) { var l4 = el("span"); l4.appendChild(el("i", { "class": "f" })); l4.appendChild(document.createTextNode("Forecast")); lg.appendChild(l4); }
   var l3 = el("span"); l3.appendChild(el("i", { "class": "s" })); l3.appendChild(document.createTextNode("Scope")); lg.appendChild(l3);
   var rn = quest ? questRemainingUnits(quest) : remainingUnits(), tot = quest ? questTotalUnits(quest) : totalUnits(), rb = el("div", { "class": "box" });
-  var nbk = quest ? counted().filter(function (t) { return t.questId === quest.id && t.block === 0; }).length : backlogTasks().length;
+  var nbk = quest ? counted().filter(function (t) { return t.questId === quest.id && t.block === 0 && !t.issue; }).length : backlogTasks().length;
   rb.appendChild(el("p", { "class": "hint first remaining" }, "Remaining: " + rn + " of " + tot + (tot === 1 ? " task" : " tasks") + (nbk ? " | Backlog: " + nbk + " unscheduled " + (nbk === 1 ? "task" : "tasks") : "")));
   return { h: h, chart: cb, count: rb };
 }
@@ -232,6 +232,7 @@ export function taskRow(t) {
   if (t.block === 0) chips.appendChild(el("span", { "class": "chip backlog" }, "Backlog"));
   if (t.launch) chips.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
   if (t.milestone) chips.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
+  if (t.issue) chips.appendChild(el("span", { "class": "chip issuechip" }, "Issue"));
   var tag1 = addedChip(t); if (tag1) chips.appendChild(tag1);
   if (chips.childNodes.length) l1.appendChild(chips);
   b.appendChild(l1);
@@ -349,10 +350,10 @@ export function standingBlock() {
     textWrap.appendChild(nm);
     var dq = findQuest(g.questId);
     if (dq && isDusty(dq)) textWrap.appendChild(dustChip());
-    var nx = el("div", { "class": "snext" }); nx.appendChild(document.createTextNode("Next up: "));
+    var nx = el("div", { "class": "snext" }), oi = openIssues(g.questId).length; nx.appendChild(document.createTextNode("Next up: "));
     var tl = el("button", { type: "button", "class": "textbtn", title: "View this task" }, short(g.first.what, 90));
     on(tl, "click", function () { openTask(g.first.id); });
-    nx.appendChild(tl); nx.appendChild(document.createTextNode(" · " + fmt(taskStart(g.first)) + " · " + g.open + " open " + (g.open === 1 ? "task" : "tasks")));
+    nx.appendChild(tl); nx.appendChild(document.createTextNode(" · " + fmt(taskStart(g.first)) + " · " + g.open + " open " + (g.open === 1 ? "task" : "tasks") + (oi ? " · " + oi + " open " + (oi === 1 ? "issue" : "issues") : "")));
     textWrap.appendChild(nx);
     row.appendChild(textWrap); row.appendChild(questPinButton("quest:" + g.questId, g.name));
     li.appendChild(row); ul.appendChild(li);

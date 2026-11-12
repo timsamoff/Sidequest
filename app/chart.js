@@ -363,7 +363,7 @@ export function rangeBlock() {
 export function questRangeBlock(p) {
   var ts = questBurnTasks(p).slice().sort(function (x, y) { return taskStart(x) - taskStart(y); });
   var mss = milestoneTasks(p.id).map(function (t) { return { id: t.id, text: t.what, date: taskEnd(t) }; });
-  var nb = counted().filter(function (t) { return t.questId === p.id && t.block === 0; }).length;
+  var nb = counted().filter(function (t) { return t.questId === p.id && t.block === 0 && !t.issue; }).length;
   var backlog = nb ? " " + nb + (nb === 1 ? " backlog task is" : " backlog tasks are") + " not shown until scheduled." : "";
   if (!ts.length) return { node: el("p", { "class": "hint" }, "Nothing is scheduled yet. Create a task with a due date to see them here." + backlog), milestones: mss, empty: true };
   var first = Infinity, maxEnd = -Infinity;
