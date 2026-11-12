@@ -126,7 +126,7 @@ export function helpTopics() {
       "**Steps:** You can add steps with the **+** button or from inside a task. Steps break a task into smaller actions. Completing all of a task’s steps completes the task.",
       "**Decisions:** Every step within a task can require a decision. Answering an open decision closes the step.",
       "**Before you launch:** Tasks that must be done before a quest can launch go in this section. Selecting **Launch critical** adds a task to this section. This is only an organizational feature and does not otherwise change the task.",
-      "**Issues:** Use the **+** button to log a problem on a quest, such as a bug. Once a quest has an issue, its issues appear in the **Issues** section of its details. Issues work like tasks, with steps, notes, and a status, but don’t require a due date and never show a **Backlog** badge.",
+      "**Issues:** Use the **+** button to log a problem on a quest, such as a bug. Issues appear in the **Issues** section of the quest’s details. Like tasks, they have steps, notes, and a status, but don’t require a due date or display a **Backlog** badge.",
       ">Issues without due dates stay in the quest’s details and don’t appear on the **Tasks** page, the **Timeline**, or the **Burndown**. Add a due date to schedule an issue like any other task. Scheduled issues display an **Issue** badge.",
       ">Select **Launch critical** to move an issue to the **Before you launch** section.",
       "**Notes:** Use **Notes** for any additional information about the quest. An idea’s note carries over when the idea becomes a candidate quest."
