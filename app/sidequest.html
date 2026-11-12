@@ -442,6 +442,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .detailpane .detail { background: var(--sel); }
 .detail { padding: var(--space-18) var(--space-20); }
 .detail .what { font-family: var(--font-serif); font-size: calc(1.25rem + 1px); font-weight: 400; line-height: 1.3; margin-top: var(--space-8); }
+.detail .donewhen { display: flex; gap: var(--space-8); align-items: flex-start; }
 .detail .dmeta { color: var(--muted); margin-top: var(--space-4); }
 select.status { border: 1px solid var(--line); border-radius: var(--radius-pill); padding: var(--space-5) var(--space-12); min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
 /* A task row's status pulldown sits beside the row's button, on the title line; alignStatuses() sets its top. */
@@ -3605,7 +3606,7 @@ function issueDialog(prefillQuestId) {
     if (fixedQuest) v.quest = startId;
     if (!v.quest) return "Choose a quest.";
     if (!v.what) return { field: "what", error: "Enter a title for the issue." };
-    var t = task("c" + uid(), 0, v.quest, v.what.slice(0, 400), "It’s resolved", [], { custom: true, issue: true, notes: v.notes.slice(0, 5000) });
+    var t = task("c" + uid(), 0, v.quest, v.what.slice(0, 400), "It’s finished", [], { custom: true, issue: true, notes: v.notes.slice(0, 5000) });
     state.tasks.push(t); changed();
     setTimeout(function () { scrollToTask(t.id); }, 0);
     return { msg: "“" + t.what + "” added as an issue to " + dispQuest(t) + "." };
@@ -5258,6 +5259,13 @@ function addRowControls(li, t) {
   on(sel, "change", function () { setStatus(t, sel.value); setFocusKey("status-" + t.id); changed(); });
   li.classList.add("hasstatus"); li.appendChild(sel);
 }
+// Opens or closes a row in place. Closing the row that was open above shifts the page, so the clicked row is put back where it was.
+function toggleRow(p, t, open, li) {
+  var before = li.getBoundingClientRect().top;
+  ui.questOpen[p.id] = open ? null : t.id; renderView();
+  var row = document.getElementById(li.id), shift = row ? row.getBoundingClientRect().top - before : 0;
+  if (shift) window.scrollBy(0, shift);
+}
 // A long date line can wrap, so a title is not always at the same height; this reads each row's line positions, then hands them to the CSS.
 function alignStatuses(root) {
   var rows = Array.prototype.slice.call(root.querySelectorAll("li.hasstatus"));
@@ -5347,7 +5355,20 @@ function buildDetail(t, inline, readOnly) {
   }
 
   box.appendChild(el("h3", null, "Done when"));
-  box.appendChild(el("p", null, t.done));
+  if (readOnly) box.appendChild(el("p", null, t.done));
+  else {
+    var dw = el("div", { "class": "donewhen" }), dwText = el("span", null, t.done), dwPen = pencilButton("Edit Done when", "Edit Done when");
+    on(dwPen, "click", function () {
+      dwPen.hidden = true;
+      editInline(dwText, {
+        label: "Done when", max: 200, value: function () { return t.done; },
+        onSave: function (v) { t.done = v.slice(0, 200); changed(); },
+        onEmpty: function () { notify("Done when can’t be empty.", null, "problem"); },
+        onDone: function () { dwPen.hidden = false; }
+      });
+    });
+    dw.appendChild(dwText); dw.appendChild(dwPen); box.appendChild(dw);
+  }
   var nDone = t.steps.filter(function (s) { return s.done; }).length;
   box.appendChild(el("h3", null, t.steps.length ? "Steps (" + nDone + " of " + t.steps.length + " done)" : "Steps"));
   if (!t.steps.length) box.appendChild(el("p", { "class": "hint" }, t.issue ? "No steps yet. Add steps to break it up." : "No steps yet. This task counts as one item in the burndown. Add steps to break it up."));
@@ -5498,17 +5519,17 @@ function launchSection(root, p) {
     var l1 = el("div", { "class": "l1 split" });
     if (t.block !== 0) l1.appendChild(el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
     else if (!t.issue) l1.appendChild(el("span", { "class": "chip backlog" }, "Backlog"));
-    var tag1 = addedChip(t); if (tag1) { tag1.style.marginLeft = "6px"; l1.appendChild(tag1); }
     if (l1.childNodes.length) b.appendChild(l1); else li.classList.add("nol1");
     b.appendChild(el("div", { "class": "l2" }, short(t.what, 60) + (t.vault ? " (in the Vault)" : "")));
     var l3 = el("div", { "class": "l3" });
     if (taskReadOnly) l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
-    if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
     if (t.issue) l3.appendChild(el("span", { "class": "chip issuechip" }, "Issue"));
+    if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
+    var tag1 = addedChip(t); if (tag1) l3.appendChild(tag1);
     stepsAndEst(l3, t);
     if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
     if (l3.childNodes.length) b.appendChild(l3);
-    on(b, "click", function () { ui.questOpen[p.id] = open ? null : t.id; renderView(); });
+    on(b, "click", function () { toggleRow(p, t, open, li); });
     li.appendChild(b);
     if (!taskReadOnly) addRowControls(li, t);
     if (open) li.appendChild(buildDetail(t, true, taskReadOnly));
@@ -5536,16 +5557,16 @@ function issuesSection(root, p) {
     if (t.block !== 0) {
       var l1 = el("div", { "class": "l1 split" });
       l1.appendChild(el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
-      var tag1 = addedChip(t); if (tag1) { tag1.style.marginLeft = "6px"; l1.appendChild(tag1); }
       b.appendChild(l1);
     } else li.classList.add("nol1");
     b.appendChild(el("div", { "class": "l2" }, t.what));
     var l3 = el("div", { "class": "l3" });
     if (readOnly) l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
+    var tag1 = addedChip(t); if (tag1) l3.appendChild(tag1);
     stepsAndEst(l3, t);
     if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
     if (l3.childNodes.length) b.appendChild(l3);
-    on(b, "click", function () { ui.questOpen[p.id] = open ? null : t.id; renderView(); });
+    on(b, "click", function () { toggleRow(p, t, open, li); });
     li.appendChild(b);
     if (!readOnly) addRowControls(li, t);
     if (open) li.appendChild(buildDetail(t, true, readOnly));
@@ -5626,16 +5647,16 @@ function renderQuestPage(root, id) {
       b.setAttribute("aria-expanded", open ? "true" : "false");
       var l1 = el("div", { "class": "l1 split" });
       l1.appendChild(t.block === 0 ? el("span", { "class": "chip backlog" }, "Backlog") : el("span", null, fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
-      var tag1 = addedChip(t); if (tag1) { tag1.style.marginLeft = "6px"; l1.appendChild(tag1); }
       b.appendChild(l1);
       b.appendChild(el("div", { "class": "l2" }, t.what));
       var l3 = el("div", { "class": "l3" });
       if (readOnly) l3.appendChild(el("span", { "class": "chip", "data-v": t.status }, t.status));
       if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
+      var tag1 = addedChip(t); if (tag1) l3.appendChild(tag1);
       stepsAndEst(l3, t);
       if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
       if (l3.childNodes.length) b.appendChild(l3);
-      on(b, "click", function () { ui.questOpen[p.id] = open ? null : t.id; renderView(); });
+      on(b, "click", function () { toggleRow(p, t, open, li); });
       li.appendChild(b);
       if (!readOnly) addRowControls(li, t);
       if (open) li.appendChild(buildDetail(t, true, readOnly));
@@ -6441,19 +6462,17 @@ function taskRow(t) {
   var l1 = el("div", { "class": "l1 split" }), l1t = el("span"); l1t.appendChild(el("b", null, dispQuest(t)));
   if (t.block !== 0) l1t.appendChild(document.createTextNode(" · " + fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
   l1.appendChild(l1t);
-  // The chips ride on the first line and wrap below it on a narrow screen, so the title keeps its own lines.
-  var chips = el("span", { "class": "l1chips" });
-  if (t.block === 0) chips.appendChild(el("span", { "class": "chip backlog" }, "Backlog"));
-  if (t.launch) chips.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
-  if (t.milestone) chips.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
-  if (t.issue) chips.appendChild(el("span", { "class": "chip issuechip" }, "Issue"));
-  var tag1 = addedChip(t); if (tag1) chips.appendChild(tag1);
-  if (chips.childNodes.length) l1.appendChild(chips);
   b.appendChild(l1);
   var l2 = el("div", { "class": "l2" });
   l2.appendChild(document.createTextNode(t.what));
   b.appendChild(l2);
+  // The chips sit under the title, the Issue chip first.
   var l3 = el("div", { "class": "l3" });
+  if (t.issue) l3.appendChild(el("span", { "class": "chip issuechip" }, "Issue"));
+  if (t.block === 0) l3.appendChild(el("span", { "class": "chip backlog" }, "Backlog"));
+  if (t.launch) l3.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
+  if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
+  var tag1 = addedChip(t); if (tag1) l3.appendChild(tag1);
   stepsAndEst(l3, t);
   if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
   if (l3.childNodes.length) b.appendChild(l3);

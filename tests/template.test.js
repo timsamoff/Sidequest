@@ -1026,10 +1026,10 @@ ok(!html.includes("project-schedule-v"), "uses its own storage keys");
   const chip = (li) => [...li.querySelectorAll(".chip")].map(c => c.textContent).find(t => /^Added /.test(t));
   ok(!!chip(rowOf("Submit to the app store")) && !chip(rowOf("Sketch the main screens")) && !chip(rowOf("Run a beta with five friends")), "only the sample's late-added task carries an Added tag (" + chip(rowOf("Submit to the app store")) + ")");
   const tagged = [...rowOf("Submit to the app store").querySelectorAll(".chip")].find(c => /^Added /.test(c.textContent));
-  ok(tagged.parentElement.classList.contains("l1"), "the tag sits on the same line as the dates, at the top of the row");
+  ok(tagged.parentElement.classList.contains("l3"), "the tag sits under the title, with the row's other chips");
   k.tab("schedule");
   const trow = [...k.d.querySelectorAll(".listpane .item")].find(b => b.textContent.includes("Submit to the app store"));
-  ok(!!trow && [...trow.querySelectorAll(".l1 .chip")].some(c => /^Added /.test(c.textContent)), "the Tasks page shows the Added tag too");
+  ok(!!trow && [...trow.querySelectorAll(".l3 .chip")].some(c => /^Added /.test(c.textContent)) && !trow.querySelector(".l1 .chip"), "the Tasks page shows the Added tag too, under the title");
   k.click(trow);
   ok([...k.d.querySelectorAll(".detailpane .dmeta .chip")].some(c => /^Added /.test(c.textContent)), "and so does the task's detail");
   k.click(k.btn(k.d.querySelector("#nav"), "Sample App"));
@@ -3339,11 +3339,11 @@ async function exportClick(k, projectName) {
   ok(k.saved().quests.some(q => q.name === "Sample App (2)") && k.saved().quests.filter(q => q.name === "Sample App").length === 1, "the imported quest is saved as Sample App (2)");
 }
 {
-  // Chips on a Tasks row ride on the first line, and the Tasks list has no chip inside the clamped title.
+  // Chips on a Tasks row sit under the title, and the Tasks list has no chip inside the clamped title.
   const k = kit(await mk({ settings: { hideWelcome: true } }));
   k.tab("schedule");
   const bl = [...k.d.querySelectorAll("#view .tlist li")].find(li => li.querySelector(".chip.backlog"));
-  ok(!!bl && !!bl.querySelector(".l1 .l1chips .chip.backlog") && !bl.querySelector(".l2 .chip"), "a Backlog chip sits in the row's first line group, not in the title line");
+  ok(!!bl && !!bl.querySelector(".l3 .chip.backlog") && !bl.querySelector(".l1 .chip") && !bl.querySelector(".l2 .chip"), "a Backlog chip sits under the title, not in the date line or the title line");
 }
 {
   // Every phone number in the export is a tel: link, on both sides of the letterhead.
@@ -3368,6 +3368,12 @@ async function exportClick(k, projectName) {
   const kids = [...d.children], at = (f) => kids.findIndex(f);
   const est = at(c => c.querySelector && !!c.querySelector("#task-est")), dw = at(c => c.tagName === "H3" && c.textContent === "Done when"), steps = at(c => c.tagName === "H3" && /^Steps/.test(c.textContent));
   ok(est >= 0 && dw > est && steps > dw && kids[dw + 1].textContent === "People can sign up and log in", "Done when is a subtitle with its text under it, after the estimate and before Steps");
+  const dwPen = d.querySelector(".donewhen button.pencil");
+  k.click(dwPen);
+  const dwIn = k.d.querySelector("#view .donewhen .inlineedit");
+  dwIn.value = "Sign-up and log-in both work";
+  dwIn.dispatchEvent(new k.w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  ok(!!dwPen && k.saved().tasks.find(t => t.id === "a2").done === "Sign-up and log-in both work" && k.d.querySelector("#view .donewhen span").textContent === "Sign-up and log-in both work", "Done when has a pencil that edits it in place");
   k.click(k.d.querySelector('#view .questmain button.rowpencil[data-task="a2"]'));
   k.setField("what", ""); k.click(k.btn(k.$("modalBody"), "Save"));
   ok(!k.$("overlay").hidden && k.$("modalBody").textContent.includes("A task needs a title.") && k.saved().tasks.find(t => t.id === "a2").what === "Build the sign-in flow", "the rename dialog refuses an empty title");
@@ -3408,7 +3414,7 @@ async function exportClick(k, projectName) {
   ok(/Remaining: 2 of 2 tasks/.test(k.d.querySelector("#view .remaining").textContent), "an issue with a due date counts in the burndown");
   k.tab("schedule");
   const trow = [...k.d.querySelectorAll("#view .listpane .item")].find(b => b.textContent.includes("Crash on save"));
-  ok(!!trow && !!trow.querySelector(".chip.issuechip") && !trow.querySelector(".chip.milestonechip"), "it is on the Tasks page with an Issue chip, and an issue is never a milestone");
+  ok(!!trow && trow.querySelector(".l3").firstElementChild.classList.contains("issuechip") && !trow.querySelector(".chip.milestonechip"), "it is on the Tasks page with the Issue chip first under the title, and an issue is never a milestone");
   finish(k, "t1");
   ok(questOf(k).status === "active", "an open issue with a due date holds the quest open");
   // New issue from the + menu.
@@ -3419,7 +3425,7 @@ async function exportClick(k, projectName) {
   ok(!k.$("overlay").hidden && k.$("modalBody").textContent.includes("Enter a title for the issue."), "an issue needs a title");
   k.setField("what", "Typo in footer"); k.click(k.btn(k.$("modalBody"), "Add issue"));
   const made = k.saved().tasks.find(t => t.what === "Typo in footer");
-  ok(!!made && made.issue === true && made.block === 0 && made.due === "" && k.$("toast").textContent.includes("added as an issue to Issue Quest."), "it is saved as an issue with no due date");
+  ok(!!made && made.issue === true && made.block === 0 && made.due === "" && made.done === "It’s finished" && k.$("toast").textContent.includes("added as an issue to Issue Quest."), "it is saved as an issue with no due date");
   // Search finds an issue and opens it on its quest's page.
   k.type("Typo");
   const hit = k.d.querySelector("#searchResults .item");

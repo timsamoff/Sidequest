@@ -227,19 +227,17 @@ export function taskRow(t) {
   var l1 = el("div", { "class": "l1 split" }), l1t = el("span"); l1t.appendChild(el("b", null, dispQuest(t)));
   if (t.block !== 0) l1t.appendChild(document.createTextNode(" · " + fmt(taskStart(t)) + " to " + fmt(taskEnd(t))));
   l1.appendChild(l1t);
-  // The chips ride on the first line and wrap below it on a narrow screen, so the title keeps its own lines.
-  var chips = el("span", { "class": "l1chips" });
-  if (t.block === 0) chips.appendChild(el("span", { "class": "chip backlog" }, "Backlog"));
-  if (t.launch) chips.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
-  if (t.milestone) chips.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
-  if (t.issue) chips.appendChild(el("span", { "class": "chip issuechip" }, "Issue"));
-  var tag1 = addedChip(t); if (tag1) chips.appendChild(tag1);
-  if (chips.childNodes.length) l1.appendChild(chips);
   b.appendChild(l1);
   var l2 = el("div", { "class": "l2" });
   l2.appendChild(document.createTextNode(t.what));
   b.appendChild(l2);
+  // The chips sit under the title, the Issue chip first.
   var l3 = el("div", { "class": "l3" });
+  if (t.issue) l3.appendChild(el("span", { "class": "chip issuechip" }, "Issue"));
+  if (t.block === 0) l3.appendChild(el("span", { "class": "chip backlog" }, "Backlog"));
+  if (t.launch) l3.appendChild(el("span", { "class": "chip launchcrit" }, "Launch critical"));
+  if (t.milestone) l3.appendChild(el("span", { "class": "chip milestonechip" }, "Milestone"));
+  var tag1 = addedChip(t); if (tag1) l3.appendChild(tag1);
   stepsAndEst(l3, t);
   if (isLate(t)) l3.appendChild(el("span", { "class": "badge" }, "Overdue"));
   if (l3.childNodes.length) b.appendChild(l3);
