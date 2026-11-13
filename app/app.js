@@ -94,6 +94,13 @@ function renameCurrentQuest() {
   });
 }
 on($("renameBtn"), "click", renameCurrentQuest);
+// On narrow screens the page name is a heading under the leather header; on wide ones it sits in the bar.
+if (typeof window.matchMedia === "function") {
+  var narrowBar = window.matchMedia("(max-width: 899px)");
+  var placeTitle = function () { ($("pageHead") && narrowBar.matches ? $("pageHead") : document.querySelector(".tbleft")).appendChild($("titleRow")); };
+  placeTitle();
+  if (narrowBar.addEventListener) narrowBar.addEventListener("change", placeTitle);
+}
 
 // Installed PWA only (display-mode or navigator.standalone), computed once per session since it cannot change.
 var isStandaloneApp = isStandalone();

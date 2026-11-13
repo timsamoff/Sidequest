@@ -6,7 +6,7 @@ import { el, notify, on, uid } from "./dom.js";
 import { uniqueQuestName } from "./model.js";
 import { changed, isISO, makeQuest, st, state, task } from "./state.js";
 
-export var IMPORT_LIMITS = { name: 120, notes: 5000, what: 400, done: 200, step: 300, steps: 60, decision: 300, decided: 1000, tasks: 300, est: 9999 };
+export var IMPORT_LIMITS = { name: 120, org: 200, notes: 5000, what: 400, done: 200, step: 300, steps: 60, decision: 300, decided: 1000, tasks: 300, est: 9999 };
 
 // The prompt a user pastes into any AI chat. {{TODAY}} is filled in when it is copied.
 var PROMPT_TEMPLATE = [
@@ -17,10 +17,11 @@ var PROMPT_TEMPLATE = [
   "",
   "HOW TO WORK",
   "Work in this order, one step at a time, and wait for my answer after each question.",
-  "1. If the job above is still the bracketed placeholder, your first reply must be only this question, with nothing before or after it: “What quest would you like to plan?” Wait for my answer, then treat it as the job.",
-  "2. If the job is missing details you need to plan it well, such as the goal, who it is for, the deadline, or limits, ask me up to five short questions about it. If it is already clear, skip this step.",
-  "3. Then ask me this: do I want you to add the typical tasks, steps, and decisions for this kind of job, or do I want to define my own? If I define my own, ask me for them, or for an outline, and build the quest around what I give you.",
-  "4. Once I have answered, reply with the quest as one JSON object and nothing else: no introduction, no explanation, no commentary after it. Put it in a single code block, or, if you can create files, give it to me as a file named after the quest, such as Paint the spare room.json.",
+  "1. Your first reply must be only this question, with nothing before or after it: “What is the quest called?” Wait for my answer and use it as the quest’s name.",
+  "2. If the job above is still the bracketed placeholder, ask me what the job is, and wait for my answer.",
+  "3. If the job is missing details you need to plan it well, such as the goal, the deadline, or limits, ask me up to five short questions about it. Also ask whether the job is for a company or organization, and if so, its name. If it is already clear, skip the questions I have already answered.",
+  "4. Then ask me this: do I want you to add the typical tasks, steps, and decisions for this kind of job, or do I want to define my own? If I define my own, ask me for them, or for an outline, and build the quest around what I give you.",
+  "5. Once I have answered, reply with the quest as one JSON object and nothing else: no introduction, no explanation, no commentary after it. Put it in a single code block, or, if you can create files, give it to me as a file named after the quest, such as Paint the spare room.json.",
   "Today is {{TODAY}}.",
   "",
   "WHAT A QUEST IS",
@@ -59,6 +60,7 @@ var PROMPT_TEMPLATE = [
   "quest.name: required, up to 120 characters.",
   "quest.notes: optional, a short summary of the job, up to 5000 characters.",
   "quest.start and quest.due: optional dates written YYYY-MM-DD.",
+  "quest.client.org: optional, the name of the company or organization the job is for, up to 200 characters, written as { \"client\": { \"org\": \"Name\" } }. Leave client out when the job is for me or for a person.",
   "tasks[].what: required, the task’s title, up to 400 characters.",
   "tasks[].done: optional, up to 200 characters. The “Done when” line: how I will know the task is finished.",
   "tasks[].notes: optional, up to 5000 characters.",
@@ -79,7 +81,7 @@ var PROMPT_TEMPLATE = [
 export function buildAiPrompt(todayISO) { return PROMPT_TEMPLATE.replace("{{TODAY}}", todayISO); }
 
 var TASK_FIELDS = ["what", "done", "notes", "est", "start", "due", "launch", "milestone", "issue", "steps"];
-var QUEST_FIELDS = ["name", "notes", "start", "due"];
+var QUEST_FIELDS = ["name", "notes", "start", "due", "client"];
 
 // Checks a parsed quest object and reports each problem by item, so it can be pasted back to the AI.
 // Errors block the import; warnings say what was changed to fit.
@@ -110,7 +112,7 @@ export function validateQuestImport(obj) {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) { errors.push("The top level must be one JSON object with “quest” and “tasks”."); return out; }
   if (obj.sidequest !== undefined && obj.sidequest !== 1) errors.push("“sidequest” must be 1, the only format this version reads.");
   noteUnknown(obj, ["sidequest", "quest", "tasks"], "");
-  var quest = { name: "", notes: "", start: "", due: "" };
+  var quest = { name: "", notes: "", start: "", due: "", org: "" };
   var q = obj.quest;
   if (!q || typeof q !== "object" || Array.isArray(q)) errors.push("“quest” is missing. It needs at least a name.");
   else {
@@ -119,6 +121,10 @@ export function validateQuestImport(obj) {
     quest.notes = str(q.notes, "quest.notes", IMPORT_LIMITS.notes, false);
     quest.start = date(q.start, "quest.start");
     quest.due = date(q.due, "quest.due");
+    if (q.client !== undefined && q.client !== null) {
+      if (typeof q.client !== "object" || Array.isArray(q.client)) errors.push("quest.client must be an object like { \"org\": \"Name\" }.");
+      else { noteUnknown(q.client, ["org"], "quest.client."); quest.org = str(q.client.org, "quest.client.org", IMPORT_LIMITS.org, false); }
+    }
   }
   var tasks = [];
   if (!Array.isArray(obj.tasks)) errors.push("“tasks” must be a list of tasks.");
@@ -197,6 +203,7 @@ export function parseQuestImport(text) {
 export function buildQuestFromImport(clean) {
   var q = clean.quest;
   var p = makeQuest(uid(), uniqueQuestName(q.name), "candidate", { notes: q.notes, start: q.start, due: q.due });
+  if (q.org) p.client.org = q.org;
   var startMs = parseISO(q.start);
   var decisions = [];
   var tasks = clean.tasks.map(function (c) {

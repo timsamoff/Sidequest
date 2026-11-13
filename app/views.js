@@ -3,7 +3,7 @@ import { go, openTask, renderView } from "./app.js";
 import { drawChart, drawQuestChart, rangeBlock } from "./chart.js";
 import { DAY, TODAY, fmt, fmtY, iso, parseISO } from "./dates.js";
 import { ideaDialog } from "./dialogs.js";
-import { $, el, helpLink, isHosted, newPin, notify, on, scrollTop, uid } from "./dom.js";
+import { $, el, helpLink, isHosted, notify, on, scrollTop, uid } from "./dom.js";
 import { backupControls, backupReminderDue, daysSinceBackup } from "./files.js";
 import { deleteForever, emptyVault, promoteToActive, removeToVault, restoreEntry, vaultEntries } from "./lifecycle.js";
 import { questNameTaken, activeQuests, backlogTasks, candidateQuests, checkpointStep, checkpoints, counted, dispQuest, findQuest, findTask, fmtHours, globalActual, isDusty, isLate, isPinned, lateTasks, live, liveQuests, nextTask, openIssues, ordered, pinPage, planCounted, planned, pset, questMeta, questRemainingUnits, questTotalUnits, remainingUnits, short, taskEnd, taskStart, totalUnits, unpinPage, validPage, wl } from "./model.js";
@@ -138,18 +138,21 @@ export function welcomeBox() {
 }
 
 // Turns a notice box into a post-it note (the Workshop's posting card, with no offset); the wrapper casts its shadow.
-// Each notice keeps a random corner fold until the page reloads, so a redraw does not change it.
-var noticeFolds = {};
+// A notice's corner fold comes from its key, so it differs between notices but never changes on reload.
+function noticeFold(key) {
+  var h = 0;
+  for (var i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) % 9973;
+  return 37 + h % 29;
+}
 function postit(box, key) {
   var wrap = el("div", { "class": "postitwrap" });
-  if (!noticeFolds[key]) noticeFolds[key] = newPin().bend;
-  box.setAttribute("style", (box.getAttribute("style") || "") + ";" + pinStyle({ x: 0, y: 0, bend: noticeFolds[key] }));
+  box.setAttribute("style", (box.getAttribute("style") || "") + ";" + pinStyle({ x: 0, y: 0, bend: noticeFold(key) }));
   box.classList.remove("box"); box.classList.add("posting"); wrap.appendChild(box);
   return wrap;
 }
 export function renderToday(root) {
-  if (availableUpdateVersion && state.settings.dismissedUpdateVersion !== availableUpdateVersion) root.appendChild(postit(updateBanner(), "update"));
-  if (versionBannerDue()) root.appendChild(postit(versionBanner(), "version"));
+  if (availableUpdateVersion && state.settings.dismissedUpdateVersion !== availableUpdateVersion) root.appendChild(postit(updateBanner(), "update" + availableUpdateVersion));
+  if (versionBannerDue()) root.appendChild(postit(versionBanner(), "version" + APP_VERSION));
   if (backupReminderDue()) root.appendChild(postit(backupReminder(), "backup"));
   if (!state.settings.hideWelcome) root.appendChild(postit(welcomeBox(), "welcome"));
   var g = pgrid(), b = burnParts({});

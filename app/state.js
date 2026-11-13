@@ -8,7 +8,7 @@ import { isDialCode, setPhoneMemory } from "./phone.js";
 export var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 export var STATUSES = ["Not started", "In progress", "Completed"];
 export var CHECKPOINTS = 7;
-export var APP_VERSION = "1.1.1";
+export var APP_VERSION = "1.1.2";
 export var APP_NAME = "Sidequest";
 
 export function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -68,13 +68,13 @@ export function sampleData() {
     task("i3", 0, "pApp", "Wrong icon on the settings screen", "", [], { issue: true, status: "Completed" }),
     task("w1", 1, "pSite", "Write the page copy", "Every page has final text", [st("w1a", "Write the home page", true), st("w1b", "Write the about page"), st("w1c", "Write the contact page")], { status: "In progress" }),
     task("w2", 2, "pSite", "Build the layout", "Pages look right on a phone and a laptop", [st("w2a", "Build the header and footer"), st("w2b", "Make the layout work on phones"), st("w2c", "Compress the images")]),
-    task("w3", 3, "pSite", "Launch the site", "The site is live and checked", [st("w3a", "Point the domain at the site"), st("w3b", "Check every page on a phone"), st("w3c", "Announce it")]),
-    task("i4", 0, "pSite", "Contact link opens a blank page on phones", "", [], { issue: true, status: "In progress" }),
+    task("w3", 3, "pSite", "Launch the site", "The site is live and checked", [st("w3a", "Point the domain at the site"), st("w3b", "Check every page on a phone"), st("w3c", "Announce it")], { launch: true }),
+    task("i4", 0, "pSite", "Contact link opens a blank page on phones", "", [], { issue: true, status: "In progress", launch: true }),
     task("n1", 1, "pNews", "Pick a name and a format", "A name and a one-page outline", [st("n1a", "Choose a name", true), st("n1b", "Outline the format", true)], { status: "Completed" }),
     task("n2", 2, "pNews", "Write the first issue", "A finished issue ready to send", [st("n2a", "Draft the issue", true), st("n2b", "Proofread it", true)], { status: "Completed" }),
     task("n3", 3, "pNews", "Set up the mailing list", "Readers can sign up and receive an issue", [st("n3a", "Pick a mailing tool", true), st("n3b", "Add a sign-up form", true)], { status: "Completed" }),
     task("n4", 4, "pNews", "Write the second issue", "A finished issue ready to send", [st("n4a", "Draft the issue"), st("n4b", "Proofread it")], { status: "In progress" }),
-    task("n5", 5, "pNews", "Send to the first fifty readers", "Fifty readers have the first issue", [st("n5a", "Collect fifty addresses"), st("n5b", "Send the issue")]),
+    task("n5", 5, "pNews", "Send to the first fifty readers", "Fifty readers have the first issue", [st("n5a", "Collect fifty addresses"), st("n5b", "Send the issue")], { launch: true }),
     task("g1", 1, "pGame", "Prototype the core mechanic", "Someone can play for one minute", [st("g1a", "Make the player move"), st("g1b", "Add one obstacle"), st("g1c", "Add a win and a lose state")]),
     task("g2", 2, "pGame", "Make the first ten levels", "Ten levels load and can be finished start to end"),
     task("g3", 3, "pGame", "Playtest and polish", "Three playtests done and the top problems fixed", [st("g3a", "Run three playtests"), st("g3b", "Fix the top five problems"), st("g3d", "Decide free or paid"), st("g3c", "Record a trailer")], { milestone: true }),
@@ -504,7 +504,7 @@ export function checkForAppUpdate() {
   }).catch(function () { return null; });
 }
 
-export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchVault: true, notesH: {}, questOpen: {}, sectionOpen: {} };
+export var ui = { view: "today", sel: null, detail: false, query: "", prev: "today", searchVault: true,questOpen: {}, sectionOpen: {} };
 
 // Stamps a task's completion date when it becomes Done, clears it if reopened, and returns how many it stamped.
 // Never moves anything to the Vault itself -- only Quests and Ideas do that.

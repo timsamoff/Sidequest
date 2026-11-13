@@ -5,7 +5,7 @@ import {
   orderedAll, taskOptions, stepOptions, stepOptionsForTask, syncFromSteps, findStep, decisionFor,
   blockForDate, taskStart, taskEnd, linkQuests
 } from "./model.js";
-import { $, el, on, uid, newPin, notify, moneyInput, parseMoney, helpLink, setMsg, isEmail } from "./dom.js";
+import { $, autosize, el, on, uid, newPin, notify, moneyInput, parseMoney, helpLink, setMsg, isEmail } from "./dom.js";
 import { closeMenus } from "./app.js";
 import { phoneField } from "./phone.js";
 
@@ -148,7 +148,7 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
         inp = el("select", { id: id, "class": "plain" });
         (f.options || []).forEach(function (o) { inp.appendChild(el("option", { value: o.value }, o.label)); });
       } else if (f.type === "textarea") {
-        inp = el("textarea", { id: id, rows: f.rows || 4 });
+        inp = autosize(el("textarea", { id: id, rows: f.rows || 4 }));
       } else if (f.type === "phone") {
         // The wrapper answers .value with the saved string, so the submit code reads it like any input.
         var pf = phoneField(id, f.value || "", null); inp = pf.el;

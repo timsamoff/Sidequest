@@ -90,8 +90,15 @@ async function main() {
   r = ai.validateQuestImport({ quest: { name: "x" }, tasks: [{ what: "a", steps: [{ text: "s", decided: "yes", other: 1 }, "  "] }] });
   ok(!!r.clean && r.clean.tasks[0].steps.length === 1 && r.warnings.some(w => w.indexOf("decided was ignored") >= 0) && r.warnings.some(w => w.indexOf("steps[].other") >= 0), "a decided answer with no decision, a blank step, and unknown step fields are tolerated with warnings");
 
+  // Quest giver organization
+  r = ai.validateQuestImport({ quest: { name: "x", client: { org: "  Northwind Paint  ", poc: "Sam" } }, tasks: [{ what: "a" }] });
+  ok(!!r.clean && r.clean.quest.org === "Northwind Paint" && r.warnings.some(w => w.indexOf("quest.client.poc") >= 0), "quest.client.org is read, and other client fields are warned about");
+  ok(ai.validateQuestImport({ quest: { name: "x", client: "Northwind" }, tasks: [{ what: "a" }] }).errors.length === 1, "a client that is not an object is refused");
+  ok(ai.buildQuestFromImport(r.clean).quest.client.org === "Northwind Paint", "the organization lands in the Quest giver");
+
   // The prompt
   const p = ai.buildAiPrompt("2030-05-06");
+  ok(p.indexOf("“What is the quest called?”") >= 0 && p.indexOf("quest.client.org") >= 0, "the prompt asks for the quest name first and explains the organization field");
   ok(p.indexOf("Today is 2030-05-06.") >= 0 && p.indexOf("{{TODAY}}") < 0, "the prompt carries today's date");
   ok(/[–—]/.test(p) === false, "the prompt has no dashes");
   ok(p.indexOf("typical tasks, steps, and decisions") >= 0 && p.indexOf("define my own") >= 0 && p.indexOf("what the job is") < p.indexOf("typical tasks"), "the prompt asks whether to add typical tasks or use the user's own");

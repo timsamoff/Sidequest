@@ -10,6 +10,21 @@ export function el(tag, attrs, text) {
   return e;
 }
 export function on(node, ev, fn) { node.addEventListener(ev, fn); return node; }
+// Grows a textarea with its text. It never gets shorter than its starting height or taller than twice that, then scrolls.
+export function autosize(ta) {
+  var min = 0, lastW = 0;
+  function fit() {
+    if (!ta.offsetHeight) return;
+    if (!min) min = ta.offsetHeight;
+    ta.style.height = "auto";
+    var h = Math.min(min * 2, Math.max(min, ta.scrollHeight + ta.offsetHeight - ta.clientHeight));
+    ta.style.height = h + "px"; ta.style.overflowY = ta.scrollHeight > h ? "auto" : "hidden";
+  }
+  ta.style.resize = "none";
+  ta.addEventListener("input", fit);
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(function () { if (ta.offsetWidth && ta.offsetWidth !== lastW) { lastW = ta.offsetWidth; fit(); } }).observe(ta);
+  return ta;
+}
 // A small "?" button (the mark is drawn in CSS, so it never joins its parent's text) that explains one Terms entry. views.js registers what it opens.
 var helpOpener = null;
 export function setHelpOpener(fn) { helpOpener = fn; }

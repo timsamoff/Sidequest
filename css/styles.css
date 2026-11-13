@@ -31,7 +31,7 @@ input[type="file"]::file-selector-button:hover { border-color: var(--muted); }
 textarea { min-height: 84px; resize: vertical; }
 /* The pencil: the app's one "change this text" control, and the input it opens. */
 button.pencil { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 34px; min-height: 34px; padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); }
-button.pencil:hover { border: 0; background: var(--chip-idle); color: var(--planned); }
+@media (hover: hover) { button.pencil:hover { border: 0; background: var(--chip-idle); color: var(--planned); } }
 button.pencil[hidden] { display: none; }
 .inlineedit { flex: 1 1 auto; min-width: 0; width: 100%; }
 .editrow { display: flex; align-items: flex-start; gap: var(--space-8); }
@@ -44,18 +44,19 @@ button.pencil[hidden] { display: none; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 button { background: var(--control-bg); border: 1px solid var(--control-line); border-radius: var(--radius-control); padding: var(--space-8) var(--space-14); min-height: var(--control-height); cursor: pointer; }
-button:hover { border-color: var(--muted); }
+@media (hover: hover) { button:hover { border-color: var(--muted); } }
 button.primary { background: var(--btn); border-color: var(--btn); color: var(--on-btn); font-weight: 600; }
-button.primary:hover { border-color: var(--btn); filter: brightness(1.15); }
+@media (hover: hover) { button.primary:hover { border-color: var(--btn); filter: brightness(1.15); } }
 button.small { min-height: 34px; padding: var(--space-4) var(--space-10); font-size: var(--text-sm); }
 /* Fixed width so the button doesn't resize when its label swaps Pin/Unpin. */
 button.pintoggle { min-width: 64px; }
-button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: var(--late); }
+button[data-armed="1"] { border-color: var(--late); color: var(--late); }
+@media (hover: hover) { button.danger:hover { border-color: var(--late); color: var(--late); } }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-10); margin-top: var(--space-14); align-items: center; }
 .field { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-10); }
 .field label { font-size: var(--text-sm); color: var(--muted); }
 .linkbtn { display: inline-flex; align-items: center; min-height: var(--control-height); padding: var(--space-8) var(--space-14); border-radius: var(--radius-control); background: var(--btn); color: var(--on-btn); font-weight: 600; text-decoration: none; }
-.linkbtn:hover { filter: brightness(1.1); }
+@media (hover: hover) { .linkbtn:hover { filter: brightness(1.1); } }
 .textbtn { background: none; border: 0; padding: var(--space-4) 0; min-height: 0; color: var(--planned); text-decoration: underline; text-align: left; }
 
 /* shell */
@@ -64,9 +65,11 @@ button.danger:hover, button[data-armed="1"] { border-color: var(--late); color: 
 .brandrow { display: flex; align-items: center; gap: var(--space-10); padding: 0 var(--space-6) var(--space-16); }
 /* Leather brand block: the top of the sidebar, edge to edge, with a stitched curved lower edge (css/leather.css). */
 .side .brandrow { margin: calc(var(--space-22) * -1) calc(var(--space-14) * -1) var(--space-14); padding: var(--space-16) var(--space-20) var(--space-30); color: var(--stamp); }
-.side .brand { position: relative; top: 2px; z-index: 3; color: var(--wordmark-stamp); font-size: 1.45rem; text-shadow: 0 1px 0 rgba(255, 235, 190, .35); -webkit-text-stroke: 2px var(--stamp); paint-order: stroke fill; }
-.side .brandrow .logo { position: relative; z-index: 3; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
+.side .brand { position: relative; top: 4px; z-index: 3; color: var(--wordmark-stamp); font-size: 1.45rem; text-shadow: 0 1px 0 rgba(255, 235, 190, .35); -webkit-text-stroke: 2px var(--stamp); paint-order: stroke fill; }
+.side .brandrow .logo { position: relative; top: 2px; z-index: 3; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 .logo { width: 38px; height: 38px; flex: none; display: block; }
+.mbrand, .pagehead { display: none; }
+.titlerow { display: flex; align-items: center; gap: var(--space-10); min-width: 0; }
 .mlogo { display: none; width: 44px; height: 44px; }
 .brand { font-family: var(--font-display); font-weight: 400; font-size: calc(1.25rem + 1px); line-height: 1.1; }
 .nav { display: flex; flex-direction: column; gap: var(--space-2); overflow-y: visible; min-height: 0; }
@@ -113,7 +116,7 @@ mark { background: var(--chip-work); color: inherit; border-radius: 3px; padding
 .sgroup .item .snip { margin-top: var(--space-4); color: var(--muted); font-size: var(--text-sm); }
 .chip.vault { background: var(--badge-neutral-bg); color: var(--badge-neutral); }
 .tab { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); width: 100%; text-align: left; border: 0; background: transparent; border-radius: var(--radius-control); padding: var(--space-10) var(--space-12); min-height: 44px; color: var(--muted); font-weight: 500; }
-.tab:hover { background: var(--chip-idle); border: 0; }
+@media (hover: hover) { .tab:hover { background: var(--chip-idle); border: 0; } }
 .tab[aria-current="page"] { background: var(--sel); color: var(--ink); font-weight: 600; box-shadow: inset 3px 0 0 var(--planned); }
 .navbottom { margin-top: auto; padding-top: var(--space-8); border-top: 1px solid var(--line); flex-shrink: 0; overflow-y: visible; }
 .column { min-width: 0; }
@@ -127,7 +130,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .menuwrap { position: relative; }
 .menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 210px; padding: var(--space-6); box-shadow: var(--shadow-menu); z-index: 30; display: flex; flex-direction: column; }
 .menu button { border: 0; background: transparent; text-align: left; border-radius: var(--radius-input); padding: var(--space-9) var(--space-12); min-height: 42px; }
-.menu button:hover { background: var(--chip-idle); }
+@media (hover: hover) { .menu button:hover { background: var(--chip-idle); } }
 .menu button[aria-current="page"] { background: var(--sel); font-weight: 600; }
 .menu { max-height: 75vh; overflow-y: auto; }
 .menulabel { padding: var(--space-10) var(--space-12) var(--space-2); font-size: var(--text-80); color: var(--muted); }
@@ -196,9 +199,9 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .chip.added { background: var(--badge-info-bg); color: var(--badge-info); }
 .chip.launchcrit { background: var(--badge-priority-bg); color: var(--badge-priority); }
 .chip.datechip { min-width: 11rem; justify-content: center; min-height: calc(var(--control-height) - 6px); border: 0; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: var(--space-6); }
-.chip.datechip:hover { filter: brightness(.95); }
+@media (hover: hover) { .chip.datechip:hover { filter: brightness(.95); } }
 .chip.datechip.nodue { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
-.chip.datechip.nodue:hover { filter: none; background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); box-shadow: inset 0 0 0 1px var(--muted); }
+@media (hover: hover) { .chip.datechip.nodue:hover { filter: none; background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); box-shadow: inset 0 0 0 1px var(--muted); } }
 .chip.backlog { background: var(--badge-neutral-bg); color: var(--badge-neutral); }
 .chip.milestonechip { background: var(--milestone-bg); color: var(--milestone); }
 .chip.issuechip { background: var(--badge-attention-bg); color: var(--badge-attention); }

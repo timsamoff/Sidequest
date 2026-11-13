@@ -125,7 +125,7 @@ export function focusSearch() {
 }
 export function renderSearch(root) {
   var bar = el("div", { "class": "searchbar" });
-  var inp = el("input", { type: "search", id: "searchMain", placeholder: "Search tasks, steps, notes, projects, decisions", "aria-label": "Search", autocomplete: "off" }); inp.value = ui.query;
+  var inp = el("input", { type: "search", id: "searchMain", placeholder: "Search all quests", "aria-label": "Search", autocomplete: "off" }); inp.value = ui.query;
   wireSearchInput(inp, "main"); bar.appendChild(inp);
   var lab = el("label"), cb = el("input", { type: "checkbox", id: "searchVault" }); cb.checked = ui.searchVault;
   on(cb, "change", function () { ui.searchVault = cb.checked; updateSearchResults(); });

@@ -76,7 +76,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "1.1.1"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "1.1.2"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("../css/tokens.css?v=" + v) && html.includes("../css/styles.css?v=" + v) && html.includes("../css/splash.css?v=" + v) && html.includes("../css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "settings.js"), "utf8");
@@ -3108,8 +3108,8 @@ async function exportClick(k, projectName) {
 {
   const k = kit(await mk()); k.tab("projects"); k.click(k.btn(k.$("view"), "Sample Website")); k.click(k.btn(k.$("view"), "Vault"));
   k.tab("vault"); k.click(k.btn([...k.d.querySelectorAll("#view li")].find(li => li.textContent.includes("Sample Website")), "Sample Website"));
-  k.click(k.d.querySelector("#ptask-w3 button.item"));
-  const lines = [...k.d.querySelectorAll("#ptask-w3 .steps li p.hint")].map(p => p.textContent);
+  k.click(k.d.querySelector("#ltask-w3 button.item"));
+  const lines = [...k.d.querySelectorAll("#ltask-w3 .steps li p.hint")].map(p => p.textContent);
   ok(lines[0] === "Decision: Should the site use a page builder?" && lines[1] === "Answer: No, plain pages are enough.", "a vaulted quest prints a decision and its answer on two labeled lines");
 }
 {
@@ -3466,7 +3466,9 @@ async function exportClick(k, projectName) {
   const k = kit(await mk({ settings: { hideWelcome: true } }));
   const issues = k.saved().tasks.filter(t => t.issue);
   ok(issues.some(t => t.block === 0 && t.status !== "Completed") && issues.some(t => t.block > 0) && issues.some(t => t.status === "Completed"), "the samples include issues with no due date, one with a due date, and a resolved one (" + issues.length + ")");
-  ok(issues.every(t => !t.milestone && !t.launch), "no sample issue is a milestone or launch critical");
+  ok(issues.every(t => !t.milestone) && issues.filter(t => t.launch).length === 1, "no sample issue is a milestone, and exactly one is launch critical");
+  const launchBy = id => k.saved().tasks.filter(t => t.questId === id && t.launch && !t.issue).length;
+  ok(["pApp", "pSite", "pNews"].every(id => launchBy(id) === 1) && k.saved().tasks.find(t => t.launch && t.issue).questId === "pSite", "Sample App, Website, and Newsletter each have one launch critical task, and the Website also has a launch critical issue");
   k.tab("projects"); k.click(k.btn(k.$("view"), "Sample App"));
   const dark = k.$("ptask-a6");
   ok(!!dark && !dark.querySelector(".l1") && dark.classList.contains("nol1") && dark.querySelector(".l3").firstElementChild.classList.contains("backlog"), "an undated task on a quest's page has no date line, and its Backlog chip leads the chips under the title");

@@ -89,7 +89,7 @@ export var HAND = {
   label: "Your hand", edit: "Manage hand", empty: "Empty hand", done: "Done", up: "Up", down: "Down",
   reroll: "Reroll", roll: "Roll", pick: "Choose", discard: "Discard", deck: "Errands deck",
   none: "Nothing in your hand. Choose up to three errands to keep here.",
-  editorTitle: "Manage your hand", editorHint: "Choose up to three errands and organize them. Discard to remove from your hand.",
+  editorTitle: "Manage your hand", editorHint: "Choose up to three errands and organize them. Discard single cards or select Empty hand to remove them from your hand.",
   rerolled: "Hand rerolled.", rolled: "Hand rolled.", emptied: "Hand emptied.", needTwo: "Reroll needs at least two open errands.", needOne: "Roll needs at least one open errand."
 };
 

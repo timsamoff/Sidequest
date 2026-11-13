@@ -4,7 +4,7 @@ import { questRangeBlock } from "./chart.js";
 import { TODAY, fmt, fmtY, iso, parseISO } from "./dates.js";
 import { decisionDialog, decisionEditDialog, formDialog, issueDialog, linkQuestDialog, openModal, slipDialog, taskDialog } from "./dialogs.js";
 import { phoneField } from "./phone.js";
-import { emailField, editInline, el, formatMoney, helpLink, moneyInput, notify, on, pencilButton, playSfx, setFocusKey, uid, setMsg } from "./dom.js";
+import { autosize, emailField, editInline, el, formatMoney, helpLink, moneyInput, notify, on, pencilButton, playSfx, setFocusKey, uid, setMsg } from "./dom.js";
 import { buildExportSnapshot, exportFileName, exportHasIssues, exportSides, renderExportDocument } from "./export.js";
 import { saveFile } from "./files.js";
 import { completionDialog, demoteToCandidate, promoteToActive, removeNow, removeToVault, restoreEntry, vaultQuest } from "./lifecycle.js";
@@ -240,7 +240,7 @@ export function buildDetail(t, inline, readOnly) {
   if (readOnly) {
     box.appendChild(el("p", { "class": "hint notetext" }, t.notes || "No notes."));
   } else {
-    var ta = el("textarea", { "aria-label": "Notes", style: "margin-top:8px" }); ta.value = t.notes;
+    var ta = autosize(el("textarea", { "aria-label": "Notes", style: "margin-top:8px" })); ta.value = t.notes;
     on(ta, "input", function () { t.notes = ta.value.slice(0, 5000); save(true); });
     box.appendChild(ta);
   }
@@ -475,12 +475,9 @@ export function renderQuestPage(root, id) {
   if (readOnly) {
     root.appendChild(el("p", { "class": "hint notetext" }, p.notes || "No notes."));
   } else {
-    var ta = el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" }); ta.value = p.notes;
-    // Remember a dragged height for this session, since every change rebuilds the page.
-    if (ui.notesH[p.id]) ta.style.height = ui.notesH[p.id] + "px";
+    var ta = autosize(el("textarea", { "aria-label": "Notes for " + p.name, style: "margin-top:8px" })); ta.value = p.notes;
     on(ta, "input", function () { p.notes = ta.value.slice(0, 5000); save(true); });
     root.appendChild(ta);
-    if (typeof ResizeObserver !== "undefined") new ResizeObserver(function () { if (ta.offsetHeight > 0) ui.notesH[p.id] = ta.offsetHeight; }).observe(ta);
   }
 
   if (readOnly) {

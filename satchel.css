@@ -9,11 +9,11 @@
   --text-hero: calc(min(clamp(2.8rem, 1.7rem + 4.4vw, 5rem), 13vw) + 2pt);
   --wrap: 70rem;
   --target: 48px;
-  --flap-h: 76px;
-  --icon-brand: 36px; --icon-md: 20px; --icon-glyph: 19px; --diamond: 9px;
+  --flap-h: 84px;
+  --icon-brand: 44px; --icon-md: 20px; --icon-glyph: 19px; --diamond: 9px;
   --rule: 2px;
   --section-pad: 3.25rem; --hero-pad: 3.5rem;
-  --text-h3: calc(1.25rem + 2pt + 4px); --text-brand: calc(1.45rem + 2pt); --text-brand-sm: calc(1.25rem + 2pt);
+  --text-h3: calc(1.25rem + 2pt + 4px); --text-brand: calc(1.75rem + 2pt);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -63,10 +63,8 @@ strong { font-weight: 600; }
   position: absolute; inset: 0; z-index: 1; grid-area: 1 / 1 / 2 / -1; overflow: hidden; background: var(--leather);
   border-radius: 0 0 64px 64px / 0 0 22px 22px; box-shadow: 0 4px 10px -2px rgba(0, 0, 0, .35);
 }
-/* The texture keeps one fixed size per breakpoint (it only grows past that when the window is wider) and is anchored to the bottom edge. */
-.flapleather img { position: absolute; left: 0; bottom: 0; width: max(100%, 1280px); height: auto; max-width: none; }
-@media (width < 36rem) { .flapleather img { width: max(100%, 800px); } }
-@media (width >= 62rem) { .flapleather img { width: max(100%, 1600px); } }
+/* The texture matches the app: 800px wide at its natural size, anchored bottom left, and it only grows when the window is wider. */
+.flapleather img { position: absolute; left: 0; bottom: 0; width: max(100%, 800px); height: auto; max-width: none; }
 
 .flapstitch { grid-area: 1 / 1 / 2 / -1; }
 
@@ -153,13 +151,14 @@ html:not(.js) .topnav { padding-top: calc(22px + var(--space-14)); }
 .topnav a:hover { background: color-mix(in srgb, white 25%, transparent); }
 .topnav a[aria-current="page"] { color: var(--lining-current); font-weight: 600; }
 .topnav a[aria-current="page"]::before { content: ""; width: var(--diamond); height: var(--diamond); flex: none; background: var(--burn); border-radius: 2px; transform: rotate(45deg); }
-@media (width >= 62rem) {
+@media (width >= 56.25rem) {
   .topnav ul { display: flex; justify-content: center; gap: var(--space-20); }
   .topnav li { flex: 0 0 auto; }
 }
-@media (width < 62rem) { main { padding-top: var(--space-24); } }
-@media (width < 36rem) { .brand { font-size: var(--text-brand-sm); } }
-@media (width < 62rem) { .flap .brand, .themebtn { top: -3px; } }
+@media (width < 56.25rem) { main { padding-top: var(--space-24); } }
+
+@media (width < 56.25rem) { .flap .brand, .themebtn { top: -4px; } }
+@media (width >= 56.25rem) { .flap .brand, .themebtn { top: -4px; } }
 
 /* Footer band: the same tan as the menu lining. */
 .band {
