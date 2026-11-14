@@ -198,7 +198,10 @@ export function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
 }
 
 // Quests that can take work: Candidates (so they can be built out before promotion) and In progress.
-function workQuests() { return liveQuests().filter(function (p) { return p.status === "active" || p.status === "candidate"; }); }
+function workQuests() {
+  return liveQuests().filter(function (p) { return p.status === "active" || p.status === "candidate"; })
+    .sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { sensitivity: "base" }); });
+}
 export function taskDialog(prefillQuestId) {
   var nt = nextTask();
   var questOpts = workQuests().map(function (p) { return { value: p.id, label: p.name }; });

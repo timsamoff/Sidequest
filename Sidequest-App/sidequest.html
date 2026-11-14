@@ -34,12 +34,14 @@
   --space-24: 24px;
   --space-26: 26px;
   --space-30: 30px;
+  --control-min: 34px;
   /* Corner radii, named by role rather than size. */
   --radius-track: 4px;
   --radius-input: 6px;
   --radius-control: 8px;
   --radius-card: 10px;
   --radius-pill: 999px;
+  --radius-chip: 5px;
   /* Shared height for text/date/number inputs, select, and buttons. */
   --control-height: 40px;
   /* Small-text scale: a label size, a body-small size, and full body size. */
@@ -196,7 +198,7 @@
 
 /* Narrow screens: the top bar becomes the leather panel, with the same stitched curved edge as the sidebar header. */
 .topbar .flapstitch { display: none; }
-@media (max-width: 899px) {
+@media (max-width: 639px), (max-width: 899px) and (orientation: portrait), (max-width: 899px) and (not (pointer: coarse)) {
   .app .topbar { isolation: isolate; padding: var(--space-10) var(--space-16) var(--space-30); background: var(--leather) url("data:image/jpeg;base64,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") left bottom / max(100%, 800px) auto no-repeat; border-bottom: 0; border-radius: 0 0 64px 64px / 0 0 22px 22px; box-shadow: 0 4px 10px -2px rgba(0, 0, 0, .35); }
   .app .topbar .flapstitch { display: block; }
   .app .topbar > .tbleft, .app .topbar > .topact { position: relative; top: 6px; z-index: 3; }
@@ -213,8 +215,8 @@
   .app .topbar .mlogo { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 }
 /* Wide, light theme: the quest title pencil takes the leather brown instead of the blue-gray muted. */
-@media (min-width: 900px) { :root[data-theme="light"] #renameBtn { color: var(--leather); } }
-@media (min-width: 900px) and (prefers-color-scheme: light) { :root:not([data-theme="dark"]) #renameBtn { color: var(--leather); } }
+@media (min-width: 900px), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) { :root[data-theme="light"] #renameBtn { color: var(--leather); } }
+@media (min-width: 900px) and (prefers-color-scheme: light), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) and (prefers-color-scheme: light) { :root:not([data-theme="dark"]) #renameBtn { color: var(--leather); } }
 
 html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 72px); }
 *, *::before, *::after { box-sizing: inherit; }
@@ -248,7 +250,7 @@ input[type="file"]::file-selector-button {
 input[type="file"]::file-selector-button:hover { border-color: var(--muted); }
 textarea { min-height: 84px; resize: vertical; }
 /* The pencil: the app's one "change this text" control, and the input it opens. */
-button.pencil { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 34px; min-height: 34px; padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); }
+button.pencil { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: var(--control-min); min-height: var(--control-min); padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); }
 @media (hover: hover) { button.pencil:hover { border: 0; background: var(--chip-idle); color: var(--planned); } }
 button.pencil[hidden] { display: none; }
 .inlineedit { flex: 1 1 auto; min-width: 0; width: 100%; }
@@ -265,7 +267,7 @@ button { background: var(--control-bg); border: 1px solid var(--control-line); b
 @media (hover: hover) { button:hover { border-color: var(--muted); } }
 button.primary { background: var(--btn); border-color: var(--btn); color: var(--on-btn); font-weight: 600; }
 @media (hover: hover) { button.primary:hover { border-color: var(--btn); filter: brightness(1.15); } }
-button.small { min-height: 34px; padding: var(--space-4) var(--space-10); font-size: var(--text-sm); }
+button.small { min-height: var(--control-min); padding: var(--space-4) var(--space-10); font-size: var(--text-sm); }
 /* Fixed width so the button doesn't resize when its label swaps Pin/Unpin. */
 button.pintoggle { min-width: 64px; }
 button[data-armed="1"] { border-color: var(--late); color: var(--late); }
@@ -287,7 +289,7 @@ button[data-armed="1"] { border-color: var(--late); color: var(--late); }
 .side .brandrow .logo { position: relative; top: 2px; z-index: 3; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 .logo { width: 38px; height: 38px; flex: none; display: block; }
 .mbrand, .pagehead { display: none; }
-.titlerow { display: flex; align-items: center; gap: var(--space-10); min-width: 0; }
+.titlerow { display: flex; align-items: center; gap: var(--space-10); min-width: 0; min-height: var(--control-min); }
 .mlogo { display: none; width: 44px; height: 44px; }
 .brand { font-family: var(--font-display); font-weight: 400; font-size: calc(1.25rem + 1px); line-height: 1.1; }
 .nav { display: flex; flex-direction: column; gap: var(--space-2); overflow-y: visible; min-height: 0; }
@@ -390,7 +392,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .listbox > .list { border: 0; border-radius: 0; margin: 0; background: transparent; }
 .listbox > .progress { margin: 0; padding: var(--space-10) var(--space-14); border-bottom: 1px solid var(--line); }
 .listbox > .progress:empty { display: none; }
-@media (min-width: 900px) {
+@media (min-width: 900px), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) {
   .pgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--space-22); row-gap: var(--space-12); align-items: start; }
   .pgrid > .cl, .pgrid > .cr, .pgrid > .cr.r1, .pgrid .progresshead { margin-top: 0; }
   .pgrid > .cl { grid-column: 1; }
@@ -407,9 +409,9 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .pmeta { margin-top: var(--space-6); color: var(--muted); }
 .pmeta b { color: var(--ink); font-weight: 600; }
 .pline { color: var(--ink); margin-top: var(--space-8); }
-.badge { display: inline-block; padding: var(--space-1) var(--space-9); border-radius: var(--radius-pill); font-size: var(--text-80); font-weight: 600; background: var(--late-bg); color: var(--late); vertical-align: 1px; }
+.badge { display: inline-block; padding: var(--space-1) var(--space-9); border-radius: var(--radius-chip); font-size: var(--text-80); font-weight: 600; background: var(--late-bg); color: var(--late); vertical-align: 1px; }
 .tabbadge { min-width: 22px; text-align: center; padding: 0 var(--space-6); }
-.chip { display: inline-block; padding: var(--space-1) var(--space-10); border-radius: var(--radius-pill); font-size: .82rem; background: var(--badge-neutral-bg); color: var(--badge-neutral); }
+.chip { display: inline-block; padding: var(--space-1) var(--space-10); border-radius: var(--radius-chip); font-size: .82rem; background: var(--badge-neutral-bg); color: var(--badge-neutral); }
 .chip[data-v="Not started"] { background: var(--badge-pending-bg); color: var(--badge-pending); }
 .chip[data-v="In progress"] { background: var(--badge-active-bg); color: var(--badge-active); }
 .chip[data-v="Completed"], .chip.questcomplete { background: var(--badge-done-bg); color: var(--badge-done); }
@@ -427,6 +429,9 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .tlist li { border-bottom: 1px solid var(--line); }
 .tlist li:last-child { border-bottom: 0; }
 .tlist li.plain { padding: var(--space-12) var(--space-14); color: var(--muted); font-size: var(--text-sm); }
+.tlist li.sjob { display: flex; align-items: flex-start; }
+.tlist li.sjob > input[type="checkbox"] { flex: none; margin: var(--space-14) 0 0 var(--space-14); }
+.tlist li.sjob > .item { flex: 1 1 auto; width: auto; min-width: 0; padding-left: var(--space-10); }
 .item { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; padding: var(--space-12) var(--space-14); min-height: 0; }
 /* Hover only on devices that can hover; on touch the last tap point stays "hovered" on the next page. */
 @media (hover: hover) { .item:hover { background: var(--chip-idle); border: 0; } }
@@ -463,7 +468,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .detail .donewhenfield { margin-top: var(--space-6); }
 .detail .donewhen { display: flex; gap: var(--space-8); align-items: flex-start; }
 .detail .dmeta { color: var(--muted); margin-top: var(--space-4); }
-select.status { border: 1px solid var(--line); border-radius: var(--radius-pill); padding: var(--space-5) var(--space-12); min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
+select.status { border: 1px solid var(--line); border-radius: var(--radius-control); padding: var(--space-5) var(--space-12); min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
 /* A task row's status pulldown sits beside the row's button, on the title line; alignStatuses() sets its top. */
 /* The row is the container, so a narrow column on a wide screen gets the compact layout too. */
 .tlist li.hasstatus { position: relative; container-type: inline-size; }
@@ -510,7 +515,7 @@ input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin:
 #refreshBtn.spinning svg { animation: spin .6s linear infinite; }
 .toast .toastbtn { background: transparent; border: 1px solid currentColor; color: inherit; min-height: 32px; padding: var(--space-2) var(--space-12); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-12); }
-.chipbtn { border-radius: var(--radius-pill); min-height: 36px; padding: var(--space-4) var(--space-14); }
+.chipbtn { border-radius: var(--radius-control); min-height: 36px; padding: var(--space-4) var(--space-14); }
 .chipbtn[aria-pressed="true"] { background: var(--sel); border-color: var(--planned); color: var(--planned); font-weight: 600; }
 button.dangerfill { background: var(--late); border-color: var(--late); color: var(--bg); font-weight: 600; }
 button:disabled { opacity: .5; cursor: not-allowed; }
@@ -576,7 +581,8 @@ html { scrollbar-gutter: stable; }
 .overlay .modal { overscroll-behavior: contain; }
 .handhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8) var(--space-10); margin-top: var(--space-22); }
 .handlabel { font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 700; color: var(--muted); margin: 0; }
-.decklabel { margin-top: var(--space-22); margin-bottom: var(--space-6); }
+.deckhead { margin-bottom: var(--space-6); }
+.deckhead .decklabel { margin: 0; }
 .handbtns { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
 .handbtns button { margin-right: 0; }
 .rerollgroup { display: inline-flex; align-items: center; white-space: nowrap; }
@@ -672,7 +678,7 @@ svg.chart.nofocusring { outline: none; }
 .bar.new { background: var(--bar-pending); }
 .bar.work { background: var(--bar-active); }
 .bar.done { background: var(--bar-done); }
-@media (min-width: 900px) {
+@media (min-width: 900px), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) {
   /* .questactions comes last in the markup so it lands at the bottom when stacked; the grid places it back under .questmain on wide screens. */
   .questsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: "main charts" "actions charts"; column-gap: var(--space-22); align-items: start; }
   .questmain { grid-area: main; }
@@ -733,7 +739,7 @@ svg.chart.nofocusring { outline: none; }
 /* A highlighted candidate row: rounded like the other highlights, with its title underlined in the same weight. */
 li.tutorialtarget { border-radius: var(--radius-control); }
 li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: var(--tutorial); text-decoration-thickness: 3px; text-underline-offset: 4px; }
-@media (max-width: 899px) {
+@media (max-width: 639px), (max-width: 899px) and (orientation: portrait), (max-width: 899px) and (not (pointer: coarse)) {
   .tutorial { bottom: calc(var(--bottom-padding, 0px) + env(safe-area-inset-bottom, 0px) + 76px); left: var(--space-12); right: var(--space-12); width: auto; padding: var(--space-22) var(--space-14) var(--space-10); }
   body:has(.tutorial) #view { padding-bottom: 230px; }
   .tutorialcount { display: none; }
@@ -743,7 +749,7 @@ li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: va
   .side .tutorialtarget { outline-offset: -3px; }
   body:has(.overlay:not([hidden])) .tutorial, body:has(.menu:not([hidden])) .tutorial { display: none; }
 }
-@media (max-width: 899px) {
+@media (max-width: 639px), (max-width: 899px) and (orientation: portrait), (max-width: 899px) and (not (pointer: coarse)) {
   .app { display: block; }
   .side { position: fixed; left: 0; right: 0; bottom: var(--bottom-padding, 0px); top: auto; height: auto; z-index: 20; padding: var(--space-4); border-right: 0; border-top: 1px solid var(--line); flex-direction: row; }
   /* Some mobile browsers show the page below the bar when their toolbar collapses; the bar's color continues past the bottom edge. */
@@ -825,7 +831,7 @@ html:has(.splash:not([hidden])) { overflow: hidden; }
   .splash, .splashbackdrop, .splashsvg, .splashtitle, .splashaffirm, #splashLines path, #splashNodes circle, #splashNodes rect { transition-duration: .01ms !important; }
 }
 
-@media (max-width: 899px) {
+@media (max-width: 639px), (max-width: 899px) and (orientation: portrait), (max-width: 899px) and (not (pointer: coarse)) {
   /* Widen the floor so the panel stays legible on a small phone. */
   .splashpanel { width: min(85vw, 85vh, 420px); }
   .splashtextwrap { font-size: min(var(--text-100), calc((94cqw - 32px) / var(--q))); }
@@ -1220,6 +1226,14 @@ function notify(msg, undo, kind) {
   }
   toastTimer = setTimeout(function () { t.innerHTML = ""; }, undo || kind === "problem" ? 7000 : 4200);
 }
+// Brings a row to just under a sticky header, with a few pixels of air above it. It works in a framed copy too.
+function scrollToRow(node) {
+  if (!node || typeof node.scrollIntoView !== "function") return;
+  var bar = document.querySelector(".topbar"), pos = bar ? window.getComputedStyle(bar).position : "";
+  var head = bar && (pos === "sticky" || pos === "fixed") ? bar.getBoundingClientRect().height : 0;
+  node.style.scrollMarginTop = (head + 12) + "px";
+  try { node.scrollIntoView({ block: "start" }); } catch (e) { /* ignore */ }
+}
 // Navigation only. A framed copy scrolls the host page, not this window, so every
 // scroller is zeroed, the app's top is scrolled into view, and it repeats after paint.
 function scrollTop() {
@@ -1379,7 +1393,7 @@ function isDusty(q) {
 /* quest helpers -- Quest is the top-tier entity every task/decision/milestone
    attaches to by id, promoted in place from candidate to active. */
 function live(a) { return a.filter(function (x) { return !x.vault; }); }
-// Odd jobs: dated jobs first (earliest due first), then undated in the order added.
+// Odd jobs: dated jobs first (earliest due first), then undated, newest first (new and restored errands go to the front of the array).
 function openJobs() {
   var open = state.jobs.filter(function (j) { return !j.done; });
   return open.map(function (j, i) { return { j: j, i: i }; }).sort(function (a, b) {
@@ -1725,7 +1739,8 @@ function stepOptionsForTask(taskId) {
 function taskOptions(questId) {
   var ts = orderedAll();
   if (questId) ts = ts.filter(function (t) { return t.questId === questId; });
-  return ts.map(function (t) { return { value: t.id, label: dispQuest(t) + ": " + short(t.what, 60) }; });
+  return ts.map(function (t) { return { value: t.id, label: dispQuest(t) + ": " + short(t.what, 60) }; })
+    .sort(function (a, b) { return a.label.localeCompare(b.label, undefined, { sensitivity: "base" }); });
 }
 function findTask(id) { var a = live(state.tasks); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
 function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (state.tasks[i].id === id) return state.tasks[i]; return null; }
@@ -1741,7 +1756,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "1.1.2";
+var APP_VERSION = "1.2.0";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -2742,7 +2757,7 @@ function questRangeBlock(p) {
 // Tasks, steps, and the quest's fields, frozen to plain data. Does not
 // walk linked quests -- buildExportTree() does that, with the cycle guard.
 function snapshotTasks(p) {
-  return questBurnTasksOrdered(p).filter(function (t) { return !isLooseIssue(t); }).map(function (t) {
+  return questBurnTasksOrdered(p).filter(function (t) { return !t.issue; }).map(function (t) {
     return {
       id: t.id, what: t.what, done: t.done, status: t.status, notes: t.notes || "",
       block: t.block, start: fmtRange(t), late: isLate(t), launch: !!t.launch, milestone: !!t.milestone, issue: !!t.issue,
@@ -2759,11 +2774,14 @@ function questBurnTasksOrdered(p) {
   });
 }
 function fmtRange(t) { return t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)); }
-// Issues with no due date, as title and status only. They print only when the export asks for them.
+// Every issue, dated or not, with its status and notes. They print only when the export asks for them,
+// and never in Tasks.
 function snapshotIssues(p) {
-  return questBurnTasksOrdered(p).filter(isLooseIssue).map(function (t) { return { what: t.what, status: t.status, launch: !!t.launch }; });
+  return questBurnTasksOrdered(p).filter(function (t) { return t.issue; }).map(function (t) {
+    return { what: t.what, status: t.status, notes: t.notes || "", launch: !!t.launch, start: t.block === 0 ? "" : fmtRange(t), late: isLate(t) };
+  });
 }
-// True when this quest, or a linked quest the export would include, has an issue with no due date.
+// True when this quest, or a linked quest the export would include, has an issue.
 function exportHasIssues(p) {
   return flattenSections(buildExportTree(p, null, true)).some(function (n) { return n.issues.length > 0; });
 }
@@ -2948,7 +2966,9 @@ function renderTasks(node) {
 
 function renderIssues(node) {
   var rows = node.issues.map(function (t) {
-    return '<li class="etask' + (t.status === "Completed" ? " done" : "") + '"><div class="el2">' + (t.launch ? '<span class="chip launchcrit" style="margin-right:8px">Launch critical</span>' : "") + escHtml(t.what) + '</div><div class="el3"><span>' + escHtml(t.status) + "</span></div></li>";
+    return '<li class="etask' + (t.status === "Completed" ? " done" : "") + '">' + (t.start ? '<div class="el1">' + escHtml(t.start) + "</div>" : "") +
+      '<div class="el2">' + (t.launch ? '<span class="chip launchcrit" style="margin-right:8px">Launch critical</span>' : "") + escHtml(t.what) + '</div><div class="el3"><span>' + escHtml(t.status) + "</span></div>" +
+      (t.notes ? '<p class="enotes">' + escHtml(t.notes) + "</p>" : "") + "</li>";
   });
   return '<ul class="etasklist">' + rows.join("") + "</ul>";
 }
@@ -3014,6 +3034,7 @@ body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-
 .econtactname { color: var(--ink); font-weight: 600; }\
 .econtactaddr { white-space: pre-line; }\
 h1, h2, h3, h4, h5 { font-weight: 700; margin-top: 0; }\
+h3 { margin-top: 26px; }\
 .ehint { color: var(--muted); }\
 .etoc { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 18px 0; }\
 .etoc ul { margin: 4px 0 4px 18px; padding: 0; }\
@@ -3023,7 +3044,7 @@ h1, h2, h3, h4, h5 { font-weight: 700; margin-top: 0; }\
 @media (min-width: 900px) { .esplit { grid-template-columns: 1.1fr 1fr; align-items: start; } }\
 .efirst { margin-top: 0; }\
 .hint { color: var(--muted); font-size: .92rem; }\
-.chip { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--badge-neutral-bg); color: var(--badge-neutral); font-size: .8rem; font-weight: 600; }\
+.chip { display: inline-block; padding: 2px 10px; border-radius: 5px; background: var(--badge-neutral-bg); color: var(--badge-neutral); font-size: .8rem; font-weight: 600; }\
 .chip[data-v='Not started'] { background: var(--badge-pending-bg); color: var(--badge-pending); }\
 .chip[data-v='In progress'] { background: var(--badge-active-bg); color: var(--badge-active); }\
 .chip[data-v='Completed'], .chip.questcomplete { background: var(--badge-done-bg); color: var(--badge-done); }\
@@ -3032,7 +3053,7 @@ h1, h2, h3, h4, h5 { font-weight: 700; margin-top: 0; }\
 .chip.milestonechip { background: var(--milestone-bg); color: var(--milestone); }\
 .chip.issuechip { background: var(--badge-attention-bg); color: var(--badge-attention); }\
 .chip.ereadonly { background: var(--muted); color: var(--surface); vertical-align: middle; font-size: .7rem; margin-left: 8px; }\
-.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--late-bg); color: var(--late); font-size: .8rem; font-weight: 600; }\
+.badge { display: inline-block; padding: 2px 8px; border-radius: 5px; background: var(--late-bg); color: var(--late); font-size: .8rem; font-weight: 600; }\
 .etasklist, .list { list-style: none; margin: 8px 0; padding: 0; }\
 .etask { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--surface); }\
 .etask.done { opacity: .7; }\
@@ -3285,6 +3306,7 @@ function exportFileName(p) {
 
 
 
+
 /* search */
 var SEARCH_LABELS = { task: "Tasks", step: "Steps", quest: "Quests", idea: "Ideas", job: "Errands", decision: "Decisions" };
 var SEARCH_ORDER = ["task", "step", "quest", "idea", "job", "decision"];
@@ -3319,7 +3341,9 @@ function searchAll(q, includeVault) {
       if (!fields[j] || !lbl) continue;
       var sn = snippetOf(fields[j], terms); if (sn) { snip = { label: lbl, text: sn }; break; }
     }
-    groups[kind].push({ kind: kind, title: title, sub: sub, snip: snip, vault: !!vault, score: inTitle ? 2 : 0, idx: groups[kind].length, open: open });
+    var rec = { kind: kind, title: title, sub: sub, snip: snip, vault: !!vault, score: inTitle ? 2 : 0, idx: groups[kind].length, open: open };
+    groups[kind].push(rec);
+    return rec;
   }
   state.tasks.forEach(function (t) {
     var dates = t.block === 0 ? "" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t));
@@ -3334,7 +3358,10 @@ function searchAll(q, includeVault) {
   });
   state.quests.forEach(function (p) { if (p.vault) consider("quest", p.name, [p.notes], "Vaulted quest", function () { go("vault"); }, true, ["Notes"]); });
   state.workshop.forEach(function (p) { consider("idea", p.text, [p.note], "Workshop", function () { go(p.vault ? "vault" : "workshop"); }, !!p.vault, ["Note"]); });
-  state.jobs.forEach(function (j) { consider("job", j.text, [], j.done ? "Errands · completed" : "Errands" + (j.due ? " · due " + fmt(parseISO(j.due)) : ""), function () { go("jobs"); }, false); });
+  state.jobs.forEach(function (j) {
+    var rec = consider("job", j.text, [], j.done ? "Errands · completed" : "Errands" + (j.due ? " · due " + fmt(parseISO(j.due)) : ""), function () { showJob(j.id); go("jobs"); }, false);
+    if (rec) rec.job = j;
+  });
   // Quest comes from following Decision -> Step -> Task -> Quest.
   state.decisions.forEach(function (d) {
     var ls = findStep(d.step);
@@ -3369,6 +3396,12 @@ function updateSearchResults() {
       var l2 = el("div", { "class": "l2" }); l2.appendChild(highlight(r.title, res.terms)); b.appendChild(l2);
       if (r.snip) { var sn = el("div", { "class": "snip" }); if (r.snip.label) sn.appendChild(document.createTextNode(r.snip.label + ": ")); sn.appendChild(highlight(r.snip.text, res.terms)); b.appendChild(sn); }
       on(b, "click", function () { r.open(); });
+      if (r.job) {
+        // An errand result carries its own checkbox, so it can be completed or restored without leaving the search.
+        var cb = el("input", { type: "checkbox", "aria-label": (r.job.done ? "Restore errand: " : "Complete errand: ") + r.job.text }); cb.checked = r.job.done;
+        on(cb, "change", function () { setJobDone(r.job, cb.checked, li); });
+        li.className = "sjob"; li.appendChild(cb);
+      }
       li.appendChild(b); ul.appendChild(li);
     });
     sec.appendChild(ul);
@@ -3614,7 +3647,10 @@ function formDialog(title, fields, submitLabel, onSubmit, intro, extra) {
 }
 
 // Quests that can take work: Candidates (so they can be built out before promotion) and In progress.
-function workQuests() { return liveQuests().filter(function (p) { return p.status === "active" || p.status === "candidate"; }); }
+function workQuests() {
+  return liveQuests().filter(function (p) { return p.status === "active" || p.status === "candidate"; })
+    .sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { sensitivity: "base" }); });
+}
 function taskDialog(prefillQuestId) {
   var nt = nextTask();
   var questOpts = workQuests().map(function (p) { return { value: p.id, label: p.name }; });
@@ -4694,7 +4730,9 @@ var PROMPT_TEMPLATE = [
   "",
   "HOW TO WORK",
   "Work in this order, one step at a time, and wait for my answer after each question.",
-  "1. Your first reply must be only this question, with nothing before or after it: “What is the quest called?” Wait for my answer and use it as the quest’s name.",
+  "1. Your first reply must be only the greeting below, with nothing before or after it. Wait for my answer. If I give a name, use it as the quest’s name. If I say I haven’t decided, move on, and when you ask the question in step 4, suggest a short name based on the job and use it unless I give another.",
+  "   Greeting: “Welcome, adventurer! Let’s create a new quest for Sidequest.” Then, on a new line: “What shall we call your quest? If you haven’t decided yet, just say so, and we’ll move on to the next step.”",
+  "   If this conversation already has an earlier Sidequest quest request from me, use this greeting instead: “Welcome back, adventurer! Let’s create another new quest for Sidequest.” Then the same question on a new line.",
   "2. If the job above is still the bracketed placeholder, ask me what the job is, and wait for my answer.",
   "3. If the job is missing details you need to plan it well, such as the goal, the deadline, or limits, ask me up to five short questions about it. Also ask whether the job is for a company or organization, and if so, its name. If it is already clear, skip the questions I have already answered.",
   "4. Then ask me this: do I want you to add the typical tasks, steps, and decisions for this kind of job, or do I want to define my own? If I define my own, ask me for them, or for an outline, and build the quest around what I give you.",
@@ -5020,8 +5058,8 @@ function helpMarkup(text) {
 function helpTerm(id) {
   var lines = helpTopics().filter(function (t) { return t[0] === "Terms"; })[0][1], found = null;
   lines.forEach(function (l) {
-    var m = l.match(/^\{#([a-z-]+)\}\*\*([^*]+):\*\* (.+?) See “([^”]+)”\.$/);
-    if (m && m[1] === id) found = { id: m[1], name: m[2], text: m[3], topic: m[4] };
+    var m = l.match(/^\{#([a-z-]+)\}\*\*([^*]+(?:\*\* and \*\*[^*]+)?):\*\* (.+?) See “([^”]+)”\.$/);
+    if (m && m[1] === id) found = { id: m[1], name: m[2].replace(/\*\*/g, ""), text: m[3], topic: m[4] };
   });
   return found;
 }
@@ -5078,9 +5116,9 @@ function helpTopics() {
       "{#promote-demote}**Promote and Demote:** **Promote** moves a candidate quest to active. **Demote** moves it back to candidate. See “The quest lifecycle”.",
       "{#quest}**Quest:** A project, from the initial idea through completion. See “The quest lifecycle”.",
       "{#quest-giver}**Quest giver:** The client or contact for this quest. See “Quest giver and Quest links”.",
-      "{#quest-giver-export}**Quest giver export:** A read-only page you can share with a client. See “Quest giver and Quest links”.",
+      "{#quest-giver-export}**Quest giver export:** Creates a read-only, interactive web page you can share with your client. It includes everything entered in this quest except the **Bounty**. Choose which additional items to include in the export. See “Quest giver and Quest links”.",
       "{#quest-links}**Quest links:** Connections between quests that belong to the same job. See “Quest giver and Quest links”.",
-      "{#reroll}**Reroll and Roll:** Reroll replaces your hand of errands with a new one. Roll deals a first hand when your hand is empty. Overdue errands are prioritized, and you can undo either. See “Errands page”.",
+      "{#reroll}**Roll** and **Reroll:** Roll deals a first hand when your hand is empty. Reroll replaces your hand of errands with a new one. Overdue errands are prioritized, and you can undo either. See “Errands page”.",
       "{#scope}**Scope:** The total amount of work in a quest. The orange line shows when that amount changes. See “Timeline page”.",
       "{#slip-schedule}**Slip schedule:** Moves a quest’s incomplete tasks to later dates. You can undo this change. See “A quest’s Schedule and Timeline”.",
       "{#step}**Step:** A smaller action that makes up a task. See “Inside a quest”.",
@@ -5115,7 +5153,7 @@ function helpTopics() {
       "**Completed:** This section lists completed quests.",
       "**Candidate quests:** These are quests you’re considering but aren’t working on. You can demote an active quest back to a candidate quest in the **Quest details**. Before promoting a candidate quest, you can add tasks, steps, and decisions to it.",
       ">A candidate quest keeps the links it had when it was demoted.",
-      "**Copy AI prompt and Import quest:** These buttons appear to the right of the **Candidate quests** heading. **Copy AI prompt** copies a prompt to use in any AI chat. **Import quest** loads the JSON file the AI generates and adds the quest to **Candidate quests** for review.",
+      "**New candidate quest, Copy AI prompt, and Import quest:** These buttons appear to the right of the **Candidate quests** heading. **New candidate quest** opens the same dialog as the **+** button. **Copy AI prompt** copies a prompt to use in any AI chat. **Import quest** loads the JSON file the AI generates and adds the quest to **Candidate quests** for review.",
       "**Pinned quests:** You can pin in progress, pending, and completed quests that are still on the **Quests** page. Pinning places a shortcut to that quest in the sidebar (or the **Main menu** on mobile). Completing a quest unpins it automatically. Reopening a formerly pinned quest restores the pin."
     ]],
     ["Inside a quest", [
@@ -5134,7 +5172,7 @@ function helpTopics() {
     ]],
     ["Quest giver and Quest links", [
       "**Quest giver:** The Quest giver is the client for a quest. You can also enter a **Bounty** (a monetary value), either as an hourly rate or a fixed payment for the quest.",
-      ">The **Quest giver export** includes everything entered here except the **Bounty**. It creates a read-only, interactive web page you can share with the client. Before it exports, you choose whether to include **Prepared by** (your contact information and brandmark) and **Prepared for** (the Quest giver). If the quest has issues without due dates, you can choose whether to include them. Only their titles and statuses are shown. Its button is at the bottom of an in progress or complete quest’s details and doesn’t appear on a candidate or vaulted quest.",
+      "**Quest giver export:** Includes everything entered in the quest except the **Bounty** and creates a read-only, interactive web page you can share with the client. Before exporting, you can choose whether to include **Prepared by** (your contact information and brandmark), quest issues, or both. Included issues appear in their own **Issues** section, with their statuses and notes, rather than in the task list. The export button appears at the bottom of in-progress, completed, or vaulted quest’s details, but not on candidate quests.",
       "**Quest links:** When a job requires more than one quest, link them. Use **Link quest** to link a quest to any quest that is in progress, pending, or completed.",
       ">A candidate quest can add links the same way, but other quests can’t link to a candidate quest. Links to a candidate or vaulted quest show as plain text, and you can follow links to other quests.",
       ">Vaulting or demoting a quest keeps its links, and promoting or restoring it makes them active again."
@@ -5161,10 +5199,11 @@ function helpTopics() {
     ["Errands page", [
       "**Errands:** List for small errands that aren’t quite a quest. Errands don’t appear on the **Timeline**, the **Burndown**, or the **Tasks** page, and they don’t change any counts.",
       "**Add errand:** Type an errand and select **Add errand** or press [[Enter]]. You can also give errands a due date. Select the pencil to rename an errand.",
-      "**Errands deck:** Contains open errands that aren’t in your hand. Errands with due dates appear first, earliest due date first. The rest follow in the order they were added. Overdue errands display an **Overdue** badge.",
-      "**Your hand:** Up to three errands you keep at the top of the page. Select **Manage hand** to choose errands, put them in order, or discard them. **Empty hand**, in **Manage hand**, clears your hand, and you can undo that.",
+      "**Errands deck:** Contains open errands that aren’t in your hand. Errands with due dates appear first, earliest due date first. The rest follow with the newest first, and a restored errand goes back to the top of them. Overdue errands display an **Overdue** badge.",
+      "**Your hand:** Up to three errands displayed at the top of the page. Overdue errands get priority, followed by other open errands not currently in your hand. This helps you work through overdue errands before seeing them again.",
+      "**Manage errands:** Choose errands for your hand, arrange their order, or discard them. **Empty hand** clears your hand, with the option to undo. You can also move errands without due dates up or down in the deck.",
       "**Choose** and **Discard:** **Choose** adds an errand to your hand and **Discard** returns it to the deck. **Discard** never deletes an errand. Your hand holds three errands, so **Choose** turns off when it’s full.",
-      "**Reroll** and **Roll:** Once you have a hand, the button reads **Reroll** and replaces your whole hand, including errands you chose yourself. With an empty hand, it reads **Roll** and deals a first hand. Overdue errands get priority, followed by other errands not currently in your hand. This helps you work through overdue errands before repeating them. Select **Undo** right away to restore your previous hand. **Reroll** is disabled when fewer than two open errands remain, and **Roll** needs only one. With **Sound effects** on, it plays a sound. Turn off the **Animated reroll** in **Options**.",
+      "**Roll** and **Reroll:** With an empty hand, the button reads **Roll** and deals your first hand. Once you have a hand, it reads **Reroll** and replaces your entire hand, including any errands you chose yourself. Select **Undo** right away to restore your previous hand. **Roll** requires at least one open errand, while **Reroll** requires at least two. With **Sound effects** on, rolling plays a sound. Turn off **Animated reroll** in **Options** to disable the animation.",
       "**Complete errand:** Check the box next to an errand to mark it complete. It moves to the **Completed** section.",
       "**Restore errand:** Uncheck a completed errand to move it back to the **Errands deck**.",
       "**Delete forever:** Permanently deletes an errand. Select **Undo** right away to restore it."
@@ -5330,7 +5369,7 @@ function renderJobs(root) {
   function add() {
     var v = txt.value.trim();
     if (!v) { setMsg(msg, "Enter an errand to add it.", "error"); txt.focus(); return; }
-    state.jobs.push({ id: uid(), text: v.slice(0, 200), done: false, due: isISO(due.value) ? due.value : "" });
+    state.jobs.unshift({ id: uid(), text: v.slice(0, 200), done: false, due: isISO(due.value) ? due.value : "" });
     setFocusKey("job-new"); changed(); notify("“" + v.slice(0, 200) + "” added to Errands.");
   }
   txt.setAttribute("data-focus", "job-new");
@@ -5352,15 +5391,64 @@ function renderJobs(root) {
     done.forEach(function (j) { dl.appendChild(jobRow(j)); });
     root.appendChild(dl);
   }
+  landJob();
 }
 
 var CALENDAR = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>';
+
+// Restoring an undated errand puts it at the top of the undated errands, under the dated ones.
+function setJobDone(j, done, li) {
+  function apply() {
+    j.done = done;
+    var at = state.jobs.indexOf(j);
+    if (!done && !j.due && at > 0) { state.jobs.splice(at, 1); state.jobs.unshift(j); }
+    changed();
+  }
+  // Completing or restoring pulses a brass ring on the row first (about a fifth of a second), then the list redraws.
+  if (pulse(li, 520)) setTimeout(apply, 220); else apply();
+}
+
+// A quick brass ring around a card. Skipped under reduced motion or without the Web Animations API.
+function pulse(node, ms) {
+  if (!node || typeof node.animate !== "function" || reduceMotion()) return false;
+  node.animate([
+    { boxShadow: "0 0 0 0 var(--brass)" },
+    { boxShadow: "0 0 0 3px var(--brass)", offset: 0.3 },
+    { boxShadow: "0 0 0 0 transparent" }
+  ], { duration: ms, easing: "ease-out" });
+  return true;
+}
+
+// Search lands here: the Errands page opens, scrolls to the errand, and pulses it once.
+var pendingJob = "";
+function showJob(id) { pendingJob = id; }
+function landJob() {
+  if (!pendingJob) return;
+  var id = pendingJob; pendingJob = "";
+  // After the page-top reset that navigation runs on the next frame.
+  setTimeout(function () {
+    var node = document.querySelector('#view [data-job="' + id + '"]');
+    if (!node) return;
+    scrollToRow(node);
+    pulse(node, 900);
+  }, 80);
+}
+
+// Swaps an undated errand with its neighbor among the undated errands in the deck.
+function jobMove(id, dir) {
+  var und = deckJobs().filter(function (j) { return !j.due; });
+  var i = und.map(function (j) { return j.id; }).indexOf(id), k = i + dir;
+  if (i < 0 || k < 0 || k >= und.length) return;
+  var a = state.jobs.indexOf(und[i]), b = state.jobs.indexOf(und[k]), tmp = state.jobs[a];
+  state.jobs[a] = state.jobs[b]; state.jobs[b] = tmp; changed();
+}
 
 function jobRow(j, opts) {
   var li = el("li", { "class": (j.done ? "done" : "") + (opts && opts.card ? " handcard" : "") }), row = el("div", { "class": "jobrow" });
   var lab = el("label", { "class": "jobmain" });
   var cb = el("input", { type: "checkbox", "aria-label": (j.done ? "Restore errand: " : "Complete errand: ") + j.text }); cb.checked = j.done;
-  on(cb, "change", function () { j.done = cb.checked; changed(); });
+  on(cb, "change", function () { setJobDone(j, cb.checked, li); });
+  li.setAttribute("data-job", j.id);
   var text = el("span", { "class": "jobtext" }, j.text);
   lab.appendChild(cb); lab.appendChild(text); row.appendChild(lab);
   var badges = el("div", { "class": "jobbadges" });
@@ -5398,10 +5486,10 @@ function jobRow(j, opts) {
 
 /* errands hand: up to three errands kept at the top of the page */
 var HAND = {
-  label: "Your hand", edit: "Manage hand", empty: "Empty hand", done: "Done", up: "Up", down: "Down",
+  label: "Your hand", edit: "Manage errands", empty: "Empty hand", done: "Done", up: "Up", down: "Down",
   reroll: "Reroll", roll: "Roll", pick: "Choose", discard: "Discard", deck: "Errands deck",
   none: "Nothing in your hand. Choose up to three errands to keep here.",
-  editorTitle: "Manage your hand", editorHint: "Choose up to three errands and organize them. Discard single cards or select Empty hand to remove them from your hand.",
+  editorTitle: "Manage errands", editorHint: "Choose up to three errands for your hand and put them in order. Discard single cards or select Empty hand to clear it. Errands without a due date can also be moved up and down in the deck.",
   rerolled: "Hand rerolled.", rolled: "Hand rolled.", emptied: "Hand emptied.", needTwo: "Reroll needs at least two open errands.", needOne: "Roll needs at least one open errand."
 };
 
@@ -5496,11 +5584,11 @@ function handSection(root, hand, open) {
   var btns = el("div", { "class": "handbtns" });
   var hand0 = hand.length > 0;
   var eb = el("button", { type: "button", "class": "small", "data-focus": "hand-edit" }, HAND.edit);
-  on(eb, "click", openHandEditor); btns.appendChild(eb);
+  on(eb, "click", openHandEditor);
   var grp = el("span", { "class": "rerollgroup" });
   var rr = el("button", { type: "button", "class": "small", "data-focus": "hand-reroll" }, hand0 ? HAND.reroll : HAND.roll);
   if (open.length < (hand0 ? 2 : 1)) { rr.disabled = true; rr.title = hand0 ? HAND.needTwo : HAND.needOne; } else on(rr, "click", rerollHand);
-  grp.appendChild(rr); grp.appendChild(helpLink("reroll", "Reroll and Roll")); btns.appendChild(grp);
+  grp.appendChild(rr); grp.appendChild(helpLink("reroll", "Roll and Reroll")); btns.appendChild(grp);
   head.appendChild(btns); root.appendChild(head);
   if (!hand0) root.appendChild(el("p", { "class": "hint handnone" }, HAND.none));
   else {
@@ -5508,7 +5596,10 @@ function handSection(root, hand, open) {
     hand.forEach(function (j) { cl.appendChild(jobRow(j, { card: true })); });
     root.appendChild(cl);
   }
-  root.appendChild(withHelp(el("h2", { "class": "handlabel decklabel" }, HAND.deck), "errands-deck", "Errands deck"));
+  var dhead = el("div", { "class": "handhead deckhead" });
+  dhead.appendChild(withHelp(el("h2", { "class": "handlabel decklabel" }, HAND.deck), "errands-deck", "Errands deck"));
+  dhead.appendChild(eb);
+  root.appendChild(dhead);
 }
 
 // One row of a hand dialog: the errand, its date, and whatever buttons the dialog gives it.
@@ -5548,13 +5639,19 @@ function openHandEditor() {
         }));
         li.appendChild(bt); list.appendChild(li);
       });
-      deckJobs().forEach(function (j) {
-        var li = handDialogRow(j, false);
-        li.appendChild(handDialogBtn(HAND.pick, "Choose for hand", j, "pick-", function () {
+      var deck = deckJobs(), undated = deck.filter(function (j) { return !j.due; });
+      deck.forEach(function (j) {
+        var li = handDialogRow(j, false), bt = el("div", { "class": "hpbtns" }), ui0 = undated.indexOf(j);
+        // A dated errand's place follows its date, so only undated errands move.
+        if (ui0 >= 0) {
+          bt.appendChild(handDialogBtn(HAND.up, "Move up in deck", j, "dk-up-", function () { jobMove(j.id, -1); paint(['[data-focus="dk-up-' + j.id + '"]', '[data-focus="dk-down-' + j.id + '"]']); }, ui0 === 0));
+          bt.appendChild(handDialogBtn(HAND.down, "Move down in deck", j, "dk-down-", function () { jobMove(j.id, 1); paint(['[data-focus="dk-down-' + j.id + '"]', '[data-focus="dk-up-' + j.id + '"]']); }, ui0 === undated.length - 1));
+        }
+        bt.appendChild(handDialogBtn(HAND.pick, "Choose for hand", j, "pick-", function () {
           handChoose(j.id);
           paint(['[data-focus="ed-discard-' + j.id + '"]']);
         }, full));
-        list.appendChild(li);
+        li.appendChild(bt); list.appendChild(li);
       });
       clear.hidden = !hand.length;
       count.textContent = hand.length + " of " + HAND_MAX + " in hand";
@@ -5584,14 +5681,21 @@ function openHandEditor() {
 
 
 
+// A vaulted quest’s tasks carry the vault mark, which the export’s task queries skip, so it is lifted while one runs.
+function whileUnvaulted(p, fn) {
+  var marked = state.tasks.filter(function (t) { return t.questId === p.id && t.vault; }), saved = marked.map(function (t) { return t.vault; });
+  marked.forEach(function (t) { t.vault = null; });
+  try { return fn(); } finally { marked.forEach(function (t, i) { t.vault = saved[i]; }); }
+}
+
 // Asks which letterhead sides to include, offering only the sides that have something to print. With neither, it exports at once.
 function askExportSides(p) {
-  var sides = exportSides(p), hasIssues = exportHasIssues(p);
+  var sides = exportSides(p), hasIssues = whileUnvaulted(p, function () { return exportHasIssues(p); });
   if (!sides.by && !sides.forWhom && !hasIssues) { exportQuestForClient(p); return; }
   var fields = [];
   if (sides.by) fields.push({ key: "by", label: "Include “Prepared by” (your contact info and brandmark from Options)", type: "checkbox", value: true });
   if (sides.forWhom) fields.push({ key: "forWhom", label: "Include “Prepared for” (this quest’s Quest giver)", type: "checkbox", value: true });
-  if (hasIssues) fields.push({ key: "issues", label: "Include issues that have no due date (title and status only)", type: "checkbox", value: false });
+  if (hasIssues) fields.push({ key: "issues", label: "Include issues (title, status, and notes)", type: "checkbox", value: false });
   formDialog("Quest giver export", fields, "Export", function (v) {
     exportQuestForClient(p, { preparedBy: !sides.by || v.by === "1", preparedFor: !sides.forWhom || v.forWhom === "1", issues: v.issues === "1" });
   }, sides.by || sides.forWhom ? "Choose what appears on the export." : "Choose whether the export lists this quest’s issues.");
@@ -5600,8 +5704,7 @@ function askExportSides(p) {
 // Builds the standalone read-only export and offers it for saving, same
 // fallback order as saveBackupFile(). Scoped to Active/Complete quests only.
 function exportQuestForClient(p, opts) {
-  var snapshot = buildExportSnapshot(p, opts);
-  var html = renderExportDocument(snapshot);
+  var html = whileUnvaulted(p, function () { return renderExportDocument(buildExportSnapshot(p, opts)); });
   var name = exportFileName(p);
   function exported() { notify("Exported " + p.name + "."); }
   saveFile(name, html, "text/html", "Sidequest export", ".html", exported).then(function (r) {
@@ -5640,7 +5743,11 @@ function toggleRow(p, t, open, li) {
   var before = li.getBoundingClientRect().top;
   ui.questOpen[p.id] = open ? null : t.id; renderView();
   var row = document.getElementById(li.id), shift = row ? row.getBoundingClientRect().top - before : 0;
-  if (shift) window.scrollBy(0, shift);
+  if (!shift) return;
+  // A framed copy (Muse) scrolls the host page, so window.scrollBy does nothing there; keep the row in view instead.
+  var y = window.pageYOffset || 0;
+  window.scrollBy(0, shift);
+  if ((window.pageYOffset || 0) === y && row && typeof row.scrollIntoView === "function") { try { row.scrollIntoView({ block: "nearest" }); } catch (e) { /* ignore */ } }
 }
 // A long date line can wrap, so a title is not always at the same height; this reads each row's line positions, then hands them to the CSS.
 function alignStatuses(root) {
@@ -6103,6 +6210,7 @@ function renderQuestPage(root, id) {
   var ar = el("div", { "class": "actions questactions", style: "margin-top:14px" });
   if (readOnly) {
     ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Bring back to Quests" }, "Restore"), "click", function () { restoreEntry({ kind: "quest", list: "quests", item: p }); }));
+    if (p.status !== "candidate") ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Export web page for client review" }, "Quest giver export"), "click", function () { askExportSides(p); }));
   } else if (p.status === "candidate") {
     ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Promote to quest" }, "Promote"), "click", function () { promoteToActive(p.id); }));
     ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Send this candidate to the Vault" }, "Vault"), "click", function () { removeToVault(p, "Quest"); }));
@@ -6971,7 +7079,9 @@ function candidatesSection(first) {
   var sec = el("div");
   var head = el("div", { "class": "sechead wraps" + (first ? " first" : "") });
   head.appendChild(withHelp(el("h2", { "class": "sechead-h" }, "Candidate quests"), "candidate-quest", "Candidate quest"));
-  head.appendChild(aiButtons());
+  var btns = aiButtons();
+  btns.insertBefore(on(el("button", { type: "button", "class": "small", id: "newCandidateBtn", title: "Add a new candidate quest" }, "New candidate quest"), "click", function () { questDialog(); }), btns.firstChild);
+  head.appendChild(btns);
   sec.appendChild(head);
   var list = el("ul", { "class": "list" });
   var cs = candidateQuests();
@@ -7536,8 +7646,15 @@ function openTask(id) {
   var at = findAnyTask(id);
   if (at && at.vault) { go("vault"); notify("That task is in the Vault. Restore it to work on it.", null, "problem"); return; }
   // An issue with no due date is not on the Tasks page, so it opens in place on its quest's page.
-  if (at && isLooseIssue(at) && findQuest(at.questId)) { ui.questOpen[at.questId] = id; go("quest:" + at.questId); return; }
-  leaveSearch(); ui.view = "schedule"; ui.sel = id; ui.detail = true; renderAll(); scrollTop();
+  if (at && isLooseIssue(at) && findQuest(at.questId)) { ui.questOpen[at.questId] = id; go("quest:" + at.questId); landOnTask(id); return; }
+  leaveSearch(); ui.view = "schedule"; ui.sel = id; ui.detail = true; renderAll(); scrollTop(); landOnTask(id);
+}
+// After a search or link opens a task, scrolls its row to just under the header. It waits for the page-top reset.
+function landOnTask(id) {
+  setTimeout(function () {
+    var row = document.getElementById("ptask-" + id) || document.getElementById("itask-" + id) || document.querySelector('#view .listpane [aria-current="true"]');
+    scrollToRow(row);
+  }, 80);
 }
 var ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>';
 var ICON_CANCEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>';
@@ -7610,7 +7727,7 @@ function renameCurrentQuest() {
 on($("renameBtn"), "click", renameCurrentQuest);
 // On narrow screens the page name is a heading under the leather header; on wide ones it sits in the bar.
 if (typeof window.matchMedia === "function") {
-  var narrowBar = window.matchMedia("(max-width: 899px)");
+  var narrowBar = window.matchMedia("(max-width: 639px), (max-width: 899px) and (orientation: portrait), (max-width: 899px) and (not (pointer: coarse))");
   var placeTitle = function () { ($("pageHead") && narrowBar.matches ? $("pageHead") : document.querySelector(".tbleft")).appendChild($("titleRow")); };
   placeTitle();
   if (narrowBar.addEventListener) narrowBar.addEventListener("change", placeTitle);
@@ -7660,7 +7777,8 @@ function renderView() {
   var root = $("view");
   // A redraw of the same page keeps its scroll position; emptying the page lets a phone jump it.
   var keepY = ui.view === lastView && document.body.style.position !== "fixed" ? (window.pageYOffset || 0) : null;
-  if (keepY !== null) root.style.minHeight = root.offsetHeight + "px";
+  // The page keeps its height while it redraws, so a framed copy's host page is not clamped to the bottom.
+  root.style.minHeight = root.offsetHeight + "px";
   root.innerHTML = "";
   if (ui.view.indexOf("quest:") === 0 && !validPage(ui.view)) ui.view = "projects";
   noteBurnView(ui.view);

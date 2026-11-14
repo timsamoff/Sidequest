@@ -36,7 +36,7 @@ html:has(.splash:not([hidden])) { overflow: hidden; }
   .splash, .splashbackdrop, .splashsvg, .splashtitle, .splashaffirm, #splashLines path, #splashNodes circle, #splashNodes rect { transition-duration: .01ms !important; }
 }
 
-@media (max-width: 899px) {
+@media (max-width: 639px), (max-width: 899px) and (orientation: portrait), (max-width: 899px) and (not (pointer: coarse)) {
   /* Widen the floor so the panel stays legible on a small phone. */
   .splashpanel { width: min(85vw, 85vh, 420px); }
   .splashtextwrap { font-size: min(var(--text-100), calc((94cqw - 32px) / var(--q))); }

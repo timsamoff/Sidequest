@@ -98,7 +98,7 @@ async function main() {
 
   // The prompt
   const p = ai.buildAiPrompt("2030-05-06");
-  ok(p.indexOf("“What is the quest called?”") >= 0 && p.indexOf("quest.client.org") >= 0, "the prompt asks for the quest name first and explains the organization field");
+  ok(p.indexOf("Welcome, adventurer! Let’s create a new quest for Sidequest.") >= 0 && p.indexOf("Welcome back, adventurer! Let’s create another new quest for Sidequest.") >= 0 && p.indexOf("What shall we call your quest?") >= 0 && p.indexOf("quest.client.org") >= 0, "the prompt greets first, asks for the quest name, and explains the organization field");
   ok(p.indexOf("Today is 2030-05-06.") >= 0 && p.indexOf("{{TODAY}}") < 0, "the prompt carries today's date");
   ok(/[–—]/.test(p) === false, "the prompt has no dashes");
   ok(p.indexOf("typical tasks, steps, and decisions") >= 0 && p.indexOf("define my own") >= 0 && p.indexOf("what the job is") < p.indexOf("typical tasks"), "the prompt asks whether to add typical tasks or use the user's own");

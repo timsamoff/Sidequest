@@ -76,7 +76,7 @@ ok(!/—/.test(html), "no em dashes");
 ok(!html.includes("project-schedule-v"), "uses its own storage keys");
 {
   const stateJs = fs.readFileSync(path.join(__dirname, "..", "app", "state.js"), "utf8");
-  ok(stateJs.includes('APP_VERSION = "1.1.2"'), "version kept in state.js");
+  ok(stateJs.includes('APP_VERSION = "1.2.0"'), "version kept in state.js");
   const v = (stateJs.match(/APP_VERSION = "([0-9.]+)"/) || [])[1];
   ok(html.includes("../css/tokens.css?v=" + v) && html.includes("../css/styles.css?v=" + v) && html.includes("../css/splash.css?v=" + v) && html.includes("../css/leather.css?v=" + v), "index.html's stylesheet links carry the app version, so a normal reload cannot reuse stale CSS");
   const viewsJs = fs.readFileSync(path.join(__dirname, "..", "app", "settings.js"), "utf8");
@@ -2747,7 +2747,7 @@ async function exportClick(k, projectName) {
   const { helpTopics } = await import("../app/help.js?run=" + counter);
   const topics = helpTopics(), titles = topics.map(t => t[0]);
   const termLines = topics.find(t => t[0] === "Terms")[1];
-  ok(termLines.length === 41 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+:\*\* .+ See “[^”]+”\.$/.test(l)), "all 41 Terms entries read as a bold term, a definition, and a pointer");
+  ok(termLines.length === 41 && termLines.every(l => /^\{#[a-z-]+\}\*\*[^*]+(\*\* and \*\*[^*]+)?:\*\* .+ See “[^”]+”\.$/.test(l)), "all 41 Terms entries read as a bold term, a definition, and a pointer");
   ok(termLines.every(l => titles.includes(l.match(/See “([^”]+)”\.$/)[1])), "every Terms pointer names a topic that exists");
   f.value = "decision"; k.fire(f, "input");
   ok(titlesOf()[0] === "Terms" && items()[0].open, "a word that is a term puts the Terms topic first and opens it");
@@ -2984,6 +2984,9 @@ async function exportClick(k, projectName) {
   ok(k.saved().jobs.find(j => j.text === "Water the plants").done === true, "checking a job completes it");
   flip("Water the plants");
   ok(k.saved().jobs.find(j => j.text === "Water the plants").done === false, "unchecking a completed job restores it");
+  ok(k.saved().jobs[0].text === "Water the plants", "a restored undated errand goes to the top of the undated errands");
+  k.$("job-new").value = "Sweep the porch"; k.click(k.btn(k.$("view"), "Add errand"));
+  ok(k.saved().jobs[0].text === "Sweep the porch", "a new undated errand goes to the top of the undated errands");
   // rename
   k.click(row("Water the plants").querySelector("button.pencil"));
   const i = k.d.querySelector(".inlineedit"); i.value = "Water the ferns";
@@ -3008,22 +3011,29 @@ async function exportClick(k, projectName) {
   const v = () => k.$("view");
   const cards = () => [...k.d.querySelectorAll("#view .handlist > li")].map(li => li.querySelector(".jobtext").textContent);
   ok(v().textContent.includes("Your hand") && v().textContent.includes("Nothing in your hand. Choose up to three errands to keep here.") && v().textContent.includes("Errands deck"), "an empty hand shows its message and the Errands deck label");
-  ok(!!k.btn(v(), "Manage hand") && !!k.btn(v(), "Roll") && !k.btn(v(), "Reroll") && !k.btn(v(), "Choose cards"), "an empty hand has one Manage hand button and Roll, with no separate Choose step");
+  ok(!!k.btn(v(), "Manage errands") && !!k.btn(v(), "Roll") && !k.btn(v(), "Reroll") && !k.btn(v(), "Choose cards"), "an empty hand has one Manage errands button and Roll, with no separate Choose step");
   ok(!k.btn(v(), "Roll").querySelector("svg") && !!k.d.querySelector('#view .rerollgroup .helpq[data-term="reroll"]') && !!k.d.querySelector('#view .decklabel .helpq[data-term="errands-deck"]'), "Reroll has no icon, and both help links are in place");
+  k.click(k.d.querySelector('#view .rerollgroup .helpq[data-term="reroll"]'));
+  ok(k.$("modalTitle").textContent === "Roll and Reroll" && k.$("modalBody").textContent.includes("Roll deals a first hand"), "the ? beside Roll opens the Roll and Reroll definition");
+  k.click(k.$("modalClose"));
   // one dialog for choosing and editing
-  k.click(k.btn(v(), "Manage hand"));
+  k.click(k.btn(v(), "Manage errands"));
   const ed = k.$("modalBody");
-  ok(k.$("modalTitle").textContent === "Manage your hand" && ed.querySelectorAll("input[type=checkbox]").length === 0 && k.$("modalClose").hidden, "Manage hand opens one dialog with no checkboxes and no header Close");
+  ok(k.$("modalTitle").textContent === "Manage errands" && ed.querySelectorAll("input[type=checkbox]").length === 0 && k.$("modalClose").hidden, "Manage errands opens one dialog with no checkboxes and no header Close");
   const rows = () => [...ed.querySelectorAll(".handpick li")];
-  const pick = t2 => rows().find(li => li.textContent.includes(t2)).querySelector("button");
+  const pick = t2 => [...rows().find(li => li.textContent.includes(t2)).querySelectorAll("button")].find(x => x.textContent === "Choose");
   ok(ed.textContent.includes("0 of 3 in hand") && !k.btn(ed, "Empty hand") || k.btn(ed, "Empty hand").hidden, "an empty hand shows 0 of 3 and no Empty hand button");
   k.click(pick("Renew the domain name"));
   ok(k.saved().hand.length === 1 && ed.textContent.includes("1 of 3 in hand"), "Choose takes effect at once and the count updates");
   ok(rows()[0].textContent.includes("Renew the domain name") && [...rows()[0].querySelectorAll("button")].map(b2 => b2.textContent).join() === "Up,Down,Discard", "a chosen errand moves to the top with Up, Down and Discard");
   ok(pick("Back up the photos folder").getAttribute("aria-label") === "Choose for hand: Back up the photos folder", "Choose names the errand");
+  const chooseRows = rows().filter(li => [...li.querySelectorAll("button")].some(x => x.textContent === "Choose"));
+  const moves = li => [...li.querySelectorAll("button")].filter(x => x.textContent === "Up" || x.textContent === "Down").length;
+  ok(chooseRows.some(li => /No due date/.test(li.textContent)) && chooseRows.every(li => moves(li) === (/No due date/.test(li.textContent) ? 2 : 0)), "deck rows without a due date get Up and Down; dated ones do not");
   k.click(pick("Back up the photos folder")); k.click(pick("Reply to the print shop"));
-  const left = rows().filter(li => li.querySelector("button").textContent === "Choose");
-  ok(k.saved().hand.length === 3 && left.length > 0 && left.every(li => li.querySelector("button").disabled), "at three, the remaining Choose buttons are disabled");
+  const chooseBtn = li => [...li.querySelectorAll("button")].find(x => x.textContent === "Choose");
+  const left = rows().filter(li => chooseBtn(li));
+  ok(k.saved().hand.length === 3 && left.length > 0 && left.every(li => chooseBtn(li).disabled), "at three, the remaining Choose buttons are disabled");
   const first = k.saved().hand[0];
   const rowBtns = i => rows()[i].querySelectorAll("button");
   ok(rowBtns(0)[0].disabled && !rowBtns(0)[1].disabled && rowBtns(2)[1].disabled, "Up is off on the first card and Down on the last");
@@ -3034,7 +3044,7 @@ async function exportClick(k, projectName) {
   k.click(k.btn(ed, "Done"));
   ok(cards().length === 2 && !![...k.d.querySelectorAll("#view .handlist > li")].length, "Done closes the dialog and the page shows the cards");
   ok(![...k.d.querySelectorAll("#view ul.jobs li")].some(li => cards().some(c => li.textContent.includes(c))), "hand cards leave the deck");
-  k.click(k.btn(v(), "Manage hand"));
+  k.click(k.btn(v(), "Manage errands"));
   k.click(k.btn(k.$("modalBody"), "Empty hand"));
   ok(k.saved().hand.length === 0 && !!k.d.querySelector("#toast .toastbtn") && k.$("overlay").hidden, "Empty hand clears the hand, closes the dialog and offers Undo");
   k.click(k.d.querySelector("#toast .toastbtn"));
@@ -3086,6 +3096,29 @@ async function exportClick(k, projectName) {
   const k2 = kit(await mk({ quests: [], tasks: [], jobs: [{ id: "x", text: "Keep", done: true, due: "nope" }, { text: "no id" }, null] }));
   const j = k2.saved().jobs;
   ok(j.length === 1 && j[0].text === "Keep" && j[0].done === true && j[0].due === "", "normalize keeps valid jobs, drops bad ones, and blanks a bad date");
+}
+/* ---- 1.2.0: candidate button, search checkbox, alphabetical pickers, deck moves ---- */
+{
+  const k = kit(await mk()); k.tab("projects");
+  ok(!!k.btn(k.$("view"), "New candidate quest"), "Candidate quests has a New candidate quest button");
+  k.click(k.btn(k.$("view"), "New candidate quest"));
+  ok(k.$("modalTitle").textContent === "New candidate quest", "New candidate quest opens the same dialog as the + menu");
+  k.click(k.btn(k.$("overlay"), "Cancel") || k.$("modalClose"));
+  k.click(k.$("newBtn"));
+  k.click(k.d.querySelector("[data-act=newTask]"));
+  const opts = [...k.d.querySelectorAll("#f-quest option")].map(o => o.textContent);
+  ok(opts.length > 1 && opts.join() === [...opts].sort((x, y) => x.localeCompare(y, undefined, { sensitivity: "base" })).join(), "the Quest dropdown in the + dialogs is in alphabetical order");
+  k.click(k.$("modalClose"));
+  k.tab("jobs");
+  k.type("print shop");
+  const cb = k.d.querySelector("#searchResults li.sjob input[type=checkbox]");
+  ok(!!cb && cb.checked === false, "an errand in search results has a checkbox");
+  cb.checked = true; k.fire(cb);
+  ok(k.saved().jobs.find(j => j.text === "Reply to the print shop").done === true, "checking it in search completes the errand");
+  const cb2 = k.d.querySelector("#searchResults li.sjob input[type=checkbox]");
+  ok(cb2.checked === true, "the result then shows as checked");
+  cb2.checked = false; k.fire(cb2);
+  ok(k.saved().jobs[0].text === "Reply to the print shop" && k.saved().jobs[0].done === false, "unchecking it in search restores it to the top of the undated errands");
 }
 /* ---- quest schedule fields, milestone on backlog, decision lines, slip warning ---- */
 {
@@ -3445,7 +3478,7 @@ async function exportClick(k, projectName) {
   ok(k.$("viewTitle").textContent === "Issue Quest" && k.$("itask-" + made.id).querySelector(".item").getAttribute("aria-expanded") === "true", "opening it goes to its quest's page with the issue open");
   // The Quest giver export leaves issues with no due date out unless asked.
   async function exportRun(check) {
-    const kx = kit(await mk(base([T("t1", { block: 1 }), T("i1", { issue: true, what: "Crash on save" }), T("i2", { issue: true, block: 1, due: "2026-12-01", what: "Slow first load" })])));
+    const kx = kit(await mk(base([T("t1", { block: 1 }), T("i1", { issue: true, what: "Crash on save", notes: "Happens on a full disk" }), T("i2", { issue: true, block: 1, due: "2026-12-01", what: "Slow first load" })])));
     let written = null;
     kx.w.showSaveFilePicker = () => Promise.resolve({ createWritable: () => Promise.resolve({ write: (t) => { written = t; return Promise.resolve(); }, close: () => Promise.resolve() }) });
     kx.tab("projects"); kx.click(kx.btn(kx.$("view"), "Issue Quest")); kx.click(kx.btn(kx.$("view"), "Quest giver export"));
@@ -3457,9 +3490,24 @@ async function exportClick(k, projectName) {
   }
   let r = await exportRun(false);
   ok(r.boxes.join() === "f-issues:false" && !r.html.includes("Crash on save") && !r.html.includes("<h3>Issues</h3>"), "the export offers issues unchecked, and leaves them out by default");
-  ok(r.html.includes("Slow first load") && r.html.includes('<span class="chip issuechip"'), "an issue with a due date exports with the tasks, marked as an issue");
+  const etasks = h => (h.match(/<li class="etask[\s\S]*?<\/li>/g) || []).join("");
+  ok(!etasks(r.html).includes("Slow first load") && !r.html.includes("Happens on a full disk"), "with the box unchecked, no issue is listed, dated or not");
   r = await exportRun(true);
-  ok(r.html.includes("<h3>Issues</h3>") && r.html.includes("Crash on save"), "checking the box lists the issues that have no due date");
+  const tasksPart = r.html.slice(r.html.indexOf("<h3 class=\"efirst\">Tasks</h3>"), r.html.indexOf("<h3>Issues</h3>"));
+  ok(r.html.includes("<h3>Issues</h3>") && r.html.includes("Crash on save") && r.html.includes("Slow first load") && r.html.includes("Happens on a full disk"), "checking the box lists every issue, dated or not, with its notes");
+  ok(!tasksPart.includes("Slow first load") && !tasksPart.includes("Crash on save"), "issues never appear in the Tasks list");
+}
+/* ---- Quest giver export from the Vault ---- */
+{
+  const vq = { id: "pI", name: "Issue Quest", status: "active", start: "2026-08-03", days: 7, vault: { at: "2026-08-10", why: "removed" } };
+  const k = kit(await mk({ settings: { hideWelcome: true }, quests: [vq], tasks: [{ id: "t1", block: 1, questId: "pI", what: "Vaulted task", done: "x", status: "Not started", steps: [], vault: { at: "2026-08-10", why: "removed" } }] }));
+  let written = null;
+  k.w.showSaveFilePicker = () => Promise.resolve({ createWritable: () => Promise.resolve({ write: (t) => { written = t; return Promise.resolve(); }, close: () => Promise.resolve() }) });
+  k.tab("vault"); k.click(k.btn(k.$("view"), "Issue Quest"));
+  ok(!!k.btn(k.$("view"), "Quest giver export") && !!k.btn(k.$("view"), "Restore"), "a vaulted active quest offers Quest giver export beside Restore");
+  k.click(k.btn(k.$("view"), "Quest giver export"));
+  await new Promise((r) => setTimeout(r, 30));
+  ok((written || "").includes("Vaulted task") && !!k.saved().tasks[0].vault, "the vaulted quest exports its tasks and stays vaulted");
 }
 /* ---- sample issues and the Backlog chip ---- */
 {

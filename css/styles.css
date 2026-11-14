@@ -30,7 +30,7 @@ input[type="file"]::file-selector-button {
 input[type="file"]::file-selector-button:hover { border-color: var(--muted); }
 textarea { min-height: 84px; resize: vertical; }
 /* The pencil: the app's one "change this text" control, and the input it opens. */
-button.pencil { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: 34px; min-height: 34px; padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); }
+button.pencil { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: var(--control-min); min-height: var(--control-min); padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--muted); }
 @media (hover: hover) { button.pencil:hover { border: 0; background: var(--chip-idle); color: var(--planned); } }
 button.pencil[hidden] { display: none; }
 .inlineedit { flex: 1 1 auto; min-width: 0; width: 100%; }
@@ -47,7 +47,7 @@ button { background: var(--control-bg); border: 1px solid var(--control-line); b
 @media (hover: hover) { button:hover { border-color: var(--muted); } }
 button.primary { background: var(--btn); border-color: var(--btn); color: var(--on-btn); font-weight: 600; }
 @media (hover: hover) { button.primary:hover { border-color: var(--btn); filter: brightness(1.15); } }
-button.small { min-height: 34px; padding: var(--space-4) var(--space-10); font-size: var(--text-sm); }
+button.small { min-height: var(--control-min); padding: var(--space-4) var(--space-10); font-size: var(--text-sm); }
 /* Fixed width so the button doesn't resize when its label swaps Pin/Unpin. */
 button.pintoggle { min-width: 64px; }
 button[data-armed="1"] { border-color: var(--late); color: var(--late); }
@@ -69,7 +69,7 @@ button[data-armed="1"] { border-color: var(--late); color: var(--late); }
 .side .brandrow .logo { position: relative; top: 2px; z-index: 3; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 .logo { width: 38px; height: 38px; flex: none; display: block; }
 .mbrand, .pagehead { display: none; }
-.titlerow { display: flex; align-items: center; gap: var(--space-10); min-width: 0; }
+.titlerow { display: flex; align-items: center; gap: var(--space-10); min-width: 0; min-height: var(--control-min); }
 .mlogo { display: none; width: 44px; height: 44px; }
 .brand { font-family: var(--font-display); font-weight: 400; font-size: calc(1.25rem + 1px); line-height: 1.1; }
 .nav { display: flex; flex-direction: column; gap: var(--space-2); overflow-y: visible; min-height: 0; }
@@ -172,7 +172,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .listbox > .list { border: 0; border-radius: 0; margin: 0; background: transparent; }
 .listbox > .progress { margin: 0; padding: var(--space-10) var(--space-14); border-bottom: 1px solid var(--line); }
 .listbox > .progress:empty { display: none; }
-@media (min-width: 900px) {
+@media (min-width: 900px), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) {
   .pgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--space-22); row-gap: var(--space-12); align-items: start; }
   .pgrid > .cl, .pgrid > .cr, .pgrid > .cr.r1, .pgrid .progresshead { margin-top: 0; }
   .pgrid > .cl { grid-column: 1; }
@@ -189,9 +189,9 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .pmeta { margin-top: var(--space-6); color: var(--muted); }
 .pmeta b { color: var(--ink); font-weight: 600; }
 .pline { color: var(--ink); margin-top: var(--space-8); }
-.badge { display: inline-block; padding: var(--space-1) var(--space-9); border-radius: var(--radius-pill); font-size: var(--text-80); font-weight: 600; background: var(--late-bg); color: var(--late); vertical-align: 1px; }
+.badge { display: inline-block; padding: var(--space-1) var(--space-9); border-radius: var(--radius-chip); font-size: var(--text-80); font-weight: 600; background: var(--late-bg); color: var(--late); vertical-align: 1px; }
 .tabbadge { min-width: 22px; text-align: center; padding: 0 var(--space-6); }
-.chip { display: inline-block; padding: var(--space-1) var(--space-10); border-radius: var(--radius-pill); font-size: .82rem; background: var(--badge-neutral-bg); color: var(--badge-neutral); }
+.chip { display: inline-block; padding: var(--space-1) var(--space-10); border-radius: var(--radius-chip); font-size: .82rem; background: var(--badge-neutral-bg); color: var(--badge-neutral); }
 .chip[data-v="Not started"] { background: var(--badge-pending-bg); color: var(--badge-pending); }
 .chip[data-v="In progress"] { background: var(--badge-active-bg); color: var(--badge-active); }
 .chip[data-v="Completed"], .chip.questcomplete { background: var(--badge-done-bg); color: var(--badge-done); }
@@ -209,6 +209,9 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .tlist li { border-bottom: 1px solid var(--line); }
 .tlist li:last-child { border-bottom: 0; }
 .tlist li.plain { padding: var(--space-12) var(--space-14); color: var(--muted); font-size: var(--text-sm); }
+.tlist li.sjob { display: flex; align-items: flex-start; }
+.tlist li.sjob > input[type="checkbox"] { flex: none; margin: var(--space-14) 0 0 var(--space-14); }
+.tlist li.sjob > .item { flex: 1 1 auto; width: auto; min-width: 0; padding-left: var(--space-10); }
 .item { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; padding: var(--space-12) var(--space-14); min-height: 0; }
 /* Hover only on devices that can hover; on touch the last tap point stays "hovered" on the next page. */
 @media (hover: hover) { .item:hover { background: var(--chip-idle); border: 0; } }
@@ -245,7 +248,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .detail .donewhenfield { margin-top: var(--space-6); }
 .detail .donewhen { display: flex; gap: var(--space-8); align-items: flex-start; }
 .detail .dmeta { color: var(--muted); margin-top: var(--space-4); }
-select.status { border: 1px solid var(--line); border-radius: var(--radius-pill); padding: var(--space-5) var(--space-12); min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
+select.status { border: 1px solid var(--line); border-radius: var(--radius-control); padding: var(--space-5) var(--space-12); min-height: 38px; background: var(--chip-idle); color: var(--chip-ink); }
 /* A task row's status pulldown sits beside the row's button, on the title line; alignStatuses() sets its top. */
 /* The row is the container, so a narrow column on a wide screen gets the compact layout too. */
 .tlist li.hasstatus { position: relative; container-type: inline-size; }
@@ -292,7 +295,7 @@ input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; margin:
 #refreshBtn.spinning svg { animation: spin .6s linear infinite; }
 .toast .toastbtn { background: transparent; border: 1px solid currentColor; color: inherit; min-height: 32px; padding: var(--space-2) var(--space-12); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: var(--space-12); }
-.chipbtn { border-radius: var(--radius-pill); min-height: 36px; padding: var(--space-4) var(--space-14); }
+.chipbtn { border-radius: var(--radius-control); min-height: 36px; padding: var(--space-4) var(--space-14); }
 .chipbtn[aria-pressed="true"] { background: var(--sel); border-color: var(--planned); color: var(--planned); font-weight: 600; }
 button.dangerfill { background: var(--late); border-color: var(--late); color: var(--bg); font-weight: 600; }
 button:disabled { opacity: .5; cursor: not-allowed; }
@@ -358,7 +361,8 @@ html { scrollbar-gutter: stable; }
 .overlay .modal { overscroll-behavior: contain; }
 .handhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8) var(--space-10); margin-top: var(--space-22); }
 .handlabel { font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 700; color: var(--muted); margin: 0; }
-.decklabel { margin-top: var(--space-22); margin-bottom: var(--space-6); }
+.deckhead { margin-bottom: var(--space-6); }
+.deckhead .decklabel { margin: 0; }
 .handbtns { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-8); }
 .handbtns button { margin-right: 0; }
 .rerollgroup { display: inline-flex; align-items: center; white-space: nowrap; }
@@ -454,7 +458,7 @@ svg.chart.nofocusring { outline: none; }
 .bar.new { background: var(--bar-pending); }
 .bar.work { background: var(--bar-active); }
 .bar.done { background: var(--bar-done); }
-@media (min-width: 900px) {
+@media (min-width: 900px), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) {
   /* .questactions comes last in the markup so it lands at the bottom when stacked; the grid places it back under .questmain on wide screens. */
   .questsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: "main charts" "actions charts"; column-gap: var(--space-22); align-items: start; }
   .questmain { grid-area: main; }
@@ -515,7 +519,7 @@ svg.chart.nofocusring { outline: none; }
 /* A highlighted candidate row: rounded like the other highlights, with its title underlined in the same weight. */
 li.tutorialtarget { border-radius: var(--radius-control); }
 li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: var(--tutorial); text-decoration-thickness: 3px; text-underline-offset: 4px; }
-@media (max-width: 899px) {
+@media (max-width: 639px), (max-width: 899px) and (orientation: portrait), (max-width: 899px) and (not (pointer: coarse)) {
   .tutorial { bottom: calc(var(--bottom-padding, 0px) + env(safe-area-inset-bottom, 0px) + 76px); left: var(--space-12); right: var(--space-12); width: auto; padding: var(--space-22) var(--space-14) var(--space-10); }
   body:has(.tutorial) #view { padding-bottom: 230px; }
   .tutorialcount { display: none; }
@@ -525,7 +529,7 @@ li.tutorialtarget .qlink { text-decoration: underline; text-decoration-color: va
   .side .tutorialtarget { outline-offset: -3px; }
   body:has(.overlay:not([hidden])) .tutorial, body:has(.menu:not([hidden])) .tutorial { display: none; }
 }
-@media (max-width: 899px) {
+@media (max-width: 639px), (max-width: 899px) and (orientation: portrait), (max-width: 899px) and (not (pointer: coarse)) {
   .app { display: block; }
   .side { position: fixed; left: 0; right: 0; bottom: var(--bottom-padding, 0px); top: auto; height: auto; z-index: 20; padding: var(--space-4); border-right: 0; border-top: 1px solid var(--line); flex-direction: row; }
   /* Some mobile browsers show the page below the bar when their toolbar collapses; the bar's color continues past the bottom edge. */

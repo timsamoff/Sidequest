@@ -22,8 +22,8 @@ export function helpMarkup(text) {
 export function helpTerm(id) {
   var lines = helpTopics().filter(function (t) { return t[0] === "Terms"; })[0][1], found = null;
   lines.forEach(function (l) {
-    var m = l.match(/^\{#([a-z-]+)\}\*\*([^*]+):\*\* (.+?) See “([^”]+)”\.$/);
-    if (m && m[1] === id) found = { id: m[1], name: m[2], text: m[3], topic: m[4] };
+    var m = l.match(/^\{#([a-z-]+)\}\*\*([^*]+(?:\*\* and \*\*[^*]+)?):\*\* (.+?) See “([^”]+)”\.$/);
+    if (m && m[1] === id) found = { id: m[1], name: m[2].replace(/\*\*/g, ""), text: m[3], topic: m[4] };
   });
   return found;
 }
@@ -80,9 +80,9 @@ export function helpTopics() {
       "{#promote-demote}**Promote and Demote:** **Promote** moves a candidate quest to active. **Demote** moves it back to candidate. See “The quest lifecycle”.",
       "{#quest}**Quest:** A project, from the initial idea through completion. See “The quest lifecycle”.",
       "{#quest-giver}**Quest giver:** The client or contact for this quest. See “Quest giver and Quest links”.",
-      "{#quest-giver-export}**Quest giver export:** A read-only page you can share with a client. See “Quest giver and Quest links”.",
+      "{#quest-giver-export}**Quest giver export:** Creates a read-only, interactive web page you can share with your client. It includes everything entered in this quest except the **Bounty**. Choose which additional items to include in the export. See “Quest giver and Quest links”.",
       "{#quest-links}**Quest links:** Connections between quests that belong to the same job. See “Quest giver and Quest links”.",
-      "{#reroll}**Reroll and Roll:** Reroll replaces your hand of errands with a new one. Roll deals a first hand when your hand is empty. Overdue errands are prioritized, and you can undo either. See “Errands page”.",
+      "{#reroll}**Roll** and **Reroll:** Roll deals a first hand when your hand is empty. Reroll replaces your hand of errands with a new one. Overdue errands are prioritized, and you can undo either. See “Errands page”.",
       "{#scope}**Scope:** The total amount of work in a quest. The orange line shows when that amount changes. See “Timeline page”.",
       "{#slip-schedule}**Slip schedule:** Moves a quest’s incomplete tasks to later dates. You can undo this change. See “A quest’s Schedule and Timeline”.",
       "{#step}**Step:** A smaller action that makes up a task. See “Inside a quest”.",
@@ -117,7 +117,7 @@ export function helpTopics() {
       "**Completed:** This section lists completed quests.",
       "**Candidate quests:** These are quests you’re considering but aren’t working on. You can demote an active quest back to a candidate quest in the **Quest details**. Before promoting a candidate quest, you can add tasks, steps, and decisions to it.",
       ">A candidate quest keeps the links it had when it was demoted.",
-      "**Copy AI prompt and Import quest:** These buttons appear to the right of the **Candidate quests** heading. **Copy AI prompt** copies a prompt to use in any AI chat. **Import quest** loads the JSON file the AI generates and adds the quest to **Candidate quests** for review.",
+      "**New candidate quest, Copy AI prompt, and Import quest:** These buttons appear to the right of the **Candidate quests** heading. **New candidate quest** opens the same dialog as the **+** button. **Copy AI prompt** copies a prompt to use in any AI chat. **Import quest** loads the JSON file the AI generates and adds the quest to **Candidate quests** for review.",
       "**Pinned quests:** You can pin in progress, pending, and completed quests that are still on the **Quests** page. Pinning places a shortcut to that quest in the sidebar (or the **Main menu** on mobile). Completing a quest unpins it automatically. Reopening a formerly pinned quest restores the pin."
     ]],
     ["Inside a quest", [
@@ -136,7 +136,7 @@ export function helpTopics() {
     ]],
     ["Quest giver and Quest links", [
       "**Quest giver:** The Quest giver is the client for a quest. You can also enter a **Bounty** (a monetary value), either as an hourly rate or a fixed payment for the quest.",
-      ">The **Quest giver export** includes everything entered here except the **Bounty**. It creates a read-only, interactive web page you can share with the client. Before it exports, you choose whether to include **Prepared by** (your contact information and brandmark) and **Prepared for** (the Quest giver). If the quest has issues without due dates, you can choose whether to include them. Only their titles and statuses are shown. Its button is at the bottom of an in progress or complete quest’s details and doesn’t appear on a candidate or vaulted quest.",
+      "**Quest giver export:** Includes everything entered in the quest except the **Bounty** and creates a read-only, interactive web page you can share with the client. Before exporting, you can choose whether to include **Prepared by** (your contact information and brandmark), quest issues, or both. Included issues appear in their own **Issues** section, with their statuses and notes, rather than in the task list. The export button appears at the bottom of in-progress, completed, or vaulted quest’s details, but not on candidate quests.",
       "**Quest links:** When a job requires more than one quest, link them. Use **Link quest** to link a quest to any quest that is in progress, pending, or completed.",
       ">A candidate quest can add links the same way, but other quests can’t link to a candidate quest. Links to a candidate or vaulted quest show as plain text, and you can follow links to other quests.",
       ">Vaulting or demoting a quest keeps its links, and promoting or restoring it makes them active again."
@@ -163,10 +163,11 @@ export function helpTopics() {
     ["Errands page", [
       "**Errands:** List for small errands that aren’t quite a quest. Errands don’t appear on the **Timeline**, the **Burndown**, or the **Tasks** page, and they don’t change any counts.",
       "**Add errand:** Type an errand and select **Add errand** or press [[Enter]]. You can also give errands a due date. Select the pencil to rename an errand.",
-      "**Errands deck:** Contains open errands that aren’t in your hand. Errands with due dates appear first, earliest due date first. The rest follow in the order they were added. Overdue errands display an **Overdue** badge.",
-      "**Your hand:** Up to three errands you keep at the top of the page. Select **Manage hand** to choose errands, put them in order, or discard them. **Empty hand**, in **Manage hand**, clears your hand, and you can undo that.",
+      "**Errands deck:** Contains open errands that aren’t in your hand. Errands with due dates appear first, earliest due date first. The rest follow with the newest first, and a restored errand goes back to the top of them. Overdue errands display an **Overdue** badge.",
+      "**Your hand:** Up to three errands displayed at the top of the page. Overdue errands get priority, followed by other open errands not currently in your hand. This helps you work through overdue errands before seeing them again.",
+      "**Manage errands:** Choose errands for your hand, arrange their order, or discard them. **Empty hand** clears your hand, with the option to undo. You can also move errands without due dates up or down in the deck.",
       "**Choose** and **Discard:** **Choose** adds an errand to your hand and **Discard** returns it to the deck. **Discard** never deletes an errand. Your hand holds three errands, so **Choose** turns off when it’s full.",
-      "**Reroll** and **Roll:** Once you have a hand, the button reads **Reroll** and replaces your whole hand, including errands you chose yourself. With an empty hand, it reads **Roll** and deals a first hand. Overdue errands get priority, followed by other errands not currently in your hand. This helps you work through overdue errands before repeating them. Select **Undo** right away to restore your previous hand. **Reroll** is disabled when fewer than two open errands remain, and **Roll** needs only one. With **Sound effects** on, it plays a sound. Turn off the **Animated reroll** in **Options**.",
+      "**Roll** and **Reroll:** With an empty hand, the button reads **Roll** and deals your first hand. Once you have a hand, it reads **Reroll** and replaces your entire hand, including any errands you chose yourself. Select **Undo** right away to restore your previous hand. **Roll** requires at least one open errand, while **Reroll** requires at least two. With **Sound effects** on, rolling plays a sound. Turn off **Animated reroll** in **Options** to disable the animation.",
       "**Complete errand:** Check the box next to an errand to mark it complete. It moves to the **Completed** section.",
       "**Restore errand:** Uncheck a completed errand to move it back to the **Errands deck**.",
       "**Delete forever:** Permanently deletes an errand. Select **Undo** right away to restore it."

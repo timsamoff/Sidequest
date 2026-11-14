@@ -233,6 +233,14 @@ export function notify(msg, undo, kind) {
   }
   toastTimer = setTimeout(function () { t.innerHTML = ""; }, undo || kind === "problem" ? 7000 : 4200);
 }
+// Brings a row to just under a sticky header, with a few pixels of air above it. It works in a framed copy too.
+export function scrollToRow(node) {
+  if (!node || typeof node.scrollIntoView !== "function") return;
+  var bar = document.querySelector(".topbar"), pos = bar ? window.getComputedStyle(bar).position : "";
+  var head = bar && (pos === "sticky" || pos === "fixed") ? bar.getBoundingClientRect().height : 0;
+  node.style.scrollMarginTop = (head + 12) + "px";
+  try { node.scrollIntoView({ block: "start" }); } catch (e) { /* ignore */ }
+}
 // Navigation only. A framed copy scrolls the host page, not this window, so every
 // scroller is zeroed, the app's top is scrolled into view, and it repeats after paint.
 export function scrollTop() {

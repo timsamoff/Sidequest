@@ -16,7 +16,7 @@ export function isDusty(q) {
 /* quest helpers -- Quest is the top-tier entity every task/decision/milestone
    attaches to by id, promoted in place from candidate to active. */
 export function live(a) { return a.filter(function (x) { return !x.vault; }); }
-// Odd jobs: dated jobs first (earliest due first), then undated in the order added.
+// Odd jobs: dated jobs first (earliest due first), then undated, newest first (new and restored errands go to the front of the array).
 export function openJobs() {
   var open = state.jobs.filter(function (j) { return !j.done; });
   return open.map(function (j, i) { return { j: j, i: i }; }).sort(function (a, b) {
@@ -362,7 +362,8 @@ export function stepOptionsForTask(taskId) {
 export function taskOptions(questId) {
   var ts = orderedAll();
   if (questId) ts = ts.filter(function (t) { return t.questId === questId; });
-  return ts.map(function (t) { return { value: t.id, label: dispQuest(t) + ": " + short(t.what, 60) }; });
+  return ts.map(function (t) { return { value: t.id, label: dispQuest(t) + ": " + short(t.what, 60) }; })
+    .sort(function (a, b) { return a.label.localeCompare(b.label, undefined, { sensitivity: "base" }); });
 }
 export function findTask(id) { var a = live(state.tasks); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
 export function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (state.tasks[i].id === id) return state.tasks[i]; return null; }

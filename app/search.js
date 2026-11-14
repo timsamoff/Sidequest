@@ -3,6 +3,7 @@ import { fmt, parseISO } from "./dates.js";
 import { taskStart, taskEnd, dispQuest, liveQuests, questMeta, short, validPage, findStep } from "./model.js";
 import { $, el, on, scrollTop } from "./dom.js";
 import { go, openTask, renderAll } from "./app.js";
+import { setJobDone, showJob } from "./errands.js";
 
 /* search */
 export var SEARCH_LABELS = { task: "Tasks", step: "Steps", quest: "Quests", idea: "Ideas", job: "Errands", decision: "Decisions" };
@@ -38,7 +39,9 @@ export function searchAll(q, includeVault) {
       if (!fields[j] || !lbl) continue;
       var sn = snippetOf(fields[j], terms); if (sn) { snip = { label: lbl, text: sn }; break; }
     }
-    groups[kind].push({ kind: kind, title: title, sub: sub, snip: snip, vault: !!vault, score: inTitle ? 2 : 0, idx: groups[kind].length, open: open });
+    var rec = { kind: kind, title: title, sub: sub, snip: snip, vault: !!vault, score: inTitle ? 2 : 0, idx: groups[kind].length, open: open };
+    groups[kind].push(rec);
+    return rec;
   }
   state.tasks.forEach(function (t) {
     var dates = t.block === 0 ? "" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t));
@@ -53,7 +56,10 @@ export function searchAll(q, includeVault) {
   });
   state.quests.forEach(function (p) { if (p.vault) consider("quest", p.name, [p.notes], "Vaulted quest", function () { go("vault"); }, true, ["Notes"]); });
   state.workshop.forEach(function (p) { consider("idea", p.text, [p.note], "Workshop", function () { go(p.vault ? "vault" : "workshop"); }, !!p.vault, ["Note"]); });
-  state.jobs.forEach(function (j) { consider("job", j.text, [], j.done ? "Errands · completed" : "Errands" + (j.due ? " · due " + fmt(parseISO(j.due)) : ""), function () { go("jobs"); }, false); });
+  state.jobs.forEach(function (j) {
+    var rec = consider("job", j.text, [], j.done ? "Errands · completed" : "Errands" + (j.due ? " · due " + fmt(parseISO(j.due)) : ""), function () { showJob(j.id); go("jobs"); }, false);
+    if (rec) rec.job = j;
+  });
   // Quest comes from following Decision -> Step -> Task -> Quest.
   state.decisions.forEach(function (d) {
     var ls = findStep(d.step);
@@ -88,6 +94,12 @@ export function updateSearchResults() {
       var l2 = el("div", { "class": "l2" }); l2.appendChild(highlight(r.title, res.terms)); b.appendChild(l2);
       if (r.snip) { var sn = el("div", { "class": "snip" }); if (r.snip.label) sn.appendChild(document.createTextNode(r.snip.label + ": ")); sn.appendChild(highlight(r.snip.text, res.terms)); b.appendChild(sn); }
       on(b, "click", function () { r.open(); });
+      if (r.job) {
+        // An errand result carries its own checkbox, so it can be completed or restored without leaving the search.
+        var cb = el("input", { type: "checkbox", "aria-label": (r.job.done ? "Restore errand: " : "Complete errand: ") + r.job.text }); cb.checked = r.job.done;
+        on(cb, "change", function () { setJobDone(r.job, cb.checked, li); });
+        li.className = "sjob"; li.appendChild(cb);
+      }
       li.appendChild(b); ul.appendChild(li);
     });
     sec.appendChild(ul);

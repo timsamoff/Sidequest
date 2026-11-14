@@ -1,7 +1,7 @@
 /* Errands and the hand */
 import { fmtY, parseISO } from "./dates.js";
 import { closeModal, formDialog, openModal } from "./dialogs.js";
-import { editInline, el, focusKey, helpLink, notify, on, pencilButton, playSfx, prepareSfx, scheduleSfx, setFocusKey, uid, setMsg, warmSfx } from "./dom.js";
+import { editInline, el, focusKey, helpLink, notify, on, pencilButton, playSfx, prepareSfx, scheduleSfx, scrollToRow, setFocusKey, uid, setMsg, warmSfx } from "./dom.js";
 import { removeNow } from "./lifecycle.js";
 import { chosen, deckJobs, handJobs, isJobLate, openJobs, rerollPick } from "./model.js";
 import { changed, isISO, state } from "./state.js";
@@ -18,7 +18,7 @@ export function renderJobs(root) {
   function add() {
     var v = txt.value.trim();
     if (!v) { setMsg(msg, "Enter an errand to add it.", "error"); txt.focus(); return; }
-    state.jobs.push({ id: uid(), text: v.slice(0, 200), done: false, due: isISO(due.value) ? due.value : "" });
+    state.jobs.unshift({ id: uid(), text: v.slice(0, 200), done: false, due: isISO(due.value) ? due.value : "" });
     setFocusKey("job-new"); changed(); notify("“" + v.slice(0, 200) + "” added to Errands.");
   }
   txt.setAttribute("data-focus", "job-new");
@@ -40,15 +40,64 @@ export function renderJobs(root) {
     done.forEach(function (j) { dl.appendChild(jobRow(j)); });
     root.appendChild(dl);
   }
+  landJob();
 }
 
 export var CALENDAR = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>';
+
+// Restoring an undated errand puts it at the top of the undated errands, under the dated ones.
+export function setJobDone(j, done, li) {
+  function apply() {
+    j.done = done;
+    var at = state.jobs.indexOf(j);
+    if (!done && !j.due && at > 0) { state.jobs.splice(at, 1); state.jobs.unshift(j); }
+    changed();
+  }
+  // Completing or restoring pulses a brass ring on the row first (about a fifth of a second), then the list redraws.
+  if (pulse(li, 520)) setTimeout(apply, 220); else apply();
+}
+
+// A quick brass ring around a card. Skipped under reduced motion or without the Web Animations API.
+export function pulse(node, ms) {
+  if (!node || typeof node.animate !== "function" || reduceMotion()) return false;
+  node.animate([
+    { boxShadow: "0 0 0 0 var(--brass)" },
+    { boxShadow: "0 0 0 3px var(--brass)", offset: 0.3 },
+    { boxShadow: "0 0 0 0 transparent" }
+  ], { duration: ms, easing: "ease-out" });
+  return true;
+}
+
+// Search lands here: the Errands page opens, scrolls to the errand, and pulses it once.
+var pendingJob = "";
+export function showJob(id) { pendingJob = id; }
+function landJob() {
+  if (!pendingJob) return;
+  var id = pendingJob; pendingJob = "";
+  // After the page-top reset that navigation runs on the next frame.
+  setTimeout(function () {
+    var node = document.querySelector('#view [data-job="' + id + '"]');
+    if (!node) return;
+    scrollToRow(node);
+    pulse(node, 900);
+  }, 80);
+}
+
+// Swaps an undated errand with its neighbor among the undated errands in the deck.
+export function jobMove(id, dir) {
+  var und = deckJobs().filter(function (j) { return !j.due; });
+  var i = und.map(function (j) { return j.id; }).indexOf(id), k = i + dir;
+  if (i < 0 || k < 0 || k >= und.length) return;
+  var a = state.jobs.indexOf(und[i]), b = state.jobs.indexOf(und[k]), tmp = state.jobs[a];
+  state.jobs[a] = state.jobs[b]; state.jobs[b] = tmp; changed();
+}
 
 export function jobRow(j, opts) {
   var li = el("li", { "class": (j.done ? "done" : "") + (opts && opts.card ? " handcard" : "") }), row = el("div", { "class": "jobrow" });
   var lab = el("label", { "class": "jobmain" });
   var cb = el("input", { type: "checkbox", "aria-label": (j.done ? "Restore errand: " : "Complete errand: ") + j.text }); cb.checked = j.done;
-  on(cb, "change", function () { j.done = cb.checked; changed(); });
+  on(cb, "change", function () { setJobDone(j, cb.checked, li); });
+  li.setAttribute("data-job", j.id);
   var text = el("span", { "class": "jobtext" }, j.text);
   lab.appendChild(cb); lab.appendChild(text); row.appendChild(lab);
   var badges = el("div", { "class": "jobbadges" });
@@ -86,10 +135,10 @@ export function jobRow(j, opts) {
 
 /* errands hand: up to three errands kept at the top of the page */
 export var HAND = {
-  label: "Your hand", edit: "Manage hand", empty: "Empty hand", done: "Done", up: "Up", down: "Down",
+  label: "Your hand", edit: "Manage errands", empty: "Empty hand", done: "Done", up: "Up", down: "Down",
   reroll: "Reroll", roll: "Roll", pick: "Choose", discard: "Discard", deck: "Errands deck",
   none: "Nothing in your hand. Choose up to three errands to keep here.",
-  editorTitle: "Manage your hand", editorHint: "Choose up to three errands and organize them. Discard single cards or select Empty hand to remove them from your hand.",
+  editorTitle: "Manage errands", editorHint: "Choose up to three errands for your hand and put them in order. Discard single cards or select Empty hand to clear it. Errands without a due date can also be moved up and down in the deck.",
   rerolled: "Hand rerolled.", rolled: "Hand rolled.", emptied: "Hand emptied.", needTwo: "Reroll needs at least two open errands.", needOne: "Roll needs at least one open errand."
 };
 
@@ -184,11 +233,11 @@ export function handSection(root, hand, open) {
   var btns = el("div", { "class": "handbtns" });
   var hand0 = hand.length > 0;
   var eb = el("button", { type: "button", "class": "small", "data-focus": "hand-edit" }, HAND.edit);
-  on(eb, "click", openHandEditor); btns.appendChild(eb);
+  on(eb, "click", openHandEditor);
   var grp = el("span", { "class": "rerollgroup" });
   var rr = el("button", { type: "button", "class": "small", "data-focus": "hand-reroll" }, hand0 ? HAND.reroll : HAND.roll);
   if (open.length < (hand0 ? 2 : 1)) { rr.disabled = true; rr.title = hand0 ? HAND.needTwo : HAND.needOne; } else on(rr, "click", rerollHand);
-  grp.appendChild(rr); grp.appendChild(helpLink("reroll", "Reroll and Roll")); btns.appendChild(grp);
+  grp.appendChild(rr); grp.appendChild(helpLink("reroll", "Roll and Reroll")); btns.appendChild(grp);
   head.appendChild(btns); root.appendChild(head);
   if (!hand0) root.appendChild(el("p", { "class": "hint handnone" }, HAND.none));
   else {
@@ -196,7 +245,10 @@ export function handSection(root, hand, open) {
     hand.forEach(function (j) { cl.appendChild(jobRow(j, { card: true })); });
     root.appendChild(cl);
   }
-  root.appendChild(withHelp(el("h2", { "class": "handlabel decklabel" }, HAND.deck), "errands-deck", "Errands deck"));
+  var dhead = el("div", { "class": "handhead deckhead" });
+  dhead.appendChild(withHelp(el("h2", { "class": "handlabel decklabel" }, HAND.deck), "errands-deck", "Errands deck"));
+  dhead.appendChild(eb);
+  root.appendChild(dhead);
 }
 
 // One row of a hand dialog: the errand, its date, and whatever buttons the dialog gives it.
@@ -236,13 +288,19 @@ export function openHandEditor() {
         }));
         li.appendChild(bt); list.appendChild(li);
       });
-      deckJobs().forEach(function (j) {
-        var li = handDialogRow(j, false);
-        li.appendChild(handDialogBtn(HAND.pick, "Choose for hand", j, "pick-", function () {
+      var deck = deckJobs(), undated = deck.filter(function (j) { return !j.due; });
+      deck.forEach(function (j) {
+        var li = handDialogRow(j, false), bt = el("div", { "class": "hpbtns" }), ui0 = undated.indexOf(j);
+        // A dated errand's place follows its date, so only undated errands move.
+        if (ui0 >= 0) {
+          bt.appendChild(handDialogBtn(HAND.up, "Move up in deck", j, "dk-up-", function () { jobMove(j.id, -1); paint(['[data-focus="dk-up-' + j.id + '"]', '[data-focus="dk-down-' + j.id + '"]']); }, ui0 === 0));
+          bt.appendChild(handDialogBtn(HAND.down, "Move down in deck", j, "dk-down-", function () { jobMove(j.id, 1); paint(['[data-focus="dk-down-' + j.id + '"]', '[data-focus="dk-up-' + j.id + '"]']); }, ui0 === undated.length - 1));
+        }
+        bt.appendChild(handDialogBtn(HAND.pick, "Choose for hand", j, "pick-", function () {
           handChoose(j.id);
           paint(['[data-focus="ed-discard-' + j.id + '"]']);
         }, full));
-        list.appendChild(li);
+        li.appendChild(bt); list.appendChild(li);
       });
       clear.hidden = !hand.length;
       count.textContent = hand.length + " of " + HAND_MAX + " in hand";

@@ -12,14 +12,21 @@ import { blockForDate, dateProblems, decisionFor, dispQuest, estimateWarning, fi
 import { STATUSES, changed, isISO, save, state, ui } from "./state.js";
 import { addedChip, burnParts, stepsAndEst, wireMilestoneDiamonds, withHelp } from "./views.js";
 
+// A vaulted quest’s tasks carry the vault mark, which the export’s task queries skip, so it is lifted while one runs.
+function whileUnvaulted(p, fn) {
+  var marked = state.tasks.filter(function (t) { return t.questId === p.id && t.vault; }), saved = marked.map(function (t) { return t.vault; });
+  marked.forEach(function (t) { t.vault = null; });
+  try { return fn(); } finally { marked.forEach(function (t, i) { t.vault = saved[i]; }); }
+}
+
 // Asks which letterhead sides to include, offering only the sides that have something to print. With neither, it exports at once.
 export function askExportSides(p) {
-  var sides = exportSides(p), hasIssues = exportHasIssues(p);
+  var sides = exportSides(p), hasIssues = whileUnvaulted(p, function () { return exportHasIssues(p); });
   if (!sides.by && !sides.forWhom && !hasIssues) { exportQuestForClient(p); return; }
   var fields = [];
   if (sides.by) fields.push({ key: "by", label: "Include “Prepared by” (your contact info and brandmark from Options)", type: "checkbox", value: true });
   if (sides.forWhom) fields.push({ key: "forWhom", label: "Include “Prepared for” (this quest’s Quest giver)", type: "checkbox", value: true });
-  if (hasIssues) fields.push({ key: "issues", label: "Include issues that have no due date (title and status only)", type: "checkbox", value: false });
+  if (hasIssues) fields.push({ key: "issues", label: "Include issues (title, status, and notes)", type: "checkbox", value: false });
   formDialog("Quest giver export", fields, "Export", function (v) {
     exportQuestForClient(p, { preparedBy: !sides.by || v.by === "1", preparedFor: !sides.forWhom || v.forWhom === "1", issues: v.issues === "1" });
   }, sides.by || sides.forWhom ? "Choose what appears on the export." : "Choose whether the export lists this quest’s issues.");
@@ -28,8 +35,7 @@ export function askExportSides(p) {
 // Builds the standalone read-only export and offers it for saving, same
 // fallback order as saveBackupFile(). Scoped to Active/Complete quests only.
 export function exportQuestForClient(p, opts) {
-  var snapshot = buildExportSnapshot(p, opts);
-  var html = renderExportDocument(snapshot);
+  var html = whileUnvaulted(p, function () { return renderExportDocument(buildExportSnapshot(p, opts)); });
   var name = exportFileName(p);
   function exported() { notify("Exported " + p.name + "."); }
   saveFile(name, html, "text/html", "Sidequest export", ".html", exported).then(function (r) {
@@ -68,7 +74,11 @@ function toggleRow(p, t, open, li) {
   var before = li.getBoundingClientRect().top;
   ui.questOpen[p.id] = open ? null : t.id; renderView();
   var row = document.getElementById(li.id), shift = row ? row.getBoundingClientRect().top - before : 0;
-  if (shift) window.scrollBy(0, shift);
+  if (!shift) return;
+  // A framed copy (Muse) scrolls the host page, so window.scrollBy does nothing there; keep the row in view instead.
+  var y = window.pageYOffset || 0;
+  window.scrollBy(0, shift);
+  if ((window.pageYOffset || 0) === y && row && typeof row.scrollIntoView === "function") { try { row.scrollIntoView({ block: "nearest" }); } catch (e) { /* ignore */ } }
 }
 // A long date line can wrap, so a title is not always at the same height; this reads each row's line positions, then hands them to the CSS.
 export function alignStatuses(root) {
@@ -531,6 +541,7 @@ export function renderQuestPage(root, id) {
   var ar = el("div", { "class": "actions questactions", style: "margin-top:14px" });
   if (readOnly) {
     ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Bring back to Quests" }, "Restore"), "click", function () { restoreEntry({ kind: "quest", list: "quests", item: p }); }));
+    if (p.status !== "candidate") ar.appendChild(on(el("button", { type: "button", "class": "small", title: "Export web page for client review" }, "Quest giver export"), "click", function () { askExportSides(p); }));
   } else if (p.status === "candidate") {
     ar.appendChild(on(el("button", { type: "button", "class": "small primary", title: "Promote to quest" }, "Promote"), "click", function () { promoteToActive(p.id); }));
     ar.appendChild(on(el("button", { type: "button", "class": "small danger", title: "Send this candidate to the Vault" }, "Vault"), "click", function () { removeToVault(p, "Quest"); }));

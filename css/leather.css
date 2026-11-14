@@ -61,7 +61,7 @@
 
 /* Narrow screens: the top bar becomes the leather panel, with the same stitched curved edge as the sidebar header. */
 .topbar .flapstitch { display: none; }
-@media (max-width: 899px) {
+@media (max-width: 639px), (max-width: 899px) and (orientation: portrait), (max-width: 899px) and (not (pointer: coarse)) {
   .app .topbar { isolation: isolate; padding: var(--space-10) var(--space-16) var(--space-30); background: var(--leather) url("../assets/header-800.jpg") left bottom / max(100%, 800px) auto no-repeat; border-bottom: 0; border-radius: 0 0 64px 64px / 0 0 22px 22px; box-shadow: 0 4px 10px -2px rgba(0, 0, 0, .35); }
   .app .topbar .flapstitch { display: block; }
   .app .topbar > .tbleft, .app .topbar > .topact { position: relative; top: 6px; z-index: 3; }
@@ -78,5 +78,5 @@
   .app .topbar .mlogo { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 }
 /* Wide, light theme: the quest title pencil takes the leather brown instead of the blue-gray muted. */
-@media (min-width: 900px) { :root[data-theme="light"] #renameBtn { color: var(--leather); } }
-@media (min-width: 900px) and (prefers-color-scheme: light) { :root:not([data-theme="dark"]) #renameBtn { color: var(--leather); } }
+@media (min-width: 900px), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) { :root[data-theme="light"] #renameBtn { color: var(--leather); } }
+@media (min-width: 900px) and (prefers-color-scheme: light), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) and (prefers-color-scheme: light) { :root:not([data-theme="dark"]) #renameBtn { color: var(--leather); } }

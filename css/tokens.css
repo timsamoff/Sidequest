@@ -24,12 +24,14 @@
   --space-24: 24px;
   --space-26: 26px;
   --space-30: 30px;
+  --control-min: 34px;
   /* Corner radii, named by role rather than size. */
   --radius-track: 4px;
   --radius-input: 6px;
   --radius-control: 8px;
   --radius-card: 10px;
   --radius-pill: 999px;
+  --radius-chip: 5px;
   /* Shared height for text/date/number inputs, select, and buttons. */
   --control-height: 40px;
   /* Small-text scale: a label size, a body-small size, and full body size. */

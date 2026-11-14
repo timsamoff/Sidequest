@@ -1,6 +1,6 @@
 import { state, ui, save, changed, autoVault, purgeOldVault, APP_NAME, APP_VERSION, loadFromDbIfAvailable, checkForAppUpdate, pickAffirmation } from "./state.js";
 import { CORE, BOTTOM, isCore, validPage, pageTitle, findAnyTask, findQuest, isLooseIssue, lateTasks, questNameTaken } from "./model.js";
-import { $, el, on, focusKey, setFocusKey, scrollTop, notify, editInline, playSfx, inClaude, isStandalone } from "./dom.js";
+import { $, el, on, focusKey, setFocusKey, scrollTop, scrollToRow, notify, editInline, playSfx, inClaude, isStandalone } from "./dom.js";
 import { TODAY } from "./dates.js";
 import { renderJobs } from "./errands.js";
 import { renderHelp } from "./help.js";
@@ -22,8 +22,15 @@ export function openTask(id) {
   var at = findAnyTask(id);
   if (at && at.vault) { go("vault"); notify("That task is in the Vault. Restore it to work on it.", null, "problem"); return; }
   // An issue with no due date is not on the Tasks page, so it opens in place on its quest's page.
-  if (at && isLooseIssue(at) && findQuest(at.questId)) { ui.questOpen[at.questId] = id; go("quest:" + at.questId); return; }
-  leaveSearch(); ui.view = "schedule"; ui.sel = id; ui.detail = true; renderAll(); scrollTop();
+  if (at && isLooseIssue(at) && findQuest(at.questId)) { ui.questOpen[at.questId] = id; go("quest:" + at.questId); landOnTask(id); return; }
+  leaveSearch(); ui.view = "schedule"; ui.sel = id; ui.detail = true; renderAll(); scrollTop(); landOnTask(id);
+}
+// After a search or link opens a task, scrolls its row to just under the header. It waits for the page-top reset.
+function landOnTask(id) {
+  setTimeout(function () {
+    var row = document.getElementById("ptask-" + id) || document.getElementById("itask-" + id) || document.querySelector('#view .listpane [aria-current="true"]');
+    scrollToRow(row);
+  }, 80);
 }
 export var ICON_SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>';
 export var ICON_CANCEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>';
@@ -96,7 +103,7 @@ function renameCurrentQuest() {
 on($("renameBtn"), "click", renameCurrentQuest);
 // On narrow screens the page name is a heading under the leather header; on wide ones it sits in the bar.
 if (typeof window.matchMedia === "function") {
-  var narrowBar = window.matchMedia("(max-width: 899px)");
+  var narrowBar = window.matchMedia("(max-width: 639px), (max-width: 899px) and (orientation: portrait), (max-width: 899px) and (not (pointer: coarse))");
   var placeTitle = function () { ($("pageHead") && narrowBar.matches ? $("pageHead") : document.querySelector(".tbleft")).appendChild($("titleRow")); };
   placeTitle();
   if (narrowBar.addEventListener) narrowBar.addEventListener("change", placeTitle);
@@ -146,7 +153,8 @@ export function renderView() {
   var root = $("view");
   // A redraw of the same page keeps its scroll position; emptying the page lets a phone jump it.
   var keepY = ui.view === lastView && document.body.style.position !== "fixed" ? (window.pageYOffset || 0) : null;
-  if (keepY !== null) root.style.minHeight = root.offsetHeight + "px";
+  // The page keeps its height while it redraws, so a framed copy's host page is not clamped to the bottom.
+  root.style.minHeight = root.offsetHeight + "px";
   root.innerHTML = "";
   if (ui.view.indexOf("quest:") === 0 && !validPage(ui.view)) ui.view = "projects";
   noteBurnView(ui.view);

@@ -2,7 +2,7 @@ import { state } from "./state.js";
 import { fmt, fmtY, iso, parseISO, TODAY } from "./dates.js";
 import {
   wl, pset, linkedQuests, questBurn, questBurnTasks, isLate,
-  taskStart, taskEnd, questEstimate, fmtHours, fmtHoursLong, live, isLooseIssue,
+  taskStart, taskEnd, questEstimate, fmtHours, fmtHoursLong, live,
   blockForDate, blockStartFor, blockEndFor, milestoneTasks
 } from "./model.js";
 import { scopeSteps } from "./chart.js";
@@ -15,7 +15,7 @@ import { isEmail } from "./dom.js";
 // Tasks, steps, and the quest's fields, frozen to plain data. Does not
 // walk linked quests -- buildExportTree() does that, with the cycle guard.
 function snapshotTasks(p) {
-  return questBurnTasksOrdered(p).filter(function (t) { return !isLooseIssue(t); }).map(function (t) {
+  return questBurnTasksOrdered(p).filter(function (t) { return !t.issue; }).map(function (t) {
     return {
       id: t.id, what: t.what, done: t.done, status: t.status, notes: t.notes || "",
       block: t.block, start: fmtRange(t), late: isLate(t), launch: !!t.launch, milestone: !!t.milestone, issue: !!t.issue,
@@ -32,11 +32,14 @@ function questBurnTasksOrdered(p) {
   });
 }
 function fmtRange(t) { return t.block === 0 ? "Backlog" : fmt(taskStart(t)) + " to " + fmt(taskEnd(t)); }
-// Issues with no due date, as title and status only. They print only when the export asks for them.
+// Every issue, dated or not, with its status and notes. They print only when the export asks for them,
+// and never in Tasks.
 function snapshotIssues(p) {
-  return questBurnTasksOrdered(p).filter(isLooseIssue).map(function (t) { return { what: t.what, status: t.status, launch: !!t.launch }; });
+  return questBurnTasksOrdered(p).filter(function (t) { return t.issue; }).map(function (t) {
+    return { what: t.what, status: t.status, notes: t.notes || "", launch: !!t.launch, start: t.block === 0 ? "" : fmtRange(t), late: isLate(t) };
+  });
 }
-// True when this quest, or a linked quest the export would include, has an issue with no due date.
+// True when this quest, or a linked quest the export would include, has an issue.
 export function exportHasIssues(p) {
   return flattenSections(buildExportTree(p, null, true)).some(function (n) { return n.issues.length > 0; });
 }
@@ -221,7 +224,9 @@ function renderTasks(node) {
 
 function renderIssues(node) {
   var rows = node.issues.map(function (t) {
-    return '<li class="etask' + (t.status === "Completed" ? " done" : "") + '"><div class="el2">' + (t.launch ? '<span class="chip launchcrit" style="margin-right:8px">Launch critical</span>' : "") + escHtml(t.what) + '</div><div class="el3"><span>' + escHtml(t.status) + "</span></div></li>";
+    return '<li class="etask' + (t.status === "Completed" ? " done" : "") + '">' + (t.start ? '<div class="el1">' + escHtml(t.start) + "</div>" : "") +
+      '<div class="el2">' + (t.launch ? '<span class="chip launchcrit" style="margin-right:8px">Launch critical</span>' : "") + escHtml(t.what) + '</div><div class="el3"><span>' + escHtml(t.status) + "</span></div>" +
+      (t.notes ? '<p class="enotes">' + escHtml(t.notes) + "</p>" : "") + "</li>";
   });
   return '<ul class="etasklist">' + rows.join("") + "</ul>";
 }
@@ -287,6 +292,7 @@ body { margin: 0; padding: 24px; background: var(--bg); color: var(--ink); font-
 .econtactname { color: var(--ink); font-weight: 600; }\
 .econtactaddr { white-space: pre-line; }\
 h1, h2, h3, h4, h5 { font-weight: 700; margin-top: 0; }\
+h3 { margin-top: 26px; }\
 .ehint { color: var(--muted); }\
 .etoc { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 18px 0; }\
 .etoc ul { margin: 4px 0 4px 18px; padding: 0; }\
@@ -296,7 +302,7 @@ h1, h2, h3, h4, h5 { font-weight: 700; margin-top: 0; }\
 @media (min-width: 900px) { .esplit { grid-template-columns: 1.1fr 1fr; align-items: start; } }\
 .efirst { margin-top: 0; }\
 .hint { color: var(--muted); font-size: .92rem; }\
-.chip { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--badge-neutral-bg); color: var(--badge-neutral); font-size: .8rem; font-weight: 600; }\
+.chip { display: inline-block; padding: 2px 10px; border-radius: 5px; background: var(--badge-neutral-bg); color: var(--badge-neutral); font-size: .8rem; font-weight: 600; }\
 .chip[data-v='Not started'] { background: var(--badge-pending-bg); color: var(--badge-pending); }\
 .chip[data-v='In progress'] { background: var(--badge-active-bg); color: var(--badge-active); }\
 .chip[data-v='Completed'], .chip.questcomplete { background: var(--badge-done-bg); color: var(--badge-done); }\
@@ -305,7 +311,7 @@ h1, h2, h3, h4, h5 { font-weight: 700; margin-top: 0; }\
 .chip.milestonechip { background: var(--milestone-bg); color: var(--milestone); }\
 .chip.issuechip { background: var(--badge-attention-bg); color: var(--badge-attention); }\
 .chip.ereadonly { background: var(--muted); color: var(--surface); vertical-align: middle; font-size: .7rem; margin-left: 8px; }\
-.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--late-bg); color: var(--late); font-size: .8rem; font-weight: 600; }\
+.badge { display: inline-block; padding: 2px 8px; border-radius: 5px; background: var(--late-bg); color: var(--late); font-size: .8rem; font-weight: 600; }\
 .etasklist, .list { list-style: none; margin: 8px 0; padding: 0; }\
 .etask { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--surface); }\
 .etask.done { opacity: .7; }\
