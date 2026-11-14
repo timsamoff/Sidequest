@@ -77,6 +77,11 @@
   .app .topbar #newBtn { --btn: var(--btn-tan); --on-btn: var(--on-btn-tan); }
   .app .topbar .mlogo { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 }
+/* Wide: the website’s brass rule under the page name replaces the plain line. */
+@media (min-width: 900px), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) {
+  .topbar { border-bottom: 0; }
+  .topbar::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--brass) 18%, var(--brass) 82%, transparent); pointer-events: none; }
+}
 /* Wide, light theme: the quest title pencil takes the leather brown instead of the blue-gray muted. */
 @media (min-width: 900px), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) { :root[data-theme="light"] #renameBtn { color: var(--leather); } }
 @media (min-width: 900px) and (prefers-color-scheme: light), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) and (prefers-color-scheme: light) { :root:not([data-theme="dark"]) #renameBtn { color: var(--leather); } }

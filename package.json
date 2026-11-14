@@ -1,6 +1,6 @@
 {
   "name": "sidequest",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "A small, static project planner that runs in the browser.",
   "private": true,
   "scripts": {

@@ -214,6 +214,11 @@
   .app .topbar #newBtn { --btn: var(--btn-tan); --on-btn: var(--on-btn-tan); }
   .app .topbar .mlogo { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .35)); }
 }
+/* Wide: the website’s brass rule under the page name replaces the plain line. */
+@media (min-width: 900px), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) {
+  .topbar { border-bottom: 0; }
+  .topbar::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--brass) 18%, var(--brass) 82%, transparent); pointer-events: none; }
+}
 /* Wide, light theme: the quest title pencil takes the leather brown instead of the blue-gray muted. */
 @media (min-width: 900px), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) { :root[data-theme="light"] #renameBtn { color: var(--leather); } }
 @media (min-width: 900px) and (prefers-color-scheme: light), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) and (prefers-color-scheme: light) { :root:not([data-theme="dark"]) #renameBtn { color: var(--leather); } }
@@ -292,6 +297,7 @@ button[data-armed="1"] { border-color: var(--late); color: var(--late); }
 .titlerow { display: flex; align-items: center; gap: var(--space-10); min-width: 0; min-height: var(--control-min); }
 .mlogo { display: none; width: 44px; height: 44px; }
 .brand { font-family: var(--font-display); font-weight: 400; font-size: calc(1.25rem + 1px); line-height: 1.1; }
+.sidescroll { display: contents; }
 .nav { display: flex; flex-direction: column; gap: var(--space-2); overflow-y: visible; min-height: 0; }
 /* Only the pinned-quest list scrolls -- CORE above it and navBottom below
    always keep their own full, fixed height (see renderChrome() in app.js). */
@@ -393,6 +399,11 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .listbox > .progress { margin: 0; padding: var(--space-10) var(--space-14); border-bottom: 1px solid var(--line); }
 .listbox > .progress:empty { display: none; }
 @media (min-width: 900px), (min-width: 640px) and (orientation: landscape) and (pointer: coarse) {
+  /* The header and Search stay put; the tabs and every pinned quest scroll together beneath them. */
+  .sidescroll { display: flex; flex-direction: column; gap: var(--space-4); flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  .sidescroll .nav { flex-shrink: 0; }
+  .pinnedwrap { overflow-y: visible; }
+  .brandrow, .searchwrap { flex-shrink: 0; }
   .pgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--space-22); row-gap: var(--space-12); align-items: start; }
   .pgrid > .cl, .pgrid > .cr, .pgrid > .cr.r1, .pgrid .progresshead { margin-top: 0; }
   .pgrid > .cl { grid-column: 1; }
@@ -868,8 +879,10 @@ html:has(.splash:not([hidden])) { overflow: hidden; }
   <aside class="side">
     <div class="brandrow leatherpanel"><span class="flapstitch" aria-hidden="true"><i class="stl"></i><i class="stm"></i><i class="str"></i></span><svg class="logo" aria-hidden="true" focusable="false"><use href="#sqLogo"></use></svg><span class="brand" id="brand">Sidequest</span></div>
     <div class="searchwrap"><label for="searchBox" class="sr-only">Search</label><input type="search" id="searchBox" placeholder="Search  ( / )" autocomplete="off"></div>
-    <nav class="nav" aria-label="Views" id="nav"></nav>
-    <nav class="nav navbottom" id="navBottom" aria-label="Vault and settings"></nav>
+    <div class="sidescroll">
+      <nav class="nav" aria-label="Views" id="nav"></nav>
+      <nav class="nav navbottom" id="navBottom" aria-label="Vault and settings"></nav>
+    </div>
   </aside>
   <div class="column">
     <header class="topbar">
@@ -1756,7 +1769,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "1.2.0";
+var APP_VERSION = "1.2.1";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
