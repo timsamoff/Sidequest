@@ -12,6 +12,9 @@
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* In landscape the camera notch sits beside the page, so the page stays clear of it. */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
   --font-display: "IM Fell English SC", Georgia, "Times New Roman", serif;
   --font-serif: "IM Fell English", Georgia, "Times New Roman", serif;
   --font-sans: "Alegreya Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -1769,7 +1772,7 @@ function findAnyTask(id) { for (var i = 0; i < state.tasks.length; i++) if (stat
 var KEY2 = "sidequest-template-v1", UIKEY = "sidequest-template-ui";
 var STATUSES = ["Not started", "In progress", "Completed"];
 var CHECKPOINTS = 7;
-var APP_VERSION = "1.2.1";
+var APP_VERSION = "1.2.2";
 var APP_NAME = "Sidequest";
 
 function S(v, max) { return typeof v === "string" ? v.slice(0, max || 500) : ""; }
@@ -5756,11 +5759,12 @@ function toggleRow(p, t, open, li) {
   var before = li.getBoundingClientRect().top;
   ui.questOpen[p.id] = open ? null : t.id; renderView();
   var row = document.getElementById(li.id), shift = row ? row.getBoundingClientRect().top - before : 0;
-  if (!shift) return;
+  if (Math.abs(shift) < 1) return;
   // A framed copy (Muse) scrolls the host page, so window.scrollBy does nothing there; keep the row in view instead.
   var y = window.pageYOffset || 0;
   window.scrollBy(0, shift);
-  if ((window.pageYOffset || 0) === y && row && typeof row.scrollIntoView === "function") { try { row.scrollIntoView({ block: "nearest" }); } catch (e) { /* ignore */ } }
+  var pin = row && (row.querySelector(".item") || row);
+  if ((window.pageYOffset || 0) === y && pin && typeof pin.scrollIntoView === "function") { try { pin.scrollIntoView({ block: "nearest" }); } catch (e) { /* ignore */ } }
 }
 // A long date line can wrap, so a title is not always at the same height; this reads each row's line positions, then hands them to the CSS.
 function alignStatuses(root) {

@@ -74,11 +74,12 @@ function toggleRow(p, t, open, li) {
   var before = li.getBoundingClientRect().top;
   ui.questOpen[p.id] = open ? null : t.id; renderView();
   var row = document.getElementById(li.id), shift = row ? row.getBoundingClientRect().top - before : 0;
-  if (!shift) return;
+  if (Math.abs(shift) < 1) return;
   // A framed copy (Muse) scrolls the host page, so window.scrollBy does nothing there; keep the row in view instead.
   var y = window.pageYOffset || 0;
   window.scrollBy(0, shift);
-  if ((window.pageYOffset || 0) === y && row && typeof row.scrollIntoView === "function") { try { row.scrollIntoView({ block: "nearest" }); } catch (e) { /* ignore */ } }
+  var pin = row && (row.querySelector(".item") || row);
+  if ((window.pageYOffset || 0) === y && pin && typeof pin.scrollIntoView === "function") { try { pin.scrollIntoView({ block: "nearest" }); } catch (e) { /* ignore */ } }
 }
 // A long date line can wrap, so a title is not always at the same height; this reads each row's line positions, then hands them to the CSS.
 export function alignStatuses(root) {
